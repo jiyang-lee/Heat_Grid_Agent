@@ -1,0 +1,7 @@
+data/raw_data/
+data/_downloads/
+
+# Local Python/Jupyter artifacts
+.ipynb_checkpoints/
+.venv/
+__pycache__/
