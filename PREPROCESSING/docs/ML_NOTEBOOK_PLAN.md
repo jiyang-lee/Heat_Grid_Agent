@@ -1,4 +1,4 @@
-# ML 노트북 구성 및 작업 계획
+﻿# ML 노트북 구성 및 작업 계획
 
 이 문서는 `HeatGrid Agent` 프로젝트에서 ML 파트를 **노트북 단위로 분리**해서 진행하기 위한 계획서다.
 
@@ -110,8 +110,8 @@
 
 ### 03. 전처리 및 윈도우 생성
 
-- 파일: `PREPROCESSING/03_preprocessing_windows.ipynb`
-- 문서: `PREPROCESSING/docs/03_preprocessing_windows.md`
+- 파일: `PREPROCESSING/osj/03_preprocess_windows.ipynb`
+- 문서: `PREPROCESSING/docs/03_preprocess_windows.md`
 
 목적:
 
@@ -131,68 +131,76 @@
 - window 분할 시각화
 - 결측 구간 전후 비교
 
-### 04. feature 생성
+### 04. feature 선택 및 모델 입력 정의
 
-- 파일: `PREPROCESSING/04_feature_engineering.ipynb`
-- 문서: `PREPROCESSING/docs/04_feature_engineering.md`
+- 파일: `PREPROCESSING/osj/04_feature_selection.ipynb`
+- 문서: `PREPROCESSING/docs/04_feature_selection.md`
 
 목적:
 
-- 센서 집계 feature 생성
-- 변화량 feature 생성
-- 시간 문맥 feature 생성
-- configuration type 반영 feature 생성
+- 03번에서 생성된 feature 후보 중 학습에 사용할 입력 컬럼을 고른다
+- leakage 가능성이 큰 컬럼을 제외한다
+- 제조사 공통으로 안정적으로 쓸 수 있는 feature 집합을 고정한다
 
 핵심 출력:
 
-- feature table
-- feature list
-- feature version 정의
+- `feature_columns.csv`
+- `metadata_columns.csv`
+- 제외 사유가 포함된 feature selection 결과
 
 시각화:
 
-- feature correlation
-- feature distribution
-- 상위 feature 중요도 후보
+- feature 누락률
+- 제조사별 non-null coverage
+- 라벨별 기본 분포 비교
 
 ### 05. baseline 이상탐지 모델
 
-- 파일: `PREPROCESSING/05_baseline_anomaly_model.ipynb`
+- 파일: `PREPROCESSING/osj/05_baseline_anomaly_model.ipynb`
 - 문서: `PREPROCESSING/docs/05_baseline_anomaly_model.md`
 
 목적:
 
 - normal behaviour model baseline 구축
 - anomaly score 산출
-- AE 또는 IsolationForest baseline 비교
+- Isolation Forest를 사용해 정상 패턴 대비 이상징후를 탐지
+- LightGBM 위험도 모델에서 사용할 `anomaly_score`를 저장
 
 핵심 출력:
 
 - anomaly score
-- reconstruction error 또는 이상점수
+- anomaly threshold 후보
+- threshold 기반 anomaly label
 - threshold 후보
 
 시각화:
 
 - 정상 vs 이상 score 분포
-- reconstruction error curve
 - threshold line 포함 분포 그래프
 
 ### 06. 위험도 및 리드타임 추정
 
-- 파일: `PREPROCESSING/06_risk_leadtime_model.ipynb`
-- 문서: `PREPROCESSING/docs/06_risk_leadtime_model.md`
+- 파일: `PREPROCESSING/osj/06_test/06_risk_leadtime_model.ipynb`
+- 문서: `PREPROCESSING/docs/06_test/06_risk_leadtime_model.md`
 
 목적:
 
-- fault/maintenance 이력과의 유사도를 기반으로 위험도 추정
+- faults.csv의 고장신고 시점을 기준으로 고장신고 전 위험구간 라벨 생성
+- sensor feature, Isolation Forest anomaly score, disturbance 이력을 함께 사용해 LightGBM 위험도 모델 학습
+- 고장 확정이 아니라 고장신고 전 위험 패턴과의 유사도 산출
 - 이벤트까지의 남은 시간 또는 리드타임 구간 추정
+
+현재 상태:
+
+- 이 단계를 다시 메인 `Isolation Forest + LightGBM` 체인으로 사용한다.
+- 기존 paper-aligned 전환 시도 자료는 `PREPROCESSING/legacy` 아래에 아카이브한다.
 
 핵심 출력:
 
-- risk score
-- risk class
+- risk score 또는 risk probability
+- risk level
 - lead time estimate
+- LightGBM feature importance
 - confidence
 
 시각화:
@@ -200,10 +208,87 @@
 - 리드타임 분포
 - risk score와 fault event 관계
 - 예측 시점 대비 실제 fault 시점 비교
+- LightGBM 주요 feature importance
+
+legacy failure analysis companion:
+
+- 파일: `PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb`
+- 문서: `PREPROCESSING/docs/06_test/06_risk_leadtime_audit.md`
+- 용도:
+  - 기존 LightGBM 방식의 holdout 붕괴 원인 진단
+  - label / split / regime shift 문제 기록
+  - paper-aligned canonical 전환 근거 보존
+
+legacy ablation companion:
+
+- 파일: `PREPROCESSING/osj/06_test/06_event_context_ablation.ipynb`
+- 문서: `PREPROCESSING/docs/06_test/06_event_context_ablation.md`
+- 용도:
+  - 기존 LightGBM event context 보강 실험 기록
+  - 어떤 보강이 있었는지 비교용 baseline으로 보존
+  - canonical이 아니라 legacy branch의 실험 결과로 유지
+
+### legacy 06-P. paper-aligned review
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_review.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_review.md`
+
+목적:
+
+- 논문 방식과 현재 LightGBM 방식의 차이 정리
+- 왜 canonical ML 방향을 Autoencoder Normal Behaviour Model로 전환하는지 문서화
+- Agent / Priority Engine 계약을 유지한 채 어떤 부분을 바꿔야 하는지 정리
+
+### legacy 06-P1. paper-aligned data selection
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_data_selection.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_data_selection.md`
+
+목적:
+
+- normal event / fault event 단위 학습 및 평가 구간 정의
+- Autoencoder 학습용 정상 구간과 event-wise 평가용 구간 분리
+
+### legacy 06-P2. paper-aligned autoencoder
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_autoencoder.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_autoencoder.md`
+
+목적:
+
+- 정상행동모델 Autoencoder baseline 구현
+- reconstruction error 기반 anomaly score 생성
+
+### legacy 06-P3. paper-aligned event evaluation
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_event_eval.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_event_eval.md`
+
+목적:
+
+- window 분류가 아니라 event-wise detection rate, false alarm rate, lead time 평가
+
+### legacy 06-P4. paper-aligned feature attribution
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_feature_attribution.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_feature_attribution.md`
+
+목적:
+
+- reconstruction error 기여 feature와 주요 이상 feature 설명 생성
+
+### legacy 06-P5. paper-aligned agent contract
+
+- 파일: `PREPROCESSING/legacy/osj/06_paper_aligned_agent_contract.ipynb`
+- 문서: `PREPROCESSING/legacy/docs/06_paper_aligned_agent_contract.md`
+
+목적:
+
+- Autoencoder 결과를 Agent / Priority Engine 계약 스키마로 변환
 
 ### 07. 근거 설명 및 센서 중요도
 
-- 파일: `PREPROCESSING/07_explainability.ipynb`
+- 파일: `PREPROCESSING/osj/07_explainability.ipynb`
 - 문서: `PREPROCESSING/docs/07_explainability.md`
 
 목적:
@@ -225,7 +310,7 @@
 
 ### 08. Agent 전달용 export
 
-- 파일: `PREPROCESSING/08_export_for_agent.ipynb`
+- 파일: `PREPROCESSING/osj/08_export_for_agent.ipynb`
 - 문서: `PREPROCESSING/docs/08_export_for_agent.md`
 
 목적:
@@ -271,7 +356,16 @@
 - `docs/03_preprocessing_windows.md`
 - `docs/04_feature_engineering.md`
 - `docs/05_baseline_anomaly_model.md`
-- `docs/06_risk_leadtime_model.md`
+- `docs/06_test/06_risk_leadtime_model.md`
+- `docs/06_test/06_risk_leadtime_audit.md`
+- `docs/06_test/06_event_context_ablation.md`
+- `legacy/docs/06_model_direction_decision.md`
+- `legacy/docs/06_paper_aligned_review.md`
+- `legacy/docs/06_paper_aligned_data_selection.md`
+- `legacy/docs/06_paper_aligned_autoencoder.md`
+- `legacy/docs/06_paper_aligned_event_eval.md`
+- `legacy/docs/06_paper_aligned_feature_attribution.md`
+- `legacy/docs/06_paper_aligned_agent_contract.md`
 - `docs/07_explainability.md`
 - `docs/08_export_for_agent.md`
 
@@ -323,9 +417,17 @@
 4. `03_preprocessing_windows.ipynb`
 5. `04_feature_engineering.ipynb`
 6. `05_baseline_anomaly_model.ipynb`
-7. `06_risk_leadtime_model.ipynb`
-8. `07_explainability.ipynb`
-9. `08_export_for_agent.ipynb`
+7. `06_test/06_risk_leadtime_model.ipynb`
+8. `06_test/06_risk_leadtime_audit.ipynb`
+9. `06_test/06_event_context_ablation.ipynb`
+10. `legacy/osj/06_paper_aligned_review.ipynb`
+11. `legacy/osj/06_paper_aligned_data_selection.ipynb`
+12. `legacy/osj/06_paper_aligned_autoencoder.ipynb`
+13. `legacy/osj/06_paper_aligned_event_eval.ipynb`
+14. `legacy/osj/06_paper_aligned_feature_attribution.ipynb`
+15. `legacy/osj/06_paper_aligned_agent_contract.ipynb`
+16. `07_explainability.ipynb`
+10. `08_export_for_agent.ipynb`
 
 각 단계가 끝날 때마다 대응하는 `docs/` 문서를 추가한다.
 

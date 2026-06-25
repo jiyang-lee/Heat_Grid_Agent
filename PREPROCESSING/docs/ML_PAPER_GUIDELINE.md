@@ -39,22 +39,23 @@ Agent의 역할은 다음이다.
 
 ## 3. 논문에서 유효한 구현 포인트
 
-### 3.1 Autoencoder 기반 이상탐지
+### 3.1 Isolation Forest 기반 이상탐지
 
-논문은 autoencoder를 normal behaviour model로 사용한다.
+논문은 normal behaviour model 기반 이상탐지 방향을 제시한다.
+우리 프로젝트의 기본 구현은 `Isolation Forest`로 둔다.
 
 핵심 아이디어는 다음과 같다.
 
 - 정상 패턴으로 학습
-- 입력을 복원
-- 복원 오차가 커지면 이상으로 본다
+- 정상 패턴과 다른 센서 조합을 고립시키기 쉬운 정도로 점수화
+- anomaly score가 커지면 정상 운전 패턴에서 더 많이 벗어난 것으로 본다
 
 이 방식은 우리 프로토에서도 baseline으로 쓰기 좋다.
 
 권장 이유:
 
 - 구조가 단순하다
-- 시계열에 잘 맞는다
+- 라벨이 부족한 운영 시계열에 적용하기 쉽다
 - 이상점수를 만들기 쉽다
 - Agent에게 설명하기 쉽다
 
@@ -113,10 +114,12 @@ Agent는 이 설명을 받아 “왜 이 기계실을 먼저 봐야 하는지”
 1. 데이터 로딩
 2. 전처리
 3. 윈도우 생성
-4. AE 기반 anomaly score
-5. event 단위 평가
-6. feature attribution 또는 센서 중요도
-7. Agent 전달용 출력 포맷 저장
+4. Isolation Forest 기반 anomaly score
+5. faults.csv 기준 고장신고 전 위험구간 라벨 생성
+6. LightGBM 기반 risk score 또는 risk probability
+7. event 단위 평가
+8. feature attribution 또는 센서 중요도
+9. Agent 전달용 출력 포맷 저장
 
 ### 4.2 데이터 선택
 
@@ -210,10 +213,11 @@ fault 이벤트에서는 다음을 본다.
 처음부터 복잡하게 가지 말고 아래 순서로 간다.
 
 1. rule-based baseline
-2. autoencoder baseline
-3. eventwise evaluation
-4. feature attribution
-5. 필요하면 supervised classifier / regressor 추가
+2. Isolation Forest anomaly baseline
+3. faults.csv 기준 위험구간 라벨 생성
+4. LightGBM supervised risk baseline
+5. eventwise evaluation
+6. feature attribution
 
 ### 6.2 설명 가능성
 
