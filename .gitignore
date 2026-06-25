@@ -10,3 +10,7 @@ agent/notebooks/_local/
 
 # Local source data is large and should not be committed.
 data/raw/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
