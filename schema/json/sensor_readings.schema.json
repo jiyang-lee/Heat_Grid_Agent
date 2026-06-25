@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.agent/schema/sensor_readings.schema.json",
+  "title": "sensor_readings",
+  "description": "기계실 실시간 센서 1행(= substation_id + ts). raw operational 유지 컬럼 29개 중 ts + numeric 17 + control 11. 숫자 센서는 결측 허용(nullable). contract version operational_input_v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["substation_id", "ts"],
+  "$defs": {
+    "nullable_number": { "type": ["number", "null"] },
+    "control_text": { "type": ["string", "null"] }
+  },
+  "properties": {
+    "substation_id": { "type": "integer", "minimum": 0 },
+    "ts": { "type": "string", "format": "date-time" },
+
+    "outdoor_temperature": { "$ref": "#/$defs/nullable_number" },
+    "p_dhw_control_valve_position": { "$ref": "#/$defs/nullable_number" },
+    "p_dhw_return_temperature": { "$ref": "#/$defs/nullable_number" },
+    "p_hc1_control_valve_position_setpoint": { "$ref": "#/$defs/nullable_number" },
+    "p_hc1_return_temperature": { "$ref": "#/$defs/nullable_number" },
+    "p_net_meter_energy": { "$ref": "#/$defs/nullable_number" },
+    "p_net_meter_flow": { "$ref": "#/$defs/nullable_number" },
+    "p_net_meter_heat_power": { "$ref": "#/$defs/nullable_number" },
+    "p_net_meter_volume": { "$ref": "#/$defs/nullable_number" },
+    "p_net_return_temperature": { "$ref": "#/$defs/nullable_number" },
+    "p_net_supply_temperature": { "$ref": "#/$defs/nullable_number" },
+    "s_dhw_lower_storage_temperature": { "$ref": "#/$defs/nullable_number" },
+    "s_dhw_supply_temperature": { "$ref": "#/$defs/nullable_number" },
+    "s_dhw_supply_temperature_setpoint": { "$ref": "#/$defs/nullable_number" },
+    "s_dhw_upper_storage_temperature": { "$ref": "#/$defs/nullable_number" },
+    "s_hc1_supply_temperature": { "$ref": "#/$defs/nullable_number" },
+    "s_hc1_supply_temperature_setpoint": { "$ref": "#/$defs/nullable_number" },
+
+    "s_dhw_3way_valve_status": { "$ref": "#/$defs/control_text" },
+    "s_dhw_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_1_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_1_heating_pump_status": { "$ref": "#/$defs/control_text" },
+    "s_hc1_2_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_2_dhw_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_2_heating_pump_status": { "$ref": "#/$defs/control_text" },
+    "s_hc1_3_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_3_heating_pump_status": { "$ref": "#/$defs/control_text" },
+    "s_hc1_control_unit_mode": { "$ref": "#/$defs/control_text" },
+    "s_hc1_heating_pump_status_setpoint": { "$ref": "#/$defs/control_text" }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.agent/schema/maintenance_events.schema.json",
+  "title": "maintenance_events",
+  "description": "정비/작업 이력 1건. disturbances.csv(substation ID, Event start, type) 기준. id는 합성 대리키. days_since_last_task_event 등 계산 원천. contract version operational_input_v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["substation_id", "event_start"],
+  "properties": {
+    "id": { "type": "integer", "description": "합성 대리키(BIGSERIAL). 적재 시 DB 생성." },
+    "substation_id": { "type": "integer", "minimum": 0 },
+    "event_start": { "type": "string", "format": "date-time" },
+    "type": { "type": ["string", "null"] },
+    "created_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

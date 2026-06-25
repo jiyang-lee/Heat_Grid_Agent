@@ -1,0 +1,67 @@
+﻿{
+    "package":  "heatgrid_ml_models_2026-06-25",
+    "branch_source":  "mlmodel",
+    "target_usage":  "Agent/service inference handoff",
+    "excludes":  [
+                     "PREPROCESSING/osj/06_test experimental models",
+                     "legacy paper_aligned models",
+                     "bulk score CSV outputs"
+                 ],
+    "files":  [
+                  {
+                      "path":  "anomaly/baseline_model_metadata.json",
+                      "bytes":  9842,
+                      "sha256":  "9846cf515fac4148789c8a0822870fb8a27a1fd12cabaa87584fa81d5042194b"
+                  },
+                  {
+                      "path":  "anomaly/isolation_forest.joblib",
+                      "bytes":  3627469,
+                      "sha256":  "ff3affccbbacfd6811694c903db241fcf0da161ce80c97acb25a95543d1f82da"
+                  },
+                  {
+                      "path":  "anomaly/standard_scaler.joblib",
+                      "bytes":  5247,
+                      "sha256":  "a959f498abc2ae53eb612c0dddbba9578754dd27ad64faa699a618836ccecbad"
+                  },
+                  {
+                      "path":  "docs/agent_full_data_contract.md",
+                      "bytes":  17971,
+                      "sha256":  "904df5b9061c1ed222230d7307eccedc2a9e846ac0214b90d03ce810c0d433d4"
+                  },
+                  {
+                      "path":  "docs/agent_preprocessed_input_columns.md",
+                      "bytes":  9925,
+                      "sha256":  "51c438301bac654fec3792fa975156321b6c9b37c91e70593cfeeac653d7d5a7"
+                  },
+                  {
+                      "path":  "leadtime/leadtime_bucket_model_promoted_metadata.json",
+                      "bytes":  11150,
+                      "sha256":  "04dc43d81c275ab6f0c309eae5a46c1556623ef73902b691c36c183680eb100f"
+                  },
+                  {
+                      "path":  "leadtime/lightgbm_leadtime_bucket_model_promoted.joblib",
+                      "bytes":  843644,
+                      "sha256":  "822f7384fdabc35db463d8e17ebe1b95a13dc055e7d3c294a16c506b72c187f1"
+                  },
+                  {
+                      "path":  "priority/priority_engine_tuned_metadata.json",
+                      "bytes":  887,
+                      "sha256":  "11b2db255e00b26437687ccad9441a9161672a612ec5699232d003c2b07a58b4"
+                  },
+                  {
+                      "path":  "risk/lightgbm_risk_model.joblib",
+                      "bytes":  283684,
+                      "sha256":  "3cd71159202200f4047d0f0b698b50ec23b8c031d2788fce329bc8d1a04e7ded"
+                  },
+                  {
+                      "path":  "risk/risk_model_group_calibration.json",
+                      "bytes":  846,
+                      "sha256":  "9816ec66f0020fe03e25afca43a5f8a3b64b9f773406fe3f619ed63e72982f5c"
+                  },
+                  {
+                      "path":  "risk/risk_model_metadata.json",
+                      "bytes":  10990,
+                      "sha256":  "9c933219c98d5d7a5efcba139e3d388b509ed775e0bea392116895fff09dc524"
+                  }
+              ]
+}
