@@ -1,0 +1,133 @@
+{
+  "purpose": "raw columns required by 03 preprocessing plus downstream feature engineering/model training",
+  "basis": {
+    "preprocessing_notebook": "PREPROCESSING/osj/03_preprocess_windows.ipynb",
+    "core_sensor_columns": "CORE_SENSOR_COLUMNS",
+    "control_context_rule": "columns matching /(mode|status|state|operation)/",
+    "selected_feature_catalog": "data/processed/ml_features/feature_columns.csv"
+  },
+  "counts": {
+    "raw_operational_union_count": 50,
+    "required_raw_operational_columns_count": 29,
+    "excluded_raw_operational_columns_count": 21,
+    "selected_model_feature_count": 195
+  },
+  "required_raw_operational_columns": [
+    "outdoor_temperature",
+    "p_dhw_control_valve_position",
+    "p_dhw_return_temperature",
+    "p_hc1_control_valve_position_setpoint",
+    "p_hc1_return_temperature",
+    "p_net_meter_energy",
+    "p_net_meter_flow",
+    "p_net_meter_heat_power",
+    "p_net_meter_volume",
+    "p_net_return_temperature",
+    "p_net_supply_temperature",
+    "s_dhw_3-way_valve_status",
+    "s_dhw_control_unit_mode",
+    "s_dhw_lower_storage_temperature",
+    "s_dhw_supply_temperature",
+    "s_dhw_supply_temperature_setpoint",
+    "s_dhw_upper_storage_temperature",
+    "s_hc1.1_control_unit_mode",
+    "s_hc1.1_heating_pump_status",
+    "s_hc1.2_control_unit_mode",
+    "s_hc1.2_dhw_control unit_mode",
+    "s_hc1.2_heating_pump_status",
+    "s_hc1.3_control_unit_mode",
+    "s_hc1.3_heating_pump_status",
+    "s_hc1_control_unit_mode",
+    "s_hc1_heating_pump_status_setpoint",
+    "s_hc1_supply_temperature",
+    "s_hc1_supply_temperature_setpoint",
+    "timestamp"
+  ],
+  "required_raw_operational_columns_by_reason": {
+    "timestamp_and_windowing": [
+      "timestamp"
+    ],
+    "core_sensor_columns": [
+      "outdoor_temperature",
+      "s_hc1_supply_temperature",
+      "s_hc1_supply_temperature_setpoint",
+      "s_dhw_supply_temperature",
+      "s_dhw_supply_temperature_setpoint",
+      "p_hc1_return_temperature",
+      "p_dhw_return_temperature",
+      "s_dhw_upper_storage_temperature",
+      "s_dhw_lower_storage_temperature",
+      "p_net_meter_energy",
+      "p_net_meter_volume",
+      "p_net_meter_heat_power",
+      "p_net_meter_flow",
+      "p_net_supply_temperature",
+      "p_net_return_temperature",
+      "p_hc1_control_valve_position_setpoint",
+      "p_dhw_control_valve_position"
+    ],
+    "control_context_columns": [
+      "s_dhw_3-way_valve_status",
+      "s_dhw_control_unit_mode",
+      "s_hc1.1_control_unit_mode",
+      "s_hc1.1_heating_pump_status",
+      "s_hc1.2_control_unit_mode",
+      "s_hc1.2_dhw_control unit_mode",
+      "s_hc1.2_heating_pump_status",
+      "s_hc1.3_control_unit_mode",
+      "s_hc1.3_heating_pump_status",
+      "s_hc1_control_unit_mode",
+      "s_hc1_heating_pump_status_setpoint"
+    ]
+  },
+  "excluded_raw_operational_columns": [
+    "p_dhw_return_temperature_setpoint",
+    "p_hc1_return_temperature_setpoint",
+    "s_dhw_upper_storage_temperature_setpoint",
+    "s_hc1.1_control_valve_position",
+    "s_hc1.1_return_temperature",
+    "s_hc1.1_return_temperature_setpoint",
+    "s_hc1.1_room_temperature_setpoint",
+    "s_hc1.1_supply_temperature",
+    "s_hc1.1_supply_temperature_setpoint",
+    "s_hc1.2_control_valve_position",
+    "s_hc1.2_return_temperature",
+    "s_hc1.2_return_temperature_setpoint",
+    "s_hc1.2_room_temperature_setpoint",
+    "s_hc1.2_supply_temperature",
+    "s_hc1.2_supply_temperature_setpoint",
+    "s_hc1.3_control_valve_position",
+    "s_hc1.3_return_temperature",
+    "s_hc1.3_room_temperature_setpoint",
+    "s_hc1.3_supply_temperature",
+    "s_hc1.3_supply_temperature_setpoint",
+    "s_hc1_room_temperature_setpoint"
+  ],
+  "required_context_sources": {
+    "configuration_types.csv": [
+      "configuration_type"
+    ],
+    "faults.csv": [
+      "fault_label",
+      "fault_event_id",
+      "estimated_lead_time_hours",
+      "risk labels"
+    ],
+    "disturbances.csv": [
+      "maintenance/task event history",
+      "days_since_last_task_event"
+    ],
+    "normal_events.csv": [
+      "normal reference windows"
+    ],
+    "source_metadata": [
+      "manufacturer",
+      "substation_id",
+      "source_file"
+    ]
+  },
+  "notes": [
+    "This contract is broader than selected model features because preprocessing may use raw columns before feature selection removes them.",
+    "Excluded raw columns are not used by current 03 preprocessing CORE_SENSOR_COLUMNS or selected feature contract."
+  ]
+}
