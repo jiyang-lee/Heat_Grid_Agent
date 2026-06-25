@@ -1,0 +1,24 @@
+{
+  "base_model_version": "lgbm_risk_06_event_days_v3",
+  "base_thresholds": {
+    "medium": 0.22,
+    "high": 0.44,
+    "critical": 0.9
+  },
+  "primary_split_column": "split_event_regime_based",
+  "group_overrides": [
+    {
+      "manufacturer": "manufacturer 2",
+      "configuration_type": "SH",
+      "applied_thresholds": {
+        "medium": 0.22,
+        "high": 0.78,
+        "critical": 0.9
+      },
+      "basis": "validation-selected group override"
+    }
+  ],
+  "output_scores_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_risk_scores_calibrated.csv",
+  "output_metrics_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_risk_metrics_calibrated.csv",
+  "output_override_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_group_threshold_overrides.csv"
+}
