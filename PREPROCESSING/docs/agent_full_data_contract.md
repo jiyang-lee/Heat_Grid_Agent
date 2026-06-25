@@ -1,11 +1,11 @@
 ﻿# Agent Full Data Contract
 
-## 1. 전처리 후 유지할 raw operational columns
+## 1. 전처리 후 유지되는 operational base columns
 
 총 29개다.
 
 여기서 전처리는 불필요한 raw 컬럼 삭제, 결측/이상치 처리, 타입 정리까지를 의미한다.
-따라서 아래 29개는 raw operational 원본에서 전처리 후 남겨야 하는 최소 컬럼이다.
+따라서 아래 29개는 raw operational 원본에서 불필요 컬럼을 제거한 뒤, 타입 변환/결측 처리/이상치 처리를 거쳐 유지되는 최소 base columns다.
 
 이 29개가 그대로 모델에 들어가는 최종 feature는 아니다.
 이후 feature engineering/windowing 단계에서 이 29개를 기반으로 195개 모델 입력 feature가 생성된다.
@@ -66,7 +66,66 @@
 - `s_hc1.3_supply_temperature_setpoint`
 - `s_hc1_room_temperature_setpoint`
 
-## 3. 추가 context source
+## 3. 형식 변환/인코딩 후 컬럼 구분
+
+전처리에서 타입 변환과 결측/이상치 처리를 마친 뒤에도 컬럼 의미가 그대로 유지되는 base columns와, 문자열/범주형 값을 one-hot 형태로 인코딩하는 columns를 구분한다.
+
+### 3.1 형식 변환 후 그대로 유지되는 base columns
+
+아래 컬럼들은 numeric 또는 datetime으로 정리된 뒤 feature engineering/windowing의 기본 입력으로 그대로 사용된다.
+
+- `timestamp`
+- `outdoor_temperature`
+- `p_dhw_control_valve_position`
+- `p_dhw_return_temperature`
+- `p_hc1_control_valve_position_setpoint`
+- `p_hc1_return_temperature`
+- `p_net_meter_energy`
+- `p_net_meter_flow`
+- `p_net_meter_heat_power`
+- `p_net_meter_volume`
+- `p_net_return_temperature`
+- `p_net_supply_temperature`
+- `s_dhw_lower_storage_temperature`
+- `s_dhw_supply_temperature`
+- `s_dhw_supply_temperature_setpoint`
+- `s_dhw_upper_storage_temperature`
+- `s_hc1_supply_temperature`
+- `s_hc1_supply_temperature_setpoint`
+
+### 3.2 인코딩 대상 raw/control columns
+
+아래 컬럼들은 문자열/상태값으로 처리한 뒤 window별 dominant 값을 만들고, 이후 one-hot feature로 변환된다.
+
+- `s_dhw_3-way_valve_status`
+- `s_dhw_control_unit_mode`
+- `s_hc1.1_control_unit_mode`
+- `s_hc1.1_heating_pump_status`
+- `s_hc1.2_control_unit_mode`
+- `s_hc1.2_dhw_control unit_mode`
+- `s_hc1.2_heating_pump_status`
+- `s_hc1.3_control_unit_mode`
+- `s_hc1.3_heating_pump_status`
+- `s_hc1_control_unit_mode`
+- `s_hc1_heating_pump_status_setpoint`
+
+### 3.3 인코딩 대상 context columns
+
+아래 컬럼들은 raw operational 센서 컬럼은 아니지만, 모델 입력 feature를 만들 때 one-hot 또는 시간 context feature로 변환된다.
+
+- `manufacturer`
+- `configuration_type`
+- `season_bucket`
+
+### 3.4 최종 인코딩 feature family
+
+04 feature selection 이후 모델 입력으로 남은 인코딩 계열 feature는 다음 family로 정리된다.
+
+- `derived_one_hot`: 44개
+- `cyclic_time`: 6개
+- `time_context`: 6개
+
+## 4. 추가 context source
 
 - `configuration_types.csv`: configuration_type
 - `faults.csv`: fault_label, fault_event_id, estimated_lead_time_hours, risk labels
@@ -74,7 +133,7 @@
 - `normal_events.csv`: normal reference windows
 - `source_metadata`: manufacturer, substation_id, source_file
 
-## 4. 전처리 규칙
+## 5. 전처리 규칙
 
 - raw column pruning: operational raw 50개 중 불필요한 21개 제거
 - `timestamp`: datetime으로 변환, invalid timestamp 제거, timestamp 기준 정렬
@@ -82,7 +141,7 @@
 - control context columns: string 변환, 결측값은 `missing`으로 처리
 - quality filter: 최소 row 수, missing rate, timestamp gap, leakage guard, normal reference filter 적용
 
-## 5. feature engineering 후 남은 모델 입력 columns
+## 6. feature engineering 후 남은 모델 입력 columns
 
 전처리 후 유지된 raw operational 29개와 context source를 사용해 windowing/feature engineering을 수행한다.
 그 결과 04 feature selection 이후 모델 입력 feature는 195개로 고정된다.
@@ -299,7 +358,7 @@ family별 개수는 아래와 같다.
 - `is_weekend`
 - `month`
 
-## 6. metadata columns
+## 7. metadata columns
 
 - `manufacturer`: identifier, `str`
 - `substation_id`: identifier, `int64`
@@ -339,7 +398,7 @@ family별 개수는 아래와 같다.
 - `normal_reference_outlier_count`: training_control, `int64`
 - `normal_reference_filter_reason`: training_control, `str`
 
-## 7. 머신러닝을 통해 나온 결과 columns
+## 8. 머신러닝을 통해 나온 결과 columns
 
 - `anomaly_score`
 - `anomaly_threshold`
@@ -364,7 +423,7 @@ risk 기준 산출물: `data/processed/ml_risk/lgbm_risk_scores_calibrated.csv`
 
 leadtime 기준 산출물: `data/processed/ml_leadtime/leadtime_bucket_scores_promoted.csv`
 
-## 8. Priority Engine 입력 columns
+## 9. Priority Engine 입력 columns
 
 - `manufacturer`
 - `substation_id`
@@ -384,7 +443,7 @@ leadtime 기준 산출물: `data/processed/ml_leadtime/leadtime_bucket_scores_pr
 - `days_since_last_task_event`
 - `days_since_last_any_event`
 
-## 9. Priority Engine 출력 columns
+## 10. Priority Engine 출력 columns
 
 - `risk_base_score`
 - `risk_probability_component_score`

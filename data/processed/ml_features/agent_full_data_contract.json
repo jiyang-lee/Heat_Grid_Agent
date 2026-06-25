@@ -94,6 +94,51 @@
     "raw_column_pruning": "drop 21 unused raw operational columns and keep 29 raw operational columns",
     "quality_filters": "minimum row ratio, missing rate, timestamp gap, leakage guard, normal reference filtering"
   },
+  "post_type_conversion_and_encoding_columns": {
+    "base_columns_kept_without_encoding": [
+      "timestamp",
+      "outdoor_temperature",
+      "p_dhw_control_valve_position",
+      "p_dhw_return_temperature",
+      "p_hc1_control_valve_position_setpoint",
+      "p_hc1_return_temperature",
+      "p_net_meter_energy",
+      "p_net_meter_flow",
+      "p_net_meter_heat_power",
+      "p_net_meter_volume",
+      "p_net_return_temperature",
+      "p_net_supply_temperature",
+      "s_dhw_lower_storage_temperature",
+      "s_dhw_supply_temperature",
+      "s_dhw_supply_temperature_setpoint",
+      "s_dhw_upper_storage_temperature",
+      "s_hc1_supply_temperature",
+      "s_hc1_supply_temperature_setpoint"
+    ],
+    "raw_control_columns_encoded": [
+      "s_dhw_3-way_valve_status",
+      "s_dhw_control_unit_mode",
+      "s_hc1.1_control_unit_mode",
+      "s_hc1.1_heating_pump_status",
+      "s_hc1.2_control_unit_mode",
+      "s_hc1.2_dhw_control unit_mode",
+      "s_hc1.2_heating_pump_status",
+      "s_hc1.3_control_unit_mode",
+      "s_hc1.3_heating_pump_status",
+      "s_hc1_control_unit_mode",
+      "s_hc1_heating_pump_status_setpoint"
+    ],
+    "context_columns_encoded": [
+      "manufacturer",
+      "configuration_type",
+      "season_bucket"
+    ],
+    "encoded_feature_families_after_feature_selection": {
+      "derived_one_hot": 44,
+      "cyclic_time": 6,
+      "time_context": 6
+    }
+  },
   "feature_engineering": {
     "definition": "windowing, aggregation statistics, deltas, one-hot/control context features, cyclic time features, and event context features generated from the retained 29 raw operational columns plus context sources",
     "windowing": "6-hour sliding/fixed windows from operational time series",
