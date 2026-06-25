@@ -66,13 +66,18 @@
 - `s_hc1.3_supply_temperature_setpoint`
 - `s_hc1_room_temperature_setpoint`
 
-## 3. 형식 변환/인코딩 후 컬럼 구분
+## 3. 전처리 후 형식 변환/인코딩 결과 columns
 
-전처리에서 타입 변환과 결측/이상치 처리를 마친 뒤에도 컬럼 의미가 그대로 유지되는 base columns와, 문자열/범주형 값을 one-hot 형태로 인코딩하는 columns를 구분한다.
+이 섹션은 feature engineering이 아니라 전처리 산출물 기준이다.
+전처리에는 타입 변환, 결측/이상치 처리, 문자열/범주형 인코딩 준비까지 포함한다.
+
+따라서 아래는 feature engineering으로 새로 만든 파생 feature가 아니라, feature engineering 이전에 준비되는 입력 컬럼 구분이다.
+컬럼 의미가 그대로 유지되는 base columns와, 문자열/범주형 값을 인코딩 대상으로 처리하는 columns를 나눈다.
 
 ### 3.1 형식 변환 후 그대로 유지되는 base columns
 
-아래 컬럼들은 numeric 또는 datetime으로 정리된 뒤 feature engineering/windowing의 기본 입력으로 그대로 사용된다.
+아래 컬럼들은 numeric 또는 datetime으로 정리된 뒤에도 컬럼 의미가 그대로 유지된다.
+즉, 이 단계까지는 파생 feature가 아니라 전처리 후 base columns다.
 
 - `timestamp`
 - `outdoor_temperature`
@@ -95,7 +100,8 @@
 
 ### 3.2 인코딩 대상 raw/control columns
 
-아래 컬럼들은 문자열/상태값으로 처리한 뒤 window별 dominant 값을 만들고, 이후 one-hot feature로 변환된다.
+아래 컬럼들은 문자열/상태값으로 처리된다.
+이 컬럼 자체를 numeric feature로 그대로 쓰는 것이 아니라, 결측값 처리와 dominant 상태 추출을 거친 뒤 one-hot 계열 컬럼으로 변환된다.
 
 - `s_dhw_3-way_valve_status`
 - `s_dhw_control_unit_mode`
@@ -111,15 +117,16 @@
 
 ### 3.3 인코딩 대상 context columns
 
-아래 컬럼들은 raw operational 센서 컬럼은 아니지만, 모델 입력 feature를 만들 때 one-hot 또는 시간 context feature로 변환된다.
+아래 컬럼들은 raw operational 센서 컬럼은 아니지만, 전처리/인코딩 단계에서 모델 입력에 사용할 수 있는 context 형태로 정리된다.
 
 - `manufacturer`
 - `configuration_type`
 - `season_bucket`
 
-### 3.4 최종 인코딩 feature family
+### 3.4 전처리/인코딩 후 모델 입력에 남는 변환 계열
 
-04 feature selection 이후 모델 입력으로 남은 인코딩 계열 feature는 다음 family로 정리된다.
+04 feature selection 이후 모델 입력으로 남은 변환 계열 feature는 다음 family로 정리된다.
+이들은 raw 값을 그대로 둔 컬럼이 아니라, 전처리/인코딩 과정에서 모델이 읽을 수 있게 바뀐 컬럼이다.
 
 - `derived_one_hot`: 44개
 - `cyclic_time`: 6개
@@ -141,10 +148,13 @@
 - control context columns: string 변환, 결측값은 `missing`으로 처리
 - quality filter: 최소 row 수, missing rate, timestamp gap, leakage guard, normal reference filter 적용
 
-## 6. feature engineering 후 남은 모델 입력 columns
+## 6. feature engineering으로 생성된 모델 입력 feature columns
 
-전처리 후 유지된 raw operational 29개와 context source를 사용해 windowing/feature engineering을 수행한다.
-그 결과 04 feature selection 이후 모델 입력 feature는 195개로 고정된다.
+전처리 후 유지된 operational base columns 29개와 context source를 사용해 windowing/feature engineering을 수행한다.
+여기서 말하는 feature engineering은 단순 타입 변환이 아니라, window 통계, 변화량, gap, 결측률, 시간 주기, event context, one-hot 결과처럼 모델 학습용으로 새로 구성된 feature 생성을 의미한다.
+
+따라서 3.1의 base columns 자체는 feature engineering 결과로 보지 않는다.
+04 feature selection 이후 모델 입력 feature는 195개로 고정된다.
 family별 개수는 아래와 같다.
 
 - `cyclic_time`: 6

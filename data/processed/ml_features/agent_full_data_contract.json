@@ -1,8 +1,8 @@
 {
   "version": "agent_data_contract_v1",
   "raw_operational": {
-    "preprocessing_definition": "raw column pruning, missing/outlier handling, and type normalization only",
-    "required_columns_meaning": "raw operational columns retained after preprocessing; these are inputs for feature engineering, not final model features",
+    "preprocessing_definition": "raw column pruning, missing/outlier handling, type normalization, and categorical/control encoding preparation",
+    "required_columns_meaning": "operational base columns retained after preprocessing; these preserve source column meaning and are inputs for later feature engineering, not final engineered model features",
     "required_columns": [
       "outdoor_temperature",
       "p_dhw_control_valve_position",
@@ -95,6 +95,7 @@
     "quality_filters": "minimum row ratio, missing rate, timestamp gap, leakage guard, normal reference filtering"
   },
   "post_type_conversion_and_encoding_columns": {
+    "definition": "preprocessing output columns after type conversion and encoding preparation; simple type-converted base columns are not considered feature engineering outputs",
     "base_columns_kept_without_encoding": [
       "timestamp",
       "outdoor_temperature",
@@ -140,7 +141,7 @@
     }
   },
   "feature_engineering": {
-    "definition": "windowing, aggregation statistics, deltas, one-hot/control context features, cyclic time features, and event context features generated from the retained 29 raw operational columns plus context sources",
+    "definition": "engineered model features generated after preprocessing, including windowing, aggregation statistics, deltas, gaps, missing-rate features, one-hot/control context outputs, cyclic time features, and event context features; simple type-converted base columns are excluded from this concept",
     "windowing": "6-hour sliding/fixed windows from operational time series",
     "selected_feature_count": 195,
     "metadata_column_count": 37,
