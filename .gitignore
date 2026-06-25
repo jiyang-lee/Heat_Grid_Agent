@@ -1,0 +1,8 @@
+.env
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+agent/notebooks/.ipynb_checkpoints/
+agent/notebooks/_local/
