@@ -1,0 +1,10 @@
+substation_id,event_start,type,manufacturer
+10,2013-02-19 00:00:00,activity,manufacturer 1
+10,2013-08-02 00:00:00,activity,manufacturer 1
+10,2014-05-04 00:00:00,activity,manufacturer 1
+10,2014-05-04 14:44:00,fault,manufacturer 1
+10,2014-05-05 00:00:00,activity,manufacturer 1
+10,2018-11-05 15:05:23,task,manufacturer 1
+24,2020-03-19 09:20:00,fault,manufacturer 2
+24,2020-03-18 11:11:00,fault,manufacturer 2
+24,2020-03-20 00:48:52,task,manufacturer 2
