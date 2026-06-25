@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.agent/schema/priority_scores.schema.json",
+  "title": "priority_scores",
+  "description": "AI priority model(LightGBM 회귀) 출력. 1행 = manufacturer x substation_id x 6시간 윈도우. priority_score 0~100, model_version=priority_v3_lgbm_reg.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manufacturer",
+    "substation_id",
+    "window_start",
+    "window_end",
+    "priority_score",
+    "model_version",
+    "created_at"
+  ],
+  "properties": {
+    "manufacturer": {
+      "type": "string"
+    },
+    "substation_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "priority_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "priority_level": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent",
+        null
+      ]
+    },
+    "priority_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
