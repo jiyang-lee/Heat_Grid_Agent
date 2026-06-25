@@ -4,6 +4,8 @@
 
 `schema/`와 `docs/contracts/03_operational_input_contract.md`에 작성된 운영 입력 데이터 계약 초안을 검토했다. 결론적으로 운영 추론 입력을 4개 테이블로 제한한 방향은 현재 초안 안에서 일관성이 있고, SQL DDL과 JSON Schema의 컬럼 구성도 서로 맞는다.
 
+추가로 기존 학습 전처리 노트북 기준 raw 입력 컬럼과 현재 DB schema를 대조했다. `03_preprocess_windows.ipynb` 계열에서 요구하는 운영 raw 입력 컬럼은 현재 4테이블 계약으로 43개 중 43개가 대응되어 **100% 일치**한다.
+
 다만 실제 PostgreSQL/TimescaleDB 실행 검증과 `jsonschema` 기반 Draft 2020-12 검증은 현재 로컬 환경만으로는 완료되지 않았다. 원천 CSV는 로컬에 있으나 약 1.52GB 규모이므로 repo 커밋 대상에서는 제외한다.
 
 ## 무엇을 했는지
@@ -32,7 +34,7 @@
 | 항목 | 내용 |
 | --- | --- |
 | 추가 파일 | `docs/report/00_operational_input_contract_review.md` |
-| 검토 대상 | `docs/contracts/03_operational_input_contract.md`, `schema/sql/*.sql`, `schema/json/*.schema.json`, `schema/column_name_mapping.md`, `schema/README.md` |
+| 검토 대상 | `docs/contracts/03_operational_input_contract.md`, `schema/sql/*.sql`, `schema/json/*.schema.json`, `schema/column_name_mapping.md`, `schema/README.md`, `C:/HeatGridAgent_mlmodel/data/processed/ml_features/agent_required_raw_columns.json` |
 | 영향 | 계약 초안 자체는 그대로 두고, 현재 품질과 남은 검증 항목을 기록 |
 
 ## 검토 결과
@@ -50,12 +52,32 @@ flowchart TD
 
 | 관점 | 판단 | 근거 |
 | --- | --- | --- |
-| 범위 설정 | 적절함 | 운영 입력을 `substations`, `sensor_readings`, `fault_events`, `maintenance_events` 4종으로 제한하고, 예측/우선순위/윈도우 피처 테이블은 다음 단계로 분리했다. |
-| 원본/가공 분리 | 적절함 | 실시간 raw 성격의 `sensor_readings`와 정적/이벤트 원천을 분리했고, `model_predictions`, `priority_scores`, `window_features`를 운영 입력 계약 밖으로 뺐다. |
+| 범위 설정 | 적절함 | 운영 입력을 `substations`, `sensor_readings`, `fault_events`, `maintenance_events` 4종으로 제한하고, 예측/우선순위 산출 테이블은 다음 단계로 분리했다. |
+| 원본/가공 분리 | 적절함 | 실시간 raw 성격의 `sensor_readings`와 정적/이벤트 원천을 분리했고, `model_predictions`, `priority_scores`를 운영 입력 계약 밖으로 뺐다. |
 | TimescaleDB 선택 | 적절함 | 고빈도 시계열인 `sensor_readings`만 hypertable 대상으로 지정해 DB 선택 이유와 테이블 성격이 맞는다. |
 | 컬럼 정규화 | 적절함 | raw 컬럼의 `.`, 공백, `-`를 SQL 친화적인 snake_case로 바꾸는 매핑이 별도 문서에 있다. |
 | SQL-JSON 정합성 | 양호함 | 4개 테이블 모두 SQL 컬럼 수와 JSON Schema property 수가 일치했다. |
-| 문서 완성도 | 보통 | 핵심 why는 충분하지만, 실제 원천 CSV/ML 계약 파일과 대조한 증거는 repo 안에 없다. |
+| 노트북 raw 입력 대응 | 양호함 | 기존 03 전처리 노트북 요구 raw 입력 43개 중 현재 DB schema가 43개를 커버한다. |
+| 문서 완성도 | 보통 | 핵심 why와 컬럼 대응 수치는 남겼지만, 실제 DB 실행 검증은 아직 없다. |
+
+## 노트북 raw 입력 컬럼 대조
+
+대조 기준은 `C:/HeatGridAgent_mlmodel/data/processed/ml_features/agent_required_raw_columns.json`이다. 이 파일은 `03_preprocess_windows.ipynb`의 `CORE_SENSOR_COLUMNS`, control/status 컬럼 규칙, 전처리 입력 요구사항을 바탕으로 작성된 raw 컬럼 계약이다.
+
+| 비교 항목 | 노트북 요구 컬럼 수 | DB schema 컬럼 수 | 일치 컬럼 수 | 일치율 | 비고 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `sensor_readings` payload | 29 | 29 | 29 | 100.00% | `timestamp`는 DB에서 `ts`로 정규화 |
+| timestamp 기준 컬럼 | 1 | 1 | 1 | 100.00% | `timestamp` -> `ts` |
+| core sensor columns | 17 | 17 | 17 | 100.00% | `CORE_SENSOR_COLUMNS` 기준 |
+| control/status columns | 11 | 11 | 11 | 100.00% | `mode/status/state/operation` 규칙 기준 |
+| `substations` 설비 구성 입력 | 5 | 5 | 5 | 100.00% | `manufacturer`, `substation_id`, `configuration_type`, `has_dhw`, `has_buffer_tank` |
+| `fault_events` 고장 입력 | 6 | 6 | 6 | 100.00% | 운영 필요 고장 컬럼 기준 |
+| `maintenance_events` 정비 입력 | 3 | 3 | 3 | 100.00% | 운영 필요 정비 컬럼 기준 |
+| 운영 raw 입력 합계 | 43 | 43 | 43 | 100.00% | 현재 4테이블 계약 기준 |
+
+추가 참고로, 전체 raw operational 컬럼 union은 50개이고 현재 `sensor_readings` payload는 노트북이 실제 요구하는 29개만 담는다. 따라서 전체 raw CSV 컬럼 기준으로는 29/50 = 58.00%이지만, 이는 03 전처리에서 제외된 21개 컬럼을 DB 계약에 넣지 않았기 때문이다.
+
+`normal_events.csv`는 운영 raw 입력 계약에서 제외했다. 훈련 재현까지 포함해 최소 이벤트 기준 컬럼을 함께 세면 43/47 = 91.49%지만, 이번 계약의 판정 기준은 운영 raw 입력 4테이블이므로 43/43 = 100.00%로 본다.
 
 ## 검증
 
@@ -68,6 +90,7 @@ flowchart TD
 | SQL 파일 개수 확인 | `schema/sql` 아래 5개 파일 확인 |
 | SQL-JSON 컬럼 대조 | `substations` 8:8, `sensor_readings` 30:30, `fault_events` 7:7, `maintenance_events` 5:5로 모두 일치 |
 | `sensor_readings` 컬럼 수 확인 | `substation_id` + `ts` + 숫자 17 + 제어 11 = 30컬럼 확인 |
+| 노트북 raw 입력 컬럼 대조 | 운영 raw 입력 43개 중 DB schema 대응 43개, 100.00% 일치 |
 | 원천 CSV 규모 확인 | 101개 CSV, 약 1.52GB 확인 |
 | 대표 CSV 헤더 확인 | 제조사 1/2 operational, faults, disturbances 헤더 확인 |
 
@@ -78,14 +101,13 @@ flowchart TD
 | `psql -f schema/sql/*.sql` 실제 DDL 실행 | 현재 PATH에 `psql` 없음 |
 | TimescaleDB hypertable 생성 확인 | PostgreSQL/TimescaleDB 연결 환경 없음 |
 | `Draft202012Validator.check_schema(...)` | 현재 Python 환경에 `jsonschema` 패키지 없음 |
-| `agent_full_data_contract.json` 대조 | 현재 repo에 해당 파일 없음 |
 | 전체 원천 CSV header 대조 | 대표 파일 헤더만 확인했고, 101개 전체 헤더 자동 대조는 아직 미실행 |
 
 ## 한계와 주의점
 
 현재 브랜치는 프로젝트 지침과 맞는 `agent1`이다. 다만 원천 CSV가 약 1.52GB로 커서 그대로 커밋하면 저장소가 급격히 무거워진다. 따라서 `data/raw/`는 로컬 검증 데이터로 두고 커밋 대상에서 제외해야 한다.
 
-입력 계약 자체는 초안으로서 잘 잡혀 있지만, 아직 "실행 가능한 DB 계약"으로 확정됐다고 보기는 이르다. 최소한 psql 실행, TimescaleDB hypertable 생성, 원천 CSV header 대조, ML 계약 파일 대조가 끝나야 한다.
+입력 계약 자체는 초안으로서 잘 잡혀 있지만, 아직 "실행 가능한 DB 계약"으로 확정됐다고 보기는 이르다. 최소한 psql 실행, TimescaleDB hypertable 생성, 원천 CSV header 전체 대조가 끝나야 한다.
 
 ## 다음에 볼 것
 

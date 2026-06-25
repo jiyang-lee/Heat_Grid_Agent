@@ -75,3 +75,48 @@ raw operational 컬럼명에는 `.`(점)과 공백이 들어 있다.
 | `substation ID` | `substation_id` | |
 | `Event start` | `event_start` | |
 | `type` | `type` | |
+
+## preprocessed_windows — 생성 규칙
+
+`preprocessed_windows`는 raw 컬럼을 그대로 복사하지 않고, `substation_id + window_start + window_end` 단위의 전처리 데이터로 변환한다.
+
+### numeric sensor 17개
+
+각 numeric sensor는 다음 9개 통계 컬럼으로 확장된다.
+
+| raw/DB base 컬럼 | preprocessed 생성 컬럼 |
+|---|---|
+| `{sensor}` | `{sensor}__mean` |
+| `{sensor}` | `{sensor}__min` |
+| `{sensor}` | `{sensor}__max` |
+| `{sensor}` | `{sensor}__std` |
+| `{sensor}` | `{sensor}__first` |
+| `{sensor}` | `{sensor}__last` |
+| `{sensor}` | `{sensor}__delta` |
+| `{sensor}` | `{sensor}__missing_count` |
+| `{sensor}` | `{sensor}__missing_rate` |
+
+대상 sensor는 `sensor_readings`의 numeric 17개다. 따라서 numeric 파생 컬럼은 `17 x 9 = 153`개다.
+
+### control/status sensor 11개
+
+각 control/status sensor는 다음 3개 요약 컬럼으로 확장된다.
+
+| raw/DB base 컬럼 | preprocessed 생성 컬럼 |
+|---|---|
+| `{sensor}` | `{sensor}__dominant` |
+| `{sensor}` | `{sensor}__nunique` |
+| `{sensor}` | `{sensor}__change_count` |
+
+대상 sensor는 `sensor_readings`의 control/status 11개다. 따라서 상태 요약 파생 컬럼은 `11 x 3 = 33`개다.
+
+### context 컬럼
+
+| 출처 | preprocessed 컬럼 |
+|---|---|
+| `fault_events` | `days_since_last_fault_event`, `post_fault_stabilization` |
+| `maintenance_events` | `days_since_last_task_event`, `post_task_stabilization` |
+| `fault_events` + `maintenance_events` | `days_since_last_any_event`, `recent_regime_change_flag` |
+| `substations` | `configuration_type`, `has_dhw`, `has_buffer_tank` |
+
+one-hot, imputation, selected feature list는 전처리 데이터가 아니라 다음 피처 엔지니어링/모델 입력 계약에서 다룬다.
