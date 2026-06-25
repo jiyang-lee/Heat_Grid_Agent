@@ -1,5 +1,6 @@
 data/raw_data/
 data/_downloads/
+data/processed/
 
 # Local Python/Jupyter artifacts
 .ipynb_checkpoints/
