@@ -109,6 +109,111 @@ source별로 보존해야 하는 항목은 다음이다.
 - `s_hc1_control_unit_mode`
 - `s_hc1_heating_pump_status_setpoint`
 
+### 4.1 raw/control one-hot 결과 columns
+
+아래는 raw/control column이 window별 dominant column으로 정리된 뒤 생성되는 one-hot 결과 컬럼이다.
+
+- `s_dhw_3-way_valve_status`
+  - dominant column: `s_dhw_3-way_valve_status__dominant`
+  - one-hot columns:
+    - `s_dhw_3-way_valve_status__dominant__is__aus`
+    - `s_dhw_3-way_valve_status__dominant__is__ein`
+    - `s_dhw_3-way_valve_status__dominant__is__missing`
+
+- `s_dhw_control_unit_mode`
+  - dominant column: `s_dhw_control_unit_mode__dominant`
+  - one-hot columns:
+    - `s_dhw_control_unit_mode__dominant__is__missing`
+    - `s_dhw_control_unit_mode__dominant__is__standby`
+    - `s_dhw_control_unit_mode__dominant__is__tag`
+
+- `s_hc1.1_control_unit_mode`
+  - dominant column: `s_hc1.1_control_unit_mode__dominant`
+  - one-hot columns:
+    - `s_hc1.1_control_unit_mode__dominant__is__missing`
+    - `s_hc1.1_control_unit_mode__dominant__is__nacht`
+    - `s_hc1.1_control_unit_mode__dominant__is__tag`
+
+- `s_hc1.1_heating_pump_status`
+  - dominant column: `s_hc1.1_heating_pump_status__dominant`
+  - one-hot columns:
+    - `s_hc1.1_heating_pump_status__dominant__is__ein`
+    - `s_hc1.1_heating_pump_status__dominant__is__missing`
+
+- `s_hc1.2_control_unit_mode`
+  - dominant column: `s_hc1.2_control_unit_mode__dominant`
+  - one-hot columns:
+    - `s_hc1.2_control_unit_mode__dominant__is__missing`
+    - `s_hc1.2_control_unit_mode__dominant__is__nacht`
+    - `s_hc1.2_control_unit_mode__dominant__is__standby`
+    - `s_hc1.2_control_unit_mode__dominant__is__tag`
+
+- `s_hc1.2_dhw_control unit_mode`
+  - dominant column: `s_hc1.2_dhw_control unit_mode__dominant`
+  - one-hot columns:
+    - `s_hc1.2_dhw_control unit_mode__dominant__is__missing`
+    - `s_hc1.2_dhw_control unit_mode__dominant__is__standby`
+
+- `s_hc1.2_heating_pump_status`
+  - dominant column: `s_hc1.2_heating_pump_status__dominant`
+  - one-hot columns:
+    - `s_hc1.2_heating_pump_status__dominant__is__aus`
+    - `s_hc1.2_heating_pump_status__dominant__is__ein`
+    - `s_hc1.2_heating_pump_status__dominant__is__missing`
+
+- `s_hc1.3_control_unit_mode`
+  - dominant column: `s_hc1.3_control_unit_mode__dominant`
+  - one-hot columns:
+    - `s_hc1.3_control_unit_mode__dominant__is__missing`
+    - `s_hc1.3_control_unit_mode__dominant__is__tag`
+
+- `s_hc1.3_heating_pump_status`
+  - dominant column: `s_hc1.3_heating_pump_status__dominant`
+  - one-hot columns:
+    - `s_hc1.3_heating_pump_status__dominant__is__aus`
+    - `s_hc1.3_heating_pump_status__dominant__is__ein`
+    - `s_hc1.3_heating_pump_status__dominant__is__missing`
+
+- `s_hc1_control_unit_mode`
+  - dominant column: `s_hc1_control_unit_mode__dominant`
+  - one-hot columns:
+    - `s_hc1_control_unit_mode__dominant__is__missing`
+    - `s_hc1_control_unit_mode__dominant__is__nacht`
+    - `s_hc1_control_unit_mode__dominant__is__standby`
+    - `s_hc1_control_unit_mode__dominant__is__tag`
+
+- `s_hc1_heating_pump_status_setpoint`
+  - dominant column: `s_hc1_heating_pump_status_setpoint__dominant`
+  - one-hot columns:
+    - `s_hc1_heating_pump_status_setpoint__dominant__is__aus`
+    - `s_hc1_heating_pump_status_setpoint__dominant__is__ein`
+    - `s_hc1_heating_pump_status_setpoint__dominant__is__missing`
+
+### 4.2 context one-hot 결과 columns
+
+아래는 source metadata 또는 context source에서 만들어지는 one-hot 결과 컬럼이다.
+
+- `manufacturer`
+  - one-hot columns:
+    - `manufacturer__is__manufacturer_1`
+    - `manufacturer__is__manufacturer_2`
+
+- `configuration_type`
+  - one-hot columns:
+    - `configuration_type__is__missing`
+    - `configuration_type__is__sh`
+    - `configuration_type__is__sh_dhw`
+    - `configuration_type__is__sh_dhw_with_sub_circuits`
+    - `configuration_type__is__sh_with_buffer_tank`
+    - `configuration_type__is__sh_with_sub_circuits`
+
+- `season_bucket`
+  - one-hot columns:
+    - `season_bucket__is__autumn`
+    - `season_bucket__is__spring`
+    - `season_bucket__is__summer`
+    - `season_bucket__is__winter`
+
 ## 5. source metadata columns 3개
 
 아래 컬럼들은 operational CSV 내부 센서 컬럼이 아니라, 파일 경로/파일명/source metadata에서 유지해야 하는 식별자다.
