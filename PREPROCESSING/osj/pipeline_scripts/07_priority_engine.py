@@ -20,11 +20,11 @@ OUTPUT_PATH = PRIORITY_DIR / "priority_engine_scores_tuned.csv"
 METADATA_PATH = MODEL_DIR / "priority_engine_tuned_metadata.json"
 
 KEY_COLUMNS = ["manufacturer", "substation_id", "window_start", "window_end"]
-ENGINE_VERSION = "priority_engine_v2_rule_based_tuned"
+ENGINE_VERSION = "priority_engine_v2_threshold48"
 
 RISK_LEVEL_POINTS = {"critical": 38.0, "high": 28.0, "medium": 15.0, "low": 4.0}
 LEADTIME_BUCKET_POINTS = {"0-24h": 18.0, "1-3d": 10.0, "3-7d": 4.0}
-LEVEL_THRESHOLDS = {"urgent": 70.0, "high": 52.0, "medium": 34.0}
+LEVEL_THRESHOLDS = {"urgent": 70.0, "high": 48.0, "medium": 34.0}
 
 
 def clamp(value: float, lo: float, hi: float) -> float:
@@ -205,6 +205,7 @@ def main() -> None:
         "priority_level_rules": LEVEL_THRESHOLDS,
         "notes": [
             "compressed score scaling to reduce urgent saturation",
+            "high priority threshold promoted from 52.0 to 48.0 after holdout threshold sweep",
             "long fault gap bonus applies only when risk is high or critical",
         ],
     }
