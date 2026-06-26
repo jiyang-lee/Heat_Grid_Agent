@@ -1,8 +1,9 @@
-"""추론: ML output(목 데이터) → priority 모델 predict → priority_scores.csv.
+"""추론: 모델 체인 output → priority 모델 predict → priority_scores.csv.
 
 7피처 구성 → 모델 predict → clip(0,100) → 밴딩 → priority_scores.csv 적재.
 출력은 priority_scores.schema.json 으로 자체 검증.
-실 ML output 전환 시 main_abnormal_features→main_abnormal_sensors 등 컬럼 어댑팅 적용.
+기본 입력은 raw/preprocessing fixture에서 생성한 IF+LGBM risk+LGBM leadtime 체인 출력이다.
+목 데이터는 src를 명시했을 때만 보조 입력으로 사용할 수 있다.
 
 실행: ``uv run python -m agent.priority.run_priority``
 """
@@ -42,7 +43,13 @@ def run(src: Path | None = None, dst: Path | None = None) -> pd.DataFrame:
         raise SystemExit("모델 없음 — 먼저 train_priority_model 실행")
     model = joblib.load(paths.PRIORITY_MODEL_PATH)
 
-    df = pd.read_csv(src or paths.MOCK_ML_OUTPUT)
+    source = src or paths.MODEL_CHAIN_OUTPUT_CSV
+    if source == paths.MODEL_CHAIN_OUTPUT_CSV and not source.exists():
+        from agent.model_chain.run_model_chain import run as run_model_chain
+
+        run_model_chain(dst=source)
+
+    df = pd.read_csv(source)
     df = _adapt_aliases(df)
     X = df[contracts.PRIORITY_FEATURES].astype(float)
     scores = np.clip(

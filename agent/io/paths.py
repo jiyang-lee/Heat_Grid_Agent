@@ -12,7 +12,7 @@ from pathlib import Path
 # 리포 루트 = agent/io/paths.py 기준 2단계 상위
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# --- 입력(데모: 목 데이터) ---
+# --- 입력(데모: 목 데이터, 명시 실행용 fallback) ---
 DATA_DIR = REPO_ROOT / "data"
 MOCK_DIR = DATA_DIR / "mock"
 MOCK_ML_OUTPUT = MOCK_DIR / "mock_ml_output.csv"
