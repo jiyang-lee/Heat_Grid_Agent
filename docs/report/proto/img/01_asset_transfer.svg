@@ -1,0 +1,46 @@
+<svg viewBox="0 0 602 306" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="S0. 자산 이전 (43e2772)">
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--color-text-secondary,#57606a)"/>
+    </marker>
+  </defs>
+
+
+  <style>
+    svg{--acc-src:#3b6db5;--acc-src-bg:#eaf1fb;--acc-mine:#2e9e6b;--acc-mine-bg:#e8f6ef;
+        --ink:var(--color-text-primary,#1f2328);--ink2:var(--color-text-secondary,#57606a);
+        --card:var(--color-background-primary,#ffffff);--line:var(--color-border-secondary,#d0d7de);}
+    @media (prefers-color-scheme:dark){svg{--acc-src-bg:#16263d;--acc-mine-bg:#10301f;--card:#0d1117;--line:#30363d;}}
+    text{font-family:var(--font-sans,system-ui);fill:var(--ink);}
+    .h{font-size:16px;font-weight:500;}
+    .t{font-size:12.5px;font-weight:500;}
+    .s{font-size:11px;fill:var(--ink2);}
+    .box{fill:var(--card);stroke:var(--line);stroke-width:1.2;}
+    .src{fill:var(--acc-src-bg);stroke:var(--acc-src);stroke-width:1.2;}
+    .mine{fill:var(--acc-mine-bg);stroke:var(--acc-mine);stroke-width:1.2;}
+    .edge{stroke:var(--ink2);stroke-width:1.5;fill:none;marker-end:url(#ah);}
+  </style>
+
+<text x="20" y="30" class="h">S0. 자산 이전 (43e2772)</text>
+<path class="edge" d="M190,95.0 L214,95.0"/>
+<path class="edge" d="M105.0,203.0 L105.0,149.0 L301.0,149.0 L301.0,95.0"/>
+<path class="edge" d="M386,95.0 L410,95.0"/>
+<path class="edge" d="M301.0,126 L301.0,149.0 L497.0,149.0 L497.0,170"/>
+<rect class="src" x="20" y="64" width="170" height="62" rx="8"/>
+<text x="105.0" y="89" class="t" text-anchor="middle">agent1</text>
+<text x="105.0" y="107" class="s" text-anchor="middle">raw→전처리</text>
+<rect class="src" x="20" y="172" width="170" height="62" rx="8"/>
+<text x="105.0" y="197" class="t" text-anchor="middle">mlmodel1</text>
+<text x="105.0" y="215" class="s" text-anchor="middle">ML output·handoff</text>
+<rect class="mine" x="216" y="64" width="170" height="62" rx="8"/>
+<text x="301.0" y="89" class="t" text-anchor="middle">proto 브랜치</text>
+<text x="301.0" y="107" class="s" text-anchor="middle">신규 작업 베이스</text>
+<rect class="box" x="412" y="64" width="170" height="62" rx="8"/>
+<text x="497.0" y="89" class="t" text-anchor="middle">schema 000-005</text>
+<text x="497.0" y="107" class="s" text-anchor="middle">+ contracts 01-04</text>
+<rect class="box" x="412" y="172" width="170" height="62" rx="8"/>
+<text x="497.0" y="197" class="t" text-anchor="middle">model_handoff</text>
+<text x="497.0" y="215" class="s" text-anchor="middle">13 파일</text>
+<text x="20" y="297" class="s">이전: DDL 6 · JSON 5 · contracts 4 · handoff 13 (출처 위계 준수, 변경 금지)</text>
+</svg>

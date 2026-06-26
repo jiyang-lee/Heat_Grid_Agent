@@ -1,0 +1,95 @@
+<svg viewBox="0 0 1040 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ttl desc">
+  <title id="ttl">proto 한 사이클 아키텍처와 단계별 요약</title>
+  <desc id="desc">목 데이터 300행에서 priority 모델, LLM 에이전트, FastAPI 서버, React 대시보드까지의 흐름과 7개 커밋, 정량 지표를 한 장에 정리한 다이어그램.</desc>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--color-text-secondary,#57606a)"/>
+    </marker>
+  </defs>
+  <style>
+    svg{--acc-src:#3b6db5;--acc-src-bg:#eaf1fb;--acc-mine:#2e9e6b;--acc-mine-bg:#e8f6ef;
+        --ink:var(--color-text-primary,#1f2328);--ink2:var(--color-text-secondary,#57606a);
+        --card:var(--color-background-primary,#ffffff);--line:var(--color-border-secondary,#d0d7de);}
+    @media (prefers-color-scheme:dark){svg{--acc-src-bg:#16263d;--acc-mine-bg:#10301f;
+        --card:#0d1117;--line:#30363d;}}
+    text{font-family:var(--font-sans,system-ui);fill:var(--ink);}
+    .h{font-size:18px;font-weight:500;}
+    .t{font-size:13px;font-weight:500;}
+    .s{font-size:11px;fill:var(--ink2);}
+    .m{font-size:11px;font-family:var(--font-mono,monospace);fill:var(--ink2);}
+    .box{fill:var(--card);stroke:var(--line);stroke-width:1.2;}
+    .src{fill:var(--acc-src-bg);stroke:var(--acc-src);stroke-width:1.2;}
+    .mine{fill:var(--acc-mine-bg);stroke:var(--acc-mine);stroke-width:1.2;}
+    .edge{stroke:var(--ink2);stroke-width:1.5;fill:none;marker-end:url(#ah);}
+  </style>
+
+  <text x="24" y="32" class="h">proto 한 사이클 — 데이터에서 대시보드까지</text>
+  <circle cx="690" cy="27" r="5" fill="var(--acc-src)"/><text x="702" y="31" class="s">이전 자산 (agent1·mlmodel1)</text>
+  <circle cx="868" cy="27" r="5" fill="var(--acc-mine)"/><text x="880" y="31" class="s">이번 작업 (신규)</text>
+
+  <rect class="src" x="24" y="80" width="358" height="40" rx="8"/>
+  <text x="203" y="98" class="t" text-anchor="middle">출처 자산 (그대로 이전)</text>
+  <text x="203" y="113" class="s" text-anchor="middle">agent1 raw→전처리 · mlmodel1 ML output·handoff</text>
+  <path class="edge" d="M103,120 L103,148"/>
+  <path class="edge" d="M303,120 L303,148" stroke-dasharray="4 3"/>
+
+  <g>
+    <rect class="box" x="24"  y="150" width="158" height="70" rx="8"/>
+    <text x="103" y="181" class="t" text-anchor="middle">목 데이터</text>
+    <text x="103" y="199" class="s" text-anchor="middle">300행 · 25컬럼</text>
+    <rect class="mine" x="224" y="150" width="158" height="70" rx="8"/>
+    <text x="303" y="181" class="t" text-anchor="middle">Priority 모델 (LGBM)</text>
+    <text x="303" y="199" class="s" text-anchor="middle">7피처 → 0~100</text>
+    <rect class="mine" x="424" y="150" width="158" height="70" rx="8"/>
+    <text x="503" y="181" class="t" text-anchor="middle">priority_scores</text>
+    <text x="503" y="199" class="s" text-anchor="middle">300행</text>
+    <rect class="mine" x="624" y="150" width="158" height="70" rx="8"/>
+    <text x="703" y="181" class="t" text-anchor="middle">LLM/tool 에이전트</text>
+    <text x="703" y="199" class="s" text-anchor="middle">상위 N 자동</text>
+    <rect class="mine" x="824" y="150" width="158" height="70" rx="8"/>
+    <text x="903" y="181" class="t" text-anchor="middle">docs/send 초안</text>
+    <text x="903" y="199" class="s" text-anchor="middle">보고서+메일 5+5</text>
+  </g>
+  <path class="edge" d="M182,185 L222,185"/>
+  <path class="edge" d="M382,185 L422,185"/>
+  <path class="edge" d="M582,185 L622,185"/>
+  <path class="edge" d="M782,185 L822,185"/>
+
+  <rect class="mine" x="300" y="298" width="320" height="58" rx="8"/>
+  <text x="460" y="323" class="t" text-anchor="middle">FastAPI 서버 (읽기 전용)</text>
+  <text x="460" y="341" class="s" text-anchor="middle">/priority · /priority/{key} · /agent/output/{key}</text>
+  <rect class="mine" x="300" y="406" width="320" height="58" rx="8"/>
+  <text x="460" y="431" class="t" text-anchor="middle">React + Vite 대시보드</text>
+  <text x="460" y="449" class="s" text-anchor="middle">우선순위 표 → 상세 → 보고서·메일 초안</text>
+  <path class="edge" d="M503,220 L503,296"/>
+  <path class="edge" d="M903,232 L903,274 L600,274 L600,296"/>
+  <path class="edge" d="M460,356 L460,404"/>
+
+  <rect class="box" x="660" y="298" width="356" height="166" rx="8"/>
+  <text x="678" y="322" class="t">정량 요약</text>
+  <text x="678" y="346" class="s">precision@10/20/44 = 1.00 · NDCG = 1.00</text>
+  <text x="678" y="368" class="s">rule v2 동등 이상 → priority 모델 채택</text>
+  <text x="678" y="390" class="s">holdout 정답 R = 44 (train 196 / holdout 104)</text>
+  <text x="678" y="412" class="s">밴딩: urgent 65 · high 38 · medium 36 · low 161</text>
+  <text x="678" y="434" class="s">검증: JSON 6 · DDL 7 · PK 유니크 · pytest 6 passed</text>
+  <text x="678" y="456" class="s">라벨: 정상 161 / 고장전조 139 (버킷 65·39·35)</text>
+
+  <text x="24" y="506" class="t">커밋 타임라인 (단계 = 커밋)</text>
+  <line x1="60" y1="534" x2="990" y2="534" stroke="var(--line)" stroke-width="2"/>
+  <g text-anchor="middle">
+    <circle cx="60"  cy="534" r="6" fill="var(--acc-src)"/>
+    <text x="60"  y="556" class="m">43e2772</text><text x="60"  y="570" class="s">자산이전</text>
+    <circle cx="215" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="215" y="556" class="m">04b5d41</text><text x="215" y="570" class="s">A 계약</text>
+    <circle cx="370" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="370" y="556" class="m">3e5092d</text><text x="370" y="570" class="s">B 모델</text>
+    <circle cx="525" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="525" y="556" class="m">fad501b</text><text x="525" y="570" class="s">C 에이전트</text>
+    <circle cx="680" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="680" y="556" class="m">2fe5d81</text><text x="680" y="570" class="s">D 서버·프론트</text>
+    <circle cx="835" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="835" y="556" class="m">4143cd1</text><text x="835" y="570" class="s">검증</text>
+    <circle cx="990" cy="534" r="6" fill="var(--acc-mine)"/>
+    <text x="990" y="556" class="m">8c1b3a5</text><text x="990" y="570" class="s">버그픽스</text>
+  </g>
+</svg>
