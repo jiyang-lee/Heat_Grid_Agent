@@ -1,8 +1,14 @@
 # S0. 자산 이전 — `43e2772`
 
-> `main` 기준 `proto` 분기 후, 출처 위계대로 두 브랜치의 자산을 가져온 단계.
+> 2026-06-25 23:45 커밋 · `main` 기준 `proto` 분기 후, 출처 위계대로 두 브랜치 자산을 가져온 단계.
 
-![자산 이전 다이어그램](img/01_asset_transfer.svg)
+```mermaid
+flowchart LR
+  A1["agent1<br/>raw→전처리"] --> P["proto 브랜치<br/>신규 작업 베이스"]
+  M1["mlmodel1<br/>ML output·handoff"] --> P
+  P --> SCH["schema 000-005<br/>+ contracts 01-04"]
+  P --> H["model_handoff<br/>13 파일"]
+```
 
 ## 정성 (무엇 / 왜 / 특성)
 - **무엇**: `proto`를 `main`에서 분기하고, `agent1`(raw→전처리)과 `mlmodel1`(FE→ML output·학습모델)의 자산을 가져왔다.

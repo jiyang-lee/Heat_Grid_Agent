@@ -1,8 +1,15 @@
 # C. LLM/Tool 에이전트 — langgraph — `fad501b`
 
-> priority 상위 N건을 자동으로 받아 운영자 검토용 보고서/메일 초안을 만드는 단계.
+> 2026-06-25 23:57 커밋 · priority 상위 N건을 자동으로 받아 운영자 검토용 보고서/메일 초안을 만드는 단계.
 
-![에이전트 그래프 다이어그램](img/04_agent.svg)
+```mermaid
+flowchart LR
+  START((START)) --> LLM["llm 노드<br/>ChatOpenAI"]
+  LLM -->|tool_calls 있음| TOOLS["ToolNode<br/>5 tools"]
+  TOOLS --> LLM
+  LLM -->|tool_calls 없음| E((END))
+  TOOLS --> DOCS["docs/send<br/>보고서+메일 5+5"]
+```
 
 ## 정성 (무엇 / 왜 / 특성)
 - **무엇**: langgraph 표준 패턴(`START→llm→tools→llm→END`)으로, 파일 기반 도구 5종을 호출해 근거를 모으고 보고서/메일 초안을 저장한다.

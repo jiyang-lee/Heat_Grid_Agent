@@ -1,8 +1,18 @@
 # B. Priority 모델 — LGBM 회귀 — `3e5092d`
 
-> 7피처로 0~100 우선순위를 예측하는 LightGBM 회귀를 학습/평가/추론하고, 운영 rule 엔진과 비교한 단계.
+> 2026-06-25 23:54 커밋 · 7피처로 0~100 우선순위를 예측하는 LightGBM 회귀를 학습/평가/추론하고, 운영 rule 엔진과 비교한 단계.
 
-![모델 학습/평가 다이어그램](img/03_model.svg)
+```mermaid
+flowchart LR
+  MOCK["mock 300행<br/>라벨 0/33/66/100"] --> TR["train 196<br/>양성 95"]
+  MOCK --> HO["holdout 104<br/>양성 R=44"]
+  TR --> LGBM["LGBMRegressor<br/>7피처·얕은트리·정규화"]
+  LGBM --> EV["evaluate<br/>precision@k · NDCG@k"]
+  HO --> EV
+  RULE["rule v2 baseline<br/>priority_engine_v2"] --> EV
+  EV --> V{"baseline<br/>동등 이상?"}
+  V -->|예 → 채택| ART["model.joblib<br/>+ metadata"]
+```
 
 ## 정성 (무엇 / 왜 / 특성)
 - **무엇**: 목 데이터를 라벨(0/33/66/100)과 7피처로 구성하고, 과적합을 막는 얕은 트리 + 강한 정규화 + early stopping의 **LightGBM 회귀**를 학습한다.

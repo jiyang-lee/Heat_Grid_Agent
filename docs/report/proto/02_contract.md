@@ -1,8 +1,14 @@
 # A. Priority 계약 + 목 데이터 — `04b5d41`
 
-> priority 단계의 입력/출력/라벨을 잠그고, 데모 구동용 목 데이터와 자동 검증 게이트를 만든 단계.
+> 2026-06-25 23:51 커밋 · priority 단계의 입력/출력/라벨을 잠그고, 데모 구동용 목 데이터와 자동 검증 게이트를 만든 단계.
 
-![계약·목데이터 다이어그램](img/02_contract.svg)
+```mermaid
+flowchart LR
+  CT["계약 3종<br/>006 DDL·schema·README"] --> GATE["validate_contracts<br/>검증 게이트"]
+  GEN["generate_mock<br/>Codex 대역"] --> MOCK["mock_ml_output.csv<br/>300행·25컬럼"]
+  MOCK --> GATE
+  GATE --> OK["JSON 6 · DDL 7 · PK 유니크"]
+```
 
 ## 정성 (무엇 / 왜 / 특성)
 - **무엇**: priority 입력·출력·라벨을 기존 schema 패턴(JSON Schema 2020-12 + Postgres DDL)으로 **계약화**했고, Codex 대역 생성기로 목 데이터를 만들었다. 모든 계약은 `validate_contracts`가 통과를 강제한다.
