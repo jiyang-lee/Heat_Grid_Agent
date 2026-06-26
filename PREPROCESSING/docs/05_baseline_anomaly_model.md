@@ -125,7 +125,7 @@ threshold는 train normal score의 quantile로 정한다.
 0.99
 ```
 
-초기 실행에서 `0.95` 이상 threshold가 너무 보수적으로 작동했기 때문에 낮은 quantile을 추가했다. validation에서 가장 좋은 설정을 선택한다. 1차 선택 기준은 `average_precision`, 2차 기준은 `f1`, 3차 기준은 `recall`이다.
+초기 실행에서 `0.95` 이상 threshold가 너무 보수적으로 작동했기 때문에 낮은 quantile을 추가했다. validation에서 가장 좋은 설정을 선택한다. 현재 1차 선택 기준은 `f1`, 2차 기준은 `recall`, 3차 기준은 낮은 `false_positive_rate`, 4차 기준은 `average_precision`, 5차 기준은 `roc_auc`다.
 
 ## 6. 산출물
 
@@ -196,7 +196,7 @@ Isolation Forest 결과는 `anomaly_model_metrics.csv`와 `anomaly_experiment_re
 
 각 지표는 다음처럼 해석한다.
 
-- `average_precision`: 가장 중요하게 보는 1차 지표다. pre_fault 윈도우가 anomaly score 상위권에 잘 올라오는지 본다. 라벨 불균형 상황에서는 단순 accuracy보다 이 지표가 더 유용하다.
+- `average_precision`: pre_fault 윈도우가 anomaly score 상위권에 잘 올라오는지 본다. 라벨 불균형 상황에서는 단순 accuracy보다 이 지표가 더 유용하다. 다만 threshold 적용 후 실제 탐지 성능을 직접 보여주지는 않는다.
 - `roc_auc`: normal과 pre_fault score 분포가 전반적으로 얼마나 잘 분리되는지 본다. 0.5면 무작위에 가깝고, 0.7 이상이면 분리 신호가 있다고 볼 수 있다.
 - `precision`: 이상으로 잡은 것 중 실제 pre_fault 비율이다. 낮으면 false alarm이 많다는 뜻이다.
 - `recall`: 전체 pre_fault 중 이상으로 잡은 비율이다. 낮으면 위험 구간을 놓치고 있다는 뜻이다.
@@ -258,7 +258,7 @@ false_positive_rate: 0.0
 
 2. 모델 선택 기준에 threshold 기반 f1 또는 recall을 더 강하게 반영한다.
 
-현재는 `average_precision`을 1차 기준으로 선택한다. score ranking은 좋지만 threshold 탐지가 약한 모델이 선택될 수 있다. 다음 실험에서는 `average_precision` 최소 기준을 만족하는 후보 중 `f1` 또는 `recall`이 높은 모델을 선택하는 방식도 비교한다.
+초기 실험에서는 `average_precision`을 1차 기준으로 선택했다. score ranking은 좋지만 threshold 탐지가 약한 모델이 선택될 수 있다는 문제가 확인되어, 현재 노트북은 `f1 -> recall -> 낮은 false_positive_rate -> average_precision -> roc_auc` 순서로 최종 후보를 선택한다.
 
 3. split별 threshold를 따로 비교한다.
 
@@ -282,11 +282,11 @@ false_positive_rate: 0.0
 
 8. threshold 선택 기준을 운영 목적별로 나눈다.
 
-현재는 validation `average_precision`을 가장 먼저 본다. score ranking을 개선하는 데는 좋지만, 실제 알림 성능은 f1 또는 recall이 더 중요할 수 있다. 다음 실험에서는 다음 선택 기준을 비교한다.
+초기에는 validation `average_precision`을 가장 먼저 봤다. score ranking을 개선하는 데는 좋지만, 실제 알림 성능은 f1 또는 recall이 더 중요하므로 현재는 탐지 균형 우선 기준을 기본값으로 둔다. 이후 필요하면 다음 선택 기준을 비교한다.
 
 ```text
 ranking 우선: average_precision -> f1 -> recall
-탐지 균형 우선: f1 -> average_precision -> recall
+탐지 균형 우선: f1 -> recall -> false_positive_rate -> average_precision
 조기 경보 우선: recall -> false_positive_rate -> average_precision
 ```
 
@@ -342,6 +342,66 @@ delta_vs_previous_best_false_positive_rate
 4. holdout에서도 같은 방향의 개선이 반복되는지 본다.
 
 현재 문제는 score ranking보다 threshold 적용 후 recall이 낮은 점이다. 따라서 다음 실행에서 가장 먼저 볼 변화는 validation `recall`과 `f1`이다.
+
+## 14. 2026-06-26 f1 우선 기준 실행 결과
+
+`average_precision` 우선 기준에서 `f1 -> recall -> 낮은 false_positive_rate -> average_precision -> roc_auc` 기준으로 바꾼 뒤 다시 실행했다.
+
+선택된 모델 설정은 다음과 같다.
+
+```text
+run_id: run_20260626_144708
+model_key: split_time_based|0.4|300|1.0|0.8
+split_column: split_time_based
+missing_cutoff: 0.4
+feature_count: 130
+n_estimators: 300
+max_features: 1.0
+threshold_quantile: 0.8
+threshold: -0.043719924842822194
+```
+
+이전 `threshold 0.8 + average_precision 우선` 실행과 비교하면 다음과 같다.
+
+```text
+validation f1: 0.2162 -> 0.3980
+validation recall: 0.1280 -> 0.3120
+validation precision: 0.6957 -> 0.5493
+validation false_positive_rate: 0.0258 -> 0.1181
+validation average_precision: 0.5735 -> 0.4789
+validation roc_auc: 0.7211 -> 0.6334
+```
+
+```text
+holdout f1: 0.3923 -> 0.4681
+holdout recall: 0.2929 -> 0.3929
+holdout precision: 0.5942 -> 0.5789
+holdout false_positive_rate: 0.1049 -> 0.1498
+holdout average_precision: 0.5225 -> 0.6028
+holdout roc_auc: 0.6074 -> 0.7077
+```
+
+이번 결과는 탐지 성능 관점에서는 개선이다. validation과 holdout 모두 `f1`과 `recall`이 올라갔다. 특히 holdout에서는 `average_precision`과 `roc_auc`도 함께 좋아졌기 때문에, 완전히 과적합된 선택으로 보기는 어렵다.
+
+다만 운영 관점에서는 주의가 필요하다. false positive rate가 validation 약 11.8%, holdout 약 15.0%까지 올라갔다. 이는 정상 구간 중 일부가 이상으로 잡혀 현장 확인 부담을 늘릴 수 있다는 뜻이다.
+
+현재 판단은 다음과 같다.
+
+```text
+탐지력 개선: 성공
+알림 신뢰도: 추가 개선 필요
+다음 목표: f1/recall을 유지하면서 false_positive_rate 낮추기
+```
+
+다음 실험은 threshold를 더 낮추기보다, 같은 `0.8` 근처에서 false positive를 줄이는 방향이 우선이다.
+
+추천 실험 순서는 다음과 같다.
+
+1. 선택 기준을 `f1 -> 낮은 false_positive_rate -> precision -> recall -> average_precision`으로 바꿔본다.
+2. threshold 후보에 `0.825`, `0.85`, `0.875`를 추가해 `0.8`보다 조금 보수적인 지점에서 f1과 false positive 균형을 찾는다.
+3. `missing_cutoff 0.35`, `0.45`를 추가해 112개와 130개 사이 feature 수를 비교한다.
+4. manufacturer/configuration별 false positive 분포를 확인한다.
+5. false positive가 특정 group에 몰리면 group별 threshold를 검토한다.
 
 ## 12. 다음 노트북 개선 후보
 
