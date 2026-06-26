@@ -20,8 +20,9 @@ from agent.llm import prompts
 
 
 @lru_cache(maxsize=1)
-def _mock() -> pd.DataFrame:
-    df = pd.read_csv(paths.MOCK_ML_OUTPUT)
+def _ml_output() -> pd.DataFrame:
+    source = paths.MODEL_CHAIN_OUTPUT_CSV if paths.MODEL_CHAIN_OUTPUT_CSV.exists() else paths.MOCK_ML_OUTPUT
+    df = pd.read_csv(source)
     df["window_start"] = df["window_start"].astype(str)
     df["window_end"] = df["window_end"].astype(str)
     return df
@@ -35,8 +36,8 @@ def _priority() -> pd.DataFrame:
 
 
 def _join_keys(df: pd.DataFrame) -> pd.DataFrame:
-    """priority_scores + mock(위험/리드타임/근거) 키 merge."""
-    mock = _mock()
+    """priority_scores + model_chain output(위험/리드타임/근거) 키 merge."""
+    ml_output = _ml_output()
     keys = ["manufacturer", "substation_id", "window_start", "window_end"]
     cols = keys + [
         "risk_level_calibrated",
@@ -45,7 +46,7 @@ def _join_keys(df: pd.DataFrame) -> pd.DataFrame:
         "anomaly_score",
         "risk_probability",
     ]
-    return df.merge(mock[cols], on=keys, how="left")
+    return df.merge(ml_output[cols], on=keys, how="left")
 
 
 @tool
@@ -73,22 +74,36 @@ def get_top_priority(n: int = 5) -> str:
 
 
 @tool
-def get_substation_context(substation_id: int) -> str:
-    """기계실 설비 구성 + 최근 이벤트 이력(가장 최근 윈도우 기준)을 JSON 으로 반환한다."""
-    mock = _mock()
-    sub = mock[mock["substation_id"] == int(substation_id)]
+def get_substation_context(
+    substation_id: int,
+    manufacturer: str = "",
+    window_start: str = "",
+    window_end: str = "",
+) -> str:
+    """기계실 설비 구성 + 최근 이벤트 이력을 JSON 으로 반환한다."""
+    ml_output = _ml_output()
+    sub = ml_output[ml_output["substation_id"] == int(substation_id)]
+    if manufacturer:
+        sub = sub[sub["manufacturer"].astype(str).eq(str(manufacturer))]
+    if window_start:
+        sub = sub[sub["window_start"].astype(str).eq(str(window_start))]
+    if window_end:
+        sub = sub[sub["window_end"].astype(str).eq(str(window_end))]
     if sub.empty:
         return json.dumps({"substation_id": int(substation_id), "found": False})
     row = sub.sort_values("window_start").iloc[-1]
     ctx = {
+        "manufacturer": _safe_value(row.get("manufacturer")),
         "substation_id": int(substation_id),
+        "window_start": _safe_value(row.get("window_start")),
+        "window_end": _safe_value(row.get("window_end")),
         "found": True,
-        "configuration_type": row["configuration_type"],
-        "has_dhw": int(row["has_dhw"]),
-        "has_buffer_tank": int(row["has_buffer_tank"]),
-        "days_since_last_fault_event": float(row["days_since_last_fault_event"]),
-        "days_since_last_task_event": float(row["days_since_last_task_event"]),
-        "days_since_last_any_event": float(row["days_since_last_any_event"]),
+        "configuration_type": _safe_value(row.get("configuration_type")),
+        "has_dhw": _safe_int(row.get("has_dhw")),
+        "has_buffer_tank": _safe_int(row.get("has_buffer_tank")),
+        "days_since_last_fault_event": _safe_float(row.get("days_since_last_fault_event")),
+        "days_since_last_task_event": _safe_float(row.get("days_since_last_task_event")),
+        "days_since_last_any_event": _safe_float(row.get("days_since_last_any_event")),
     }
     return json.dumps(ctx, ensure_ascii=False)
 
@@ -96,11 +111,11 @@ def get_substation_context(substation_id: int) -> str:
 @tool
 def get_sensor_evidence(substation_id: int, window_start: str, window_end: str) -> str:
     """특정 윈도우의 주요 이상 센서/통계 근거를 JSON 으로 반환한다."""
-    mock = _mock()
-    sel = mock[
-        (mock["substation_id"] == int(substation_id))
-        & (mock["window_start"] == str(window_start))
-        & (mock["window_end"] == str(window_end))
+    ml_output = _ml_output()
+    sel = ml_output[
+        (ml_output["substation_id"] == int(substation_id))
+        & (ml_output["window_start"] == str(window_start))
+        & (ml_output["window_end"] == str(window_end))
     ]
     if sel.empty:
         return json.dumps({"found": False})
@@ -108,12 +123,12 @@ def get_sensor_evidence(substation_id: int, window_start: str, window_end: str) 
     sensors = str(row["main_abnormal_sensors"]) if pd.notna(row["main_abnormal_sensors"]) else ""
     ev = {
         "found": True,
-        "anomaly_score": float(row["anomaly_score"]),
-        "risk_score": float(row["risk_score"]),
-        "risk_probability": float(row["risk_probability"]),
-        "risk_level_calibrated": row["risk_level_calibrated"],
-        "predicted_lead_time_bucket": row["predicted_lead_time_bucket"],
-        "predicted_lead_time_confidence": float(row["predicted_lead_time_confidence"]),
+        "anomaly_score": _safe_float(row.get("anomaly_score")),
+        "risk_score": _safe_float(row.get("risk_score")),
+        "risk_probability": _safe_float(row.get("risk_probability")),
+        "risk_level_calibrated": _safe_value(row.get("risk_level_calibrated")),
+        "predicted_lead_time_bucket": _safe_value(row.get("predicted_lead_time_bucket")),
+        "predicted_lead_time_confidence": _safe_float(row.get("predicted_lead_time_confidence")),
         "main_abnormal_sensors": [s for s in sensors.split(";") if s],
     }
     return json.dumps(ev, ensure_ascii=False)
@@ -198,16 +213,28 @@ def _safe_json(s: str) -> dict:
         return {"evidence": {"note": str(s)}}
 
 
+def _safe_value(value, default: str = "NA"):
+    return default if pd.isna(value) else value
+
+
+def _safe_int(value):
+    return None if pd.isna(value) else int(value)
+
+
+def _safe_float(value):
+    return None if pd.isna(value) else float(value)
+
+
 def _evidence_md(ev: dict, sensors: list) -> str:
     lines = []
     if sensors:
         lines.append("- 주요 이상 센서: " + ", ".join(sensors))
-    if "anomaly_score" in ev:
+    if ev.get("anomaly_score") is not None:
         lines.append(f"- anomaly_score: {ev['anomaly_score']:.2f}")
-    if "risk_probability" in ev:
+    if ev.get("risk_probability") is not None:
         lines.append(f"- risk_probability: {ev['risk_probability']:.2f} "
                      f"(level={ev.get('risk_level_calibrated', 'NA')})")
-    if "predicted_lead_time_confidence" in ev:
+    if ev.get("predicted_lead_time_confidence") is not None:
         lines.append(f"- 리드타임 신뢰도: {ev['predicted_lead_time_confidence']:.2f} "
                      f"(bucket={ev.get('predicted_lead_time_bucket', 'NA')})")
     return "\n".join(lines) if lines else "- (근거 없음)"

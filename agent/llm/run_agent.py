@@ -1,7 +1,7 @@
 """상위 N 자동 처리 드라이버 → docs/send/ 에 보고서+메일 초안.
 
-OPENAI_API_KEY 있으면 langgraph(ChatOpenAI)로 구동.
-없으면 동일 tool 을 결정적 순서로 직접 호출(_run_offline) — 키 없이도 한 사이클 완주.
+기본은 동일 tool 을 결정적 순서로 직접 호출(_run_offline)한다.
+--llm 을 명시하고 OPENAI_API_KEY 가 있을 때만 langgraph(ChatOpenAI)로 구동한다.
 
 실행: ``uv run python -m agent.llm.run_agent --top-n 5``
 """
@@ -22,7 +22,16 @@ def _run_offline(top_n: int) -> list[dict]:
     for item in top:
         sid = int(item["substation_id"])
         ws, we = item["window_start"], item["window_end"]
-        ctx = json.loads(t.get_substation_context.invoke({"substation_id": sid}))
+        ctx = json.loads(
+            t.get_substation_context.invoke(
+                {
+                    "manufacturer": item["manufacturer"],
+                    "substation_id": sid,
+                    "window_start": ws,
+                    "window_end": we,
+                }
+            )
+        )
         ev = json.loads(
             t.get_sensor_evidence.invoke(
                 {"substation_id": sid, "window_start": ws, "window_end": we}
@@ -79,19 +88,23 @@ def _run_with_llm(top_n: int) -> list[dict]:
     return [{"raw_tool_outputs": paths_found}]
 
 
-def run(top_n: int = 5) -> list[dict]:
-    if os.getenv("OPENAI_API_KEY"):
+def run(top_n: int = 5, *, use_llm: bool = False) -> list[dict]:
+    if use_llm and os.getenv("OPENAI_API_KEY"):
         print(f"[run_agent] LLM 모드(ChatOpenAI), top_n={top_n}")
         return _run_with_llm(top_n)
-    print(f"[run_agent] 오프라인 결정적 모드(키 없음), top_n={top_n}")
+    if use_llm and not os.getenv("OPENAI_API_KEY"):
+        print("[run_agent] OPENAI_API_KEY 없음 — 오프라인 결정적 모드로 전환")
+    print(f"[run_agent] 오프라인 결정적 모드, top_n={top_n}")
     return _run_offline(top_n)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--top-n", type=int, default=5)
+    ap.add_argument("--offline", action="store_true", help="deterministic tool-only mode; this is the default")
+    ap.add_argument("--llm", action="store_true", help="use LangGraph/OpenAI when OPENAI_API_KEY exists")
     args = ap.parse_args()
-    results = run(args.top_n)
+    results = run(args.top_n, use_llm=args.llm and not args.offline)
     print(f"[run_agent] 생성 {len(results)}건:")
     for r in results:
         print("  " + json.dumps(r, ensure_ascii=False))
