@@ -26,6 +26,12 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PRIORITY_DIR = PROCESSED_DIR / "ml_priority"
 PRIORITY_SCORES_CSV = PRIORITY_DIR / "priority_scores.csv"
 
+# --- 실제 모델 체인 산출물 ---
+MODEL_HANDOFF_DIR = REPO_ROOT / "model_handoff" / "heatgrid_ml_models_2026-06-25"
+MODEL_CHAIN_DIR = PROCESSED_DIR / "ml_model_chain"
+MODEL_CHAIN_OUTPUT_CSV = MODEL_CHAIN_DIR / "model_chain_output.csv"
+MODEL_CHAIN_FEATURE_REPORT_JSON = MODEL_CHAIN_DIR / "feature_adapter_report.json"
+
 # --- PreDist 감사 산출물 ---
 PREDIST_LABEL_AUDIT_DIR = PROCESSED_DIR / "predist_label_audit"
 PREDIST_LABEL_AUDIT_JSON = PREDIST_LABEL_AUDIT_DIR / "label_distribution.json"

@@ -1,0 +1,79 @@
+{
+  "input_rows": 300,
+  "output_rows": 300,
+  "anomaly": {
+    "requested_features": 195,
+    "exact_or_alias_matches": 142,
+    "derived_one_hot_matches": 40,
+    "filled_zero_features": 13,
+    "filled_zero_feature_names": [
+      "season_bucket__is__autumn",
+      "season_bucket__is__spring",
+      "season_bucket__is__summer",
+      "season_bucket__is__winter",
+      "network_temperature_gap__last",
+      "network_temperature_gap__max_abs",
+      "network_temperature_gap__mean",
+      "hc1_supply_temperature_gap__last",
+      "hc1_supply_temperature_gap__max_abs",
+      "hc1_supply_temperature_gap__mean",
+      "dhw_supply_temperature_gap__last",
+      "dhw_supply_temperature_gap__max_abs",
+      "dhw_supply_temperature_gap__mean"
+    ]
+  },
+  "risk": {
+    "requested_features": 189,
+    "exact_or_alias_matches": 134,
+    "derived_one_hot_matches": 40,
+    "filled_zero_features": 15,
+    "filled_zero_feature_names": [
+      "season_bucket__is__autumn",
+      "season_bucket__is__spring",
+      "season_bucket__is__summer",
+      "season_bucket__is__winter",
+      "network_temperature_gap__last",
+      "network_temperature_gap__max_abs",
+      "network_temperature_gap__mean",
+      "hc1_supply_temperature_gap__last",
+      "hc1_supply_temperature_gap__max_abs",
+      "hc1_supply_temperature_gap__mean",
+      "dhw_supply_temperature_gap__last",
+      "dhw_supply_temperature_gap__max_abs",
+      "dhw_supply_temperature_gap__mean",
+      "disturbance_count",
+      "maintenance_related"
+    ]
+  },
+  "leadtime": {
+    "requested_features": 221,
+    "exact_or_alias_matches": 160,
+    "derived_one_hot_matches": 40,
+    "filled_zero_features": 21,
+    "filled_zero_feature_names": [
+      "season_bucket__is__autumn",
+      "season_bucket__is__spring",
+      "season_bucket__is__summer",
+      "season_bucket__is__winter",
+      "network_temperature_gap__last",
+      "network_temperature_gap__max_abs",
+      "network_temperature_gap__mean",
+      "hc1_supply_temperature_gap__last",
+      "hc1_supply_temperature_gap__max_abs",
+      "hc1_supply_temperature_gap__mean",
+      "dhw_supply_temperature_gap__last",
+      "dhw_supply_temperature_gap__max_abs",
+      "dhw_supply_temperature_gap__mean",
+      "disturbance_count",
+      "maintenance_related",
+      "manufacturer_code",
+      "configuration_code",
+      "network_temperature_gap__mean__lag1",
+      "network_temperature_gap__mean__delta1",
+      "network_temperature_gap__mean__lag2",
+      "network_temperature_gap__mean__roll3_mean"
+    ]
+  },
+  "model_chain": "preprocessed_windows -> IsolationForest -> LGBM risk -> LGBM leadtime",
+  "zero_fill_policy": "Missing handoff model features are deterministically filled with 0.0 and listed here."
+}
