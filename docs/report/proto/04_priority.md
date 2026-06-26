@@ -26,30 +26,30 @@
 
 | 항목 | 값 |
 |---|---:|
-| priority output rows | 3346 |
+| current priority output rows | 300 |
 | priority output columns | 9 |
 | score min | 0.00 |
-| score max | 100.00 |
-| score mean | 21.90 |
-| urgent | 17 |
-| high | 324 |
-| medium | 1436 |
-| low | 1569 |
+| score max | 83.38 |
+| score mean | 21.34 |
+| urgent | 1 |
+| high | 31 |
+| medium | 112 |
+| low | 156 |
 | model_version | `priority_v3_lgbm_reg` |
 | training_basis | `data/processed/ml_model_chain/model_chain_output.csv` |
 | holdout verdict | baseline 동등 이상, 모델 채택 |
 
 | Top 5 | 대상 | 점수 | 사유 |
 |---:|---|---:|---|
-| 1 | manufacturer 1 / substation 31 / 2020-01-13 06:00 | 100.00 | risk=high, leadtime=0-24h, anomaly=0.41 |
-| 2 | manufacturer 1 / substation 13 / 2016-07-19 18:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.47 |
-| 3 | manufacturer 1 / substation 13 / 2016-07-20 06:00 | 100.00 | risk=high, leadtime=0-24h, anomaly=0.42 |
-| 4 | manufacturer 2 / substation 19 / 2018-12-28 00:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.45 |
-| 5 | manufacturer 1 / substation 21 / 2019-01-21 00:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.44 |
+| 1 | manufacturer 1 / substation 21 / 2019-01-21 00:00 | 83.38 | risk=critical, leadtime=0-24h, anomaly=0.47 |
+| 2 | manufacturer 1 / substation 21 / 2019-01-20 18:00 | 78.95 | risk=critical, leadtime=0-24h, anomaly=0.43 |
+| 3 | manufacturer 1 / substation 21 / 2019-01-16 12:00 | 73.18 | risk=critical, leadtime=0-24h, anomaly=0.41 |
+| 4 | manufacturer 2 / substation 10 / 2016-12-01 18:00 | 70.32 | risk=critical, leadtime=0-24h, anomaly=1.00 |
+| 5 | manufacturer 1 / substation 8 / 2018-04-24 12:00 | 69.09 | risk=high, leadtime=0-24h, anomaly=0.25 |
 
 ## 정성 해석
 
-priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 300행 fixture에서는 모델이 baseline보다 낮았지만, full PreDist 3346 supervised window로 전처리와 모델 체인을 모두 통과시킨 뒤 재학습하자 holdout에서 rule baseline을 전 지표로 앞섰다.
+priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 모델 학습은 full PreDist 3346 supervised window로 수행했고, 현재 serving 산출물은 이 모델을 mock raw fixture 300행 1사이클에 적용한 결과다.
 
 ## 다이어그램
 
@@ -60,7 +60,7 @@ flowchart LR
   LGBM --> SCORE["priority_score<br/>0 to 100"]
   SCORE --> LEVEL["priority_level<br/>urgent / high / medium / low"]
   SCORE --> REASON["priority_reason<br/>risk, leadtime, anomaly summary"]
-  LEVEL --> CSV["priority_scores.csv<br/>3346 x 9"]
+  LEVEL --> CSV["priority_scores.csv<br/>300 x 9<br/>mock raw cycle"]
   REASON --> CSV
 ```
 

@@ -1,14 +1,14 @@
-# 점검 작업지시 초안 — Substation 21 (검토 필요, 자동발송 아님)
+# 점검 작업지시 초안 — Substation 8 (검토 필요, 자동발송 아님)
 
-- 대상: manufacturer 1 / substation 21
-- 윈도우: 2019-01-21 00:00:00+00:00 ~ 2019-01-21 06:00:00+00:00
-- 우선순위: 83.38 (urgent) · 위험등급 critical · 예상 리드타임 0-24h
+- 대상: manufacturer 1 / substation 8
+- 윈도우: 2018-04-24 12:00:00+00:00 ~ 2018-04-24 18:00:00+00:00
+- 우선순위: 69.09 (high) · 위험등급 high · 예상 리드타임 0-24h
 
 ## 근거 (센서/점수)
-- 주요 이상 센서: p_net_meter_energy, p_net_meter_flow, s_dhw_lower_storage_temperature
-- anomaly_score: 0.47
-- risk_probability: 0.97 (level=critical)
-- 리드타임 신뢰도: 0.85 (bucket=0-24h)
+- 주요 이상 센서: p_net_meter_flow, p_net_meter_energy, s_dhw_lower_storage_temperature
+- anomaly_score: 0.25
+- risk_probability: 0.55 (level=high)
+- 리드타임 신뢰도: 0.94 (bucket=0-24h)
 
 ## 원인 후보 (확정 아님)
 - 순환펌프/열교환기 이상 가능성, 밸브 제어 이상 가능성 (현장 점검으로 확인 필요)
@@ -21,7 +21,7 @@
 
 ## 설비 컨텍스트
 - 구성: missing (DHW=None, buffer_tank=None)
-- 최근 고장 이후: 769.3368055555555일, 최근 정비 이후: 110.45287037037038일
+- 최근 고장 이후: None일, 최근 정비 이후: 321.5일
 
 ## 한계
 - 단일 6시간 윈도우 추론 결과입니다. 현장 확인 전 고장으로 단정할 수 없습니다.

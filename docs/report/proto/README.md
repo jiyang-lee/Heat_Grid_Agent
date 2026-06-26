@@ -40,6 +40,7 @@ flowchart LR
 | 6 | [06_frontend.md](06_frontend.md) | 운영자가 보는 대시보드 화면 구조 이해 |
 | 7 | [07_validation.md](07_validation.md) | 재현 명령, 테스트, 남은 한계 확인 |
 | 8 | [08_priority_retrain.md](08_priority_retrain.md) | full PreDist chain output 재학습 결과 확인 |
+| 9 | [09_mock_raw_cycle.md](09_mock_raw_cycle.md) | full 학습 모델로 mock raw 1사이클 재실행 결과 확인 |
 
 ## 핵심 정량 요약
 
@@ -56,12 +57,13 @@ flowchart LR
 | raw maintenance events read | 287 rows |
 | preprocessed windows | 3346 rows x 211 columns |
 | model chain output | 3346 rows x 25 columns |
-| priority scores | 3346 rows x 9 columns |
-| priority level | urgent 17 / high 324 / medium 1436 / low 1569 |
-| priority score range | 0.00 ~ 100.00, mean 21.90 |
+| full training priority scores | 3346 rows x 9 columns |
+| current mock raw priority scores | 300 rows x 9 columns |
+| current mock raw priority level | urgent 1 / high 31 / medium 112 / low 156 |
+| current mock raw score range | 0.00 ~ 83.38, mean 21.34 |
 | priority training basis | `data/processed/ml_model_chain/model_chain_output.csv` |
 | priority verdict | baseline 동등 이상, 모델 채택 |
-| agent draft files | 40 files, work order 20 / email 20 |
+| agent draft files | 48 files, work order 24 / email 24 |
 | tests | 11 passed |
 
 ## 수정 순서 가이드
