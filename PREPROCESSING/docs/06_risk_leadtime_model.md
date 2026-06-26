@@ -480,3 +480,306 @@ long_72h_plus 구분: 실패에 가까움
 운영 알림 신뢰도를 먼저 높일 것인가 -> 06 위험도 threshold/holdout 안정성 개선
 전체 파이프라인 흐름을 먼저 완성할 것인가 -> 07 근거 설명 및 센서 중요도로 이동
 ```
+
+## 17. 06 재설계 방향
+
+첫 실행 이후 바로 07로 넘어가기보다 06을 한 번 더 조정한다.
+
+이번 재설계의 핵심은 다음과 같다.
+
+```text
+위험도 모델: threshold 재탐색과 holdout 안정성 진단 강화
+리드타임 모델: 프로젝트 목적에 맞게 3중분류 유지
+추가 진단: manufacturer/configuration/season/regime별 false positive 확인
+```
+
+여기서 말한 holdout 약화 또는 holdout 붕괴는 모델이 완전히 실패했다는 뜻이 아니다. validation에서는 좋게 보였던 성능이 holdout에서 크게 약해졌다는 뜻이다.
+
+첫 실행의 위험도 모델은 validation에서 false positive rate가 약 `6.3%`였지만, holdout에서는 약 `36.2%`까지 올라갔다. 즉 검증 구간에서는 정상 window를 대체로 정상으로 보았지만, holdout 구간에서는 정상 window도 위험으로 많이 판단했다.
+
+이 현상은 다음 가능성을 뜻한다.
+
+```text
+1. 시간에 따라 데이터 분포가 바뀌었을 수 있다.
+2. 계절 또는 운영 regime이 train/validation과 holdout에서 다를 수 있다.
+3. 특정 manufacturer 또는 configuration에서 false positive가 몰렸을 수 있다.
+4. 현재 threshold 0.8이 validation에는 적합하지만 holdout에는 너무 낮을 수 있다.
+```
+
+따라서 이번 재설계에서는 holdout을 직접 학습 기준으로 쓰지는 않는다. holdout을 기준으로 모델을 고르면 최종 시험지를 보고 답을 고르는 것과 비슷해져서 평가가 오염될 수 있기 때문이다.
+
+대신 validation 기준으로 더 보수적인 운영형 threshold를 고르고, holdout에서는 그 선택이 얼마나 버티는지 진단한다.
+
+## 18. 위험도 threshold 재탐색 변경사항
+
+기존 threshold 후보는 다음과 같았다.
+
+```text
+0.20, 0.25, 0.30, ..., 0.80
+```
+
+재설계 후 threshold 후보는 다음처럼 더 촘촘하고 높은 구간까지 확장한다.
+
+```text
+0.20, 0.225, 0.25, ..., 0.95
+```
+
+위험도 모델 선택은 먼저 validation에서 다음 조건을 만족하는 후보를 찾는다.
+
+```text
+validation false_positive_rate <= 0.05
+validation precision >= 0.70
+```
+
+이 조건을 만족하는 후보가 있으면 그 후보들 중에서 다음 순서로 고른다.
+
+```text
+validation f1
+낮은 validation false_positive_rate
+validation precision
+validation recall
+validation average_precision
+validation roc_auc
+```
+
+만약 조건을 만족하는 후보가 하나도 없으면 기존처럼 f1 우선 기준으로 fallback한다.
+
+이렇게 바꾼 이유는 운영 관점 때문이다. 위험도 모델은 조기 탐지도 중요하지만, 현장 확인 알림이 너무 많이 울리면 Agent 결과를 사용자가 신뢰하기 어렵다. 따라서 첫 baseline보다 false positive를 조금 더 강하게 억제하는 방향으로 threshold를 고른다.
+
+이번 재설계 노트북은 다음 추가 산출물을 저장한다.
+
+```text
+data/processed/ml_supervised/risk_selected_candidate_pool.csv
+data/processed/ml_supervised/risk_threshold_diagnostics.csv
+data/processed/ml_supervised/risk_group_diagnostics.csv
+```
+
+`risk_threshold_diagnostics.csv`는 선택된 위험도 모델에서 threshold별 validation/holdout 성능을 모두 저장한다. 이 파일을 보면 threshold를 높였을 때 false positive가 얼마나 줄고 recall이 얼마나 손실되는지 비교할 수 있다.
+
+`risk_group_diagnostics.csv`는 manufacturer, configuration, season, split_regime_based별 성능을 저장한다. 이 파일은 holdout false positive가 특정 그룹에 몰리는지 확인하기 위한 진단표다.
+
+## 19. 리드타임 3중분류 유지
+
+리드타임 모델은 이번 재설계에서 2중분류로 바꾸지 않는다.
+
+프로젝트 목적상 Agent가 단순히 “위험하다/위험하지 않다”만 아는 것보다, 위험이 어느 정도 시간 범위에 있는지 알아야 한다. 따라서 다음 3개 bucket을 유지한다.
+
+```text
+short_0_24h
+mid_24_72h
+long_72h_plus
+```
+
+다만 첫 실행에서 `long_72h_plus` 구분이 약했으므로, 다음 실행 후에도 같은 문제가 반복되면 3중분류 구조는 유지하되 bucket 경계를 재조정하는 방향을 검토한다.
+
+예를 들어 다음 후보를 비교할 수 있다.
+
+```text
+현재 기준: 0~24h / 24~72h / 72h+
+대안 1: 0~24h / 24~96h / 96h+
+대안 2: 데이터 quantile 기반 3분할
+대안 3: event 단위 대표 lead time 기준으로 재라벨링
+```
+
+이번 수정에서는 우선 threshold와 holdout 안정성 진단에 집중하고, 리드타임 bucket 자체는 바꾸지 않는다.
+
+## 20. 2026-06-26 재설계 실행 결과
+
+06 재설계 노트북을 다시 실행했고, 새 run 산출물이 정상적으로 생성되었다.
+
+이번 실행 run id는 다음과 같다.
+
+```text
+run_id: run_20260626_155956
+```
+
+run별 산출물은 아래 폴더에 저장되었다.
+
+```text
+data/processed/ml_supervised/runs/run_20260626_155956/
+```
+
+이번 실행에서는 새로 추가한 진단 파일도 생성되었다.
+
+```text
+data/processed/ml_supervised/risk_selected_candidate_pool.csv
+data/processed/ml_supervised/risk_threshold_diagnostics.csv
+data/processed/ml_supervised/risk_group_diagnostics.csv
+```
+
+선택된 위험도 모델 설정은 다음과 같다.
+
+```text
+model_key: n_estimators=300|learning_rate=0.03|num_leaves=31|min_child_samples=50
+threshold_strategy: validation_fp_precision_guard
+threshold: 0.95
+false_positive_guard: 0.05
+precision_guard: 0.70
+```
+
+validation 성능은 다음과 같다.
+
+```text
+accuracy: 0.8302
+precision: 0.9412
+recall: 0.4404
+f1: 0.6000
+average_precision: 0.5919
+roc_auc: 0.5739
+false_positive_rate: 0.0112
+true_negative: 265
+false_positive: 3
+false_negative: 61
+true_positive: 48
+```
+
+holdout 성능은 다음과 같다.
+
+```text
+accuracy: 0.6534
+precision: 0.4000
+recall: 0.1653
+f1: 0.2339
+average_precision: 0.4189
+roc_auc: 0.5449
+false_positive_rate: 0.1167
+true_negative: 227
+false_positive: 30
+false_negative: 101
+true_positive: 20
+```
+
+이전 run과 비교하면 위험도 모델은 다음처럼 바뀌었다.
+
+```text
+validation precision: 0.7424 -> 0.9412
+validation recall: 0.4495 -> 0.4404
+validation f1: 0.5600 -> 0.6000
+validation false_positive_rate: 0.0634 -> 0.0112
+
+holdout precision: 0.3162 -> 0.4000
+holdout recall: 0.3554 -> 0.1653
+holdout f1: 0.3346 -> 0.2339
+holdout false_positive_rate: 0.3619 -> 0.1167
+```
+
+이번 재설계는 의도한 대로 false positive를 크게 줄였다. validation false positive는 17건에서 3건으로 줄었고, holdout false positive도 93건에서 30건으로 줄었다.
+
+다만 trade-off가 분명하다. threshold를 `0.95`까지 높이면서 holdout recall이 0.3554에서 0.1653으로 떨어졌다. 즉 헛알림은 줄었지만, 실제 pre_fault 위험구간을 놓치는 비율이 늘었다.
+
+현재 판단은 다음과 같다.
+
+```text
+알림 신뢰도 개선: 성공
+holdout false positive 감소: 성공
+위험 탐지 민감도: 악화
+운영형 threshold 후보: 0.95
+탐지형 threshold 후보: 이전 run의 0.8 또는 threshold diagnostics에서 중간 후보 재검토
+```
+
+따라서 지금부터는 하나의 threshold를 무조건 고르기보다 목적별 threshold를 나누어 보는 것이 좋다.
+
+```text
+운영 알림용: false positive를 줄이는 0.95 후보
+탐지 분석용: recall/f1을 더 보는 0.8~0.9 후보
+Agent 통합용: risk_probability 원점수와 risk_level을 함께 전달
+```
+
+## 21. Threshold 진단 해석
+
+`risk_threshold_diagnostics.csv`는 같은 위험도 모델에서 threshold를 바꿨을 때 validation과 holdout 성능이 어떻게 변하는지 저장한다.
+
+현재 선택된 `0.95`는 validation 기준으로 매우 보수적인 threshold다.
+
+대표 후보는 다음처럼 해석할 수 있다.
+
+```text
+0.80 근처: recall과 f1을 더 살리는 후보
+0.90 근처: precision과 f1 균형 후보
+0.95: false positive 최소화 후보
+```
+
+이번 run의 validation 상위 후보를 보면 `0.85~0.95` 구간이 모두 좋은 후보로 들어왔다. 그중 `0.95`가 validation f1 0.6000과 false positive rate 0.0112를 동시에 만족해 선택되었다.
+
+하지만 holdout에서는 threshold를 높일수록 false positive는 줄고 recall도 같이 줄어든다. 이 결과는 운영 목표에 따라 threshold를 다르게 정해야 함을 보여준다.
+
+현재 프로젝트 목적이 “불필요한 현장 확인을 최소화하면서도 위험 신호를 놓치지 않는 것”이라면, 다음 실행에서는 `0.90`, `0.925`, `0.95`를 운영 후보로 비교하고, 각 후보의 holdout recall 손실을 함께 봐야 한다.
+
+## 22. Group 진단 해석
+
+`risk_group_diagnostics.csv` 기준으로 holdout false positive는 특정 그룹에 몰리는 경향이 있다.
+
+눈에 띄는 지점은 다음과 같다.
+
+```text
+holdout manufacturer 2:
+false_positive_rate 0.2069
+true_positive 0
+
+holdout configuration_type SH + DHW:
+false_positive_rate 0.1629
+true_positive 20
+
+holdout season_bucket spring:
+false_positive_rate 0.1429
+true_positive 0
+
+holdout split_regime_based train:
+false_positive_rate 0.4737
+true_positive 0
+```
+
+이 결과는 전체 holdout 성능 저하가 무작위로 발생했다기보다, 특정 manufacturer/configuration/season/regime 조합에서 정상 window를 위험으로 보는 문제가 남아 있음을 뜻한다.
+
+특히 `manufacturer 2`, `spring`, `split_regime_based train` 그룹은 false positive가 높으면서 true positive가 거의 없거나 0이다. 이 그룹들은 위험 신호라기보다 데이터 분포 차이 또는 정상 운영 패턴 차이를 위험으로 오해했을 가능성이 있다.
+
+다음 개선 후보는 다음과 같다.
+
+```text
+1. manufacturer/configuration별 threshold를 따로 검토한다.
+2. season 또는 regime feature가 위험도 모델에서 과도하게 작동하는지 feature importance로 확인한다.
+3. holdout에서 false positive가 집중되는 그룹을 07 explainability에서 우선 분석한다.
+4. risk_probability를 그대로 Agent에 넘기고, Agent 단계에서 group별 보정 규칙을 둘지 검토한다.
+```
+
+## 23. 리드타임 결과
+
+리드타임 모델 구조와 bucket은 이번 재설계에서 바꾸지 않았다.
+
+따라서 리드타임 성능은 이전 run과 동일하다.
+
+```text
+validation accuracy: 0.4862
+validation macro_f1: 0.3400
+validation weighted_f1: 0.4576
+
+holdout accuracy: 0.5785
+holdout macro_f1: 0.3968
+holdout weighted_f1: 0.5647
+```
+
+리드타임은 프로젝트 목적상 3중분류를 유지한다. 다만 `long_72h_plus` 구분이 약한 문제는 여전히 남아 있다.
+
+## 24. 다음 진행 판단
+
+이번 재설계로 위험도 모델의 알림 신뢰도는 좋아졌지만, 위험 탐지 민감도는 낮아졌다.
+
+현재 선택지는 다음 두 가지다.
+
+```text
+1. 06을 한 번 더 조정한다.
+   목적: threshold 0.90~0.95 사이에서 false positive와 recall 균형점을 찾는다.
+
+2. 07로 넘어간다.
+   목적: 현재 모델이 어떤 feature와 그룹에서 헛알림을 만드는지 근거 설명으로 확인한다.
+```
+
+현재는 07로 넘어가는 것이 더 유리하다. 이유는 threshold만 더 조정해도 성능 trade-off의 방향은 이미 확인되었기 때문이다. 이제는 왜 특정 그룹에서 false positive가 생기는지, 어떤 센서나 이벤트 feature가 위험도 판단을 끌어올리는지 확인해야 다음 06 개선 방향이 더 명확해진다.
+
+따라서 추천 흐름은 다음과 같다.
+
+```text
+1. 현재 06 재설계 결과를 커밋한다.
+2. 07 explainability에서 risk/leadtime feature importance와 그룹별 false positive 근거를 확인한다.
+3. 07 결과를 보고 06의 feature set, group threshold, bucket 경계를 다시 조정한다.
+```
