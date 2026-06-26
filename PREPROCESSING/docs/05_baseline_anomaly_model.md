@@ -254,11 +254,11 @@ false_positive_rate: 0.0
 
 1. threshold 후보를 더 낮은 quantile까지 넓힌다.
 
-현재 후보는 `0.80`, `0.85`, `0.90`, `0.925`, `0.95`, `0.975`, `0.99`다. 낮은 threshold는 recall을 높일 수 있지만 false positive도 함께 증가할 수 있다. 따라서 f1과 false positive rate를 같이 본다.
+현재 후보는 `0.80`, `0.825`, `0.85`, `0.875`, `0.90`, `0.925`, `0.95`, `0.975`, `0.99`다. 낮은 threshold는 recall을 높일 수 있지만 false positive도 함께 증가할 수 있다. 초기 실행에서 `0.95` 이상 threshold가 너무 보수적으로 작동했기 때문에 낮은 quantile을 추가했다. 이후 `0.80` 기준에서 recall과 f1은 좋아졌지만 false positive가 증가했으므로 `0.825`, `0.875`를 추가해 조금 더 보수적인 지점을 찾는다.
 
 2. 모델 선택 기준에 threshold 기반 f1 또는 recall을 더 강하게 반영한다.
 
-초기 실험에서는 `average_precision`을 1차 기준으로 선택했다. score ranking은 좋지만 threshold 탐지가 약한 모델이 선택될 수 있다는 문제가 확인되어, 현재 노트북은 `f1 -> recall -> 낮은 false_positive_rate -> average_precision -> roc_auc` 순서로 최종 후보를 선택한다.
+초기 실험에서는 `average_precision`을 1차 기준으로 선택했다. score ranking은 좋지만 threshold 탐지가 약한 모델이 선택될 수 있다는 문제가 확인되어, 현재 노트북은 `f1 -> 낮은 false_positive_rate -> precision -> recall -> average_precision -> roc_auc` 순서로 최종 후보를 선택한다.
 
 3. split별 threshold를 따로 비교한다.
 
@@ -286,7 +286,7 @@ false_positive_rate: 0.0
 
 ```text
 ranking 우선: average_precision -> f1 -> recall
-탐지 균형 우선: f1 -> recall -> false_positive_rate -> average_precision
+탐지 균형 우선: f1 -> false_positive_rate -> precision -> recall -> average_precision
 조기 경보 우선: recall -> false_positive_rate -> average_precision
 ```
 
@@ -402,6 +402,49 @@ holdout roc_auc: 0.6074 -> 0.7077
 3. `missing_cutoff 0.35`, `0.45`를 추가해 112개와 130개 사이 feature 수를 비교한다.
 4. manufacturer/configuration별 false positive 분포를 확인한다.
 5. false positive가 특정 group에 몰리면 group별 threshold를 검토한다.
+
+## 15. 2026-06-26 false positive 고려 기준 실행 결과
+
+`0.825`, `0.875` threshold 후보를 추가하고, 선택 기준을 `f1 -> 낮은 false_positive_rate -> precision -> recall -> average_precision -> roc_auc` 순서로 바꾼 뒤 다시 실행했다.
+
+선택된 모델 설정은 다음과 같다.
+
+```text
+run_id: run_20260626_150028
+model_key: split_time_based|0.4|300|1.0|0.8
+split_column: split_time_based
+missing_cutoff: 0.4
+feature_count: 130
+n_estimators: 300
+max_features: 1.0
+threshold_quantile: 0.8
+threshold: -0.043719924842822194
+```
+
+`0.825`, `0.875` 후보를 추가했지만 최종 선택 모델은 `run_20260626_144708`과 동일했다. 현재 후보군에서는 `threshold_quantile 0.8`이 여전히 validation f1을 가장 높게 만든다.
+
+같은 모델에서 threshold만 비교하면 다음과 같다.
+
+```text
+threshold_quantile  precision  recall  f1      false_positive_rate
+0.800               0.5493     0.3120  0.3980  0.1181
+0.825               0.5833     0.2800  0.3784  0.0923
+0.850               0.6042     0.2320  0.3353  0.0701
+0.875               0.6538     0.1360  0.2252  0.0332
+0.900               0.8889     0.0640  0.1194  0.0037
+```
+
+현재 판단은 다음과 같다.
+
+```text
+최대 f1 후보: threshold_quantile 0.800
+운영 균형 후보: threshold_quantile 0.825
+보수적 알림 후보: threshold_quantile 0.850
+```
+
+성능만 보면 `0.800`이 가장 좋다. 다만 실제 에이전트 운영에서는 불필요한 현장 확인을 줄이는 것도 중요하므로, false positive 부담을 더 낮추려면 `0.825`가 다음 비교 후보로 적합하다. `0.850`은 알림 신뢰도는 더 높아질 수 있지만 recall 손실이 커서 조기 이상 탐지 목적에는 다소 보수적이다.
+
+다음 단계는 운영 목표를 먼저 정하는 것이다. 예를 들어 false positive rate를 `10% 이하`로 제한하면 `0.825`를 우선 검토하고, f1을 최대로 유지하는 것이 우선이면 `0.800`을 유지한다. 추가 실험을 한다면 `0.80~0.85` 사이를 더 촘촘히 나누거나, manufacturer/configuration별 false positive 분포를 확인해 group별 threshold를 검토한다.
 
 ## 12. 다음 노트북 개선 후보
 
