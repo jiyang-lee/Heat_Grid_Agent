@@ -68,7 +68,7 @@ flowchart LR
 - `uv run python -m agent.model_chain.run_model_chain`
 - `uv run python -m agent.priority.run_priority`
 - `uv run python -m agent.llm.run_agent --top-n 5`
-- `uv run pytest`: 13 passed
+- `uv run pytest`: 14 passed
 - `npm run build`: passed
 
 ## 해석

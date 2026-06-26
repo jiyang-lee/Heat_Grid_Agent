@@ -20,7 +20,7 @@
 
 | 항목 | 결과 |
 |---|---:|
-| pytest | 13 passed |
+| pytest | 14 passed |
 | frontend build | passed |
 | current mock raw preprocessing | 300 rows x 211 columns |
 | current model chain output | 300 rows x 25 columns |

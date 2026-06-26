@@ -42,6 +42,7 @@ flowchart LR
 | 8 | [08_priority_retrain.md](08_priority_retrain.md) | full PreDist chain output 재학습 결과 확인 |
 | 9 | [09_mock_raw_cycle.md](09_mock_raw_cycle.md) | full 학습 모델로 mock raw 1사이클 재실행 결과 확인 |
 | 10 | [10_proto_completion.md](10_proto_completion.md) | 프로토 완성본 마감 기준과 F1 성능 지표 확인 |
+| 11 | [11_alpha_transition_tables.md](11_alpha_transition_tables.md) | 프로토 완료 상태와 알파 전환 보강 항목을 표로 확인 |
 
 ## 핵심 정량 요약
 
@@ -69,7 +70,7 @@ flowchart LR
 | full 학습 모델 full holdout macro F1 | 0.3750 |
 | full 학습 모델 full holdout weighted F1 | 0.4857 |
 | agent draft files | 48 files, work order 24 / email 24 |
-| tests | 13 passed |
+| tests | 14 passed |
 
 ## 수정 순서 가이드
 

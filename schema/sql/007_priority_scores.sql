@@ -1,4 +1,4 @@
--- 006_priority_scores.sql
+-- 007_priority_scores.sql
 -- 테이블: priority_scores (AI priority model 출력)
 -- 1행 = 기계실 1개 x 6시간 윈도우 1개에 대한 우선순위 점수.
 -- 출처: ML output(anomaly/risk/leadtime) 7피처 → LightGBM 회귀(0~100).
@@ -17,6 +17,17 @@ CREATE TABLE IF NOT EXISTS priority_scores (
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(), -- 생성 시각
 
     PRIMARY KEY (manufacturer, substation_id, window_start, window_end),
+    CONSTRAINT priority_scores_model_chain_fk FOREIGN KEY (
+        manufacturer,
+        substation_id,
+        window_start,
+        window_end
+    ) REFERENCES model_chain_output (
+        manufacturer,
+        substation_id,
+        window_start,
+        window_end
+    ),
     CONSTRAINT priority_scores_time_chk CHECK (window_start < window_end),
     CONSTRAINT priority_scores_range_chk CHECK (priority_score >= 0 AND priority_score <= 100),
     CONSTRAINT priority_scores_level_chk CHECK (

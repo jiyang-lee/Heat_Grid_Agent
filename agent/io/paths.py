@@ -53,8 +53,10 @@ PRIORITY_MODEL_META = MODELS_DIR / "priority_model_metadata.json"
 SCHEMA_DIR = REPO_ROOT / "schema"
 SCHEMA_JSON_DIR = SCHEMA_DIR / "json"
 SCHEMA_SQL_DIR = SCHEMA_DIR / "sql"
+MODEL_CHAIN_OUTPUT_SCHEMA = SCHEMA_JSON_DIR / "model_chain_output.schema.json"
+MODEL_CHAIN_OUTPUT_DDL = SCHEMA_SQL_DIR / "006_model_chain_output.sql"
 PRIORITY_SCORES_SCHEMA = SCHEMA_JSON_DIR / "priority_scores.schema.json"
-PRIORITY_SCORES_DDL = SCHEMA_SQL_DIR / "006_priority_scores.sql"
+PRIORITY_SCORES_DDL = SCHEMA_SQL_DIR / "007_priority_scores.sql"
 
 # --- 에이전트 산출물(보고서/메일 초안) ---
 DOCS_SEND_DIR = REPO_ROOT / "docs" / "send"

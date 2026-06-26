@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from jsonschema import Draft202012Validator
 
 from agent.model_chain.run_model_chain import run as run_model_chain
 from agent.preprocessing.audit_predist_labels import audit_predist_label_distribution
@@ -58,3 +59,25 @@ def test_model_chain_and_priority_e2e(tmp_path):
     assert report["risk"]["requested_features"] == 189
     assert report["leadtime"]["requested_features"] == 221
     assert set(priority["priority_level"]).issubset({"low", "medium", "high", "urgent"})
+
+
+def test_model_chain_output_matches_json_schema(tmp_path):
+    model_chain_output = tmp_path / "model_chain_output.csv"
+    feature_report = tmp_path / "feature_adapter_report.json"
+    schema = json.loads(Path("schema/json/model_chain_output.schema.json").read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+
+    chain = run_model_chain(
+        preprocessed_path=PREPROCESSED_PATH,
+        labels_path=LABELS_PATH,
+        dst=model_chain_output,
+        report_path=feature_report,
+    )
+
+    assert list(chain.columns) == list(schema["properties"])
+    errors = [
+        error.message
+        for row in chain.astype(object).where(pd.notna(chain), None).to_dict(orient="records")
+        for error in validator.iter_errors(row)
+    ]
+    assert errors == []

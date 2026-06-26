@@ -4,7 +4,7 @@ HeatGrid Agent **운영(추론) 입력** 데이터 계약을 JSON Schema + Postg
 
 - 계약 버전: `operational_input_v1`, `preprocessed_data_v1`
 - 대상 DB: PostgreSQL + TimescaleDB
-- 범위: 운영 입력 4개 테이블 + 전처리 데이터 1개 테이블 (예측/우선순위/모델별 피처 테이블은 다음 단계)
+- 범위: 운영 입력 4개 테이블 + 전처리 데이터 1개 테이블 + 모델 체인 출력 1개 테이블 + priority 출력 1개 테이블
 
 ## 배경
 
@@ -19,6 +19,8 @@ HeatGrid Agent **운영(추론) 입력** 데이터 계약을 JSON Schema + Postg
 | `fault_events` | 이벤트 로그 | 고장 시 | faults.csv |
 | `maintenance_events` | 이벤트 로그 | 정비 시 | disturbances.csv |
 | `preprocessed_windows` | 전처리 중간 데이터 | 6시간 구간마다 | raw 4테이블 |
+| `model_chain_output` | 중간 예측 결과 | 모델 체인 실행마다 | preprocessed_windows + IF/risk/leadtime 모델 |
+| `priority_scores` | 운영 우선순위 결과 | priority 실행마다 | model_chain_output + priority 회귀모델 |
 
 > `normal_events.csv`는 정상 기준 학습 구간 정의용이라 **운영에서는 만들지 않는다**(훈련 전용).
 
@@ -26,7 +28,7 @@ HeatGrid Agent **운영(추론) 입력** 데이터 계약을 JSON Schema + Postg
 
 ```
 schema/
-  sql/    PostgreSQL DDL (실행 순서 000 -> 005)
+  sql/    PostgreSQL DDL (실행 순서 000 -> 007)
   json/   JSON Schema (draft 2020-12) — 입력 데이터 검증용
   column_name_mapping.md   raw 컬럼명 -> DB 컬럼명 매핑
   README.md
@@ -38,6 +40,7 @@ schema/
 - 시계열 조회: `sensor_readings (substation_id, ts)`
 - 최근 이벤트 조회: `fault_events (substation_id, report_date)`, `maintenance_events (substation_id, event_start)`
 - 전처리 데이터 조회: `preprocessed_windows (substation_id, window_start, window_end)`
+- 모델 체인/우선순위 조회: `model_chain_output`, `priority_scores` 모두 `(manufacturer, substation_id, window_start, window_end)` 복합키
 
 ## 적재 시 처리 규칙
 
@@ -46,6 +49,8 @@ schema/
 - 제어/상태 센서: string, 결측은 `missing`으로 채울 수 있음
 - 컬럼명은 `column_name_mapping.md` 기준으로 정규화
 - 전처리 데이터: 기계실 1개 x 6시간 구간 1개를 `preprocessed_windows` 1행으로 생성
+- 모델 체인 출력: `preprocessed_windows` 1행마다 IF/risk/leadtime 신호를 `model_chain_output` 1행으로 생성
+- 우선순위 출력: `model_chain_output` 1행마다 priority score/level을 `priority_scores` 1행으로 생성
 
 ## 주요 설계 근거 (why)
 
@@ -55,9 +60,11 @@ schema/
 - **이벤트 테이블 분리(fault/maintenance)**: 센서값으로 못 만드는 `days_since_last_*` feature의 원천. 원본/가공 분리 원칙(AGENTS.md)과 정합.
 - **훈련 전용 컬럼 제외**: 운영 계약을 최소화해 ML 모델 갱신과 무관하게 스키마가 안정적으로 유지됨(확장성).
 - **전처리 데이터 고정(preprocessed_windows)**: 피처 엔지니어링과 모델 입력 feature set은 바뀔 수 있지만, raw를 6시간 구간 관측치로 정리한 중간층은 여러 모델/실험에서 재사용되므로 별도 계약으로 고정한다.
+- **모델 체인 출력 고정(model_chain_output)**: priority 회귀모델과 dashboard 상세 근거가 모두 이 파일을 읽으므로, IF/risk/leadtime 중간 신호 25컬럼을 별도 DB/JSON 계약으로 고정한다.
+- **priority 출력 고정(priority_scores)**: 운영 큐의 정렬 기준이므로 점수/등급/버전 필드를 별도 계약으로 고정한다.
 
 ## 검증 방법
 
-- DDL: `psql -f sql/000_extensions.sql` … `sql/005_preprocessed_windows.sql` 순서대로 실행해 테이블 생성 확인 (TimescaleDB 필요)
+- DDL: `psql -f sql/000_extensions.sql` … `sql/007_priority_scores.sql` 순서대로 실행해 테이블 생성 확인 (TimescaleDB 필요)
 - JSON Schema: `python -c "from jsonschema import Draft202012Validator, ... ; Draft202012Validator.check_schema(...)"`
 - 정합성: ML 계약(`agent_full_data_contract.json`)의 operational 29개 컬럼이 `sensor_readings`(ts+28) + `substations` 매핑으로 빠짐없이 커버되는지 `column_name_mapping.md`로 대조.

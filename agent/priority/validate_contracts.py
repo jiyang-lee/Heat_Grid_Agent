@@ -64,6 +64,44 @@ def _check_priority_scores_schema_usable() -> list[str]:
     return []
 
 
+def _check_model_chain_output_schema_usable() -> list[str]:
+    """model_chain_output 스키마로 샘플 1행을 실제 검증 가능한지 확인."""
+    schema = json.loads(paths.MODEL_CHAIN_OUTPUT_SCHEMA.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    sample = {
+        "manufacturer": "manufacturer 1",
+        "substation_id": 12,
+        "window_start": "2026-06-20T00:00:00Z",
+        "window_end": "2026-06-20T06:00:00Z",
+        "anomaly_score": 0.42,
+        "risk_score": 88.7,
+        "risk_probability": 0.887,
+        "risk_level_calibrated": "critical",
+        "predicted_lead_time_bucket": "0-24h",
+        "predicted_lead_time_confidence": 0.91,
+        "leadtime_prob_0-24h": 0.91,
+        "leadtime_prob_1-3d": 0.07,
+        "leadtime_prob_3-7d": 0.02,
+        "lead_time_bucket_distance": 0,
+        "days_since_last_fault_event": 42.5,
+        "days_since_last_task_event": None,
+        "days_since_last_any_event": 12.0,
+        "configuration_type": "missing",
+        "has_dhw": None,
+        "has_buffer_tank": None,
+        "main_abnormal_sensors": "p_net_meter_flow;s_dhw_supply_temperature",
+        "label": "pre_fault",
+        "fault_label": "",
+        "estimated_lead_time_hours": 18.0,
+        "lead_time_bucket": "0-24h",
+    }
+    errs = [e.message for e in validator.iter_errors(sample)]
+    if errs:
+        return [f"[model_chain_output] sample FAIL: {errs}"]
+    print("[model_chain_output] OK  sample row validates")
+    return []
+
+
 def _check_mock_columns() -> list[str]:
     if not paths.MOCK_ML_OUTPUT.exists():
         print(f"[mock]       SKIP {paths.MOCK_ML_OUTPUT.name} (아직 생성 전)")
@@ -90,6 +128,7 @@ def main() -> int:
     errors: list[str] = []
     errors += _check_json_schemas()
     errors += _check_sql_ddls()
+    errors += _check_model_chain_output_schema_usable()
     errors += _check_priority_scores_schema_usable()
     errors += _check_mock_columns()
 
