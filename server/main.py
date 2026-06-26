@@ -47,17 +47,18 @@ def _load() -> pd.DataFrame:
     pr = pd.read_csv(paths.PRIORITY_SCORES_CSV)
     pr["window_start"] = pr["window_start"].astype(str)
     pr["window_end"] = pr["window_end"].astype(str)
-    if paths.MOCK_ML_OUTPUT.exists():
-        mock = pd.read_csv(paths.MOCK_ML_OUTPUT)
-        mock["window_start"] = mock["window_start"].astype(str)
-        mock["window_end"] = mock["window_end"].astype(str)
-        cols = KEYS + [c for c in CTX_COLS if c in mock.columns]
-        pr = pr.merge(mock[cols], on=KEYS, how="left")
+    ml_output_path = paths.MODEL_CHAIN_OUTPUT_CSV if paths.MODEL_CHAIN_OUTPUT_CSV.exists() else paths.MOCK_ML_OUTPUT
+    if ml_output_path.exists():
+        ml = pd.read_csv(ml_output_path)
+        ml["window_start"] = ml["window_start"].astype(str)
+        ml["window_end"] = ml["window_end"].astype(str)
+        cols = KEYS + [c for c in CTX_COLS if c in ml.columns]
+        pr = pr.merge(ml[cols], on=KEYS, how="left")
     pr["key"] = [
         paths.make_key(m, s, w)
         for m, s, w in zip(pr["manufacturer"], pr["substation_id"], pr["window_start"])
     ]
-    return pr.where(pd.notna(pr), None)
+    return pr.astype(object).where(pd.notna(pr), None)
 
 
 @app.get("/")
