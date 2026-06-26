@@ -29,7 +29,9 @@
 | IF feature count | 195 |
 | risk feature count | 189 |
 | leadtime feature count | 221 |
-| priority level set | urgent, high, medium, low |
+| priority level set | medium, low |
+| priority training basis | `model_chain_output.csv` |
+| priority holdout verdict | baseline 미달, 모델 보류 |
 
 ## 정성 해석
 

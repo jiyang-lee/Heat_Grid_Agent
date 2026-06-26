@@ -39,6 +39,7 @@ flowchart LR
 | 5 | [05_server.md](05_server.md) | API가 CSV와 Markdown 산출물을 어떻게 제공하는지 이해 |
 | 6 | [06_frontend.md](06_frontend.md) | 운영자가 보는 대시보드 화면 구조 이해 |
 | 7 | [07_validation.md](07_validation.md) | 재현 명령, 테스트, 남은 한계 확인 |
+| 8 | [08_priority_retrain.md](08_priority_retrain.md) | mock 학습 제거와 실제 chain output 재학습 결과 확인 |
 
 ## 핵심 정량 요약
 
@@ -56,8 +57,11 @@ flowchart LR
 | preprocessed windows | 300 rows x 211 columns |
 | model chain output | 300 rows x 25 columns |
 | priority scores | 300 rows x 9 columns |
-| priority level | urgent 25 / high 168 / medium 103 / low 4 |
-| agent draft files | 20 files, work order 10 / email 10 |
+| priority level | medium 180 / low 120 |
+| priority score range | 10.61 ~ 31.98, mean 20.11 |
+| priority training basis | `data/processed/ml_model_chain/model_chain_output.csv` |
+| priority verdict | baseline 미달, 모델 보류 |
+| agent draft files | 30 files, work order 15 / email 15 |
 | tests | 11 passed |
 
 ## 수정 순서 가이드

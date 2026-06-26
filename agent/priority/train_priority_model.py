@@ -1,6 +1,6 @@
 """priority 모델 학습 — LightGBM 회귀(LGBMRegressor).
 
-목 데이터 → 라벨(0/33/66/100) → 얕은 트리·강한 정규화·early stopping →
+모델 체인 output → 라벨(0/33/66/100) → 얕은 트리·강한 정규화·early stopping →
 event/substation holdout 평가(evaluate, rule v2 대비) → joblib + metadata 저장.
 
 실행: ``uv run python -m agent.priority.train_priority_model``
@@ -20,6 +20,11 @@ from agent.priority import build_dataset, contracts, evaluate
 
 
 def train() -> dict:
+    if not paths.MODEL_CHAIN_OUTPUT_CSV.exists():
+        from agent.model_chain.run_model_chain import run as run_model_chain
+
+        run_model_chain(dst=paths.MODEL_CHAIN_OUTPUT_CSV)
+
     df = build_dataset.build_dataset()
     train_df = df[df["split"] == "train"].reset_index(drop=True)
     hold_df = df[df["split"] == "holdout"].reset_index(drop=True)
@@ -64,15 +69,24 @@ def train() -> dict:
 
     paths.ensure_dir(paths.MODELS_DIR)
     joblib.dump(model, paths.PRIORITY_MODEL_PATH)
+    feature_importance = [
+        {"feature": feature, "importance": int(importance)}
+        for feature, importance in zip(contracts.PRIORITY_FEATURES, model.feature_importances_)
+    ]
     meta = {
         "model_version": contracts.MODEL_VERSION,
         "model_type": "LGBMRegressor",
         "feature_order": contracts.PRIORITY_FEATURES,
         "label_mapping": {"normal": 0, "3-7d": 33, "1-3d": 66, "0-24h": 100},
-        "training_basis": str(paths.MOCK_ML_OUTPUT.relative_to(paths.REPO_ROOT)).replace("\\", "/"),
+        "training_basis": str(paths.MODEL_CHAIN_OUTPUT_CSV.relative_to(paths.REPO_ROOT)).replace("\\", "/"),
         "n_train": int(len(train_df)),
         "n_holdout": int(len(hold_df)),
+        "target_distribution": {
+            "train": {str(k): int(v) for k, v in train_df["target"].value_counts().sort_index().items()},
+            "holdout": {str(k): int(v) for k, v in hold_df["target"].value_counts().sort_index().items()},
+        },
         "best_iteration": int(model.best_iteration_ or 0),
+        "feature_importance": sorted(feature_importance, key=lambda row: row["importance"], reverse=True),
         "metrics": metrics,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
