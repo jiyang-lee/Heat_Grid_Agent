@@ -1,0 +1,79 @@
+{
+  "package": "heatgrid_prediction_priority_models_2026-06-26",
+  "created_at": "2026-06-26T05:13:40.648421+00:00",
+  "branch_source": "proto",
+  "source": "model_handoff/heatgrid_ml_models_2026-06-25 + agent/priority/models",
+  "target_usage": "Prediction chain plus priority regression inference handoff",
+  "files": [
+    {
+      "path": "anomaly/baseline_model_metadata.json",
+      "bytes": 9842,
+      "sha256": "9846cf515fac4148789c8a0822870fb8a27a1fd12cabaa87584fa81d5042194b"
+    },
+    {
+      "path": "anomaly/isolation_forest.joblib",
+      "bytes": 3627469,
+      "sha256": "ff3affccbbacfd6811694c903db241fcf0da161ce80c97acb25a95543d1f82da"
+    },
+    {
+      "path": "anomaly/standard_scaler.joblib",
+      "bytes": 5247,
+      "sha256": "a959f498abc2ae53eb612c0dddbba9578754dd27ad64faa699a618836ccecbad"
+    },
+    {
+      "path": "docs/agent_full_data_contract.md",
+      "bytes": 18056,
+      "sha256": "7027e9c8d3d254912e7e1d81816e64495e972db34dbbc8328c28a831e078379d"
+    },
+    {
+      "path": "docs/agent_preprocessed_input_columns.md",
+      "bytes": 10233,
+      "sha256": "cec057c45440128bce30b984f4a7d6368db93b50fb6a2890bad93c0a8be9e76f"
+    },
+    {
+      "path": "leadtime/leadtime_bucket_model_promoted_metadata.json",
+      "bytes": 11150,
+      "sha256": "04dc43d81c275ab6f0c309eae5a46c1556623ef73902b691c36c183680eb100f"
+    },
+    {
+      "path": "leadtime/lightgbm_leadtime_bucket_model_promoted.joblib",
+      "bytes": 843644,
+      "sha256": "822f7384fdabc35db463d8e17ebe1b95a13dc055e7d3c294a16c506b72c187f1"
+    },
+    {
+      "path": "priority/lightgbm_priority_model.joblib",
+      "bytes": 285378,
+      "sha256": "2c4640f199f5baa744abbb07891056e9c158f6304ab31a848e5f8e62a7bc8bfa"
+    },
+    {
+      "path": "priority/priority_engine_tuned_metadata.json",
+      "bytes": 887,
+      "sha256": "11b2db255e00b26437687ccad9441a9161672a612ec5699232d003c2b07a58b4"
+    },
+    {
+      "path": "priority/priority_model_metadata.json",
+      "bytes": 2245,
+      "sha256": "265a22eed80a885073aa6550ff989c17dba8affa839c3d04c412e4490549dd1a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1550,
+      "sha256": "2ae97bbdf3f89b1bb77801462bb9d89e71fc5cce230e7ec4576d0ccbbac28a33"
+    },
+    {
+      "path": "risk/lightgbm_risk_model.joblib",
+      "bytes": 283684,
+      "sha256": "3cd71159202200f4047d0f0b698b50ec23b8c031d2788fce329bc8d1a04e7ded"
+    },
+    {
+      "path": "risk/risk_model_group_calibration.json",
+      "bytes": 846,
+      "sha256": "9816ec66f0020fe03e25afca43a5f8a3b64b9f773406fe3f619ed63e72982f5c"
+    },
+    {
+      "path": "risk/risk_model_metadata.json",
+      "bytes": 10990,
+      "sha256": "9c933219c98d5d7a5efcba139e3d388b509ed775e0bea392116895fff09dc524"
+    }
+  ]
+}

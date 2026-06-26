@@ -1,0 +1,107 @@
+{
+  "model_version": "priority_v3_lgbm_reg",
+  "model_type": "LGBMRegressor",
+  "feature_order": [
+    "anomaly_score",
+    "risk_probability",
+    "risk_score",
+    "leadtime_prob_0-24h",
+    "leadtime_prob_1-3d",
+    "leadtime_prob_3-7d",
+    "predicted_lead_time_confidence"
+  ],
+  "label_mapping": {
+    "normal": 0,
+    "3-7d": 33,
+    "1-3d": 66,
+    "0-24h": 100
+  },
+  "training_basis": "data/processed/ml_model_chain/model_chain_output.csv",
+  "n_train": 2509,
+  "n_holdout": 837,
+  "target_distribution": {
+    "train": {
+      "0": 1509,
+      "33": 575,
+      "66": 284,
+      "100": 141
+    },
+    "holdout": {
+      "0": 309,
+      "33": 300,
+      "66": 152,
+      "100": 76
+    }
+  },
+  "best_iteration": 384,
+  "feature_importance": [
+    {
+      "feature": "risk_probability",
+      "importance": 506
+    },
+    {
+      "feature": "anomaly_score",
+      "importance": 505
+    },
+    {
+      "feature": "leadtime_prob_3-7d",
+      "importance": 320
+    },
+    {
+      "feature": "leadtime_prob_0-24h",
+      "importance": 293
+    },
+    {
+      "feature": "predicted_lead_time_confidence",
+      "importance": 255
+    },
+    {
+      "feature": "leadtime_prob_1-3d",
+      "importance": 174
+    },
+    {
+      "feature": "risk_score",
+      "importance": 77
+    }
+  ],
+  "metrics": {
+    "model": {
+      "k=10": {
+        "precision": 1.0,
+        "recall": 0.0189,
+        "ndcg": 0.7131
+      },
+      "k=20": {
+        "precision": 1.0,
+        "recall": 0.0379,
+        "ndcg": 0.6846
+      },
+      "k=528": {
+        "precision": 0.7879,
+        "recall": 0.7879,
+        "ndcg": 0.7553
+      },
+      "R": 528
+    },
+    "rule_baseline": {
+      "k=10": {
+        "precision": 0.5,
+        "recall": 0.0095,
+        "ndcg": 0.3755
+      },
+      "k=20": {
+        "precision": 0.75,
+        "recall": 0.0284,
+        "ndcg": 0.4475
+      },
+      "k=528": {
+        "precision": 0.7102,
+        "recall": 0.7102,
+        "ndcg": 0.6631
+      },
+      "R": 528
+    },
+    "verdict": "priority 모델 채택 (wins=9, ties=0, losses=0; baseline 동등 이상)"
+  },
+  "created_at": "2026-06-26T04:35:23.701926+00:00"
+}
