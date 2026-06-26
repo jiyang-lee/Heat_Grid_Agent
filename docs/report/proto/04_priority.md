@@ -38,6 +38,11 @@
 | model_version | `priority_v3_lgbm_reg` |
 | training_basis | `data/processed/ml_model_chain/model_chain_output.csv` |
 | holdout verdict | baseline 동등 이상, 모델 채택 |
+| 기존 300행 모델 binary F1 | 0.4615 |
+| full 학습 모델 mock raw holdout binary F1 | 0.8511 |
+| full 학습 모델 full holdout binary F1 | 0.7956 |
+| full 학습 모델 full holdout macro F1 | 0.3750 |
+| full 학습 모델 full holdout weighted F1 | 0.4857 |
 
 | Top 5 | 대상 | 점수 | 사유 |
 |---:|---|---:|---|
@@ -50,6 +55,8 @@
 ## 정성 해석
 
 priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 모델 학습은 full PreDist 3346 supervised window로 수행했고, 현재 serving 산출물은 이 모델을 mock raw fixture 300행 1사이클에 적용한 결과다.
+
+F1 관점에서는 기존 300행 학습 모델보다 full 학습 모델이 확실히 개선됐다. mock raw holdout 기준 binary F1은 `0.4615 -> 0.8511`로 상승했고, 4단계 priority 등급의 weighted F1은 `0.1482 -> 0.5424`로 상승했다. full PreDist holdout에서는 rule baseline이 recall 중심 binary F1에서 약간 높지만, 모델은 precision, accuracy, macro F1, weighted F1과 ranking 지표에서 더 나은 운영 큐 품질을 보인다. 상세 비교는 [10_proto_completion.md](10_proto_completion.md)에 둔다.
 
 ## 다이어그램
 

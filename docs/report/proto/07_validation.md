@@ -20,7 +20,7 @@
 
 | 항목 | 결과 |
 |---|---:|
-| pytest | 11 passed |
+| pytest | 13 passed |
 | frontend build | passed |
 | current mock raw preprocessing | 300 rows x 211 columns |
 | current model chain output | 300 rows x 25 columns |
@@ -32,6 +32,11 @@
 | priority level set | urgent, high, medium, low |
 | priority training basis | `model_chain_output.csv` |
 | priority holdout verdict | baseline 동등 이상, 모델 채택 |
+| old 300 model binary F1 | 0.4615 |
+| full model mock raw binary F1 | 0.8511 |
+| full model full holdout binary F1 | 0.7956 |
+| full model full holdout macro F1 | 0.3750 |
+| full model full holdout weighted F1 | 0.4857 |
 
 ## 정성 해석
 
@@ -73,7 +78,7 @@ flowchart TD
 ## 한계와 다음 단계
 
 - 현재 검증은 fixture와 파일 기반 프로토타입 중심이다.
-- priority 회귀 모델은 운영 라벨과 최신 chain output으로 재학습하는 후속 작업이 필요하다.
+- priority 회귀 모델은 full PreDist chain output으로 재학습되어 프로토 완성본에 반영됐지만, 운영 전에는 운영 라벨과 최신 chain output으로 반복 재학습/검증해야 한다.
 - 서버는 CSV 파일을 직접 읽는 구조라 운영 환경에서는 DB, 캐시, 권한, 감사 로그 설계가 추가되어야 한다.
 - dashboard는 검토용이며 자동 발송, 승인 workflow, 담당자 배정 기능은 아직 없다.
 

@@ -2,7 +2,7 @@
 
 이 문서는 `proto` 브랜치의 현재 운영 프로토타입을 처음 읽는 사람과 이후 수정할 사람이 같은 그림으로 이해하도록 만든 정본 보고서다. 기준 흐름은 `raw -> preprocessing -> IF + LGBM risk + LGBM leadtime -> LGBM priority regression -> server -> frontend -> validation`이다.
 
-작성 기준 커밋은 `f4bad63`이며, 이후 보고서 재작성 커밋은 이 문서 묶음만 갱신한다. 현재 정본 보고서는 이 폴더 하나로 통일한다.
+작성 기준은 `proto` 완성본 로컬 커밋 묶음이며, 현재 정본 보고서는 이 폴더 하나로 통일한다.
 
 ## 전체 시스템 지도
 
@@ -41,6 +41,7 @@ flowchart LR
 | 7 | [07_validation.md](07_validation.md) | 재현 명령, 테스트, 남은 한계 확인 |
 | 8 | [08_priority_retrain.md](08_priority_retrain.md) | full PreDist chain output 재학습 결과 확인 |
 | 9 | [09_mock_raw_cycle.md](09_mock_raw_cycle.md) | full 학습 모델로 mock raw 1사이클 재실행 결과 확인 |
+| 10 | [10_proto_completion.md](10_proto_completion.md) | 프로토 완성본 마감 기준과 F1 성능 지표 확인 |
 
 ## 핵심 정량 요약
 
@@ -63,8 +64,12 @@ flowchart LR
 | current mock raw score range | 0.00 ~ 83.38, mean 21.34 |
 | priority training basis | `data/processed/ml_model_chain/model_chain_output.csv` |
 | priority verdict | baseline 동등 이상, 모델 채택 |
+| 기존 300행 모델 binary F1 | 0.4615 |
+| full 학습 모델 mock raw holdout binary F1 | 0.8511 |
+| full 학습 모델 full holdout macro F1 | 0.3750 |
+| full 학습 모델 full holdout weighted F1 | 0.4857 |
 | agent draft files | 48 files, work order 24 / email 24 |
-| tests | 11 passed |
+| tests | 13 passed |
 
 ## 수정 순서 가이드
 
@@ -92,4 +97,4 @@ flowchart TD
 
 ## 운영 해석
 
-이 프로토타입의 목적은 최종 정확도 주장보다 산출물 연결을 검증하는 것이다. 현재 priority 모델은 실제 중간 모델 출력으로 점수를 계산하지만, priority 회귀 모델 자체는 향후 실제 운영 라벨과 chain output으로 재학습해야 한다. 따라서 현재 보고서의 정량값은 "재현 가능한 시스템 상태"를 설명하는 값이며, 운영 성능 보증값으로 해석하면 안 된다.
+이 프로토타입은 full PreDist supervised window로 학습한 priority 회귀모델을 사용하고, mock raw fixture 1사이클에서 `raw -> preprocessing -> model chain -> priority -> agent draft -> dashboard` 흐름이 닫히는지 검증한다. 현재 정량값은 재현 가능한 프로토 완성본의 상태를 설명하는 값이며, 운영 성능 보증값은 아니다. 실제 운영 투입 전에는 운영 라벨, 운영 raw 저장소, fault event 단위 split, 승인/발송 workflow 검증이 추가로 필요하다.

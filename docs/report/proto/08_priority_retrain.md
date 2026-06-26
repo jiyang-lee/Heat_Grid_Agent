@@ -56,7 +56,7 @@ flowchart LR
   EVAL --> VERDICT["baseline 동등 이상<br/>모델 채택"]
 ```
 
-| metric | priority model | rule baseline |
+| ranking metric | priority model | rule baseline |
 |---|---:|---:|
 | precision@10 | 1.0000 | 0.5000 |
 | recall@10 | 0.0189 | 0.0095 |
@@ -69,6 +69,21 @@ flowchart LR
 | ndcg@528 | 0.7553 | 0.6631 |
 
 판정은 `priority 모델 채택 (wins=9, ties=0, losses=0; baseline 동등 이상)`이다.
+
+### F1 관점 보충
+
+ranking 지표는 운영 큐의 상위 선별 품질을 본다. F1 지표는 같은 holdout을 priority level 경계값(`16.5 / 49.5 / 83.0`)으로 등급화해 분류 관점에서 다시 본 값이다.
+
+| classification metric | priority model | rule baseline | 해석 |
+|---|---:|---:|---|
+| binary precision | 0.7776 | 0.7145 | 모델이 전조라고 표시한 항목의 적중률이 더 높음 |
+| binary recall | 0.8144 | 0.9432 | rule이 더 많이 잡음 |
+| binary F1 | 0.7956 | 0.8131 | recall 우위 때문에 rule이 근소하게 높음 |
+| multiclass accuracy | 0.5173 | 0.3859 | 모델이 4단계 등급을 더 잘 맞춤 |
+| multiclass macro F1 | 0.3750 | 0.3068 | 등급별 균형 성능은 모델 우위 |
+| multiclass weighted F1 | 0.4857 | 0.3900 | 실제 분포 가중 성능도 모델 우위 |
+
+따라서 "모델이 전 지표에서 rule을 이긴다"가 아니라, 정확한 판정은 "ranking 지표와 4단계 priority 분류 성능은 모델 우위, binary F1만 rule이 근소 우위"다. 운영 큐 목적은 단순 전조 탐지보다 상위 우선순위 정렬과 등급 품질이 중요하므로 priority 모델을 채택한다.
 
 ## 새 Priority 출력
 
@@ -84,11 +99,11 @@ flowchart LR
 | medium | 1436 |
 | low | 1569 |
 
-새 top 5 기준 `docs/send` 초안도 offline mode로 재생성했다. 현재 `docs/send`는 work order 20개, email 20개, 총 40개다.
+새 top 5 기준 `docs/send` 초안도 offline mode로 재생성했다. 현재 `docs/send`는 work order 24개, email 24개, 총 48개다.
 
 ## 해석
 
-mock 제거는 완료됐고, full PreDist chain output 기준 LGBM 회귀모델은 rule baseline을 전 지표에서 앞섰다. 300행 fixture에서는 학습 데이터가 부족해 실패했지만, 3346개 supervised window에서는 성능 좋은 priority 회귀모델로 구성된다.
+mock 제거는 완료됐고, full PreDist chain output 기준 LGBM 회귀모델은 ranking 지표와 4단계 priority 분류 지표에서 rule baseline보다 낫다. 300행 fixture 학습 모델은 데이터가 부족해 실패했지만, 3346개 supervised window로 학습한 모델은 운영 큐 목적에 맞는 priority 회귀모델로 구성된다.
 
 ## 다음 수정 가이드
 
