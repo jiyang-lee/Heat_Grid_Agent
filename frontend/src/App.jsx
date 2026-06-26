@@ -20,6 +20,7 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [drafts, setDrafts] = useState(null);
+  const [draftTab, setDraftTab] = useState("work_order");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -63,7 +64,7 @@ export default function App() {
   }
 
   const summary = useMemo(() => buildSummary(rows), [rows]);
-  const selectedRow = rows.find((row) => row.key === selected) || rows[0];
+  const visibleRows = rows.slice(0, 10);
   const sensors = splitSensors(detail?.main_abnormal_sensors);
 
   return (
@@ -100,7 +101,7 @@ export default function App() {
               <h2>점검 큐</h2>
               <p>점수순 정렬, 행 선택 시 근거와 초안을 함께 확인</p>
             </div>
-            <span className="row-count">{loading ? "불러오는 중" : `${rows.length}건`}</span>
+            <span className="row-count">{loading ? "불러오는 중" : `상위 ${visibleRows.length} / ${rows.length}건`}</span>
           </div>
 
           <div className="queue-table-wrap">
@@ -117,7 +118,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => (
+                {visibleRows.map((row, index) => (
                   <tr
                     className={selected === row.key ? "selected" : ""}
                     key={row.key}
@@ -212,10 +213,7 @@ export default function App() {
                     {drafts ? "초안 생성됨" : "초안 없음"}
                   </span>
                 </div>
-                <div className="draft-grid">
-                  <DraftBlock title="작업지시" content={drafts?.work_order_md} />
-                  <DraftBlock title="메일" content={drafts?.email_md} />
-                </div>
+                <DraftTabs active={draftTab} drafts={drafts} onChange={setDraftTab} />
               </section>
             </>
           )}
@@ -252,13 +250,75 @@ function ChainStep({ label, value }) {
   );
 }
 
-function DraftBlock({ title, content }) {
+function DraftTabs({ active, drafts, onChange }) {
+  const tabs = [
+    { id: "work_order", label: "작업지시", content: drafts?.work_order_md },
+    { id: "email", label: "메일", content: drafts?.email_md },
+  ];
+  const current = tabs.find((tab) => tab.id === active) || tabs[0];
+
   return (
-    <div className="draft-block">
-      <h4>{title}</h4>
-      <pre>{content || "초안 없음"}</pre>
+    <div className="draft-tabs">
+      <div className="draft-tab-list" role="tablist" aria-label="운영자 초안">
+        {tabs.map((tab) => (
+          <button
+            aria-selected={current.id === tab.id}
+            className={current.id === tab.id ? "active" : ""}
+            key={tab.id}
+            onClick={() => onChange(tab.id)}
+            role="tab"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <DraftBlock title={current.label} content={current.content} />
     </div>
   );
+}
+
+function DraftBlock({ title, content }) {
+  const preview = buildDraftPreview(content, title);
+  return (
+    <div className="draft-block">
+      <h4>{title} 미리보기</h4>
+      <pre>{preview || "초안 없음"}</pre>
+    </div>
+  );
+}
+
+function buildDraftPreview(content, title) {
+  if (!content) return "";
+
+  const lines = String(content)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const selectedLines = lines.filter((line) => {
+    if (title === "작업지시") {
+      return (
+        line.startsWith("# ") ||
+        line.startsWith("- 대상:") ||
+        line.startsWith("- 윈도우:") ||
+        line.startsWith("- 우선순위:") ||
+        line.startsWith("- 주요 이상 센서:") ||
+        line.startsWith("- anomaly_score:") ||
+        line.startsWith("- risk_probability:")
+      );
+    }
+
+    return (
+      line.startsWith("제목:") ||
+      line.startsWith("- 대상:") ||
+      line.startsWith("- 점검 윈도우:") ||
+      line.startsWith("- 우선순위:") ||
+      line.startsWith("- 주요 근거:")
+    );
+  });
+
+  return selectedLines.slice(0, title === "작업지시" ? 6 : 5).join("\n") || lines.slice(0, 5).join("\n");
 }
 
 function buildSummary(rows) {
