@@ -1,0 +1,147 @@
+﻿{
+    "package":  "heatgrid_inference_package_2026-06-26",
+    "target_usage":  "raw/windowed inference integration handoff",
+    "generated_at":  "2026-06-26 14:16:42 +09:00",
+    "files":  [
+                  {
+                      "path":  "contracts/agent_feature_contract.json",
+                      "bytes":  65135,
+                      "sha256":  "7bdc5f8e74ed046797607f2642d40fd9ed67ff24844e78dd2de41b9922fb8d91"
+                  },
+                  {
+                      "path":  "contracts/categorical_feature_map.csv",
+                      "bytes":  3757,
+                      "sha256":  "3d1151397b63cb8851898f97c73b06efa0fa5642e85bf7a8f38d153b3c5fa7df"
+                  },
+                  {
+                      "path":  "contracts/feature_columns.csv",
+                      "bytes":  33182,
+                      "sha256":  "eecddfd66ccf09a048d9a9d10fe022b757baa6579063771390d281dc2e4b0e90"
+                  },
+                  {
+                      "path":  "contracts/imputation_values.csv",
+                      "bytes":  14623,
+                      "sha256":  "004f0cc140d27952dbc5d77a89d88549c25c433ae868acb57f917b02256ecd5b"
+                  },
+                  {
+                      "path":  "contracts/metadata_columns.csv",
+                      "bytes":  1729,
+                      "sha256":  "92f7853a014850ce5f0dc4ffb8ea72dbd3d2d337275211b6aa763a986546608a"
+                  },
+                  {
+                      "path":  "docs/agent_full_data_contract.md",
+                      "bytes":  17971,
+                      "sha256":  "904df5b9061c1ed222230d7307eccedc2a9e846ac0214b90d03ce810c0d433d4"
+                  },
+                  {
+                      "path":  "docs/agent_preprocessed_input_columns.md",
+                      "bytes":  9925,
+                      "sha256":  "51c438301bac654fec3792fa975156321b6c9b37c91e70593cfeeac653d7d5a7"
+                  },
+                  {
+                      "path":  "docs/inference_flow.md",
+                      "bytes":  2627,
+                      "sha256":  "5bbca40109c46ba0fef38cca2fedaa421ef6e58af9cbb869aec4a511cd0af6c0"
+                  },
+                  {
+                      "path":  "docs/retraining_scope.md",
+                      "bytes":  846,
+                      "sha256":  "dc61f9c3a81f620ed30a29233e4a5069ad5403a4d5893c1a8cb9b81498b0a6ba"
+                  },
+                  {
+                      "path":  "examples/README.md",
+                      "bytes":  765,
+                      "sha256":  "71346f587d411d1123860392217a6739d9cd9ea76eef145b01386c40377bbdd1"
+                  },
+                  {
+                      "path":  "models/anomaly/anomaly_baseline_thresholds.csv",
+                      "bytes":  423,
+                      "sha256":  "a736db8fd1db90ecfe3494f9fe1843069321c191c0a80840a4b0596d2fb8e5bc"
+                  },
+                  {
+                      "path":  "models/anomaly/baseline_model_metadata.json",
+                      "bytes":  9842,
+                      "sha256":  "9846cf515fac4148789c8a0822870fb8a27a1fd12cabaa87584fa81d5042194b"
+                  },
+                  {
+                      "path":  "models/anomaly/isolation_forest.joblib",
+                      "bytes":  3627469,
+                      "sha256":  "ff3affccbbacfd6811694c903db241fcf0da161ce80c97acb25a95543d1f82da"
+                  },
+                  {
+                      "path":  "models/anomaly/standard_scaler.joblib",
+                      "bytes":  5247,
+                      "sha256":  "a959f498abc2ae53eb612c0dddbba9578754dd27ad64faa699a618836ccecbad"
+                  },
+                  {
+                      "path":  "models/leadtime/leadtime_bucket_model_promoted_metadata.json",
+                      "bytes":  11150,
+                      "sha256":  "04dc43d81c275ab6f0c309eae5a46c1556623ef73902b691c36c183680eb100f"
+                  },
+                  {
+                      "path":  "models/leadtime/lightgbm_leadtime_bucket_model_promoted.joblib",
+                      "bytes":  843644,
+                      "sha256":  "822f7384fdabc35db463d8e17ebe1b95a13dc055e7d3c294a16c506b72c187f1"
+                  },
+                  {
+                      "path":  "models/priority/priority_engine_tuned_metadata.json",
+                      "bytes":  971,
+                      "sha256":  "1de6d2877b7b5888d922b87c0ccc37ae6bf9e7e059e30164aca8558c1fc12bce"
+                  },
+                  {
+                      "path":  "models/risk/lightgbm_risk_model.joblib",
+                      "bytes":  283684,
+                      "sha256":  "3cd71159202200f4047d0f0b698b50ec23b8c031d2788fce329bc8d1a04e7ded"
+                  },
+                  {
+                      "path":  "models/risk/risk_model_group_calibration.json",
+                      "bytes":  846,
+                      "sha256":  "9816ec66f0020fe03e25afca43a5f8a3b64b9f773406fe3f619ed63e72982f5c"
+                  },
+                  {
+                      "path":  "models/risk/risk_model_metadata.json",
+                      "bytes":  10990,
+                      "sha256":  "9c933219c98d5d7a5efcba139e3d388b509ed775e0bea392116895fff09dc524"
+                  },
+                  {
+                      "path":  "pyproject.toml",
+                      "bytes":  328,
+                      "sha256":  "583f6b59a0eca12dff7064c6752c522bc1b78952e62759da61262f440081acdc"
+                  },
+                  {
+                      "path":  "README.md",
+                      "bytes":  4112,
+                      "sha256":  "bfffa8f83d895a0629d94fdf7443defee63cb245a2d970f09b09017758763bc3"
+                  },
+                  {
+                      "path":  "run_inference.py",
+                      "bytes":  320,
+                      "sha256":  "2d01490eee327d49e7f91162e2ec065a872b4892bc7a7979a47e5106c59b4786"
+                  },
+                  {
+                      "path":  "src/heatgrid_inference/__init__.py",
+                      "bytes":  127,
+                      "sha256":  "62629007395b9e3c15329cb2b866bc32d37f9cf32531918cf2479d71cd27b021"
+                  },
+                  {
+                      "path":  "src/heatgrid_inference/cli.py",
+                      "bytes":  3589,
+                      "sha256":  "ac5fb9e90ac5b2ba12fa554bcb62fbd47777d327196e2b7bc1942e23f018ed41"
+                  },
+                  {
+                      "path":  "src/heatgrid_inference/constants.py",
+                      "bytes":  2257,
+                      "sha256":  "08d5a8183c3e6d38d131f45b5e93fb5feed244fdc71a779d6af9ed301433f253"
+                  },
+                  {
+                      "path":  "src/heatgrid_inference/feature_engineering.py",
+                      "bytes":  18291,
+                      "sha256":  "0176981eb67d8d622ca24e1d665608bc6ce38a01aaef177a1d8c937610f5c9dc"
+                  },
+                  {
+                      "path":  "src/heatgrid_inference/scoring.py",
+                      "bytes":  18679,
+                      "sha256":  "f7b0bef7d07efa590518dcf66159e58721f39c7d42994a80e14d679bc19ddc87"
+                  }
+              ]
+}

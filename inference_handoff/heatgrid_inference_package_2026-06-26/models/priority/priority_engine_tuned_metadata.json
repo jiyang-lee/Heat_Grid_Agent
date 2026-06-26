@@ -1,0 +1,27 @@
+{
+  "engine_version": "priority_engine_v2_threshold48",
+  "input_risk_scores_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_risk_scores_calibrated.csv",
+  "input_leadtime_scores_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_leadtime\\leadtime_bucket_scores_promoted.csv",
+  "output_scores_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_priority\\priority_engine_scores_tuned.csv",
+  "risk_level_points": {
+    "critical": 38.0,
+    "high": 28.0,
+    "medium": 15.0,
+    "low": 4.0
+  },
+  "leadtime_bucket_points": {
+    "0-24h": 18.0,
+    "1-3d": 10.0,
+    "3-7d": 4.0
+  },
+  "priority_level_rules": {
+    "urgent": 70.0,
+    "high": 48.0,
+    "medium": 34.0
+  },
+  "notes": [
+    "compressed score scaling to reduce urgent saturation",
+    "high priority threshold promoted from 52.0 to 48.0 after holdout threshold sweep",
+    "long fault gap bonus applies only when risk is high or critical"
+  ]
+}
