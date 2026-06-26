@@ -180,7 +180,7 @@
 
 ### 06. 위험도 및 리드타임 추정
 
-- 파일: `PREPROCESSING/osj/06_test/06_risk_leadtime_model.ipynb`
+- 파일: `PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_model.ipynb`
 - 문서: `PREPROCESSING/docs/06_test/06_risk_leadtime_model.md`
 
 목적:
@@ -212,7 +212,7 @@
 
 legacy failure analysis companion:
 
-- 파일: `PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb`
+- 파일: `PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_audit.ipynb`
 - 문서: `PREPROCESSING/docs/06_test/06_risk_leadtime_audit.md`
 - 용도:
   - 기존 LightGBM 방식의 holdout 붕괴 원인 진단
@@ -221,7 +221,7 @@ legacy failure analysis companion:
 
 legacy ablation companion:
 
-- 파일: `PREPROCESSING/osj/06_test/06_event_context_ablation.ipynb`
+- 파일: `PREPROCESSING/osj/experiments/06_test/06_event_context_ablation.ipynb`
 - 문서: `PREPROCESSING/docs/06_test/06_event_context_ablation.md`
 - 용도:
   - 기존 LightGBM event context 보강 실험 기록
@@ -417,9 +417,9 @@ legacy ablation companion:
 4. `03_preprocessing_windows.ipynb`
 5. `04_feature_engineering.ipynb`
 6. `05_baseline_anomaly_model.ipynb`
-7. `06_test/06_risk_leadtime_model.ipynb`
-8. `06_test/06_risk_leadtime_audit.ipynb`
-9. `06_test/06_event_context_ablation.ipynb`
+7. `experiments/06_test/06_risk_leadtime_model.ipynb`
+8. `experiments/06_test/06_risk_leadtime_audit.ipynb`
+9. `experiments/06_test/06_event_context_ablation.ipynb`
 10. `legacy/osj/06_paper_aligned_review.ipynb`
 11. `legacy/osj/06_paper_aligned_data_selection.ipynb`
 12. `legacy/osj/06_paper_aligned_autoencoder.ipynb`
@@ -441,3 +441,5 @@ legacy ablation companion:
 - ML이 anomaly, risk, lead time, evidence를 만든다.
 - Agent가 이 결과를 받아 최종 판단한다.
 - 후속 작업자가 노트북 번호만 따라가도 전체 흐름을 재현할 수 있다.
+
+

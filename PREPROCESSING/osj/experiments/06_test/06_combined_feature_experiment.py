@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, roc_auc_score
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR = ROOT / "data" / "processed"
 ML_FEATURES_DIR = DATA_DIR / "ml_features"
 ML_RISK_DIR = DATA_DIR / "ml_risk"
@@ -18,8 +18,8 @@ TRAINABLE_WINDOWS_PATH = ML_FEATURES_DIR / "trainable_windows.csv"
 RISK_SCORES_PATH = ML_RISK_DIR / "lgbm_risk_scores.csv"
 RISK_MODEL_METADATA_PATH = MODEL_DIR / "risk_model_metadata.json"
 
-OUTPUT_PATH = ML_RISK_DIR / "lgbm_event_context_reencoding_experiment.csv"
-OUTPUT_HOLDOUT_PATH = ML_RISK_DIR / "lgbm_event_context_reencoding_holdout.csv"
+OUTPUT_PATH = ML_RISK_DIR / "lgbm_combined_feature_experiment.csv"
+OUTPUT_HOLDOUT_PATH = ML_RISK_DIR / "lgbm_combined_feature_experiment_holdout.csv"
 
 KEY_COLUMNS = ["manufacturer", "substation_id", "window_start", "window_end"]
 PRIMARY_SPLIT_COLUMN = "split_event_regime_based"
@@ -30,6 +30,22 @@ EVENT_DAY_COLUMNS = [
     "days_since_last_task_event",
     "days_since_last_any_event",
 ]
+THERMAL_RAW_COLUMNS = [
+    "network_temperature_gap__mean",
+    "p_net_return_temperature__max",
+    "p_net_return_temperature__mean",
+    "p_net_supply_temperature__mean",
+    "p_net_supply_temperature__max",
+    "s_dhw_upper_storage_temperature__last",
+    "s_dhw_upper_storage_temperature__max",
+]
+RELATION_COLUMNS = {
+    "p_net_supply_minus_return_mean": ("p_net_supply_temperature__mean", "p_net_return_temperature__mean"),
+    "p_net_supply_minus_return_max": ("p_net_supply_temperature__max", "p_net_return_temperature__max"),
+    "s_dhw_upper_minus_supply_last": ("s_dhw_upper_storage_temperature__last", "s_dhw_supply_temperature__last"),
+    "s_dhw_upper_minus_supply_max": ("s_dhw_upper_storage_temperature__max", "s_dhw_supply_temperature__max"),
+    "hc1_supply_setpoint_gap_mean": ("s_hc1_supply_temperature__mean", "s_hc1_supply_temperature_setpoint__mean"),
+}
 RANDOM_STATE = 42
 
 
@@ -103,6 +119,38 @@ def bucketize_event_days(series: pd.Series, prefix: str) -> pd.DataFrame:
     return frame
 
 
+def add_group_zscore(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    group_cols = ["manufacturer", "configuration_type", "season_bucket"]
+    result = pd.DataFrame(index=frame.index)
+    available_group_cols = [column for column in group_cols if column in frame.columns]
+    if not available_group_cols:
+        return result
+    grouped = frame.groupby(available_group_cols, dropna=False)
+    for column in columns:
+        if column not in frame.columns:
+            continue
+        mean = grouped[column].transform("mean")
+        std = grouped[column].transform("std").replace(0, pd.NA)
+        result[f"{column}__group_zscore"] = (((frame[column] - mean) / std).fillna(0.0)).astype("float64")
+    return result
+
+
+def add_relation_features(frame: pd.DataFrame) -> pd.DataFrame:
+    result = pd.DataFrame(index=frame.index)
+    for new_column, (left, right) in RELATION_COLUMNS.items():
+        if left in frame.columns and right in frame.columns:
+            result[new_column] = (frame[left] - frame[right]).astype("float64")
+    if "network_temperature_gap__mean" in frame.columns and "outdoor_temperature__mean" in frame.columns:
+        result["network_gap_over_outdoor_mean"] = (
+            frame["network_temperature_gap__mean"] - frame["outdoor_temperature__mean"]
+        ).astype("float64")
+    if "p_net_return_temperature__mean" in frame.columns and "outdoor_temperature__mean" in frame.columns:
+        result["return_temp_over_outdoor_mean"] = (
+            frame["p_net_return_temperature__mean"] - frame["outdoor_temperature__mean"]
+        ).astype("float64")
+    return result
+
+
 def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
     trainable_windows = pd.read_csv(TRAINABLE_WINDOWS_PATH)
     risk_scores = pd.read_csv(RISK_SCORES_PATH)
@@ -126,17 +174,16 @@ def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
         validate="one_to_one",
         suffixes=("", "_risk"),
     )
-    if "label" not in modeling_df.columns and "label_risk" in modeling_df.columns:
-        modeling_df = modeling_df.rename(columns={"label_risk": "label"})
-    if "configuration_type" not in modeling_df.columns and "configuration_type_risk" in modeling_df.columns:
-        modeling_df = modeling_df.rename(columns={"configuration_type_risk": "configuration_type"})
-    if PRIMARY_SPLIT_COLUMN not in modeling_df.columns and f"{PRIMARY_SPLIT_COLUMN}_risk" in modeling_df.columns:
-        modeling_df = modeling_df.rename(columns={f"{PRIMARY_SPLIT_COLUMN}_risk": PRIMARY_SPLIT_COLUMN})
+    for base_name in ["label", "configuration_type", PRIMARY_SPLIT_COLUMN]:
+        risk_name = f"{base_name}_risk"
+        if base_name not in modeling_df.columns and risk_name in modeling_df.columns:
+            modeling_df = modeling_df.rename(columns={risk_name: base_name})
+
     base_feature_columns = metadata["model_feature_columns"]
     for column in base_feature_columns:
-        risk_column = f"{column}_risk"
-        if column not in modeling_df.columns and risk_column in modeling_df.columns:
-            modeling_df = modeling_df.rename(columns={risk_column: column})
+        risk_name = f"{column}_risk"
+        if column not in modeling_df.columns and risk_name in modeling_df.columns:
+            modeling_df = modeling_df.rename(columns={risk_name: column})
 
     if "use_for_supervised_training" in modeling_df.columns:
         modeling_df = modeling_df.loc[
@@ -147,62 +194,102 @@ def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
     return modeling_df, base_feature_columns
 
 
-def build_feature_matrix(modeling_df: pd.DataFrame, feature_columns: list[str], variant: str) -> tuple[pd.DataFrame, list[str]]:
-    x_all = modeling_df[feature_columns].copy()
+def apply_event_variant(x_all: pd.DataFrame, variant: str) -> pd.DataFrame:
+    result = x_all.copy()
+    extra_frames: list[pd.DataFrame] = []
+    drop_columns: list[str] = []
+    event_columns_present = [column for column in EVENT_DAY_COLUMNS if column in result.columns]
+
+    if variant == "raw":
+        return result
+    if variant == "bucket_any_task_keep_fault_raw":
+        for column in ["days_since_last_task_event", "days_since_last_any_event"]:
+            if column in result.columns:
+                extra_frames.append(bucketize_event_days(result[column], column))
+                drop_columns.append(column)
+    elif variant == "bucket_all_event_days":
+        for column in event_columns_present:
+            extra_frames.append(bucketize_event_days(result[column], column))
+            drop_columns.append(column)
+    elif variant == "bucket_any_task_clip90_fault":
+        if "days_since_last_fault_event" in result.columns:
+            result["days_since_last_fault_event"] = (
+                pd.to_numeric(result["days_since_last_fault_event"], errors="coerce").fillna(9999.0).clip(upper=90.0)
+            )
+        for column in ["days_since_last_task_event", "days_since_last_any_event"]:
+            if column in result.columns:
+                extra_frames.append(bucketize_event_days(result[column], column))
+                drop_columns.append(column)
+    else:
+        raise ValueError(f"Unknown event variant: {variant}")
+
+    if drop_columns:
+        result = result.drop(columns=drop_columns)
+    if extra_frames:
+        result = pd.concat([result, *extra_frames], axis=1)
+    return result
+
+
+def apply_thermal_variant(modeling_df: pd.DataFrame, x_all: pd.DataFrame, variant: str) -> pd.DataFrame:
+    result = x_all.copy()
+    thermal_columns_present = [column for column in THERMAL_RAW_COLUMNS if column in modeling_df.columns]
+    extra_frames: list[pd.DataFrame] = []
+    drop_columns: list[str] = []
+
+    if variant == "raw":
+        return result
+    if variant == "group_zscore_only":
+        extra_frames.append(add_group_zscore(modeling_df, thermal_columns_present))
+    elif variant == "replace_raw_with_relation":
+        extra_frames.append(add_relation_features(modeling_df))
+        drop_columns.extend([column for column in thermal_columns_present if column in result.columns])
+    elif variant == "group_zscore_plus_relation":
+        extra_frames.append(add_group_zscore(modeling_df, thermal_columns_present))
+        extra_frames.append(add_relation_features(modeling_df))
+    else:
+        raise ValueError(f"Unknown thermal variant: {variant}")
+
+    if drop_columns:
+        result = result.drop(columns=drop_columns)
+    if extra_frames:
+        result = pd.concat([result, *extra_frames], axis=1)
+    return result
+
+
+def build_feature_matrix(
+    modeling_df: pd.DataFrame,
+    base_feature_columns: list[str],
+    event_variant: str,
+    thermal_variant: str,
+) -> tuple[pd.DataFrame, list[str]]:
+    x_all = modeling_df[base_feature_columns].copy()
     for column in x_all.columns:
         if x_all[column].dtype == "bool":
             x_all[column] = x_all[column].astype("int8")
         elif x_all[column].dtype == "object":
             x_all[column] = pd.to_numeric(x_all[column], errors="coerce")
 
-    event_columns_present = [column for column in EVENT_DAY_COLUMNS if column in x_all.columns]
-    extra_frames: list[pd.DataFrame] = []
-    drop_columns: list[str] = []
-
-    if variant == "baseline_raw":
-        pass
-    elif variant == "clip90_all_event_days":
-        for column in event_columns_present:
-            x_all[column] = pd.to_numeric(x_all[column], errors="coerce").fillna(9999.0).clip(upper=90.0)
-    elif variant == "bucket_any_task_keep_fault_raw":
-        for column in ["days_since_last_task_event", "days_since_last_any_event"]:
-            if column in x_all.columns:
-                extra_frames.append(bucketize_event_days(x_all[column], column))
-                drop_columns.append(column)
-    elif variant == "bucket_all_event_days":
-        for column in event_columns_present:
-            extra_frames.append(bucketize_event_days(x_all[column], column))
-            drop_columns.append(column)
-    elif variant == "bucket_any_task_clip90_fault":
-        if "days_since_last_fault_event" in x_all.columns:
-            x_all["days_since_last_fault_event"] = (
-                pd.to_numeric(x_all["days_since_last_fault_event"], errors="coerce")
-                .fillna(9999.0)
-                .clip(upper=90.0)
-            )
-        for column in ["days_since_last_task_event", "days_since_last_any_event"]:
-            if column in x_all.columns:
-                extra_frames.append(bucketize_event_days(x_all[column], column))
-                drop_columns.append(column)
-    else:
-        raise ValueError(f"Unknown variant: {variant}")
-
-    if drop_columns:
-        x_all = x_all.drop(columns=drop_columns)
-    if extra_frames:
-        x_all = pd.concat([x_all, *extra_frames], axis=1)
+    x_all = apply_event_variant(x_all, event_variant)
+    x_all = apply_thermal_variant(modeling_df, x_all, thermal_variant)
 
     if x_all.isna().any().any():
         missing_summary = x_all.isna().sum()
         missing_summary = missing_summary[missing_summary > 0].sort_values(ascending=False)
-        raise ValueError(f"{variant} contains missing values:\n{missing_summary.head(20)}")
+        raise ValueError(
+            f"event={event_variant}, thermal={thermal_variant} contains missing values:\n{missing_summary.head(20)}"
+        )
 
-    model_feature_columns = x_all.columns.tolist()
-    return x_all, model_feature_columns
+    return x_all, x_all.columns.tolist()
 
 
-def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: list[str], variant: str) -> list[dict]:
-    x_all, model_feature_columns = build_feature_matrix(modeling_df, base_feature_columns, variant)
+def train_and_score_variant(
+    modeling_df: pd.DataFrame,
+    base_feature_columns: list[str],
+    variant_name: str,
+    event_variant: str,
+    thermal_variant: str,
+) -> list[dict]:
+    x_all, model_feature_columns = build_feature_matrix(modeling_df, base_feature_columns, event_variant, thermal_variant)
 
     train_mask = modeling_df[PRIMARY_SPLIT_COLUMN].eq("train")
     validation_mask = modeling_df[PRIMARY_SPLIT_COLUMN].eq("validation")
@@ -260,7 +347,9 @@ def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: lis
                 metrics = score_frame(frame, level_column)
                 rows.append(
                     {
-                        "variant": variant,
+                        "variant": variant_name,
+                        "event_variant": event_variant,
+                        "thermal_variant": thermal_variant,
                         "feature_count": len(model_feature_columns),
                         "split": split_name,
                         "scope": scope_name,
@@ -274,16 +363,25 @@ def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: lis
 def main() -> None:
     modeling_df, base_feature_columns = load_base_frame()
     variants = [
-        "baseline_raw",
-        "clip90_all_event_days",
-        "bucket_any_task_keep_fault_raw",
-        "bucket_all_event_days",
-        "bucket_any_task_clip90_fault",
+        ("baseline_raw", "raw", "raw"),
+        ("event_context_only", "bucket_any_task_keep_fault_raw", "raw"),
+        ("thermal_group_zscore_only", "raw", "group_zscore_only"),
+        ("thermal_replace_raw_with_relation", "raw", "replace_raw_with_relation"),
+        ("event_plus_group_zscore", "bucket_any_task_keep_fault_raw", "group_zscore_only"),
+        ("event_plus_replace_raw_with_relation", "bucket_any_task_keep_fault_raw", "replace_raw_with_relation"),
     ]
 
     rows: list[dict] = []
-    for variant in variants:
-        rows.extend(train_and_score_variant(modeling_df, base_feature_columns, variant))
+    for variant_name, event_variant, thermal_variant in variants:
+        rows.extend(
+            train_and_score_variant(
+                modeling_df=modeling_df,
+                base_feature_columns=base_feature_columns,
+                variant_name=variant_name,
+                event_variant=event_variant,
+                thermal_variant=thermal_variant,
+            )
+        )
 
     result_df = pd.DataFrame(rows)
     holdout_df = result_df.loc[result_df["split"].eq("holdout")].copy()
@@ -303,3 +401,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, roc_auc_score
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RISK_DIR = ROOT / "data" / "processed" / "ml_risk"
 MODEL_DIR = RISK_DIR / "models"
 

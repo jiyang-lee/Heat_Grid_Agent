@@ -6,16 +6,11 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = ROOT / "PREPROCESSING" / "osj"
 
 EXPERIMENTS = {
-    "event_reencoding": "06_test/06_event_context_reencoding_experiment.py",
-    "event_state": "06_test/06_event_context_state_experiment.py",
-    "thermal": "06_test/06_thermal_feature_experiment.py",
-    "state_thermal_combined": "06_test/06_state_thermal_combined_experiment.py",
-    "weighting": "06_test/06_risk_weighting_experiment.py",
-    "combined_feature": "06_test/06_combined_feature_experiment.py",
+    "leadtime_improvements": "experiments/06_test/06_leadtime_improvement_experiments.py",
 }
 
 
@@ -28,7 +23,7 @@ def run_script(script_name: str) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Grouped 06 risk experiments entrypoint")
+    parser = argparse.ArgumentParser(description="Grouped 06 leadtime experiments entrypoint")
     parser.add_argument("--list", action="store_true", help="List supported experiments")
     parser.add_argument(
         "--run",

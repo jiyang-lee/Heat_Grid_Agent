@@ -25,7 +25,7 @@ combined_feature        -> 06_combined_feature_experiment.py
 실제 위치:
 
 ```text
-PREPROCESSING/osj/06_test/
+PREPROCESSING/osj/experiments/06_test/
 ```
 
 ## leadtime 실험 묶음
@@ -37,7 +37,7 @@ leadtime_improvements   -> 06_leadtime_improvement_experiments.py
 실제 위치:
 
 ```text
-PREPROCESSING/osj/06_test/
+PREPROCESSING/osj/experiments/06_test/
 ```
 
 ## 주요 결론 요약
@@ -76,5 +76,7 @@ legacy notebook 기반 비교 자료:
 
 ```text
 PREPROCESSING/docs/06_test/06_event_context_ablation.md
-PREPROCESSING/osj/06_test/06_event_context_ablation.ipynb
+PREPROCESSING/osj/experiments/06_test/06_event_context_ablation.ipynb
 ```
+
+

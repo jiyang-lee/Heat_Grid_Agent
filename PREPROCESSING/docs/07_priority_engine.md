@@ -87,7 +87,7 @@ Priority score는 아래 네 축으로 계산한다.
 ### 실행 파일
 
 ```text
-PREPROCESSING/osj/07_priority_engine.py
+PREPROCESSING/osj/archive/07_priority_engine_basic.py
 ```
 
 ### baseline 규칙
@@ -176,7 +176,7 @@ urgent 쏠림이 크고 high/medium 구간이 너무 얇다.
 ### 실행 파일
 
 ```text
-PREPROCESSING/osj/07_priority_engine_tuned.py
+PREPROCESSING/osj/pipeline_scripts/07_priority_engine.py
 ```
 
 ### tuned 규칙
@@ -331,3 +331,4 @@ engine_version
 
 따라서 08 Agent는 07 점수를 그대로 받아도 되지만,
 최종 판단 문장과 점검 제안은 08에서 완성해야 한다.
+

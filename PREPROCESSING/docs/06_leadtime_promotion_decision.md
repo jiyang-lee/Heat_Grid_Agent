@@ -14,7 +14,7 @@ leadtime 개선 실험에서 가장 현실적인 후보였던
 ## 실행 파일
 
 ```text
-PREPROCESSING/osj/06_promoted_leadtime_model.py
+PREPROCESSING/osj/pipeline_scripts/06_leadtime_model.py
 ```
 
 ## 출력 파일
@@ -90,3 +90,4 @@ leadtime:
 ```
 
 07/08 연결 전 마지막 선택만 남아 있는 상태다.
+

@@ -1,6 +1,6 @@
 ﻿# 06. legacy LightGBM risk and lead-time model 문서
 
-이 문서는 `PREPROCESSING/osj/06_test/06_risk_leadtime_model.ipynb`에서 구현한 기존 LightGBM 기반 위험도 모델을 정리한다.
+이 문서는 `PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_model.ipynb`에서 구현한 기존 LightGBM 기반 위험도 모델을 정리한다.
 
 현재 이 문서는 메인 `Isolation Forest + LightGBM` 06 체인 문서다.
 
@@ -348,3 +348,5 @@ risk_level_calibrated
 PREPROCESSING/docs/06_promotion_decision.md
 PREPROCESSING/osj/06_promoted_risk_model.py
 ```
+
+

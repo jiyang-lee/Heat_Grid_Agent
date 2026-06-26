@@ -9,7 +9,7 @@ PREPROCESSING/docs/06_leadtime_official.md
 
 ## 목적
 
-이 문서는 `PREPROCESSING/osj/06_test/06_leadtime_bucket_model.ipynb`에서 구현한
+이 문서는 `PREPROCESSING/osj/experiments/06_test/06_leadtime_bucket_model.ipynb`에서 구현한
 legacy pseudo leadtime bucket 모델을 정리한다.
 
 현재 이 문서는 메인 `Isolation Forest + LightGBM` 06 체인 내부에서
@@ -75,3 +75,4 @@ data/processed/ml_leadtime/leadtime_bucket_metrics_promoted.csv
 ```
 
 따라서 이 문서는 구조 설명용 참고 자료로 읽으면 된다.
+

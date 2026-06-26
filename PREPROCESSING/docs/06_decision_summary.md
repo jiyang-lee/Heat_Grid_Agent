@@ -34,8 +34,8 @@ data/processed/ml_leadtime/leadtime_bucket_metrics_promoted.csv
 
 ```text
 official:
-  PREPROCESSING/osj/06_risk_official.py
-  PREPROCESSING/osj/06_leadtime_official.py
+  PREPROCESSING/osj/06_risk_leadtime_models.ipynb
+  PREPROCESSING/osj/06_risk_leadtime_models.ipynb
 
 experiments:
   PREPROCESSING/osj/06_risk_experiments.py
@@ -67,5 +67,7 @@ PREPROCESSING/docs/06_decision_summary.md
 
 ```text
 PREPROCESSING/docs/06_test/
-PREPROCESSING/osj/06_test/
+PREPROCESSING/osj/experiments/06_test/
 ```
+
+

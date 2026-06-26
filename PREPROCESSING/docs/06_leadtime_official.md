@@ -27,19 +27,25 @@ bucket_mae 0.3837
 ## canonical 실행 파일
 
 ```text
-PREPROCESSING/osj/06_leadtime_official.py
+PREPROCESSING/osj/06_risk_leadtime_models.ipynb
 ```
 
 지원 target:
 
 ```text
-promoted_official -> 06_promoted_leadtime_model.py
+promoted_official -> pipeline_scripts/06_leadtime_model.py
 ```
 
-예:
+공식 실행:
+
+```text
+PREPROCESSING/osj/06_risk_leadtime_models.ipynb
+```
+
+스크립트 직접 실행:
 
 ```bash
-python PREPROCESSING/osj/06_leadtime_official.py
+python PREPROCESSING/osj/pipeline_scripts/06_leadtime_model.py
 ```
 
 ## 현재 판단
@@ -53,7 +59,7 @@ leadtime는 promoted 3버킷 본을 유지한다.
 
 ```text
 PREPROCESSING/docs/06_test/06_leadtime_bucket_model.md
-PREPROCESSING/osj/06_test/06_leadtime_bucket_model.ipynb
+PREPROCESSING/osj/experiments/06_test/06_leadtime_bucket_model.ipynb
 ```
 
 ## 참고 문서
@@ -61,3 +67,5 @@ PREPROCESSING/osj/06_test/06_leadtime_bucket_model.ipynb
 ```text
 PREPROCESSING/docs/06_leadtime_promotion_decision.md
 ```
+
+

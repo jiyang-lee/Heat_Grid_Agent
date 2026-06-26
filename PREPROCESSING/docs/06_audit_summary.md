@@ -16,7 +16,7 @@ PREPROCESSING/osj/06_risk_audit.py
 false_negative      -> 06_false_negative_audit.py
 false_negative_deep -> 06_false_negative_deep_audit.py
 feature_importance  -> 06_feature_importance_audit.py
-group_calibration   -> 06_group_calibration.py
+group_calibration   -> pipeline_scripts/06_risk_calibration.py
 drift_ablation      -> 06_drift_feature_ablation.py
 manufacturer2_sh_fp -> 06_manufacturer2_sh_fp_audit.py
 ```
@@ -24,7 +24,7 @@ manufacturer2_sh_fp -> 06_manufacturer2_sh_fp_audit.py
 이 중 `group_calibration`을 제외한 개별 감사 스크립트의 실제 위치:
 
 ```text
-PREPROCESSING/osj/06_test/
+PREPROCESSING/osj/experiments/06_test/
 ```
 
 ## 핵심 감사 질문
@@ -61,5 +61,8 @@ legacy holdout failure notebook 자료:
 
 ```text
 PREPROCESSING/docs/06_test/06_risk_leadtime_audit.md
-PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb
+PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_audit.ipynb
 ```
+
+
+

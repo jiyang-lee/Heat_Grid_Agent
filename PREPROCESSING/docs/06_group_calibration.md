@@ -15,7 +15,7 @@ high/critical 판정 기준만 특정 그룹에서 더 엄격하게 적용
 ## 실행 파일
 
 ```text
-PREPROCESSING/osj/06_group_calibration.py
+PREPROCESSING/osj/pipeline_scripts/06_risk_calibration.py
 ```
 
 ## 출력 파일
@@ -163,3 +163,4 @@ data/processed/ml_risk/lgbm_risk_metrics_calibrated.csv
 data/processed/ml_risk/lgbm_risk_scores_promoted.csv
 data/processed/ml_risk/lgbm_risk_metrics_promoted.csv
 ```
+

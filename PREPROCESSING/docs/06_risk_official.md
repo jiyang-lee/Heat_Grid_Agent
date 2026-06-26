@@ -30,21 +30,26 @@ ap        0.6197
 ## canonical 실행 파일
 
 ```text
-PREPROCESSING/osj/06_risk_official.py
+PREPROCESSING/osj/06_risk_leadtime_models.ipynb
 ```
 
 지원 target:
 
 ```text
-calibrated_official  -> 06_group_calibration.py
-promoted_candidate   -> 06_promoted_risk_model.py
+calibrated_official  -> pipeline_scripts/06_risk_calibration.py
+promoted_candidate   -> experiments/06_test/06_promoted_risk_model.py
 ```
 
-예:
+공식 실행:
+
+```text
+PREPROCESSING/osj/06_risk_leadtime_models.ipynb
+```
+
+스크립트 직접 실행:
 
 ```bash
-python PREPROCESSING/osj/06_risk_official.py --target calibrated_official
-python PREPROCESSING/osj/06_risk_official.py --target promoted_candidate
+python PREPROCESSING/osj/pipeline_scripts/06_risk_calibration.py
 ```
 
 ## 현재 판단
@@ -65,9 +70,9 @@ candidate:
 ```text
 PREPROCESSING/docs/06_test/06_risk_leadtime_model.md
 PREPROCESSING/docs/06_test/06_risk_leadtime_audit.md
-PREPROCESSING/osj/06_test/06_promoted_risk_model.py
-PREPROCESSING/osj/06_test/06_risk_leadtime_model.ipynb
-PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb
+PREPROCESSING/osj/experiments/06_test/06_promoted_risk_model.py
+PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_model.ipynb
+PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_audit.ipynb
 ```
 
 ## 참고 문서
@@ -78,3 +83,6 @@ PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb
 PREPROCESSING/docs/06_promotion_decision.md
 PREPROCESSING/docs/06_next_improvement_plan.md
 ```
+
+
+

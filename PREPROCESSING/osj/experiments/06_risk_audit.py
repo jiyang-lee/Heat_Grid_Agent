@@ -6,16 +6,16 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = ROOT / "PREPROCESSING" / "osj"
 
 AUDITS = {
-    "false_negative": "06_test/06_false_negative_audit.py",
-    "false_negative_deep": "06_test/06_false_negative_deep_audit.py",
-    "feature_importance": "06_test/06_feature_importance_audit.py",
-    "group_calibration": "06_group_calibration.py",
-    "drift_ablation": "06_test/06_drift_feature_ablation.py",
-    "manufacturer2_sh_fp": "06_test/06_manufacturer2_sh_fp_audit.py",
+    "false_negative": "experiments/06_test/06_false_negative_audit.py",
+    "false_negative_deep": "experiments/06_test/06_false_negative_deep_audit.py",
+    "feature_importance": "experiments/06_test/06_feature_importance_audit.py",
+    "group_calibration": "pipeline_scripts/06_risk_calibration.py",
+    "drift_ablation": "experiments/06_test/06_drift_feature_ablation.py",
+    "manufacturer2_sh_fp": "experiments/06_test/06_manufacturer2_sh_fp_audit.py",
 }
 
 

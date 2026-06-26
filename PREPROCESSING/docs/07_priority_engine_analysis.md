@@ -1,4 +1,4 @@
-# 07 Priority Engine Analysis
+﻿# 07 Priority Engine Analysis
 
 ## 분석 대상
 
@@ -11,7 +11,7 @@ data/processed/ml_priority/priority_engine_scores_tuned.csv
 기준 엔진:
 
 ```text
-PREPROCESSING/osj/07_priority_engine_tuned.py
+PREPROCESSING/osj/pipeline_scripts/07_priority_engine.py
 ```
 
 ## 전체 분포
@@ -306,3 +306,4 @@ days_since_last_any_event
 ```
 
 현재 07 tuned 출력은 handoff용 근거 컬럼까지 포함한다.
+

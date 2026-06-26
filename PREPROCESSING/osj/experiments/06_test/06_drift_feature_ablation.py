@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, roc_auc_score
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR = ROOT / "data" / "processed"
 ML_FEATURES_DIR = DATA_DIR / "ml_features"
 ML_RISK_DIR = DATA_DIR / "ml_risk"
@@ -197,3 +197,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

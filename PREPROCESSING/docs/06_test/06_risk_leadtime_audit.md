@@ -1,6 +1,6 @@
 ﻿# 06-A. legacy LightGBM failure audit 문서
 
-이 문서는 `PREPROCESSING/osj/06_test/06_risk_leadtime_audit.ipynb`의 목적과 산출물을 정리한다.
+이 문서는 `PREPROCESSING/osj/experiments/06_test/06_risk_leadtime_audit.ipynb`의 목적과 산출물을 정리한다.
 
 현재 이 문서는 메인 `Isolation Forest + LightGBM` 06 체인의 holdout 실패 원인과 보강 포인트를 보는 audit 문서다.
 
@@ -177,3 +177,5 @@ manufacturer 2 / SH only holdout:
 3. paper-aligned 전환 시도 자료는 `PREPROCESSING/legacy` 아래에 보존한다.
 
 따라서 다음 단계는 07이 아니라 06 보강이다.
+
+

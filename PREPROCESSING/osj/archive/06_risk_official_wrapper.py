@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = ROOT / "PREPROCESSING" / "osj"
 
 TARGETS = {
-    "calibrated_official": "06_group_calibration.py",
-    "promoted_candidate": "06_test/06_promoted_risk_model.py",
+    "calibrated_official": "pipeline_scripts/06_risk_calibration.py",
+    "promoted_candidate": "experiments/06_test/06_promoted_risk_model.py",
 }
 
 

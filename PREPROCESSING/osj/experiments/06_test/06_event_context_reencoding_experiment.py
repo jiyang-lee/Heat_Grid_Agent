@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, roc_auc_score
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR = ROOT / "data" / "processed"
 ML_FEATURES_DIR = DATA_DIR / "ml_features"
 ML_RISK_DIR = DATA_DIR / "ml_risk"
@@ -18,9 +18,8 @@ TRAINABLE_WINDOWS_PATH = ML_FEATURES_DIR / "trainable_windows.csv"
 RISK_SCORES_PATH = ML_RISK_DIR / "lgbm_risk_scores.csv"
 RISK_MODEL_METADATA_PATH = MODEL_DIR / "risk_model_metadata.json"
 
-OUTPUT_PATH = ML_RISK_DIR / "lgbm_event_context_state_experiment.csv"
-OUTPUT_HOLDOUT_PATH = ML_RISK_DIR / "lgbm_event_context_state_experiment_holdout.csv"
-OUTPUT_FN_PATH = ML_RISK_DIR / "lgbm_event_context_state_false_negative_summary.csv"
+OUTPUT_PATH = ML_RISK_DIR / "lgbm_event_context_reencoding_experiment.csv"
+OUTPUT_HOLDOUT_PATH = ML_RISK_DIR / "lgbm_event_context_reencoding_holdout.csv"
 
 KEY_COLUMNS = ["manufacturer", "substation_id", "window_start", "window_end"]
 PRIMARY_SPLIT_COLUMN = "split_event_regime_based"
@@ -104,17 +103,6 @@ def bucketize_event_days(series: pd.Series, prefix: str) -> pd.DataFrame:
     return frame
 
 
-def add_event_state_columns(series: pd.Series, prefix: str) -> pd.DataFrame:
-    numeric = pd.to_numeric(series, errors="coerce").fillna(9999.0)
-    frame = pd.DataFrame(index=series.index)
-    frame[f"{prefix}__has_previous"] = (numeric < 9999.0).astype("int8")
-    frame[f"{prefix}__recent_7d"] = (numeric <= 7).astype("int8")
-    frame[f"{prefix}__recent_30d"] = (numeric <= 30).astype("int8")
-    frame[f"{prefix}__recent_90d"] = (numeric <= 90).astype("int8")
-    frame[f"{prefix}__stale_gt_90d"] = ((numeric > 90) & (numeric < 9999.0)).astype("int8")
-    return frame
-
-
 def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
     trainable_windows = pd.read_csv(TRAINABLE_WINDOWS_PATH)
     risk_scores = pd.read_csv(RISK_SCORES_PATH)
@@ -129,7 +117,6 @@ def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
         "days_since_last_fault_event",
         "days_since_last_task_event",
         "days_since_last_any_event",
-        "lead_time_bucket",
     ]
     merge_columns = [column for column in merge_columns if column in risk_scores.columns]
     modeling_df = trainable_windows.merge(
@@ -139,11 +126,12 @@ def load_base_frame() -> tuple[pd.DataFrame, list[str]]:
         validate="one_to_one",
         suffixes=("", "_risk"),
     )
-    for base_name in ["label", "configuration_type", PRIMARY_SPLIT_COLUMN, "lead_time_bucket"]:
-        risk_name = f"{base_name}_risk"
-        if base_name not in modeling_df.columns and risk_name in modeling_df.columns:
-            modeling_df = modeling_df.rename(columns={risk_name: base_name})
-
+    if "label" not in modeling_df.columns and "label_risk" in modeling_df.columns:
+        modeling_df = modeling_df.rename(columns={"label_risk": "label"})
+    if "configuration_type" not in modeling_df.columns and "configuration_type_risk" in modeling_df.columns:
+        modeling_df = modeling_df.rename(columns={"configuration_type_risk": "configuration_type"})
+    if PRIMARY_SPLIT_COLUMN not in modeling_df.columns and f"{PRIMARY_SPLIT_COLUMN}_risk" in modeling_df.columns:
+        modeling_df = modeling_df.rename(columns={f"{PRIMARY_SPLIT_COLUMN}_risk": PRIMARY_SPLIT_COLUMN})
     base_feature_columns = metadata["model_feature_columns"]
     for column in base_feature_columns:
         risk_column = f"{column}_risk"
@@ -167,36 +155,33 @@ def build_feature_matrix(modeling_df: pd.DataFrame, feature_columns: list[str], 
         elif x_all[column].dtype == "object":
             x_all[column] = pd.to_numeric(x_all[column], errors="coerce")
 
+    event_columns_present = [column for column in EVENT_DAY_COLUMNS if column in x_all.columns]
     extra_frames: list[pd.DataFrame] = []
     drop_columns: list[str] = []
 
     if variant == "baseline_raw":
         pass
+    elif variant == "clip90_all_event_days":
+        for column in event_columns_present:
+            x_all[column] = pd.to_numeric(x_all[column], errors="coerce").fillna(9999.0).clip(upper=90.0)
     elif variant == "bucket_any_task_keep_fault_raw":
         for column in ["days_since_last_task_event", "days_since_last_any_event"]:
             if column in x_all.columns:
                 extra_frames.append(bucketize_event_days(x_all[column], column))
                 drop_columns.append(column)
-    elif variant == "state_any_task_keep_fault_raw":
+    elif variant == "bucket_all_event_days":
+        for column in event_columns_present:
+            extra_frames.append(bucketize_event_days(x_all[column], column))
+            drop_columns.append(column)
+    elif variant == "bucket_any_task_clip90_fault":
+        if "days_since_last_fault_event" in x_all.columns:
+            x_all["days_since_last_fault_event"] = (
+                pd.to_numeric(x_all["days_since_last_fault_event"], errors="coerce")
+                .fillna(9999.0)
+                .clip(upper=90.0)
+            )
         for column in ["days_since_last_task_event", "days_since_last_any_event"]:
             if column in x_all.columns:
-                extra_frames.append(add_event_state_columns(x_all[column], column))
-                drop_columns.append(column)
-    elif variant == "state_all_event_days":
-        for column in EVENT_DAY_COLUMNS:
-            if column in x_all.columns:
-                extra_frames.append(add_event_state_columns(x_all[column], column))
-                drop_columns.append(column)
-    elif variant == "state_plus_bucket_any_task_keep_fault_raw":
-        for column in ["days_since_last_task_event", "days_since_last_any_event"]:
-            if column in x_all.columns:
-                extra_frames.append(add_event_state_columns(x_all[column], column))
-                extra_frames.append(bucketize_event_days(x_all[column], column))
-                drop_columns.append(column)
-    elif variant == "state_plus_bucket_all_event_days":
-        for column in EVENT_DAY_COLUMNS:
-            if column in x_all.columns:
-                extra_frames.append(add_event_state_columns(x_all[column], column))
                 extra_frames.append(bucketize_event_days(x_all[column], column))
                 drop_columns.append(column)
     else:
@@ -212,54 +197,11 @@ def build_feature_matrix(modeling_df: pd.DataFrame, feature_columns: list[str], 
         missing_summary = missing_summary[missing_summary > 0].sort_values(ascending=False)
         raise ValueError(f"{variant} contains missing values:\n{missing_summary.head(20)}")
 
-    return x_all, x_all.columns.tolist()
+    model_feature_columns = x_all.columns.tolist()
+    return x_all, model_feature_columns
 
 
-def false_negative_summary(scored: pd.DataFrame, level_column: str, variant: str, metric_type: str) -> list[dict]:
-    holdout = scored.loc[
-        scored[PRIMARY_SPLIT_COLUMN].eq("holdout")
-        & scored["label"].eq("pre_fault")
-        & (~scored[level_column].isin(["high", "critical"]))
-    ].copy()
-    rows: list[dict] = []
-    rows.append(
-        {
-            "variant": variant,
-            "metric_type": metric_type,
-            "scope": "overall",
-            "false_negative_count": int(len(holdout)),
-            "fn_1_3d_count": int(holdout["lead_time_bucket"].eq("1-3d").sum()) if "lead_time_bucket" in holdout.columns else None,
-            "fn_medium_count": int(holdout[level_column].eq("medium").sum()),
-            "fn_low_count": int(holdout[level_column].eq("low").sum()),
-            "mean_risk_probability": float(holdout["risk_probability"].mean()) if len(holdout) else None,
-        }
-    )
-    for manufacturer, config in [
-        ("manufacturer 2", "SH with buffer tank"),
-        ("manufacturer 2", "SH + DHW"),
-        ("manufacturer 1", "SH + DHW"),
-        ("manufacturer 2", "SH"),
-    ]:
-        group_holdout = holdout.loc[
-            holdout["manufacturer"].eq(manufacturer)
-            & holdout["configuration_type"].eq(config)
-        ]
-        rows.append(
-            {
-                "variant": variant,
-                "metric_type": metric_type,
-                "scope": f"{manufacturer}|{config}",
-                "false_negative_count": int(len(group_holdout)),
-                "fn_1_3d_count": int(group_holdout["lead_time_bucket"].eq("1-3d").sum()) if "lead_time_bucket" in group_holdout.columns else None,
-                "fn_medium_count": int(group_holdout[level_column].eq("medium").sum()),
-                "fn_low_count": int(group_holdout[level_column].eq("low").sum()),
-                "mean_risk_probability": float(group_holdout["risk_probability"].mean()) if len(group_holdout) else None,
-            }
-        )
-    return rows
-
-
-def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: list[str], variant: str) -> tuple[list[dict], list[dict]]:
+def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: list[str], variant: str) -> list[dict]:
     x_all, model_feature_columns = build_feature_matrix(modeling_df, base_feature_columns, variant)
 
     train_mask = modeling_df[PRIMARY_SPLIT_COLUMN].eq("train")
@@ -295,7 +237,6 @@ def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: lis
     scored["risk_level_calibrated"] = scored.apply(apply_group_calibrated_risk_level, axis=1)
 
     rows: list[dict] = []
-    fn_rows: list[dict] = []
     group_filters = {
         "overall": pd.Series(True, index=scored.index),
         "manufacturer_2_sh": (
@@ -327,28 +268,22 @@ def train_and_score_variant(modeling_df: pd.DataFrame, base_feature_columns: lis
                         **metrics,
                     }
                 )
-                if split_name == "holdout":
-                    fn_rows.extend(false_negative_summary(scored, level_column, variant, metric_type))
-    return rows, fn_rows
+    return rows
 
 
 def main() -> None:
     modeling_df, base_feature_columns = load_base_frame()
     variants = [
         "baseline_raw",
+        "clip90_all_event_days",
         "bucket_any_task_keep_fault_raw",
-        "state_any_task_keep_fault_raw",
-        "state_all_event_days",
-        "state_plus_bucket_any_task_keep_fault_raw",
-        "state_plus_bucket_all_event_days",
+        "bucket_all_event_days",
+        "bucket_any_task_clip90_fault",
     ]
 
     rows: list[dict] = []
-    fn_rows: list[dict] = []
     for variant in variants:
-        metric_rows, variant_fn_rows = train_and_score_variant(modeling_df, base_feature_columns, variant)
-        rows.extend(metric_rows)
-        fn_rows.extend(variant_fn_rows)
+        rows.extend(train_and_score_variant(modeling_df, base_feature_columns, variant))
 
     result_df = pd.DataFrame(rows)
     holdout_df = result_df.loc[result_df["split"].eq("holdout")].copy()
@@ -356,26 +291,16 @@ def main() -> None:
         ["scope", "metric_type", "f1_high_or_critical", "false_positive_rate_high_or_critical"],
         ascending=[True, True, False, True],
     ).reset_index(drop=True)
-    fn_df = pd.DataFrame(fn_rows)
-    fn_df = fn_df.sort_values(
-        ["metric_type", "scope", "false_negative_count", "fn_1_3d_count"],
-        ascending=[True, True, True, True],
-    ).reset_index(drop=True)
 
     result_df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
     holdout_df.to_csv(OUTPUT_HOLDOUT_PATH, index=False, encoding="utf-8-sig")
-    fn_df.to_csv(OUTPUT_FN_PATH, index=False, encoding="utf-8-sig")
 
     print(OUTPUT_PATH)
     print(OUTPUT_HOLDOUT_PATH)
-    print(OUTPUT_FN_PATH)
     print()
-    print("[holdout metrics]")
     print(holdout_df.to_string(index=False))
-    print()
-    print("[holdout false negative summary]")
-    print(fn_df.to_string(index=False))
 
 
 if __name__ == "__main__":
     main()
+

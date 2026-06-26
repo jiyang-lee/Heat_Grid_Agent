@@ -1,6 +1,6 @@
 ﻿# 06-B. legacy event context ablation 문서
 
-이 문서는 `PREPROCESSING/osj/06_test/06_event_context_ablation.ipynb`의 목적과 결과를 정리한다.
+이 문서는 `PREPROCESSING/osj/experiments/06_test/06_event_context_ablation.ipynb`의 목적과 결과를 정리한다.
 
 현재 이 문서는 메인 `Isolation Forest + LightGBM` 06 체인 내부의 event context 보강 비교 기록이다.
 
@@ -113,3 +113,5 @@ holdout pre_fault:
 따라서 이 문서의 결론은 “어떤 event context가 현재 06 체인에 더 맞는가”를 비교 근거로 남기자는 것이다.
 
 paper-aligned 전환 시도 자료는 `PREPROCESSING/legacy` 아래에 별도 보존한다.
+
+

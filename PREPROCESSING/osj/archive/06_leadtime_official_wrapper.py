@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = ROOT / "PREPROCESSING" / "osj"
 
 TARGETS = {
-    "promoted_official": "06_promoted_leadtime_model.py",
+    "promoted_official": "pipeline_scripts/06_leadtime_model.py",
 }
 
 
