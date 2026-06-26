@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 # 리포 루트 = agent/io/paths.py 기준 2단계 상위
@@ -45,3 +46,17 @@ def ensure_dir(path: Path) -> Path:
     """디렉토리를 보장하고 그대로 반환한다."""
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def slug(s) -> str:
+    """비영숫자 제거 슬러그(키/파일명용)."""
+    return re.sub(r"[^0-9A-Za-z]+", "", str(s))
+
+
+def make_key(manufacturer, substation_id, window_start) -> str:
+    """행 식별 키. PK(manufacturer, substation_id, window_start[, window_end])를 반영.
+
+    manufacturer를 포함해야 서로 다른 제조사가 같은 substation_id+윈도우를 가져도 충돌하지 않는다.
+    docs/send 파일명(work_order_{key}.md / email_{key}.md)과 동일하게 쓰인다.
+    """
+    return f"{slug(manufacturer)}_{int(substation_id)}_{slug(window_start)}"

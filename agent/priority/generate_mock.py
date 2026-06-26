@@ -63,11 +63,18 @@ def generate(n_rows: int = N_ROWS, seed: int = SEED) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     base = np.datetime64("2026-04-01T00:00:00")
     rows = []
+    used_keys: set[tuple] = set()
     for i in range(n_rows):
-        manufacturer = f"manufacturer_{rng.integers(1, 3)}"
-        substation_id = int(rng.integers(1, 19))
-        # 윈도우: base + (0..240) * 6h step, 6시간 폭
-        start = base + np.timedelta64(int(rng.integers(0, 240)) * 6, "h")
+        # (manufacturer, substation_id, window_start) 유니크 보장 — PK 중복 방지.
+        # window_end=start+6h 이므로 이 셋이 유니크하면 전체 PK가 유니크하다.
+        while True:
+            manufacturer = f"manufacturer_{rng.integers(1, 3)}"
+            substation_id = int(rng.integers(1, 19))
+            start = base + np.timedelta64(int(rng.integers(0, 600)) * 6, "h")
+            key = (manufacturer, substation_id, str(start))
+            if key not in used_keys:
+                used_keys.add(key)
+                break
         end = start + np.timedelta64(6, "h")
 
         is_pre_fault = rng.random() < PRE_FAULT_RATIO

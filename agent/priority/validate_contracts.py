@@ -78,7 +78,11 @@ def _check_mock_columns() -> list[str]:
     missing_feat = [c for c in contracts.PRIORITY_FEATURES if c not in df.columns]
     if missing_feat:
         return [f"[mock] priority 피처 누락: {missing_feat}"]
-    print(f"[mock]       OK  {paths.MOCK_ML_OUTPUT.name} cols={len(df.columns)} rows={len(df)}")
+    # PK(manufacturer, substation_id, window_start, window_end) 유니크 보장
+    dup = df.duplicated(subset=contracts.KEY_COLUMNS).sum()
+    if dup:
+        return [f"[mock] PK 중복 {dup}건 (키={contracts.KEY_COLUMNS}) — generate_mock 유니크 위반"]
+    print(f"[mock]       OK  {paths.MOCK_ML_OUTPUT.name} cols={len(df.columns)} rows={len(df)} (PK 유니크)")
     return []
 
 

@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import json
-import re
 from functools import lru_cache
 
 import pandas as pd
@@ -33,10 +32,6 @@ def _priority() -> pd.DataFrame:
     df["window_start"] = df["window_start"].astype(str)
     df["window_end"] = df["window_end"].astype(str)
     return df
-
-
-def _slug(s: str) -> str:
-    return re.sub(r"[^0-9A-Za-z]+", "", str(s))
 
 
 def _join_keys(df: pd.DataFrame) -> pd.DataFrame:
@@ -160,8 +155,8 @@ def draft_work_order(
         context=context_md,
     )
     paths.ensure_dir(paths.DOCS_SEND_DIR)
-    fname = f"work_order_{substation_id}_{_slug(window_start)}.md"
-    fpath = paths.DOCS_SEND_DIR / fname
+    key = paths.make_key(manufacturer, substation_id, window_start)
+    fpath = paths.DOCS_SEND_DIR / f"work_order_{key}.md"
     fpath.write_text(body, encoding="utf-8")
     return str(fpath.relative_to(paths.REPO_ROOT)).replace("\\", "/")
 
@@ -189,8 +184,8 @@ def draft_email(
         work_order_path=work_order_path,
     )
     paths.ensure_dir(paths.DOCS_SEND_DIR)
-    fname = f"email_{substation_id}_{_slug(window_start)}.md"
-    fpath = paths.DOCS_SEND_DIR / fname
+    key = paths.make_key(manufacturer, substation_id, window_start)
+    fpath = paths.DOCS_SEND_DIR / f"email_{key}.md"
     fpath.write_text(body, encoding="utf-8")
     return str(fpath.relative_to(paths.REPO_ROOT)).replace("\\", "/")
 

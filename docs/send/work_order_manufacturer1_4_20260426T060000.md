@@ -1,14 +1,14 @@
-# 점검 작업지시 초안 — Substation 18 (검토 필요, 자동발송 아님)
+# 점검 작업지시 초안 — Substation 4 (검토 필요, 자동발송 아님)
 
-- 대상: manufacturer_2 / substation 18
-- 윈도우: 2026-04-22T00:00:00 ~ 2026-04-22T06:00:00
-- 우선순위: 100.0 (urgent) · 위험등급 high · 예상 리드타임 0-24h
+- 대상: manufacturer_1 / substation 4
+- 윈도우: 2026-04-26T06:00:00 ~ 2026-04-26T12:00:00
+- 우선순위: 100.0 (urgent) · 위험등급 critical · 예상 리드타임 0-24h
 
 ## 근거 (센서/점수)
-- 주요 이상 센서: s_dhw_supply_temperature, p_net_supply_temperature, s_dhw_upper_storage_temperature
-- anomaly_score: 0.84
-- risk_probability: 0.88 (level=high)
-- 리드타임 신뢰도: 0.74 (bucket=0-24h)
+- 주요 이상 센서: s_hc1_supply_temperature, p_net_return_temperature
+- anomaly_score: 0.96
+- risk_probability: 0.95 (level=critical)
+- 리드타임 신뢰도: 0.71 (bucket=0-24h)
 
 ## 원인 후보 (확정 아님)
 - 순환펌프/열교환기 이상 가능성, 밸브 제어 이상 가능성 (현장 점검으로 확인 필요)
@@ -21,7 +21,7 @@
 
 ## 설비 컨텍스트
 - 구성: sh (DHW=0, buffer_tank=0)
-- 최근 고장 이후: 278.4일, 최근 정비 이후: 67.6일
+- 최근 고장 이후: 29.3일, 최근 정비 이후: 2.3일
 
 ## 한계
 - 단일 6시간 윈도우 추론 결과입니다. 현장 확인 전 고장으로 단정할 수 없습니다.
