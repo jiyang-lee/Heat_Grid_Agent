@@ -1,61 +1,90 @@
-# proto 한 사이클 — 단계별 보고서 (9시 이전 커밋)
+# proto 정본 보고서
 
-`proto` 브랜치에서 `데이터 → 머신러닝 → priority → LLM/tool → 서버 → 프론트` 를 실DB·실 ML output 없이 **목 데이터로 end-to-end 1바퀴** 돌린 프로토타입의 보고서다.
-**깃그래프 기준 2026-06-26 09:00 이전에 커밋된 6단계**만 다루며, **커밋(=단계) 하나당 보고서 1개**, 다이어그램은 **보고서 안에 인라인(Mermaid)** 으로 들어간다(별도 이미지 파일 없음).
+이 문서는 `proto` 브랜치의 현재 운영 프로토타입을 처음 읽는 사람과 이후 수정할 사람이 같은 그림으로 이해하도록 만든 정본 보고서다. 기준 흐름은 `raw -> preprocessing -> IF + LGBM risk + LGBM leadtime -> LGBM priority regression -> server -> frontend -> validation`이다.
 
-> 제외: `8c1b3a5` 버그픽스(09:12)와 보고서 커밋(09:53·10:03)은 9시 이후라 대상에서 뺐다.
+작성 기준 커밋은 `f4bad63`이며, 이후 보고서 재작성 커밋은 이 문서 묶음만 갱신한다. 이전 보조 보고서인 `docs/report/proto_chain`은 남겨 두지만, 현재 정본은 이 폴더다.
 
-## 전체 개요
+## 전체 시스템 지도
 
 ```mermaid
 flowchart LR
-  subgraph SRC["출처 (이전)"]
-    A1["agent1"]
-    M1["mlmodel1"]
-  end
-  A1 --> MOCK
-  M1 --> MOCK
-  MOCK["목 데이터<br/>300행"] --> PR["Priority 모델<br/>LGBM 7→0~100"] --> PS["priority_scores<br/>300행"] --> AG["LLM 에이전트<br/>상위 N"] --> DOCS["docs/send<br/>5+5 초안"]
-  PS --> API["FastAPI<br/>REST 3"]
-  DOCS --> API --> FE["React+Vite<br/>대시보드"]
+  ZIP["PreDist ZIP<br/>원천 데이터"] --> AUDIT["라벨 비율 감사<br/>6h window, efd_possible"]
+  ZIP --> RAW["fixture raw<br/>4개 CSV"]
+  AUDIT --> RAW
+  RAW --> PRE["전처리<br/>300 rows x 211 cols"]
+  PRE --> ADAPT["feature adapter"]
+  ADAPT --> IF["Isolation Forest<br/>195 features"]
+  ADAPT --> RISK["LGBM risk<br/>189 features"]
+  ADAPT --> LEAD["LGBM leadtime<br/>221 features"]
+  IF --> CHAIN["model_chain_output.csv<br/>300 rows x 25 cols"]
+  RISK --> CHAIN
+  LEAD --> CHAIN
+  CHAIN --> PRIORITY["LGBM priority regression<br/>300 rows x 9 cols"]
+  PRIORITY --> API["FastAPI<br/>read-only"]
+  CHAIN --> API
+  API --> FE["React dashboard<br/>operator view"]
+  PRIORITY --> AGENT["offline agent drafts<br/>docs/send"]
+  AGENT --> API
+  FE --> REVIEW["운영자 검토"]
 ```
 
-## 커밋 타임라인 (9시 이전 6개)
+## 먼저 읽는 순서
+
+| 순서 | 보고서 | 읽는 목적 |
+|---:|---|---|
+| 1 | [01_raw.md](01_raw.md) | 원천 ZIP과 fixture raw가 무엇인지 이해 |
+| 2 | [02_preprocessing.md](02_preprocessing.md) | raw가 6시간 supervised window로 바뀌는 방식 이해 |
+| 3 | [03_ml_prediction_model.md](03_ml_prediction_model.md) | IF, risk, leadtime 중간 예측 체인 이해 |
+| 4 | [04_priority.md](04_priority.md) | 모델 체인 출력이 우선순위 점수로 바뀌는 방식 이해 |
+| 5 | [05_server.md](05_server.md) | API가 CSV와 Markdown 산출물을 어떻게 제공하는지 이해 |
+| 6 | [06_frontend.md](06_frontend.md) | 운영자가 보는 대시보드 화면 구조 이해 |
+| 7 | [07_validation.md](07_validation.md) | 재현 명령, 테스트, 남은 한계 확인 |
+
+## 핵심 정량 요약
+
+| 영역 | 값 |
+|---|---:|
+| full PreDist supervised normal windows | 1818 |
+| full PreDist supervised pre_fault windows | 1528 |
+| full PreDist pre_fault bucket | 0-24h 217 / 1-3d 436 / 3-7d 875 |
+| fixture labels | 300 rows |
+| fixture label 분포 | normal 163 / pre_fault 137 |
+| fixture pre_fault bucket | 0-24h 19 / 1-3d 39 / 3-7d 79 |
+| raw sensor readings | 10800 rows |
+| raw fault events | 67 rows |
+| raw maintenance events | 281 rows |
+| preprocessed windows | 300 rows x 211 columns |
+| model chain output | 300 rows x 25 columns |
+| priority scores | 300 rows x 9 columns |
+| priority level | urgent 25 / high 168 / medium 103 / low 4 |
+| agent draft files | 20 files, work order 10 / email 10 |
+| tests | 8 passed |
+
+## 수정 순서 가이드
 
 ```mermaid
-gitGraph
-  commit id: "43e2772 자산이전 23:45"
-  commit id: "04b5d41 A계약 23:51"
-  commit id: "3e5092d B모델 23:54"
-  commit id: "fad501b C에이전트 23:57"
-  commit id: "2fe5d81 D서버·프론트 00:00"
-  commit id: "4143cd1 검증 00:01"
+flowchart TD
+  A["raw 또는 라벨 기준 변경"] --> B["전처리 fixture 재생성"]
+  B --> C["model_chain_output 재생성"]
+  C --> D["priority_scores 재생성"]
+  D --> E["agent drafts 재생성"]
+  E --> F["API와 dashboard 확인"]
+  F --> G["pytest와 build 실행"]
 ```
 
-## 단계별 보고서
+| 수정하려는 것 | 먼저 볼 위치 | 같이 확인할 산출물 |
+|---|---|---|
+| 원천/라벨 기준 | `agent/preprocessing/audit_predist_labels.py` | `data/processed/preprocessing_audit` |
+| fixture 생성 | `agent/preprocessing/sample_predist_zip.py` | `agent/fixtures/preprocessing/predist_sample` |
+| window 전처리 | `agent/preprocessing/build_windows.py` | `preprocessed_windows_sample.csv` |
+| 중간 예측 모델 체인 | `agent/model_chain` | `model_chain_output.csv`, `feature_adapter_report.json` |
+| priority 회귀 | `agent/priority` | `priority_scores.csv` |
+| 초안 생성 | `agent/llm` | `docs/send/work_order_*.md`, `email_*.md` |
+| API | `server/main.py` | `/priority`, `/priority/{key}`, `/agent/output/{key}` |
+| 대시보드 | `frontend/src/App.jsx`, `frontend/src/App.css` | `http://127.0.0.1:5173/` |
+| 검증 | `tests/test_model_chain_e2e.py` | `uv run pytest` |
 
-| 단계 | 커밋 | 시각 | 보고서 |
-|---|---|---|---|
-| S0 자산 이전 | `43e2772` | 06-25 23:45 | [01_asset_transfer.md](01_asset_transfer.md) |
-| A 계약 | `04b5d41` | 06-25 23:51 | [02_contract.md](02_contract.md) |
-| B 모델 | `3e5092d` | 06-25 23:54 | [03_model.md](03_model.md) |
-| C 에이전트 | `fad501b` | 06-25 23:57 | [04_agent.md](04_agent.md) |
-| D 서버/프론트 | `2fe5d81` | 06-26 00:00 | [05_serve.md](05_serve.md) |
-| V 검증 | `4143cd1` | 06-26 00:01 | [06_validate.md](06_validate.md) |
+## 운영 해석
 
-## 정량 종합
-| 항목 | 값 |
-|---|---|
-| 목 데이터 | 300행 × 25컬럼 (정상 161 / 고장전조 139) |
-| 학습 분할 | train 196 / holdout 104 (정답 R=44) |
-| 모델 | LightGBM 회귀, 7피처 → 0~100, `priority_v3_lgbm_reg` |
-| 성능(holdout) | precision@10/20/44 = 1.00, NDCG = 1.00 → rule v2 동등 이상 채택 |
-| priority_scores | 300행 (urgent 65 / high 38 / medium 36 / low 161) |
-| 에이전트 산출 | 보고서 5 + 메일 5 |
-| 서버 | REST 3 엔드포인트(읽기 전용) |
-| 검증 | JSON Schema 6 · DDL 7 · PK 유니크 · pytest 6 passed |
+이 프로토타입의 목적은 최종 정확도 주장보다 산출물 연결을 검증하는 것이다. 현재 priority 모델은 실제 중간 모델 출력으로 점수를 계산하지만, priority 회귀 모델 자체는 향후 실제 운영 라벨과 chain output으로 재학습해야 한다. 따라서 현재 보고서의 정량값은 "재현 가능한 시스템 상태"를 설명하는 값이며, 운영 성능 보증값으로 해석하면 안 된다.
 
-## 1.00 성능 해석 (중요)
-목 데이터는 고장전조일수록 위험/이상/임박 신호가 단조적으로 높게 설계돼 정상과 명확히 분리된다. 그래서 LGBM·rule 둘 다 상위권을 완벽히 맞춰 **동률(1.00)** 이 나온다. 즉 1.00은 "데이터가 쉽다"는 뜻이며, 본 사이클의 가치는 **① 끊김 없는 파이프라인 골격, ② 회귀모델이 운영 rule을 대체할 수 있는 평가 프레임, ③ 재발을 막는 검증 게이트**에 있다. 실 ML output 전환 시 1.00 미만이 정상이며 그때 LGBM이 rule을 앞서는지가 진짜 채택 근거가 된다.
-
-> 다이어그램은 GitHub에서 자동 렌더된다(Mermaid 인라인). 9시 이후 추가된 버그픽스(키 충돌·PK 유니크)는 본 보고서 범위 밖이다.
