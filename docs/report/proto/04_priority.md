@@ -26,30 +26,30 @@
 
 | 항목 | 값 |
 |---|---:|
-| priority output rows | 300 |
+| priority output rows | 3346 |
 | priority output columns | 9 |
-| score min | 10.61 |
-| score max | 31.98 |
-| score mean | 20.11 |
-| urgent | 0 |
-| high | 0 |
-| medium | 180 |
-| low | 120 |
+| score min | 0.00 |
+| score max | 100.00 |
+| score mean | 21.90 |
+| urgent | 17 |
+| high | 324 |
+| medium | 1436 |
+| low | 1569 |
 | model_version | `priority_v3_lgbm_reg` |
 | training_basis | `data/processed/ml_model_chain/model_chain_output.csv` |
-| holdout verdict | baseline 미달, 모델 보류 |
+| holdout verdict | baseline 동등 이상, 모델 채택 |
 
 | Top 5 | 대상 | 점수 | 사유 |
 |---:|---|---:|---|
-| 1 | manufacturer 2 / substation 50 / 2019-11-16 12:00 | 31.98 | risk=medium, leadtime=1-3d, anomaly=0.58 |
-| 2 | manufacturer 1 / substation 27 / 2020-01-17 18:00 | 31.98 | risk=high, leadtime=1-3d, anomaly=0.47 |
-| 3 | manufacturer 1 / substation 27 / 2020-01-16 06:00 | 31.98 | risk=high, leadtime=1-3d, anomaly=0.45 |
-| 4 | manufacturer 2 / substation 52 / 2019-02-18 06:00 | 31.98 | risk=medium, leadtime=1-3d, anomaly=0.20 |
-| 5 | manufacturer 1 / substation 15 / 2018-10-04 06:00 | 31.98 | risk=medium, leadtime=1-3d, anomaly=0.21 |
+| 1 | manufacturer 1 / substation 31 / 2020-01-13 06:00 | 100.00 | risk=high, leadtime=0-24h, anomaly=0.41 |
+| 2 | manufacturer 1 / substation 13 / 2016-07-19 18:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.47 |
+| 3 | manufacturer 1 / substation 13 / 2016-07-20 06:00 | 100.00 | risk=high, leadtime=0-24h, anomaly=0.42 |
+| 4 | manufacturer 2 / substation 19 / 2018-12-28 00:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.45 |
+| 5 | manufacturer 1 / substation 21 / 2019-01-21 00:00 | 100.00 | risk=critical, leadtime=0-24h, anomaly=0.44 |
 
 ## 정성 해석
 
-priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 현재 모델은 mock 학습을 제거하고 실제 `model_chain_output.csv`로 재학습했지만, holdout 평가에서 rule baseline보다 낮다. 따라서 구조 검증은 완료됐지만, 운영 채택 관점에서는 모델을 보류하고 재학습/튜닝이 필요하다.
+priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 300행 fixture에서는 모델이 baseline보다 낮았지만, full PreDist 3346 supervised window로 전처리와 모델 체인을 모두 통과시킨 뒤 재학습하자 holdout에서 rule baseline을 전 지표로 앞섰다.
 
 ## 다이어그램
 
@@ -60,7 +60,7 @@ flowchart LR
   LGBM --> SCORE["priority_score<br/>0 to 100"]
   SCORE --> LEVEL["priority_level<br/>urgent / high / medium / low"]
   SCORE --> REASON["priority_reason<br/>risk, leadtime, anomaly summary"]
-  LEVEL --> CSV["priority_scores.csv<br/>300 x 9"]
+  LEVEL --> CSV["priority_scores.csv<br/>3346 x 9"]
   REASON --> CSV
 ```
 
@@ -72,6 +72,6 @@ flowchart LR
 
 ## 한계
 
-- priority 모델은 실제 중간 모델 출력으로 재학습됐지만, holdout에서 baseline 미달이다.
-- 새 모델 출력은 `medium/low`에만 분포해 즉시 운영용 긴급 큐로 쓰기에는 보수적이다.
+- priority 모델은 full PreDist chain output 기준으로는 baseline 이상이지만, 아직 fixture/파일 기반 검증이다.
+- `priority_score=100` top row가 여러 개 있으므로 운영 UI에서는 동점 처리나 보조 정렬 기준을 검토할 수 있다.
 - `priority_scores.csv`는 목록용 핵심 컬럼만 갖고 있고, 상세 화면의 risk/leadtime/anomaly 근거는 서버에서 `model_chain_output.csv`와 병합한다.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from agent.model_chain.feature_adapter import build_feature_matrix
 from agent.model_chain.run_model_chain import _context_frame
 
 
@@ -78,3 +79,33 @@ def test_context_frame_keeps_rows_without_matching_labels_when_timestamps_invali
     assert out.loc[0, "label"] == ""
     assert out.loc[0, "lead_time_bucket"] == ""
     assert pd.isna(out.loc[0, "estimated_lead_time_hours"])
+
+
+def test_feature_adapter_merges_context_by_source_file_to_avoid_manufacturer_cross_join():
+    preprocessed = pd.DataFrame(
+        [
+            {
+                "substation_id": 1,
+                "window_start": "2026-06-25 00:00:00",
+                "window_end": "2026-06-25 06:00:00",
+                "source_file": "manufacturer 1/operational_data/substation_1.csv",
+            },
+            {
+                "substation_id": 1,
+                "window_start": "2026-06-25 00:00:00",
+                "window_end": "2026-06-25 06:00:00",
+                "source_file": "manufacturer 2/operational_data/substation_1.csv",
+            },
+        ]
+    )
+    context = preprocessed.copy()
+    context["risk_probability"] = [0.1, 0.9]
+
+    matrix = build_feature_matrix(
+        preprocessed,
+        ["risk_probability"],
+        extra_columns=context,
+    )
+
+    assert len(matrix.frame) == 2
+    assert matrix.frame["risk_probability"].tolist() == [0.1, 0.9]

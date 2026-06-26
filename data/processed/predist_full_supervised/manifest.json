@@ -1,0 +1,63 @@
+{
+  "source_zip": "C:\\Users\\Admin\\Downloads\\predist_dataset.zip",
+  "audit": {
+    "source": "full_predist_zip",
+    "window_size": "6h",
+    "horizon_hours": 168,
+    "event_counts": {
+      "fault_events": 73,
+      "efd_possible_fault_events": 55,
+      "normal_events": 65
+    },
+    "window_counts": {
+      "normal": 1818,
+      "pre_fault": 1528,
+      "normal_pre_fault_total": 3346,
+      "normal_fault_overlap": 0
+    },
+    "ratios": {
+      "normal": 0.543335325762104,
+      "pre_fault": 0.456664674237896
+    },
+    "lead_bucket_counts": {
+      "0-24h": 217,
+      "1-3d": 436,
+      "3-7d": 875
+    },
+    "lead_bucket_ratios": {
+      "0-24h": 0.14201570680628273,
+      "1-3d": 0.28534031413612565,
+      "3-7d": 0.5726439790575916
+    },
+    "operational_files_read": 59,
+    "notes": [
+      "This audit counts supervised candidate windows, not all raw operational rows.",
+      "pre_fault windows use efd_possible=True fault events and a 7 day lookback horizon.",
+      "normal windows come from normal_events.csv ranges and exclude no additional unlabeled raw windows."
+    ]
+  },
+  "raw_rows_read": {
+    "substations": 59,
+    "sensor_readings": 120377,
+    "fault_events": 69,
+    "maintenance_events": 287
+  },
+  "labels": {
+    "rows": 3346,
+    "counts": {
+      "normal": 1818,
+      "pre_fault": 1528
+    },
+    "lead_bucket_counts": {
+      "3-7d": 875,
+      "1-3d": 436,
+      "0-24h": 217
+    }
+  },
+  "preprocessed": {
+    "rows": 3346,
+    "columns": 211,
+    "path": "data/processed/predist_full_supervised/preprocessed_windows.csv"
+  },
+  "labels_path": "data/processed/predist_full_supervised/supervised_window_labels.csv"
+}

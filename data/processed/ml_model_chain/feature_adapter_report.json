@@ -1,6 +1,6 @@
 {
-  "input_rows": 300,
-  "output_rows": 300,
+  "input_rows": 3346,
+  "output_rows": 3346,
   "anomaly": {
     "requested_features": 195,
     "exact_or_alias_matches": 142,

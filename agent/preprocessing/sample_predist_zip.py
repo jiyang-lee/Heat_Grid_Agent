@@ -454,7 +454,7 @@ def _sample_candidates_by_audit_ratio(
         return candidates
 
     candidates = candidates.drop_duplicates(
-        subset=["substation_id", "window_start"],
+        subset=["manufacturer", "substation_id", "window_start"],
         keep="first",
     ).reset_index(drop=True)
 

@@ -17,91 +17,91 @@
     "0-24h": 100
   },
   "training_basis": "data/processed/ml_model_chain/model_chain_output.csv",
-  "n_train": 228,
-  "n_holdout": 72,
+  "n_train": 2509,
+  "n_holdout": 837,
   "target_distribution": {
     "train": {
-      "0": 139,
-      "33": 50,
-      "66": 30,
-      "100": 9
+      "0": 1509,
+      "33": 575,
+      "66": 284,
+      "100": 141
     },
     "holdout": {
-      "0": 24,
-      "33": 29,
-      "66": 9,
-      "100": 10
+      "0": 309,
+      "33": 300,
+      "66": 152,
+      "100": 76
     }
   },
-  "best_iteration": 15,
+  "best_iteration": 384,
   "feature_importance": [
     {
-      "feature": "leadtime_prob_3-7d",
-      "importance": 14
-    },
-    {
       "feature": "risk_probability",
-      "importance": 12
-    },
-    {
-      "feature": "predicted_lead_time_confidence",
-      "importance": 7
-    },
-    {
-      "feature": "leadtime_prob_0-24h",
-      "importance": 6
-    },
-    {
-      "feature": "leadtime_prob_1-3d",
-      "importance": 6
+      "importance": 506
     },
     {
       "feature": "anomaly_score",
-      "importance": 3
+      "importance": 505
+    },
+    {
+      "feature": "leadtime_prob_3-7d",
+      "importance": 320
+    },
+    {
+      "feature": "leadtime_prob_0-24h",
+      "importance": 293
+    },
+    {
+      "feature": "predicted_lead_time_confidence",
+      "importance": 255
+    },
+    {
+      "feature": "leadtime_prob_1-3d",
+      "importance": 174
     },
     {
       "feature": "risk_score",
-      "importance": 2
+      "importance": 77
     }
   ],
   "metrics": {
     "model": {
       "k=10": {
-        "precision": 0.5,
-        "recall": 0.1042,
-        "ndcg": 0.1975
+        "precision": 1.0,
+        "recall": 0.0189,
+        "ndcg": 0.7131
       },
       "k=20": {
-        "precision": 0.55,
-        "recall": 0.2292,
-        "ndcg": 0.3098
+        "precision": 1.0,
+        "recall": 0.0379,
+        "ndcg": 0.6846
       },
-      "k=48": {
-        "precision": 0.5417,
-        "recall": 0.5417,
-        "ndcg": 0.4433
+      "k=528": {
+        "precision": 0.7879,
+        "recall": 0.7879,
+        "ndcg": 0.7553
       },
-      "R": 48
+      "R": 528
     },
     "rule_baseline": {
       "k=10": {
-        "precision": 0.6,
-        "recall": 0.125,
-        "ndcg": 0.3807
+        "precision": 0.5,
+        "recall": 0.0095,
+        "ndcg": 0.3755
       },
       "k=20": {
-        "precision": 0.65,
-        "recall": 0.2708,
-        "ndcg": 0.4393
+        "precision": 0.75,
+        "recall": 0.0284,
+        "ndcg": 0.4475
       },
-      "k=48": {
-        "precision": 0.7083,
-        "recall": 0.7083,
-        "ndcg": 0.5951
+      "k=528": {
+        "precision": 0.7102,
+        "recall": 0.7102,
+        "ndcg": 0.6631
       },
-      "R": 48
+      "R": 528
     },
-    "verdict": "priority 모델 보류 (wins=0, ties=0, losses=9; baseline 미달)"
+    "verdict": "priority 모델 채택 (wins=9, ties=0, losses=0; baseline 동등 이상)"
   },
-  "created_at": "2026-06-26T04:19:32.462665+00:00"
+  "created_at": "2026-06-26T04:35:23.701926+00:00"
 }

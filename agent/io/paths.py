@@ -38,6 +38,12 @@ PREDIST_LABEL_AUDIT_JSON = PREDIST_LABEL_AUDIT_DIR / "label_distribution.json"
 PREDIST_LABEL_AUDIT_CSV = PREDIST_LABEL_AUDIT_DIR / "label_distribution.csv"
 PREDIST_LABEL_AUDIT_MD = PREDIST_LABEL_AUDIT_DIR / "label_distribution.md"
 
+# --- Full PreDist supervised 전처리 산출물 ---
+PREDIST_FULL_SUPERVISED_DIR = PROCESSED_DIR / "predist_full_supervised"
+PREDIST_FULL_PREPROCESSED_CSV = PREDIST_FULL_SUPERVISED_DIR / "preprocessed_windows.csv"
+PREDIST_FULL_LABELS_CSV = PREDIST_FULL_SUPERVISED_DIR / "supervised_window_labels.csv"
+PREDIST_FULL_MANIFEST_JSON = PREDIST_FULL_SUPERVISED_DIR / "manifest.json"
+
 # --- priority 모델 아티팩트 ---
 MODELS_DIR = REPO_ROOT / "agent" / "priority" / "models"
 PRIORITY_MODEL_PATH = MODELS_DIR / "lightgbm_priority_model.joblib"

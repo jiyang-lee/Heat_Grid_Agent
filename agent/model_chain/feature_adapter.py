@@ -82,6 +82,10 @@ def build_feature_matrix(
 
 def _merge_extra_columns(source: pd.DataFrame, extra: pd.DataFrame) -> pd.DataFrame:
     keys = ["substation_id", "window_start", "window_end"]
+    if "source_file" in source.columns and "source_file" in extra.columns:
+        keys.insert(0, "source_file")
+    elif "manufacturer" in source.columns and "manufacturer" in extra.columns:
+        keys.insert(0, "manufacturer")
     available = [key for key in keys if key in source.columns and key in extra.columns]
     if len(available) != len(keys):
         return source

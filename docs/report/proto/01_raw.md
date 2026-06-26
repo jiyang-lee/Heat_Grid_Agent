@@ -11,7 +11,7 @@ Raw 단계는 PreDist ZIP에서 운영자가 신뢰할 수 있는 supervised 후
 | 원천 ZIP | `C:\Users\Admin\Downloads\predist_dataset.zip` | full PreDist 원천 |
 | 감사 기준 | 6시간 window, `efd_possible=True`, 7일 lead horizon | supervised normal/pre_fault 후보 산출 |
 | fixture raw | `agent/fixtures/preprocessing/predist_sample/raw` | 원천 ZIP 없이 전처리 재현 가능한 4개 CSV |
-| 라벨 파일 | `agent/fixtures/preprocessing/predist_sample/output/supervised_window_labels.csv` | fixture supervised label 300행 |
+| 라벨 파일 | `data/processed/predist_full_supervised/supervised_window_labels.csv` | full supervised label 3346행 |
 
 ## 구현 위치
 
@@ -33,11 +33,11 @@ Raw 단계는 PreDist ZIP에서 운영자가 신뢰할 수 있는 supervised 후
 | full pre_fault 0-24h | 217 |
 | full pre_fault 1-3d | 436 |
 | full pre_fault 3-7d | 875 |
-| fixture substations | 56 |
-| fixture sensor_readings | 10800 |
-| fixture fault_events | 67 |
-| fixture maintenance_events | 281 |
-| fixture labels | 300 |
+| full raw substations read | 59 |
+| full raw sensor_readings read | 120377 |
+| full raw fault_events read | 69 |
+| full raw maintenance_events read | 287 |
+| full supervised labels | 3346 |
 
 ## 정성 해석
 
@@ -52,14 +52,14 @@ flowchart TD
   F1 --> AUDIT["supervised label audit"]
   F2 --> AUDIT
   AUDIT --> RATIO["normal 1818<br/>pre_fault 1528<br/>bucket 217 / 436 / 875"]
-  RATIO --> SAMPLE["ratio matched sampler"]
+  RATIO --> SAMPLE["full supervised window builder"]
   F1 --> SAMPLE
   F2 --> SAMPLE
-  SAMPLE --> RAW1["substations.csv<br/>56 rows"]
-  SAMPLE --> RAW2["sensor_readings.csv<br/>10800 rows"]
-  SAMPLE --> RAW3["fault_events.csv<br/>67 rows"]
-  SAMPLE --> RAW4["maintenance_events.csv<br/>281 rows"]
-  SAMPLE --> LABEL["supervised_window_labels.csv<br/>300 rows"]
+  SAMPLE --> RAW1["substations<br/>59 rows read"]
+  SAMPLE --> RAW2["sensor_readings<br/>120377 rows read"]
+  SAMPLE --> RAW3["fault_events<br/>69 rows read"]
+  SAMPLE --> RAW4["maintenance_events<br/>287 rows read"]
+  SAMPLE --> LABEL["supervised_window_labels.csv<br/>3346 rows"]
 ```
 
 ## 수정 가이드
@@ -71,5 +71,5 @@ Raw 파일 컬럼을 바꾸면 전처리 계약도 같이 바뀐다. 이때는 `
 ## 한계
 
 - supervised 비율은 전체 raw row 비율이 아니라 label 후보 window 비율이다.
-- fixture는 full ZIP 전체를 복제하지 않고 300개 supervised window를 재현 가능하게 샘플링한 것이다.
+- 정본 priority 학습은 더 이상 300개 fixture가 아니라 full supervised 3346 window를 사용한다.
 - `configuration_types.csv`가 없어 fixture에서는 `configuration_type="missing"` fallback을 사용한다.

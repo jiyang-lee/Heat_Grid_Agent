@@ -32,9 +32,9 @@
 | `/priority` 기본 limit | 50 |
 | priority source columns | 9 |
 | ML context 병합 후보 columns | 12 |
-| docs/send Markdown files | 20 |
-| work_order files | 10 |
-| email files | 10 |
+| docs/send Markdown files | 40 |
+| work_order files | 20 |
+| email files | 20 |
 
 ## 정성 해석
 

@@ -12,8 +12,8 @@
 | raw sensor_readings | `agent/fixtures/preprocessing/predist_sample/raw/sensor_readings.csv` | 시계열 센서 원천 |
 | raw fault_events | `agent/fixtures/preprocessing/predist_sample/raw/fault_events.csv` | 고장 이벤트 |
 | raw maintenance_events | `agent/fixtures/preprocessing/predist_sample/raw/maintenance_events.csv` | 정비/이상 이벤트 |
-| labels | `output/supervised_window_labels.csv` | supervised label |
-| output | `output/preprocessed_windows_sample.csv` | 6시간 window feature |
+| labels | `data/processed/predist_full_supervised/supervised_window_labels.csv` | full supervised label |
+| output | `data/processed/predist_full_supervised/preprocessed_windows.csv` | 6시간 window feature |
 
 ## 구현 위치
 
@@ -28,13 +28,13 @@
 
 | 항목 | 값 |
 |---|---:|
-| supervised labels | 300 rows |
-| label normal | 163 |
-| label pre_fault | 137 |
-| pre_fault 0-24h | 19 |
-| pre_fault 1-3d | 39 |
-| pre_fault 3-7d | 79 |
-| preprocessed output | 300 rows x 211 columns |
+| supervised labels | 3346 rows |
+| label normal | 1818 |
+| label pre_fault | 1528 |
+| pre_fault 0-24h | 217 |
+| pre_fault 1-3d | 436 |
+| pre_fault 3-7d | 875 |
+| preprocessed output | 3346 rows x 211 columns |
 | preprocessing version | `preprocessed_data_v1` |
 | window size | 6 hours |
 
@@ -53,7 +53,7 @@ flowchart LR
   WIN --> JOIN
   JOIN --> EVENT
   EVENT --> LABEL
-  LABEL --> OUT["preprocessed_windows_sample.csv<br/>300 x 211"]
+  LABEL --> OUT["preprocessed_windows.csv<br/>3346 x 211"]
 ```
 
 ## 수정 가이드

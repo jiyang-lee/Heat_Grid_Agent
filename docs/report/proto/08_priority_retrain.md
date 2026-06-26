@@ -2,7 +2,7 @@
 
 ## 목적
 
-기존 priority 회귀모델은 실제 추론 입력은 `model_chain_output.csv`를 쓰면서도 학습 metadata는 `data/mock/mock_ml_output.csv`를 가리키고 있었다. 이 보고서는 mock 학습 흔적을 제거하고, 실제 `raw -> preprocessing -> IF/risk/leadtime` 체인 출력으로 priority 회귀모델을 다시 학습한 결과를 기록한다.
+기존 priority 회귀모델은 실제 추론 입력은 `model_chain_output.csv`를 쓰면서도 학습 metadata는 `data/mock/mock_ml_output.csv`를 가리키고 있었다. 이 보고서는 mock 학습 흔적을 제거하고, full PreDist supervised 3346 window를 `raw -> preprocessing -> IF/risk/leadtime` 체인까지 통과시킨 출력으로 priority 회귀모델을 다시 학습한 결과를 기록한다.
 
 ## 무엇을 변경했는가
 
@@ -18,81 +18,80 @@
 
 | 항목 | 값 |
 |---|---:|
-| 전체 row | 300 |
-| train row | 228 |
-| holdout row | 72 |
-| train target 0 | 139 |
-| train target 33 | 50 |
-| train target 66 | 30 |
-| train target 100 | 9 |
-| holdout target 0 | 24 |
-| holdout target 33 | 29 |
-| holdout target 66 | 9 |
-| holdout target 100 | 10 |
-| best iteration | 15 |
+| 전체 row | 3346 |
+| train row | 2509 |
+| holdout row | 837 |
+| train target 0 | 1509 |
+| train target 33 | 575 |
+| train target 66 | 284 |
+| train target 100 | 141 |
+| holdout target 0 | 309 |
+| holdout target 33 | 300 |
+| holdout target 66 | 152 |
+| holdout target 100 | 76 |
+| best iteration | 384 |
 
 ## Feature Importance
 
 | 순위 | feature | importance |
 |---:|---|---:|
-| 1 | `leadtime_prob_3-7d` | 14 |
-| 2 | `risk_probability` | 12 |
-| 3 | `predicted_lead_time_confidence` | 7 |
-| 4 | `leadtime_prob_0-24h` | 6 |
-| 5 | `leadtime_prob_1-3d` | 6 |
-| 6 | `anomaly_score` | 3 |
-| 7 | `risk_score` | 2 |
+| 1 | `risk_probability` | 506 |
+| 2 | `anomaly_score` | 505 |
+| 3 | `leadtime_prob_3-7d` | 320 |
+| 4 | `leadtime_prob_0-24h` | 293 |
+| 5 | `predicted_lead_time_confidence` | 255 |
+| 6 | `leadtime_prob_1-3d` | 174 |
+| 7 | `risk_score` | 77 |
 
 ## Holdout 평가
 
 ```mermaid
 flowchart LR
-  CHAIN["model_chain_output.csv<br/>300 rows"] --> TARGET["target<br/>normal=0<br/>3-7d=33<br/>1-3d=66<br/>0-24h=100"]
-  TARGET --> SPLIT["substation_id % 3 split<br/>train 228 / holdout 72"]
-  SPLIT --> LGBM["LGBMRegressor<br/>best_iter 15"]
+  CHAIN["model_chain_output.csv<br/>3346 rows"] --> TARGET["target<br/>normal=0<br/>3-7d=33<br/>1-3d=66<br/>0-24h=100"]
+  TARGET --> SPLIT["substation_id % 3 split<br/>train 2509 / holdout 837"]
+  SPLIT --> LGBM["LGBMRegressor<br/>best_iter 384"]
   SPLIT --> RULE["rule baseline"]
   LGBM --> EVAL["holdout ranking metrics"]
   RULE --> EVAL
-  EVAL --> VERDICT["baseline 미달<br/>모델 보류"]
+  EVAL --> VERDICT["baseline 동등 이상<br/>모델 채택"]
 ```
 
 | metric | priority model | rule baseline |
 |---|---:|---:|
-| precision@10 | 0.5000 | 0.6000 |
-| recall@10 | 0.1042 | 0.1250 |
-| ndcg@10 | 0.1975 | 0.3807 |
-| precision@20 | 0.5500 | 0.6500 |
-| recall@20 | 0.2292 | 0.2708 |
-| ndcg@20 | 0.3098 | 0.4393 |
-| precision@48 | 0.5417 | 0.7083 |
-| recall@48 | 0.5417 | 0.7083 |
-| ndcg@48 | 0.4433 | 0.5951 |
+| precision@10 | 1.0000 | 0.5000 |
+| recall@10 | 0.0189 | 0.0095 |
+| ndcg@10 | 0.7131 | 0.3755 |
+| precision@20 | 1.0000 | 0.7500 |
+| recall@20 | 0.0379 | 0.0284 |
+| ndcg@20 | 0.6846 | 0.4475 |
+| precision@528 | 0.7879 | 0.7102 |
+| recall@528 | 0.7879 | 0.7102 |
+| ndcg@528 | 0.7553 | 0.6631 |
 
-판정은 `priority 모델 보류 (wins=0, ties=0, losses=9; baseline 미달)`이다.
+판정은 `priority 모델 채택 (wins=9, ties=0, losses=0; baseline 동등 이상)`이다.
 
 ## 새 Priority 출력
 
 | 항목 | 값 |
 |---|---:|
-| output rows | 300 |
+| output rows | 3346 |
 | output columns | 9 |
-| score min | 10.61 |
-| score max | 31.98 |
-| score mean | 20.11 |
-| medium | 180 |
-| low | 120 |
-| urgent/high | 0 |
+| score min | 0.00 |
+| score max | 100.00 |
+| score mean | 21.90 |
+| urgent | 17 |
+| high | 324 |
+| medium | 1436 |
+| low | 1569 |
 
-새 top 5 기준 `docs/send` 초안도 offline mode로 재생성했다. 현재 `docs/send`는 work order 15개, email 15개, 총 30개다.
+새 top 5 기준 `docs/send` 초안도 offline mode로 재생성했다. 현재 `docs/send`는 work order 20개, email 20개, 총 40개다.
 
 ## 해석
 
-mock 제거는 완료됐다. 그러나 실제 chain output으로 학습한 LGBM 회귀모델은 현재 baseline보다 낮고, 점수도 10.61~31.98 범위에 몰려 있다. 따라서 이 모델을 운영 priority 엔진으로 채택하기보다는, 다음 단계에서 target 설계와 feature 품질을 재검토해야 한다.
+mock 제거는 완료됐고, full PreDist chain output 기준 LGBM 회귀모델은 rule baseline을 전 지표에서 앞섰다. 300행 fixture에서는 학습 데이터가 부족해 실패했지만, 3346개 supervised window에서는 성능 좋은 priority 회귀모델로 구성된다.
 
 ## 다음 수정 가이드
 
-- priority 모델을 바로 운영 채택하지 말고 rule baseline 또는 hybrid 기준을 검토한다.
-- `0-24h` target이 train 9건으로 적어 임박 고장 학습이 약하다. rare bucket 보강 또는 stratified split 재설계가 필요하다.
-- feature importance가 `leadtime_prob_3-7d`에 치우쳤으므로, leadtime 모델 calibration과 target alignment를 같이 확인해야 한다.
-- 튜닝 후에는 이 보고서의 feature importance, holdout metric, priority level 분포를 다시 갱신한다.
-
+- 다음 단계에서는 fault event 단위 group split으로 leakage 위험을 더 줄인다.
+- `priority_score=100` 동점이 여러 개이므로 동점 보조 정렬 기준을 검토한다.
+- 운영 DB 전환 전에는 full ZIP이 아닌 지속 가능한 raw 저장소 기준으로 같은 재학습을 반복 검증한다.

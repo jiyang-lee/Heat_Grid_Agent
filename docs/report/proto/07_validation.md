@@ -22,16 +22,16 @@
 |---|---:|
 | pytest | 11 passed |
 | frontend build | passed |
-| preprocessing fixture | 300 rows x 211 columns |
-| model chain output | 300 rows x 25 columns |
-| priority output | 300 rows x 9 columns |
-| E2E row 보존 | 300 -> 300 -> 300 |
+| full supervised preprocessing | 3346 rows x 211 columns |
+| model chain output | 3346 rows x 25 columns |
+| priority output | 3346 rows x 9 columns |
+| E2E row 보존 | 3346 -> 3346 -> 3346 |
 | IF feature count | 195 |
 | risk feature count | 189 |
 | leadtime feature count | 221 |
-| priority level set | medium, low |
+| priority level set | urgent, high, medium, low |
 | priority training basis | `model_chain_output.csv` |
-| priority holdout verdict | baseline 미달, 모델 보류 |
+| priority holdout verdict | baseline 동등 이상, 모델 채택 |
 
 ## 정성 해석
 
@@ -41,9 +41,9 @@
 
 ```mermaid
 flowchart LR
-  RAW["raw fixture CSV"] --> PRE["preprocessed_windows_sample.csv<br/>300 x 211"]
-  PRE --> CHAIN["model_chain_output.csv<br/>300 x 25"]
-  CHAIN --> PRIORITY["priority_scores.csv<br/>300 x 9"]
+  RAW["full PreDist ZIP"] --> PRE["preprocessed_windows.csv<br/>3346 x 211"]
+  PRE --> CHAIN["model_chain_output.csv<br/>3346 x 25"]
+  CHAIN --> PRIORITY["priority_scores.csv<br/>3346 x 9"]
   PRIORITY --> API["/priority"]
   CHAIN --> API
   PRIORITY --> AGENT["docs/send drafts"]
