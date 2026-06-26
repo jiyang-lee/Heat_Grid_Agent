@@ -26,6 +26,12 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PRIORITY_DIR = PROCESSED_DIR / "ml_priority"
 PRIORITY_SCORES_CSV = PRIORITY_DIR / "priority_scores.csv"
 
+# --- PreDist 감사 산출물 ---
+PREDIST_LABEL_AUDIT_DIR = PROCESSED_DIR / "predist_label_audit"
+PREDIST_LABEL_AUDIT_JSON = PREDIST_LABEL_AUDIT_DIR / "label_distribution.json"
+PREDIST_LABEL_AUDIT_CSV = PREDIST_LABEL_AUDIT_DIR / "label_distribution.csv"
+PREDIST_LABEL_AUDIT_MD = PREDIST_LABEL_AUDIT_DIR / "label_distribution.md"
+
 # --- priority 모델 아티팩트 ---
 MODELS_DIR = REPO_ROOT / "agent" / "priority" / "models"
 PRIORITY_MODEL_PATH = MODELS_DIR / "lightgbm_priority_model.joblib"
