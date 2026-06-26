@@ -140,3 +140,35 @@ data/processed/ml_decision/runs/run_YYYYMMDD_HHMMSS/
 - 05 Isolation Forest 성능 개선으로 돌아간다. 현재 08 구조가 `anomaly_score`를 그대로 보존하므로, 05의 feature subset을 개선하면 06/07/08 체인에 더 좋은 이상 신호를 다시 주입할 수 있다.
 
 추천 순서는 먼저 08을 한 번 실행해 end-to-end 산출물 구조를 확인한 뒤, 05 Isolation Forest feature ablation으로 돌아가 성능을 개선하는 것이다.
+
+## 8. 최신 실행 결과
+
+최신 08 실행 기준 run id는 `run_20260626_180404`이며, 06의 `run_20260626_155956` 산출물과 07의 `run_20260626_172308` 근거 테이블을 입력으로 사용했다.
+
+이번 실행에서 저장된 row 수는 다음과 같다.
+
+```text
+decision_features.csv: 3270
+priority_input_table.csv: 3270
+agent_summary_export.csv: 69
+agent_detail_export.csv: 3270
+```
+
+즉 전체 window 3270건에 대해 priority 입력 후보 신호를 만들었고, 설비별 최신 window만 따로 추린 요약 export는 69건이 생성되었다.
+
+상태 후보 분포는 다음과 같다.
+
+```text
+관찰: 1542
+주의: 765
+경고: 697
+긴급: 266
+```
+
+이 분포는 현재 규칙 기반 `priority_input_score`와 `status_candidate`가 지나치게 한쪽으로 몰리지 않고, 관찰/주의/경고/긴급 4단계를 모두 실제 데이터에 배치할 수 있음을 보여준다. 다만 이 값은 최종 운영 판단이 아니라 후속 Priority Engine 입력 후보라는 점을 유지해야 한다.
+
+설비별 최신 요약 export 상위권에서는 `risk_probability`가 매우 높고 `lead_time_bucket=short_0_24h`인 window들이 `긴급`으로 배치되었다. 예를 들어 manufacturer 2의 일부 설비와 manufacturer 1의 substation 12는 `priority_input_score`가 약 0.99 수준으로 정렬 상위에 위치했다.
+
+동시에 `overestimated_risk_group_flag`가 켜진 row 수가 3182건으로 많게 나타났는데, 이는 07에서 확인한 과대위험 가능 group 조건이 넓게 매칭되기 때문이다. 따라서 08 산출물은 바로 알림 발송에 사용하기보다, 다음 단계에서 우선순위 회귀 모델 또는 rule-based scoring이 이 진단 flag를 함께 참고해 risk 입력값을 보수적으로 재해석하도록 설계하는 편이 적절하다.
+
+이번 실행으로 08의 목적이었던 end-to-end export 구조는 정상적으로 확인되었다. 즉 05의 `anomaly_score`, 06의 `risk_probability`/리드타임 3중분류, 07의 근거 설명이 하나의 decision feature 테이블과 Agent용 JSON/CSV 묶음으로 연결되는 흐름은 확보되었다고 볼 수 있다.
