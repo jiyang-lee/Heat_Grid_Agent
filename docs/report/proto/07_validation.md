@@ -20,7 +20,7 @@
 
 | 항목 | 결과 |
 |---|---:|
-| pytest | 8 passed |
+| pytest | 11 passed |
 | frontend build | passed |
 | preprocessing fixture | 300 rows x 211 columns |
 | model chain output | 300 rows x 25 columns |
@@ -74,3 +74,42 @@ flowchart TD
 - priority 회귀 모델은 운영 라벨과 최신 chain output으로 재학습하는 후속 작업이 필요하다.
 - 서버는 CSV 파일을 직접 읽는 구조라 운영 환경에서는 DB, 캐시, 권한, 감사 로그 설계가 추가되어야 한다.
 - dashboard는 검토용이며 자동 발송, 승인 workflow, 담당자 배정 기능은 아직 없다.
+
+## 최근 proto 안정성 보강(2026-06-26) 요약
+
+### 무엇을 변경했는가
+
+- `agent/preprocessing/sample_predist_zip.py`
+  - `faults.csv`의 `efd_possible` 값을 문자열/숫자 혼재 타입에서 일관된 bool-like 값으로 정규화
+- `agent/model_chain/run_model_chain.py`
+  - `manufacturer` 추출을 고정 패턴(`manufacturer [12]`)에서 정규화 기반으로 완화
+  - `window_start/window_end` 조인 키를 `int64` 강제 캐스팅에서 datetime 기반 비교로 전환
+  - 라벨 병합 키를 라벨 스키마 유무에 따라 동적으로 구성
+- `agent/priority/run_priority.py`
+  - priority 스키마 검증 범위를 `head(25)`에서 전체 출력으로 확대
+- 테스트 추가
+  - `tests/test_preprocessing_predist_zip_sample.py`
+    - `efd_possible` 파싱 변형 값 테스트
+  - `tests/test_model_chain_context.py` 신규
+    - 제조사 정규화/타임스탬프 형식 편차 시 라벨 병합 동작 검증
+
+### 왜 변경했는가
+
+- 운영 입력은 `efd_possible`, 제조사 표기, 타임스탬프 포맷이 고정되지 않는 특성이 있어
+  기존 하드코딩 로직은 조인 실패·오분류·샘플러 중단을 유발할 수 있음.
+- 기존 `run_priority`의 부분 스키마 검증은 일부 행의 결함을 놓치게 되어 운영 산출물 신뢰도가 떨어질 수 있어 전체 행 검증으로 교체.
+
+### 변경 전/후 정량 비교
+
+| 항목 | 변경 전 | 변경 후 |
+|---|---:|---:|
+| pytest 통과 수 | 8 | 11 |
+| efd_possible 기반 `ratio-matched` 샘플 후보 필터 | 문자열값 변형 미정규화 | 문자열/숫자 혼재 안전 정규화 |
+| 제조사 추출 | `manufacturer [12]` 고정 정규식 | `manufacturer` 접두 + 숫자 추출 일반화 |
+| 라벨 조인 키 | `to_datetime(...).astype("int64")` (파싱 실패 시 충돌 가능) | `datetime` 직접 결합, 유효성 기반 병합 |
+| priority 스키마 검증 범위 | 샘플 25행 | 전체 출력 행 |
+
+### 남은 위험/한계
+
+- 현재도 전체 검증은 fixture 중심이며, 운영 데이터의 제조사/스키마 변경이 추가되면 별도 호환 테스트가 필요함.
+- 본 수정은 조인/파싱/검증 강건성 강화가 주 목적이라, 모델 성능 자체의 수치(예: 재현율/정확도)에는 변경 없음.

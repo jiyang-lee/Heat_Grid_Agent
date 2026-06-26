@@ -58,7 +58,7 @@ flowchart LR
 | priority scores | 300 rows x 9 columns |
 | priority level | urgent 25 / high 168 / medium 103 / low 4 |
 | agent draft files | 20 files, work order 10 / email 10 |
-| tests | 8 passed |
+| tests | 11 passed |
 
 ## 수정 순서 가이드
 

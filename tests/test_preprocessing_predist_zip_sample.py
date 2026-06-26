@@ -7,6 +7,7 @@ import pytest
 from agent.preprocessing import build_preprocessed_windows
 from agent.preprocessing.contracts import PREPROCESSING_VERSION
 from agent.preprocessing.sample_predist_zip import build_predist_sample, run_predist_sample
+from agent.preprocessing import sample_predist_zip as sample_module
 
 ZIP_PATH = Path("C:/Users/Admin/Downloads/predist_dataset.zip")
 FIXTURE_DIR = Path("agent/fixtures/preprocessing/predist_sample")
@@ -81,3 +82,9 @@ def test_predist_raw_fixture_rebuilds_preprocessed_windows():
     assert list(result.columns) == list(expected.columns)
     assert set(result["preprocessing_version"]) == {PREPROCESSING_VERSION}
     assert set(result["configuration_type"]) == {"missing"}
+
+
+def test_coerce_bool_like_parses_variant_efd_values():
+    values = pd.Series(["TRUE", "true", "1", "0", "yes", "N", "", None, 1, 0, 2, "False"])
+    parsed = sample_module._coerce_bool_like(values)
+    assert parsed.tolist() == [True, True, True, False, True, False, False, False, True, False, False, False]

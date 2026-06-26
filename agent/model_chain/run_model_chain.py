@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import joblib
@@ -134,9 +135,11 @@ def _context_frame(preprocessed: pd.DataFrame, labels: pd.DataFrame) -> pd.DataF
     context = preprocessed[["substation_id", "window_start", "window_end"]].copy()
     if "source_file" in preprocessed.columns:
         context["source_file"] = preprocessed["source_file"].astype(str)
-        context["manufacturer"] = context["source_file"].str.extract(r"(manufacturer [12])", expand=False).fillna("unknown")
+        context["manufacturer"] = context["source_file"].map(_normalize_manufacturer)
     else:
         context["manufacturer"] = "unknown"
+    if "manufacturer" in preprocessed.columns:
+        context["manufacturer"] = preprocessed["manufacturer"].map(_normalize_manufacturer)
 
     for column in [
         "days_since_last_fault_event",
@@ -149,11 +152,12 @@ def _context_frame(preprocessed: pd.DataFrame, labels: pd.DataFrame) -> pd.DataF
         context[column] = preprocessed[column] if column in preprocessed.columns else np.nan
 
     if not labels.empty:
-        context["_window_start_key"] = pd.to_datetime(context["window_start"], errors="coerce", utc=True).astype("int64")
-        context["_window_end_key"] = pd.to_datetime(context["window_end"], errors="coerce", utc=True).astype("int64")
+        context["_window_start_key"] = _parse_window_ts(context["window_start"])
+        context["_window_end_key"] = _parse_window_ts(context["window_end"])
         labels = labels.copy()
-        labels["_window_start_key"] = pd.to_datetime(labels["window_start"], errors="coerce", utc=True).astype("int64")
-        labels["_window_end_key"] = pd.to_datetime(labels["window_end"], errors="coerce", utc=True).astype("int64")
+        labels["_window_start_key"] = _parse_window_ts(labels["window_start"])
+        labels["_window_end_key"] = _parse_window_ts(labels["window_end"])
+        labels["manufacturer"] = labels["manufacturer"].map(_normalize_manufacturer)
         label_columns = [
             "manufacturer",
             "substation_id",
@@ -165,9 +169,16 @@ def _context_frame(preprocessed: pd.DataFrame, labels: pd.DataFrame) -> pd.DataF
             "fault_event_id",
         ]
         available = [column for column in label_columns if column in labels.columns]
+        merge_keys = [
+            "substation_id",
+            "_window_start_key",
+            "_window_end_key",
+        ]
+        if "manufacturer" in available:
+            merge_keys.insert(1, "manufacturer")
         context = context.merge(
             labels[available],
-            on=["manufacturer", "substation_id", "_window_start_key", "_window_end_key"],
+            on=merge_keys,
             how="left",
         )
         context = context.drop(columns=["_window_start_key", "_window_end_key"])
@@ -178,6 +189,20 @@ def _context_frame(preprocessed: pd.DataFrame, labels: pd.DataFrame) -> pd.DataF
     if "estimated_lead_time_hours" not in context.columns:
         context["estimated_lead_time_hours"] = np.nan
     return context
+
+
+def _normalize_manufacturer(value: object) -> str:
+    if pd.isna(value):
+        return "unknown"
+    text = str(value).strip().lower()
+    match = re.search(r"manufacturer[ _-]*([0-9]+)", text, re.IGNORECASE)
+    if match:
+        return f"manufacturer {int(match.group(1))}"
+    return "unknown" if not text else text.replace("_", " ")
+
+
+def _parse_window_ts(values: pd.Series) -> pd.Series:
+    return pd.to_datetime(values, errors="coerce", utc=True)
 
 
 def _minmax(values: np.ndarray) -> np.ndarray:

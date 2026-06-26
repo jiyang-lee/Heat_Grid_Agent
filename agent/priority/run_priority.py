@@ -91,7 +91,7 @@ def _validate_output(out: pd.DataFrame) -> None:
     schema = json.loads(paths.PRIORITY_SCORES_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
     errs: list[str] = []
-    for rec in out.head(25).to_dict(orient="records"):
+    for rec in out.to_dict(orient="records"):
         rec = {
             "manufacturer": str(rec["manufacturer"]),
             "substation_id": int(rec["substation_id"]),

@@ -247,7 +247,21 @@ def _read_fault_events(archive: zipfile.ZipFile, manufacturer: str) -> pd.DataFr
     )
     frame["manufacturer"] = manufacturer
     frame["substation_id"] = pd.to_numeric(frame["substation_id"], errors="coerce").astype("Int64")
+    if "efd_possible" in frame.columns:
+        frame["efd_possible"] = _coerce_bool_like(frame["efd_possible"])
+    else:
+        frame["efd_possible"] = False
     return frame
+
+
+def _coerce_bool_like(values: pd.Series | None) -> pd.Series:
+    if values is None or len(values) == 0:
+        return pd.Series([], dtype="boolean")
+    numeric = pd.to_numeric(values, errors="coerce")
+    numeric_true = numeric.eq(1) | numeric.eq(1.0)
+    text = values.astype("string").str.strip().str.lower().fillna("")
+    text_true = text.isin({"true", "t", "yes", "y", "on", "1"})
+    return (numeric_true | text_true).astype("boolean")
 
 
 def _read_normal_events(archive: zipfile.ZipFile, manufacturer: str) -> pd.DataFrame:
