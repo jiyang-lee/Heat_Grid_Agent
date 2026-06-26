@@ -1,0 +1,27 @@
+{
+  "experiment": "priority high/urgent threshold sweep",
+  "priority_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_priority\\priority_engine_scores_tuned.csv",
+  "risk_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_risk_scores_calibrated.csv",
+  "split": "holdout",
+  "current_high_threshold": 52.0,
+  "threshold_min": 20.0,
+  "threshold_max": 72.0,
+  "threshold_step": 0.5,
+  "variants": {
+    "official_priority_v2": "official_priority_score",
+    "risk_gated_urgency_x8": "risk_gated_urgency_x8_score",
+    "ungated_urgency_x8": "ungated_urgency_x8_score"
+  },
+  "fpr_limits": [
+    0.0,
+    0.005,
+    0.01,
+    0.02,
+    0.05
+  ],
+  "notes": [
+    "Positive prediction means priority score >= threshold, equivalent to high/urgent dispatch candidate.",
+    "Target is pre_fault because actual dispatch outcome labels are unavailable.",
+    "risk_gated_urgency_x8 adds 8 * leadtime_prob_0-24h only when calibrated risk level is high or critical."
+  ]
+}

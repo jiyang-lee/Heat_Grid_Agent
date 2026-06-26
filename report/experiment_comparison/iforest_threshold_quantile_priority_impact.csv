@@ -1,0 +1,11 @@
+﻿threshold_quantile,threshold_value,holdout_rows_matched_to_priority,candidate_anomaly_count,candidate_anomaly_rate,current_priority_high_or_urgent_count,priority_score_delta_if_only_quantile_changes,priority_level_delta_if_only_quantile_changes,note
+0.85,0.4782489945261593,366,43,0.11748633879781421,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.9,0.4908943839229221,366,32,0.08743169398907104,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.92,0.5000801561328243,366,26,0.07103825136612021,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.94,0.5127022984586344,366,20,0.0546448087431694,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.95,0.5160815367097453,366,20,0.0546448087431694,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.96,0.5183418737842782,366,20,0.0546448087431694,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.975,0.5244790383958161,366,18,0.04918032786885246,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.98,0.5275386546330987,366,18,0.04918032786885246,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.99,0.5357784270858823,366,17,0.04644808743169399,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
+0.995,0.5385141334597663,366,16,0.04371584699453552,86,0.0,0,"priority_engine_v2_threshold48 uses continuous anomaly_score, not anomaly_label; quantile-only change does not alter priority_score."
