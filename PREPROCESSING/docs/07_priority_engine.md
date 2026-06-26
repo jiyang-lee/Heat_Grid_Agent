@@ -171,7 +171,7 @@ urgent 쏠림이 크고 high/medium 구간이 너무 얇다.
 운영 우선순위 계층으로 쓰기엔 중간 구간 분해력이 부족하다.
 ```
 
-## v2 tuned
+## v2 threshold48 tuned
 
 ### 실행 파일
 
@@ -232,10 +232,14 @@ priority level:
 
 ```text
 score >= 70 -> urgent
-52~69       -> high
+48~69       -> high
 34~51       -> medium
 <34         -> low
 ```
+
+기존 tuned v2의 high 기준은 52점이었다.
+holdout threshold sweep 결과 48점에서도 false positive가 0으로 유지되면서 recall과 F1이 개선되어,
+현재 공식 엔진 버전은 `priority_engine_v2_threshold48`로 고정한다.
 
 ### tuned 산출물
 
@@ -249,8 +253,21 @@ data/processed/ml_priority/models/priority_engine_tuned_metadata.json
 ```text
 low    1732
 urgent  316
-high    222
-medium   92
+high    241
+medium   73
+```
+
+### holdout 성능
+
+```text
+Precision 1.0000
+Recall    0.5116
+F1        0.6769
+FPR       0.0000
+TP        44
+FP        0
+FN        42
+TN        214
 ```
 
 ### score 분포 요약
@@ -276,9 +293,9 @@ max  79.07
 판단:
 
 ```text
-v2는 urgent 포화를 줄이고 high 구간을 늘렸다.
+v2_threshold48은 urgent 포화를 줄이면서 high 구간 포착률을 늘렸다.
 완전한 균형은 아니지만, 운영 triage용으로는 v1보다 낫다.
-07의 현재 추천 출력은 tuned v2다.
+07의 현재 공식 출력은 tuned v2_threshold48이다.
 ```
 
 ## 출력 컬럼
