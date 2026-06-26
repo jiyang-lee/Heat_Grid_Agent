@@ -1,6 +1,6 @@
 # proto 정본 보고서
 
-이 문서는 `proto` 브랜치의 현재 운영 프로토타입을 처음 읽는 사람과 이후 수정할 사람이 같은 그림으로 이해하도록 만든 정본 보고서다. 기준 흐름은 `raw -> preprocessing -> IF + LGBM risk + LGBM leadtime -> LGBM priority regression -> server -> frontend -> validation`이다.
+이 문서는 `proto` 브랜치의 현재 운영 프로토타입을 처음 읽는 사람과 이후 수정할 사람이 같은 그림으로 이해하도록 만든 정본 보고서다. 기준 흐름은 `raw -> preprocessing -> IF + LGBM risk + LGBM leadtime -> rule priority engine -> server -> frontend -> validation`이다.
 
 작성 기준은 `proto` 완성본 로컬 커밋 묶음이며, 현재 정본 보고서는 이 폴더 하나로 통일한다.
 
@@ -19,7 +19,7 @@ flowchart LR
   IF --> CHAIN["model_chain_output.csv<br/>3346 rows x 25 cols"]
   RISK --> CHAIN
   LEAD --> CHAIN
-  CHAIN --> PRIORITY["LGBM priority regression<br/>3346 rows x 9 cols"]
+  CHAIN --> PRIORITY["rule priority engine<br/>priority_engine_v2_rule_based_tuned<br/>300 rows x 9 cols"]
   PRIORITY --> API["FastAPI<br/>read-only"]
   CHAIN --> API
   API --> FE["React dashboard<br/>operator view"]
@@ -39,10 +39,11 @@ flowchart LR
 | 5 | [05_server.md](05_server.md) | API가 CSV와 Markdown 산출물을 어떻게 제공하는지 이해 |
 | 6 | [06_frontend.md](06_frontend.md) | 운영자가 보는 대시보드 화면 구조 이해 |
 | 7 | [07_validation.md](07_validation.md) | 재현 명령, 테스트, 남은 한계 확인 |
-| 8 | [08_priority_retrain.md](08_priority_retrain.md) | full PreDist chain output 재학습 결과 확인 |
-| 9 | [09_mock_raw_cycle.md](09_mock_raw_cycle.md) | full 학습 모델로 mock raw 1사이클 재실행 결과 확인 |
+| 8 | [08_priority_retrain.md](08_priority_retrain.md) | legacy priority LGBM 재학습 기록 확인 |
+| 9 | [09_mock_raw_cycle.md](09_mock_raw_cycle.md) | legacy priority LGBM mock raw 실행 기록 확인 |
 | 10 | [10_proto_completion.md](10_proto_completion.md) | 프로토 완성본 마감 기준과 F1 성능 지표 확인 |
 | 11 | [11_alpha_transition_tables.md](11_alpha_transition_tables.md) | 프로토 완료 상태와 알파 전환 보강 항목을 표로 확인 |
+| 12 | [12_priority_rule_engine_conversion.md](12_priority_rule_engine_conversion.md) | priority 단계 규칙 기반 전환 결과 확인 |
 
 ## 핵심 정량 요약
 
@@ -59,18 +60,12 @@ flowchart LR
 | raw maintenance events read | 287 rows |
 | preprocessed windows | 3346 rows x 211 columns |
 | model chain output | 3346 rows x 25 columns |
-| full training priority scores | 3346 rows x 9 columns |
 | current mock raw priority scores | 300 rows x 9 columns |
-| current mock raw priority level | urgent 1 / high 31 / medium 112 / low 156 |
-| current mock raw score range | 0.00 ~ 83.38, mean 21.34 |
-| priority training basis | `data/processed/ml_model_chain/model_chain_output.csv` |
-| priority verdict | baseline 동등 이상, 모델 채택 |
-| 기존 300행 모델 binary F1 | 0.4615 |
-| full 학습 모델 mock raw holdout binary F1 | 0.8511 |
-| full 학습 모델 full holdout macro F1 | 0.3750 |
-| full 학습 모델 full holdout weighted F1 | 0.4857 |
+| current mock raw priority level | urgent 28 / high 89 / medium 50 / low 133 |
+| current mock raw score range | 8.76 ~ 78.31, mean 39.74 |
+| priority runtime | `priority_engine_v2_rule_based_tuned` |
 | agent draft files | 48 files, work order 24 / email 24 |
-| tests | 14 passed |
+| tests | 17 passed |
 
 ## 수정 순서 가이드
 
@@ -90,7 +85,7 @@ flowchart TD
 | fixture 생성 | `agent/preprocessing/sample_predist_zip.py` | `agent/fixtures/preprocessing/predist_sample` |
 | window 전처리 | `agent/preprocessing/build_windows.py` | `preprocessed_windows.csv` |
 | 중간 예측 모델 체인 | `agent/model_chain` | `model_chain_output.csv`, `feature_adapter_report.json` |
-| priority 회귀 | `agent/priority` | `priority_scores.csv` |
+| priority 규칙 엔진 | `agent/priority` | `priority_scores.csv` |
 | 초안 생성 | `agent/llm` | `docs/send/work_order_*.md`, `email_*.md` |
 | API | `server/main.py` | `/priority`, `/priority/{key}`, `/agent/output/{key}` |
 | 대시보드 | `frontend/src/App.jsx`, `frontend/src/App.css` | `http://127.0.0.1:5173/` |
@@ -98,4 +93,4 @@ flowchart TD
 
 ## 운영 해석
 
-이 프로토타입은 full PreDist supervised window로 학습한 priority 회귀모델을 사용하고, mock raw fixture 1사이클에서 `raw -> preprocessing -> model chain -> priority -> agent draft -> dashboard` 흐름이 닫히는지 검증한다. 현재 정량값은 재현 가능한 프로토 완성본의 상태를 설명하는 값이며, 운영 성능 보증값은 아니다. 실제 운영 투입 전에는 운영 라벨, 운영 raw 저장소, fault event 단위 split, 승인/발송 workflow 검증이 추가로 필요하다.
+이 프로토타입은 IF + LGBM risk + LGBM leadtime 중간 예측 체인을 고정하고, priority 단계는 규칙 기반 엔진으로 운영 큐를 만든다. mock raw fixture 1사이클에서 `raw -> preprocessing -> model chain -> rule priority -> agent draft -> dashboard` 흐름이 닫히는지 검증한다. 현재 정량값은 재현 가능한 프로토 완성본의 상태를 설명하는 값이며, 운영 성능 보증값은 아니다. 실제 운영 투입 전에는 운영 라벨, 운영 raw 저장소, fault event 단위 split, 승인/발송 workflow 검증이 추가로 필요하다.

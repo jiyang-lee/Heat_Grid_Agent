@@ -1,7 +1,9 @@
-"""평가: precision@k / recall@k / NDCG@k, rule v2 baseline 대비.
+"""legacy priority LGBM 평가: precision@k / recall@k / NDCG@k.
 
 정답집합 R = holdout 중 target>0(실제 pre_fault). priority_score 내림차순 단일 랭킹.
-priority 모델이 동일 holdout에서 rule baseline(priority_engine_v2_rule_based_tuned) 이상이어야 채택.
+현재 proto runtime은 priority LGBM을 채택하지 않고 rule engine
+`priority_engine_v2_rule_based_tuned`를 직접 사용한다. 이 파일은 과거 LGBM과 rule
+engine의 비교 기록을 재현할 때만 사용한다.
 
 실행: ``uv run python -m agent.priority.evaluate`` (저장된 모델 로드 후 비교 출력)
 """

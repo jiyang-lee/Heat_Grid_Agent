@@ -1,7 +1,8 @@
-"""rule v2 baseline 재구성 — mlmodel1 `priority_engine_v2_rule_based_tuned`.
+"""Priority rule engine v2.
 
-출처: model_handoff/.../priority/priority_engine_tuned_metadata.json + 07_priority_engine.md.
-priority 모델(LGBM 회귀)이 동일 holdout에서 이 baseline 이상이어야 채택.
+IF + LGBM risk + LGBM leadtime 체인의 `model_chain_output.csv`를 입력으로 받아
+운영 우선순위 점수와 등급을 계산한다. 기존에는 priority LGBM 회귀 모델의 비교
+baseline이었지만, proto runtime에서는 이 규칙을 실제 priority engine으로 사용한다.
 """
 
 from __future__ import annotations
@@ -17,6 +18,15 @@ ANOMALY_WEIGHT = 6.0
 PRIORITY_LEVEL_RULES = [("urgent", 70.0), ("high", 52.0), ("medium", 34.0)]
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    if pd.isna(value):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _confidence_multiplier(conf: float) -> float:
     if conf >= 0.8:
         return 1.0
@@ -27,9 +37,9 @@ def _confidence_multiplier(conf: float) -> float:
 
 def _history_adjustment(row) -> float:
     adj = 0.0
-    task = row.get("days_since_last_task_event")
-    anyev = row.get("days_since_last_any_event")
-    fault = row.get("days_since_last_fault_event")
+    task = pd.to_numeric(row.get("days_since_last_task_event"), errors="coerce")
+    anyev = pd.to_numeric(row.get("days_since_last_any_event"), errors="coerce")
+    fault = pd.to_numeric(row.get("days_since_last_fault_event"), errors="coerce")
     risk = str(row.get("risk_level_calibrated", "low"))
     if pd.notna(task):
         if task <= 7:
@@ -56,18 +66,18 @@ def _priority_level(score: float) -> str:
 def score_row(row) -> float:
     risk_level = str(row.get("risk_level_calibrated", "low"))
     risk_base = RISK_LEVEL_POINTS.get(risk_level, 4.0)
-    risk_prob_comp = float(row.get("risk_probability", 0.0)) * RISK_PROBABILITY_WEIGHT
+    risk_prob_comp = _to_float(row.get("risk_probability", 0.0)) * RISK_PROBABILITY_WEIGHT
     bucket = str(row.get("predicted_lead_time_bucket", "3-7d"))
     leadtime_base = LEADTIME_BUCKET_POINTS.get(bucket, 4.0)
-    mult = _confidence_multiplier(float(row.get("predicted_lead_time_confidence", 0.0)))
+    mult = _confidence_multiplier(_to_float(row.get("predicted_lead_time_confidence", 0.0)))
     leadtime_comp = leadtime_base * mult
-    anomaly_comp = float(row.get("anomaly_score", 0.0)) * ANOMALY_WEIGHT
+    anomaly_comp = _to_float(row.get("anomaly_score", 0.0)) * ANOMALY_WEIGHT
     history = _history_adjustment(row)
     return risk_base + risk_prob_comp + leadtime_comp + anomaly_comp + history
 
 
 def score_frame(df: pd.DataFrame) -> pd.Series:
-    return df.apply(score_row, axis=1).clip(lower=0.0)
+    return df.apply(score_row, axis=1).clip(lower=0.0, upper=100.0)
 
 
 def level_frame(scores: pd.Series) -> pd.Series:

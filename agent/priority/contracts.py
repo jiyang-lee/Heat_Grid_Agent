@@ -1,12 +1,11 @@
-"""Priority model 계약 상수.
+"""Priority rule engine 계약 상수.
 
 출처 위계상 priority 단계는 mlmodel1의 ML output(`agent_full_data_contract.json`의
-`priority_engine.input_columns` / `ml_outputs`)을 소비한다. 본 모델은 그 입력의
-**7개 피처(이력 제외)** 만 사용하는 LightGBM 회귀(0~100)다.
+`priority_engine.input_columns` / `ml_outputs`)을 소비한다. IF + LGBM risk +
+LGBM leadtime 체인은 고정하고, priority 단계만 규칙 기반 점수화로 운영한다.
 
-priority_level 밴딩은 운영 엔진(`priority_engine_v2_rule_based_tuned`)과 동일한 라벨
-(urgent/high/medium/low)을 쓰되, 0~100 회귀 출력 스케일에서 라벨 앵커(0/33/66/100)의
-중간점으로 경계를 둔다.
+priority_level 밴딩은 운영 엔진(`priority_engine_v2_rule_based_tuned`)의 기준
+urgent/high/medium/low를 그대로 쓴다.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from __future__ import annotations
 # --- 키 ---
 KEY_COLUMNS = ["manufacturer", "substation_id", "window_start", "window_end"]
 
-# --- priority 모델 입력 7피처(고정 순서, 이력 제외) ---
+# --- legacy priority LGBM 입력 7피처(학습 기록/평가용, runtime 미사용) ---
 PRIORITY_FEATURES = [
     "anomaly_score",
     "risk_probability",
@@ -23,6 +22,18 @@ PRIORITY_FEATURES = [
     "leadtime_prob_1-3d",
     "leadtime_prob_3-7d",
     "predicted_lead_time_confidence",
+]
+
+# --- priority rule engine 입력 ---
+PRIORITY_RULE_INPUT_COLUMNS = KEY_COLUMNS + [
+    "anomaly_score",
+    "risk_probability",
+    "risk_level_calibrated",
+    "predicted_lead_time_bucket",
+    "predicted_lead_time_confidence",
+    "days_since_last_fault_event",
+    "days_since_last_task_event",
+    "days_since_last_any_event",
 ]
 
 # --- 라벨(priority_target_v1): 학습셋 전용 ---
@@ -36,9 +47,7 @@ PRIORITY_LABEL_BY_BUCKET = {
 PRE_FAULT_LABEL = "pre_fault"
 NORMAL_LABEL = "normal"
 
-# --- priority_level 밴딩 (0~100 회귀 출력 → 라벨) ---
-# 라벨 앵커 0/33/66/100 의 중간점(16.5 / 49.5 / 83.0)을 경계로 사용.
-# 각 밴드는 가장 가까운 앵커(normal/3-7d/1-3d/0-24h)에 대응.
+# --- legacy priority LGBM 밴딩 (학습 기록/평가용, runtime 미사용) ---
 PRIORITY_LEVEL_BANDS = [
     (83.0, "urgent"),
     (49.5, "high"),
@@ -50,7 +59,7 @@ PRIORITY_LEVELS = ["low", "medium", "high", "urgent"]
 # --- 출력 계약 ---
 PRIORITY_SCORE_MIN = 0.0
 PRIORITY_SCORE_MAX = 100.0
-MODEL_VERSION = "priority_v3_lgbm_reg"
+MODEL_VERSION = "priority_engine_v2_rule_based_tuned"
 
 PRIORITY_SCORES_COLUMNS = [
     "manufacturer",

@@ -20,7 +20,7 @@ HeatGrid Agent **운영(추론) 입력** 데이터 계약을 JSON Schema + Postg
 | `maintenance_events` | 이벤트 로그 | 정비 시 | disturbances.csv |
 | `preprocessed_windows` | 전처리 중간 데이터 | 6시간 구간마다 | raw 4테이블 |
 | `model_chain_output` | 중간 예측 결과 | 모델 체인 실행마다 | preprocessed_windows + IF/risk/leadtime 모델 |
-| `priority_scores` | 운영 우선순위 결과 | priority 실행마다 | model_chain_output + priority 회귀모델 |
+| `priority_scores` | 운영 우선순위 결과 | priority 실행마다 | model_chain_output + 규칙 기반 priority engine |
 
 > `normal_events.csv`는 정상 기준 학습 구간 정의용이라 **운영에서는 만들지 않는다**(훈련 전용).
 
@@ -60,7 +60,7 @@ schema/
 - **이벤트 테이블 분리(fault/maintenance)**: 센서값으로 못 만드는 `days_since_last_*` feature의 원천. 원본/가공 분리 원칙(AGENTS.md)과 정합.
 - **훈련 전용 컬럼 제외**: 운영 계약을 최소화해 ML 모델 갱신과 무관하게 스키마가 안정적으로 유지됨(확장성).
 - **전처리 데이터 고정(preprocessed_windows)**: 피처 엔지니어링과 모델 입력 feature set은 바뀔 수 있지만, raw를 6시간 구간 관측치로 정리한 중간층은 여러 모델/실험에서 재사용되므로 별도 계약으로 고정한다.
-- **모델 체인 출력 고정(model_chain_output)**: priority 회귀모델과 dashboard 상세 근거가 모두 이 파일을 읽으므로, IF/risk/leadtime 중간 신호 25컬럼을 별도 DB/JSON 계약으로 고정한다.
+- **모델 체인 출력 고정(model_chain_output)**: 규칙 기반 priority engine과 dashboard 상세 근거가 모두 이 파일을 읽으므로, IF/risk/leadtime 중간 신호 25컬럼을 별도 DB/JSON 계약으로 고정한다.
 - **priority 출력 고정(priority_scores)**: 운영 큐의 정렬 기준이므로 점수/등급/버전 필드를 별도 계약으로 고정한다.
 
 ## 검증 방법

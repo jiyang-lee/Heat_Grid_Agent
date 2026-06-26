@@ -1,7 +1,10 @@
-"""priority 모델 학습 — LightGBM 회귀(LGBMRegressor).
+"""legacy priority LGBM 학습 스크립트.
 
 모델 체인 output → 라벨(0/33/66/100) → 얕은 트리·강한 정규화·early stopping →
 event/substation holdout 평가(evaluate, rule v2 대비) → joblib + metadata 저장.
+
+현재 proto runtime은 이 모델을 사용하지 않고 `priority_engine_v2_rule_based_tuned`
+규칙 엔진으로 priority_scores.csv를 생성한다. 이 스크립트는 과거 LGBM 실험 재현용이다.
 
 실행: ``uv run python -m agent.priority.train_priority_model``
 """

@@ -1,5 +1,7 @@
 # 09. Full 학습 Priority 모델로 Mock Raw 1사이클 재실행
 
+> 현재 runtime 기준 주의: 이 문서는 priority LGBM 회귀모델로 mock raw 1사이클을 실행하던 시점의 legacy 기록이다. 2026-06-26 현재 proto runtime은 IF + LGBM risk + LGBM leadtime까지는 유지하고, priority 단계만 `priority_engine_v2_rule_based_tuned` 규칙 기반 엔진으로 실행한다.
+
 ## 문제 상황
 
 priority 모델을 300행 fixture로 재학습했을 때는 holdout에서 rule baseline보다 낮았다. 원인은 모델 구조 자체보다 학습 데이터가 부족한 점이었다. 특히 `0-24h` 임박 고장 target이 train에 9건뿐이라 LGBM 회귀모델이 긴급 우선순위 패턴을 충분히 학습하지 못했다.

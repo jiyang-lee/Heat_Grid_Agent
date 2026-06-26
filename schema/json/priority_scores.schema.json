@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://heatgrid.agent/schema/priority_scores.schema.json",
   "title": "priority_scores",
-  "description": "AI priority model(LightGBM 회귀) 출력. 1행 = manufacturer x substation_id x 6시간 윈도우. priority_score 0~100, model_version=priority_v3_lgbm_reg.",
+  "description": "규칙 기반 priority engine 출력. 1행 = manufacturer x substation_id x 6시간 윈도우. priority_score 0~100, model_version=priority_engine_v2_rule_based_tuned.",
   "type": "object",
   "additionalProperties": false,
   "required": [

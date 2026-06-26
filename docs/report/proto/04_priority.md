@@ -1,16 +1,16 @@
-# 04. 우선순위 회귀
+# 04. 규칙 기반 우선순위 엔진
 
 ## 목적
 
-우선순위 단계는 중간 모델 체인의 anomaly, risk, leadtime 신호를 운영자가 볼 수 있는 점수와 등급으로 바꾼다. 이 출력이 서버 목록과 대시보드 큐의 기준이다.
+우선순위 단계는 중간 모델 체인의 anomaly, risk, leadtime 신호를 운영자가 볼 수 있는 점수와 등급으로 바꾼다. IF + LGBM risk + LGBM leadtime 체인은 그대로 유지하고, 이 단계만 LGBM 회귀에서 규칙 기반 엔진으로 교체했다.
 
 ## 입력과 출력
 
 | 구분 | 경로 | 설명 |
 |---|---|---|
 | 입력 | `data/processed/ml_model_chain/model_chain_output.csv` | 중간 모델 출력 |
-| 모델 | `agent/priority/models/lightgbm_priority_model.joblib` | LGBM 회귀 모델 |
-| metadata | `agent/priority/models/priority_model_metadata.json` | 모델 버전과 feature 정의 |
+| 엔진 | `agent/priority/rule_baseline.py` | `priority_engine_v2_rule_based_tuned` 규칙 |
+| legacy 모델 | `agent/priority/models/lightgbm_priority_model.joblib` | 보존만 하며 runtime 미사용 |
 | 출력 | `data/processed/ml_priority/priority_scores.csv` | 운영 우선순위 점수 |
 
 ## 구현 위치
@@ -18,9 +18,9 @@
 | 역할 | 파일 |
 |---|---|
 | priority 실행 | `agent/priority/run_priority.py` |
-| 학습 데이터 구성 | `agent/priority/build_dataset.py` |
+| 규칙 엔진 | `agent/priority/rule_baseline.py` |
 | 계약/등급 기준 | `agent/priority/contracts.py` |
-| baseline 비교 | `agent/priority/rule_baseline.py` |
+| legacy LGBM 학습 기록 | `agent/priority/train_priority_model.py`, `agent/priority/evaluate.py` |
 
 ## 정량 수치
 
@@ -28,43 +28,37 @@
 |---|---:|
 | current priority output rows | 300 |
 | priority output columns | 9 |
-| score min | 0.00 |
-| score max | 83.38 |
-| score mean | 21.34 |
-| urgent | 1 |
-| high | 31 |
-| medium | 112 |
-| low | 156 |
-| model_version | `priority_v3_lgbm_reg` |
-| training_basis | `data/processed/ml_model_chain/model_chain_output.csv` |
-| holdout verdict | baseline 동등 이상, 모델 채택 |
-| 기존 300행 모델 binary F1 | 0.4615 |
-| full 학습 모델 mock raw holdout binary F1 | 0.8511 |
-| full 학습 모델 full holdout binary F1 | 0.7956 |
-| full 학습 모델 full holdout macro F1 | 0.3750 |
-| full 학습 모델 full holdout weighted F1 | 0.4857 |
+| score min | 8.76 |
+| score max | 78.31 |
+| score mean | 39.74 |
+| urgent | 28 |
+| high | 89 |
+| medium | 50 |
+| low | 133 |
+| model_version | `priority_engine_v2_rule_based_tuned` |
+| runtime input | `data/processed/ml_model_chain/model_chain_output.csv` |
+| priority 방식 | 규칙 기반 점수화 |
 
 | Top 5 | 대상 | 점수 | 사유 |
 |---:|---|---:|---|
-| 1 | manufacturer 1 / substation 21 / 2019-01-21 00:00 | 83.38 | risk=critical, leadtime=0-24h, anomaly=0.47 |
-| 2 | manufacturer 1 / substation 21 / 2019-01-20 18:00 | 78.95 | risk=critical, leadtime=0-24h, anomaly=0.43 |
-| 3 | manufacturer 1 / substation 21 / 2019-01-16 12:00 | 73.18 | risk=critical, leadtime=0-24h, anomaly=0.41 |
-| 4 | manufacturer 2 / substation 10 / 2016-12-01 18:00 | 70.32 | risk=critical, leadtime=0-24h, anomaly=1.00 |
-| 5 | manufacturer 1 / substation 8 / 2018-04-24 12:00 | 69.09 | risk=high, leadtime=0-24h, anomaly=0.25 |
+| 1 | manufacturer 1 / substation 21 / 2019-01-21 00:00 | 78.31 | risk=critical, leadtime=0-24h, anomaly=0.47 |
+| 2 | manufacturer 1 / substation 6 / 2020-06-04 06:00 | 77.20 | risk=critical, leadtime=0-24h, anomaly=0.45 |
+| 3 | manufacturer 1 / substation 24 / 2016-10-24 00:00 | 75.92 | risk=critical, leadtime=0-24h, anomaly=0.39 |
+| 4 | manufacturer 1 / substation 6 / 2019-04-15 06:00 | 75.04 | risk=critical, leadtime=0-24h, anomaly=0.41 |
+| 5 | manufacturer 1 / substation 6 / 2020-06-08 18:00 | 74.27 | risk=critical, leadtime=0-24h, anomaly=0.59 |
 
 ## 정성 해석
 
-priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 모델 학습은 full PreDist 3346 supervised window로 수행했고, 현재 serving 산출물은 이 모델을 mock raw fixture 300행 1사이클에 적용한 결과다.
+priority는 모델 체인의 여러 신호를 운영자가 행동할 수 있는 단일 큐로 압축한다. 이번 수정에서 IF + LGBM risk + LGBM leadtime은 고정했고, `model_chain_output.csv -> priority_scores.csv` 변환만 규칙 기반으로 바꿨다.
 
-F1 관점에서는 기존 300행 학습 모델보다 full 학습 모델이 확실히 개선됐다. mock raw holdout 기준 binary F1은 `0.4615 -> 0.8511`로 상승했고, 4단계 priority 등급의 weighted F1은 `0.1482 -> 0.5424`로 상승했다. full PreDist holdout에서는 rule baseline이 recall 중심 binary F1에서 약간 높지만, 모델은 precision, accuracy, macro F1, weighted F1과 ranking 지표에서 더 나은 운영 큐 품질을 보인다. 상세 비교는 [10_proto_completion.md](10_proto_completion.md)에 둔다.
+규칙 엔진은 risk 등급, risk probability, leadtime bucket, leadtime confidence, anomaly score, 최근 작업/이벤트 이력을 합산한다. 최근 작업이나 최근 이벤트가 있으면 중복 출동 가능성을 낮추기 위해 감점하고, 장기간 fault가 없던 high/critical 대상은 소폭 가점한다.
 
 ## 다이어그램
 
 ```mermaid
 flowchart LR
-  CHAIN["model_chain_output.csv"] --> F7["priority input signals<br/>anomaly, risk, leadtime, recency"]
-  F7 --> LGBM["LGBM priority regression"]
-  LGBM --> SCORE["priority_score<br/>0 to 100"]
+  CHAIN["model_chain_output.csv<br/>IF + LGBM risk + LGBM leadtime"] --> RULE["rule priority engine<br/>risk + leadtime + anomaly + history"]
+  RULE --> SCORE["priority_score<br/>0 to 100"]
   SCORE --> LEVEL["priority_level<br/>urgent / high / medium / low"]
   SCORE --> REASON["priority_reason<br/>risk, leadtime, anomaly summary"]
   LEVEL --> CSV["priority_scores.csv<br/>300 x 9<br/>mock raw cycle"]
@@ -73,12 +67,12 @@ flowchart LR
 
 ## 수정 가이드
 
-우선순위 정책을 바꾸려면 먼저 `contracts.py`의 등급 기준과 `run_priority.py`의 입력 feature 구성을 확인한다. 점수 산출 모델을 재학습하면 metadata의 `model_version`을 올리고, 보고서의 score 분포와 Top 5를 다시 계산해야 한다.
+우선순위 정책을 바꾸려면 먼저 `rule_baseline.py`의 가중치와 threshold를 확인한다. 규칙을 바꾸면 `contracts.py`의 `MODEL_VERSION`을 올리고, 보고서의 score 분포와 Top 5를 다시 계산해야 한다.
 
 대시보드는 `priority_scores.csv`를 점수순으로 읽기 때문에 점수 범위나 등급명이 바뀌면 프론트 표시 규칙도 같이 확인한다.
 
 ## 한계
 
-- priority 모델은 full PreDist chain output 기준으로는 baseline 이상이지만, 아직 fixture/파일 기반 검증이다.
-- `priority_score=100` top row가 여러 개 있으므로 운영 UI에서는 동점 처리나 보조 정렬 기준을 검토할 수 있다.
+- priority는 현재 규칙 기반이므로 학습 성능 지표가 아니라 운영 정책 타당성, 분포, 현장 검토 피드백으로 조정해야 한다.
+- 현재 검증은 fixture/파일 기반이다.
 - `priority_scores.csv`는 목록용 핵심 컬럼만 갖고 있고, 상세 화면의 risk/leadtime/anomaly 근거는 서버에서 `model_chain_output.csv`와 병합한다.

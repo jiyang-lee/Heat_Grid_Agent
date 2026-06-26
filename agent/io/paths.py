@@ -44,7 +44,7 @@ PREDIST_FULL_PREPROCESSED_CSV = PREDIST_FULL_SUPERVISED_DIR / "preprocessed_wind
 PREDIST_FULL_LABELS_CSV = PREDIST_FULL_SUPERVISED_DIR / "supervised_window_labels.csv"
 PREDIST_FULL_MANIFEST_JSON = PREDIST_FULL_SUPERVISED_DIR / "manifest.json"
 
-# --- priority 모델 아티팩트 ---
+# --- legacy priority LGBM 아티팩트(현재 runtime 미사용, 학습 기록 보존용) ---
 MODELS_DIR = REPO_ROOT / "agent" / "priority" / "models"
 PRIORITY_MODEL_PATH = MODELS_DIR / "lightgbm_priority_model.joblib"
 PRIORITY_MODEL_META = MODELS_DIR / "priority_model_metadata.json"

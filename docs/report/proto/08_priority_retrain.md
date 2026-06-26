@@ -1,5 +1,7 @@
 # 08. Priority 회귀모델 실제 Chain Output 재학습
 
+> 현재 runtime 기준 주의: 이 문서는 priority LGBM 회귀모델 재학습의 legacy 기록이다. 2026-06-26 현재 proto runtime은 IF + LGBM risk + LGBM leadtime까지는 유지하고, priority 단계만 `priority_engine_v2_rule_based_tuned` 규칙 기반 엔진으로 실행한다.
+
 ## 목적
 
 기존 priority 회귀모델은 실제 추론 입력은 `model_chain_output.csv`를 쓰면서도 학습 metadata는 `data/mock/mock_ml_output.csv`를 가리키고 있었다. 이 보고서는 mock 학습 흔적을 제거하고, full PreDist supervised 3346 window를 `raw -> preprocessing -> IF/risk/leadtime` 체인까지 통과시킨 출력으로 priority 회귀모델을 다시 학습한 결과를 기록한다.
