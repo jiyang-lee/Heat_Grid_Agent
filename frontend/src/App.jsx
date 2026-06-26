@@ -1,4 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import "./App.css";
 
 const LEVEL_META = {
@@ -14,6 +28,23 @@ const RISK_META = {
   medium: { label: "Medium", className: "risk-medium" },
   low: { label: "Low", className: "risk-low" },
 };
+
+// 차트 색 — App.css 토큰과 정합. recharts는 CSS 변수를 직접 못 읽어 hex로 둔다.
+const CHART = {
+  urgent: "#e05a4f",
+  critical: "#e05a4f",
+  high: "#e8943a",
+  medium: "#e6c34a",
+  low: "#93a7ba",
+  accent: "#2b6cb0",
+  accentSoft: "#9cc2e2",
+  grid: "#e3e9f0",
+  axis: "#7a8a9a",
+};
+
+const PRIORITY_ORDER = ["urgent", "high", "medium", "low"];
+const RISK_ORDER = ["critical", "high", "medium", "low"];
+const LEAD_ORDER = ["0-24h", "1-3d", "3-7d", "7-14d", "14d+"];
 
 export default function App() {
   const [rows, setRows] = useState([]);
@@ -64,6 +95,7 @@ export default function App() {
   }
 
   const summary = useMemo(() => buildSummary(rows), [rows]);
+  const charts = useMemo(() => buildCharts(rows), [rows]);
   const visibleRows = rows.slice(0, 10);
   const sensors = splitSensors(detail?.main_abnormal_sensors);
 
@@ -92,6 +124,34 @@ export default function App() {
         <Metric label="긴급/높음" value={summary.hot} note="즉시 검토 대상" tone="danger" />
         <Metric label="평균 점수" value={summary.avgScore} note="priority score" />
         <Metric label="0-24h" value={summary.lead24} note="리드타임 예측" tone="warning" />
+      </section>
+
+      <section className="overview-grid" aria-label="분포 개요">
+        <DonutCard
+          title="우선도 분포"
+          subtitle="priority level"
+          data={charts.priority}
+          centerValue={summary.hot}
+          centerLabel="긴급·높음"
+        />
+        <DonutCard
+          title="위험 등급 분포"
+          subtitle="risk calibrated"
+          data={charts.risk}
+          centerValue={charts.riskHot}
+          centerLabel="Critical·High"
+        />
+        <BarCard
+          title="리드타임 분포"
+          subtitle="예측 버킷별 건수"
+          data={charts.lead}
+          colored
+        />
+        <BarCard
+          title="점수 분포"
+          subtitle="priority score 구간"
+          data={charts.score}
+        />
       </section>
 
       <main className="workspace">
@@ -168,11 +228,14 @@ export default function App() {
                 <Badge meta={LEVEL_META[detail.priority_level]} fallback={detail.priority_level} large />
               </div>
 
-              <div className="score-grid">
-                <Metric label="Priority" value={formatNumber(detail.priority_score, 2)} />
-                <Metric label="Risk prob" value={formatNumber(detail.risk_probability, 3)} />
-                <Metric label="Anomaly" value={formatNumber(detail.anomaly_score, 3)} />
-                <Metric label="Lead conf" value={formatNumber(detail.predicted_lead_time_confidence, 3)} />
+              <div className="detail-gauge-row">
+                <RiskGauge value={detail.risk_probability} level={detail.risk_level_calibrated} />
+                <div className="score-grid">
+                  <Metric label="Priority" value={formatNumber(detail.priority_score, 2)} />
+                  <Metric label="Risk prob" value={formatNumber(detail.risk_probability, 3)} />
+                  <Metric label="Anomaly" value={formatNumber(detail.anomaly_score, 3)} />
+                  <Metric label="Lead conf" value={formatNumber(detail.predicted_lead_time_confidence, 3)} />
+                </div>
               </div>
 
               <section className="evidence-section">
@@ -250,6 +313,136 @@ function ChainStep({ label, value }) {
   );
 }
 
+function DonutCard({ title, subtitle, data, centerValue, centerLabel }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  return (
+    <div className="chart-card">
+      <div className="chart-head">
+        <h3>{title}</h3>
+        <span>{subtitle}</span>
+      </div>
+      <div className="donut-body">
+        <div className="donut-wrap">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="label"
+                innerRadius="64%"
+                outerRadius="100%"
+                paddingAngle={total ? 2 : 0}
+                stroke="none"
+                startAngle={90}
+                endAngle={-270}
+              >
+                {data.map((d) => (
+                  <Cell key={d.key} fill={d.fill} />
+                ))}
+              </Pie>
+              <Tooltip content={<ChartTooltip suffix="건" />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="donut-center">
+            <strong>{centerValue}</strong>
+            <small>{centerLabel}</small>
+          </div>
+        </div>
+        <ul className="chart-legend">
+          {data.map((d) => (
+            <li key={d.key}>
+              <span className="legend-dot" style={{ background: d.fill }} />
+              <span className="legend-label">{d.label}</span>
+              <span className="legend-value">{d.value}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function BarCard({ title, subtitle, data, colored = false }) {
+  return (
+    <div className="chart-card">
+      <div className="chart-head">
+        <h3>{title}</h3>
+        <span>{subtitle}</span>
+      </div>
+      <div className="bar-body">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -18 }}>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: CHART.axis }}
+              axisLine={{ stroke: CHART.grid }}
+              tickLine={false}
+              interval={0}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 11, fill: CHART.axis }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <Tooltip cursor={{ fill: "rgba(43,108,176,0.08)" }} content={<ChartTooltip suffix="건" />} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={46}>
+              {data.map((d) => (
+                <Cell key={d.label} fill={colored ? d.fill || CHART.accent : CHART.accent} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function RiskGauge({ value, level }) {
+  const pct = Math.max(0, Math.min(1, Number(value) || 0)) * 100;
+  const fill = CHART[level] || CHART.accent;
+  const data = [{ name: "risk", value: pct, fill }];
+  return (
+    <div className="risk-gauge">
+      <div className="gauge-wrap">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart
+            data={data}
+            innerRadius="72%"
+            outerRadius="100%"
+            startAngle={90}
+            endAngle={-270}
+            barSize={10}
+          >
+            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+            <RadialBar background={{ fill: CHART.grid }} dataKey="value" cornerRadius={6} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="gauge-center">
+          <strong>{pct.toFixed(0)}%</strong>
+          <small>위험 확률</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChartTooltip({ active, payload, suffix = "" }) {
+  if (!active || !payload || !payload.length) return null;
+  const item = payload[0];
+  const label = item.payload?.label ?? item.name;
+  return (
+    <div className="chart-tooltip">
+      <span>{label}</span>
+      <strong>
+        {item.value}
+        {suffix}
+      </strong>
+    </div>
+  );
+}
+
 function DraftTabs({ active, drafts, onChange }) {
   const tabs = [
     { id: "work_order", label: "작업지시", content: drafts?.work_order_md },
@@ -298,6 +491,55 @@ function buildSummary(rows) {
     avgScore: formatNumber(avg, 1),
     lead24,
   };
+}
+
+function buildCharts(rows) {
+  const priority = PRIORITY_ORDER.map((key) => ({
+    key,
+    label: LEVEL_META[key]?.label || key,
+    value: rows.filter((r) => r.priority_level === key).length,
+    fill: CHART[key] || CHART.low,
+  })).filter((d) => d.value > 0);
+
+  const risk = RISK_ORDER.map((key) => ({
+    key,
+    label: RISK_META[key]?.label || key,
+    value: rows.filter((r) => r.risk_level_calibrated === key).length,
+    fill: CHART[key] || CHART.low,
+  })).filter((d) => d.value > 0);
+
+  const riskHot = rows.filter((r) => ["critical", "high"].includes(r.risk_level_calibrated)).length;
+
+  // 리드타임: 알려진 순서 우선, 그 외 버킷은 뒤에 붙인다.
+  const leadCounts = {};
+  rows.forEach((r) => {
+    const b = r.predicted_lead_time_bucket;
+    if (b) leadCounts[b] = (leadCounts[b] || 0) + 1;
+  });
+  const leadKeys = [
+    ...LEAD_ORDER.filter((b) => leadCounts[b]),
+    ...Object.keys(leadCounts).filter((b) => !LEAD_ORDER.includes(b)),
+  ];
+  const leadFill = { "0-24h": CHART.urgent, "1-3d": CHART.high, "3-7d": CHART.medium };
+  const lead = leadKeys.map((b) => ({ label: b, value: leadCounts[b], fill: leadFill[b] || CHART.low }));
+
+  // 점수 분포: priority score 구간 히스토그램.
+  const buckets = [
+    { label: "<70", min: -Infinity, max: 70 },
+    { label: "70-80", min: 70, max: 80 },
+    { label: "80-90", min: 80, max: 90 },
+    { label: "90-95", min: 90, max: 95 },
+    { label: "95+", min: 95, max: Infinity },
+  ];
+  const score = buckets.map((bk) => ({
+    label: bk.label,
+    value: rows.filter((r) => {
+      const s = Number(r.priority_score);
+      return Number.isFinite(s) && s >= bk.min && s < bk.max;
+    }).length,
+  }));
+
+  return { priority, risk, riskHot, lead, score };
 }
 
 function splitSensors(value) {
