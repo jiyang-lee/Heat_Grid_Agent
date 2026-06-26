@@ -279,46 +279,12 @@ function DraftTabs({ active, drafts, onChange }) {
 }
 
 function DraftBlock({ title, content }) {
-  const preview = buildDraftPreview(content, title);
   return (
     <div className="draft-block">
-      <h4>{title} 미리보기</h4>
-      <pre>{preview || "초안 없음"}</pre>
+      <h4>{title} 전문</h4>
+      <pre>{content ? String(content).trim() : "초안 없음"}</pre>
     </div>
   );
-}
-
-function buildDraftPreview(content, title) {
-  if (!content) return "";
-
-  const lines = String(content)
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const selectedLines = lines.filter((line) => {
-    if (title === "작업지시") {
-      return (
-        line.startsWith("# ") ||
-        line.startsWith("- 대상:") ||
-        line.startsWith("- 윈도우:") ||
-        line.startsWith("- 우선순위:") ||
-        line.startsWith("- 주요 이상 센서:") ||
-        line.startsWith("- anomaly_score:") ||
-        line.startsWith("- risk_probability:")
-      );
-    }
-
-    return (
-      line.startsWith("제목:") ||
-      line.startsWith("- 대상:") ||
-      line.startsWith("- 점검 윈도우:") ||
-      line.startsWith("- 우선순위:") ||
-      line.startsWith("- 주요 근거:")
-    );
-  });
-
-  return selectedLines.slice(0, title === "작업지시" ? 6 : 5).join("\n") || lines.slice(0, 5).join("\n");
 }
 
 function buildSummary(rows) {
