@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://heatgrid.agent/schema/sensor_readings.schema.json",
   "title": "sensor_readings",
-  "description": "기계실 실시간 센서 1행(= substation_id + ts). raw operational 유지 컬럼 29개 중 ts + numeric 17 + control 11. 숫자 센서는 결측 허용(nullable). contract version operational_input_v1.",
+  "description": "기계실 실시간 센서 1행(= substation_id + ts). raw contract 29 = ts + 28 operational sensor/control columns이며 substation_id는 식별키라 raw 29 count에는 포함하지 않는다. 숫자 센서는 결측 허용(nullable). contract version operational_input_v1.",
   "type": "object",
   "additionalProperties": false,
   "required": ["substation_id", "ts"],
