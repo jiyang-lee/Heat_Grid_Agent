@@ -1,0 +1,1282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.agent/schema/preprocessed_windows.schema.json",
+  "title": "preprocessed_windows",
+  "description": "피처 엔지니어링 전 표준 전처리 데이터. 1행 = substation_id x 6시간 구간. contract version preprocessed_data_v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "substation_id",
+    "window_start",
+    "window_end",
+    "row_count",
+    "preprocessing_version"
+  ],
+  "properties": {
+    "substation_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_file": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "row_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expected_row_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "median_interval_minutes": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "invalid_timestamp_rows_in_file": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "timestamp_gap_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "max_timestamp_gap_minutes": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "sensor_error_candidate_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "extreme_change_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "outdoor_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "outdoor_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "outdoor_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_dhw_control_valve_position__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_dhw_return_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_hc1_control_valve_position_setpoint__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_hc1_return_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_meter_energy__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_meter_flow__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_meter_heat_power__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_meter_volume__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_return_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "p_net_supply_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_lower_storage_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_supply_temperature_setpoint__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_upper_storage_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__mean": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__max": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__std": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__first": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__last": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__delta": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__missing_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_supply_temperature_setpoint__missing_rate": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s_dhw_3way_valve_status__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_dhw_3way_valve_status__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_3way_valve_status__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_dhw_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_dhw_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_1_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_1_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_1_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_1_heating_pump_status__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_1_heating_pump_status__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_1_heating_pump_status__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_2_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_dhw_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_2_dhw_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_dhw_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_heating_pump_status__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_2_heating_pump_status__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_2_heating_pump_status__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_3_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_3_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_3_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_3_heating_pump_status__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_3_heating_pump_status__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_3_heating_pump_status__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_control_unit_mode__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_control_unit_mode__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_control_unit_mode__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_heating_pump_status_setpoint__dominant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "s_hc1_heating_pump_status_setpoint__nunique": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "s_hc1_heating_pump_status_setpoint__change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "days_since_last_fault_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "days_since_last_task_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "days_since_last_any_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "post_fault_stabilization": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "post_task_stabilization": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "recent_regime_change_flag": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "configuration_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "has_dhw": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "has_buffer_tank": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "preprocessing_version": {
+      "type": "string",
+      "const": "preprocessed_data_v1"
+    },
+    "created_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  }
+}
