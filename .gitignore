@@ -1,4 +1,7 @@
-# --- Python ---
+.env
+.env.*
+!.env.example
+
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -6,33 +9,22 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
-
-# --- uv / venv ---
 .venv/
 .python-version.local
-
-# --- Jupyter ---
 .ipynb_checkpoints/
+
 agent/notebooks/.ipynb_checkpoints/
 agent/notebooks/_local/
 
-# --- env / secrets ---
-.env
-.env.*
-!.env.example
-
-# --- IDE / OS ---
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-
-# --- Data (대용량 원천 CSV는 커밋하지 않는다; 경로 규약만 data/README.md로 공유) ---
-/data/*
-!/data/README.md
+# Local source data is large and should not be committed.
 data/raw/
 data/raw_data/
 data/_downloads/
 data/processed/
+data/manufacturer*/
 report/priority_model_comparison/raw_inference_scores.csv
 _zip_read/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/

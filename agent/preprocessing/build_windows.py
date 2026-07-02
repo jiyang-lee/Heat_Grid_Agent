@@ -46,11 +46,21 @@ def build_preprocessed_windows(
     config = _prepare_substations(substations)
 
     frames = []
-    for substation_id, group in sensors.groupby("substation_id", dropna=False):
+    group_columns = ["substation_id"]
+    if "manufacturer" in sensors.columns:
+        group_columns.insert(0, "manufacturer")
+    for group_key, group in sensors.groupby(group_columns, dropna=False):
+        if isinstance(group_key, tuple):
+            manufacturer = group_key[0] if len(group_key) > 1 else pd.NA
+            substation_id = group_key[-1]
+        else:
+            manufacturer = pd.NA
+            substation_id = group_key
         if pd.isna(substation_id) or group.empty:
             continue
         substation_windows = _build_substation_windows(
             int(substation_id),
+            manufacturer,
             group.copy(),
             window_delta,
             event_context,
@@ -72,10 +82,15 @@ def _normalize_sensor_readings(sensor_readings: pd.DataFrame) -> pd.DataFrame:
     result = sensor_readings.copy()
     result["ts"] = pd.to_datetime(result["ts"], errors="coerce", utc=True)
     result["_invalid_ts"] = result["ts"].isna()
-    invalid_counts = result.groupby("substation_id", dropna=False)["_invalid_ts"].sum()
-    result = result.dropna(subset=["substation_id", "ts"]).sort_values(["substation_id", "ts"])
-    result = result.drop_duplicates(subset=["substation_id", "ts"], keep="last").reset_index(drop=True)
-    result["_invalid_ts_count"] = result["substation_id"].map(invalid_counts).fillna(0).astype("int64")
+    group_columns = ["substation_id"]
+    if "manufacturer" in result.columns:
+        result["manufacturer"] = result["manufacturer"].astype("string")
+        group_columns.insert(0, "manufacturer")
+    invalid_counts = result.groupby(group_columns, dropna=False)["_invalid_ts"].sum().rename("_invalid_ts_count")
+    result = result.dropna(subset=["substation_id", "ts"]).sort_values([*group_columns, "ts"])
+    result = result.drop_duplicates(subset=[*group_columns, "ts"], keep="last").reset_index(drop=True)
+    result = result.merge(invalid_counts.reset_index(), on=group_columns, how="left")
+    result["_invalid_ts_count"] = result["_invalid_ts_count"].fillna(0).astype("int64")
 
     for column in NUMERIC_SENSOR_COLUMNS:
         if column not in result.columns:
@@ -94,6 +109,7 @@ def _normalize_sensor_readings(sensor_readings: pd.DataFrame) -> pd.DataFrame:
 
 def _build_substation_windows(
     substation_id: int,
+    manufacturer: object,
     group: pd.DataFrame,
     window_delta: pd.Timedelta,
     event_context: dict[str, pd.DataFrame],
@@ -125,8 +141,8 @@ def _build_substation_windows(
         row.update(_quality_metrics(window))
         row.update(_numeric_stats(window))
         row.update(_control_summaries(window))
-        row.update(_event_context_for_window(substation_id, window_start, event_context))
-        row.update(_config_for_substation(substation_id, config))
+        row.update(_event_context_for_window(substation_id, manufacturer, window_start, event_context))
+        row.update(_config_for_substation(substation_id, manufacturer, config))
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -238,11 +254,12 @@ def _prepare_event_context(
 
 def _event_context_for_window(
     substation_id: int,
+    manufacturer: object,
     window_start: pd.Timestamp,
     event_context: dict[str, pd.DataFrame],
 ) -> dict[str, object]:
-    days_fault = _days_since_latest(event_context["faults"], substation_id, "report_date", window_start)
-    days_task = _days_since_latest(event_context["tasks"], substation_id, "event_start", window_start)
+    days_fault = _days_since_latest(event_context["faults"], substation_id, manufacturer, "report_date", window_start)
+    days_task = _days_since_latest(event_context["tasks"], substation_id, manufacturer, "event_start", window_start)
     valid = [value for value in [days_fault, days_task] if pd.notna(value)]
     days_any = min(valid) if valid else math.nan
     post_fault = bool(pd.notna(days_fault) and days_fault <= STABILIZATION_DAYS)
@@ -260,12 +277,15 @@ def _event_context_for_window(
 def _days_since_latest(
     events: pd.DataFrame,
     substation_id: int,
+    manufacturer: object,
     time_column: str,
     window_start: pd.Timestamp,
 ) -> float:
     if events.empty:
         return math.nan
     subset = events[(events["substation_id"] == substation_id) & (events[time_column] < window_start)]
+    if "manufacturer" in subset.columns and pd.notna(manufacturer):
+        subset = subset[subset["manufacturer"].astype(str).eq(str(manufacturer))]
     if subset.empty:
         return math.nan
     latest = subset[time_column].max()
@@ -280,8 +300,10 @@ def _prepare_substations(substations: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def _config_for_substation(substation_id: int, config: pd.DataFrame) -> dict[str, object]:
+def _config_for_substation(substation_id: int, manufacturer: object, config: pd.DataFrame) -> dict[str, object]:
     row = config[config["substation_id"] == substation_id]
+    if "manufacturer" in row.columns and pd.notna(manufacturer):
+        row = row[row["manufacturer"].astype(str).eq(str(manufacturer))]
     if row.empty:
         return {"configuration_type": "missing", "has_dhw": pd.NA, "has_buffer_tank": pd.NA}
     first = row.iloc[0]

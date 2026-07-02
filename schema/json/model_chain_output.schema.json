@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.agent/schema/model_chain_output.schema.json",
+  "title": "model_chain_output",
+  "description": "IF + LGBM risk + LGBM leadtime 중간 예측 체인 출력. 1행 = manufacturer x substation_id x 6시간 윈도우.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manufacturer",
+    "substation_id",
+    "window_start",
+    "window_end",
+    "anomaly_score",
+    "risk_score",
+    "risk_probability",
+    "risk_level_calibrated",
+    "predicted_lead_time_bucket",
+    "predicted_lead_time_confidence",
+    "leadtime_prob_0-24h",
+    "leadtime_prob_1-3d",
+    "leadtime_prob_3-7d"
+  ],
+  "properties": {
+    "manufacturer": {
+      "type": "string"
+    },
+    "substation_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "anomaly_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "risk_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "risk_level_calibrated": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "predicted_lead_time_bucket": {
+      "type": "string",
+      "enum": [
+        "0-24h",
+        "1-3d",
+        "3-7d"
+      ]
+    },
+    "predicted_lead_time_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "leadtime_prob_0-24h": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "leadtime_prob_1-3d": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "leadtime_prob_3-7d": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "lead_time_bucket_distance": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "days_since_last_fault_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "days_since_last_task_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "days_since_last_any_event": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "configuration_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "has_dhw": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "has_buffer_tank": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "main_abnormal_sensors": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "normal",
+        "pre_fault",
+        "",
+        null
+      ]
+    },
+    "fault_label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "estimated_lead_time_hours": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "lead_time_bucket": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "0-24h",
+        "1-3d",
+        "3-7d",
+        "",
+        null
+      ]
+    }
+  }
+}

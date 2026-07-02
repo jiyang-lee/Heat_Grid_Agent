@@ -91,6 +91,43 @@ def test_build_preprocessed_windows_event_context():
     assert row["recent_regime_change_flag"] == True
 
 
+def test_build_preprocessed_windows_keeps_manufacturers_separate_for_same_substation_and_time():
+    sensors = pd.concat(
+        [
+            _sensor_rows().assign(
+                manufacturer="manufacturer 1",
+                source_file="manufacturer 1/operational_data/substation_1.csv",
+            ),
+            _sensor_rows().assign(
+                manufacturer="manufacturer 2",
+                source_file="manufacturer 2/operational_data/substation_1.csv",
+            ),
+        ],
+        ignore_index=True,
+    )
+    substations = pd.concat(
+        [
+            _substations().assign(manufacturer="manufacturer 1"),
+            _substations().assign(manufacturer="manufacturer 2"),
+        ],
+        ignore_index=True,
+    )
+
+    result = build_preprocessed_windows(
+        substations,
+        sensors,
+        pd.DataFrame(columns=["manufacturer", "substation_id", "report_date"]),
+        pd.DataFrame(columns=["manufacturer", "substation_id", "event_start"]),
+    )
+
+    assert len(result) == 2
+    assert set(result["source_file"]) == {
+        "manufacturer 1/operational_data/substation_1.csv",
+        "manufacturer 2/operational_data/substation_1.csv",
+    }
+    assert result["row_count"].tolist() == [2, 2]
+
+
 def test_missing_required_keys_fail_clearly():
     bad_sensor_readings = pd.DataFrame({"substation_id": [1]})
 

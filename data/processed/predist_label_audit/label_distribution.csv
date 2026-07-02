@@ -1,0 +1,11 @@
+metric,value
+fault_events,73.0
+efd_possible_fault_events,55.0
+normal_events,65.0
+normal_windows,1818.0
+pre_fault_windows,1528.0
+normal_ratio,0.543335325762104
+pre_fault_ratio,0.456664674237896
+lead_bucket_0-24h,217.0
+lead_bucket_1-3d,436.0
+lead_bucket_3-7d,875.0

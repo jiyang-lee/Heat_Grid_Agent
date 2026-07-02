@@ -1,0 +1,3 @@
+event_id,substation_id,report_date,problem_en,event_description_en,possible_anomaly_start,possible_anomaly_end,training_start,training_end,efd_possible,fault_label,monitoring_potential,manufacturer
+1,10,2014-05-04 14:44:00,no DHW,No hot water. Actuator (DHW system) replaced.,2014-05-03 16:00:00,2014-05-05 04:00:00,2012-03-28 09:00:00,2014-04-20 14:44:00,True,Motorised control valve (primary side): Actuator defective,3.4,manufacturer 1
+1,24,2020-03-18 11:11:00,no heat,Secondary side shut-off valve closed. The line has been put back into service.,,2020-03-20 04:48:52.000,2019-10-09 08:40:00.310497,2020-03-04 11:11:00,True,Shut-off valve closed,2.8,manufacturer 2
