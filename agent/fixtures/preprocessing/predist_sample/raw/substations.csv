@@ -1,0 +1,3 @@
+substation_id,manufacturer,source_file,configuration_type,has_dhw,has_buffer_tank
+10,manufacturer 1,manufacturer 1/operational_data/substation_10.csv,missing,,
+24,manufacturer 2,manufacturer 2/operational_data/substation_24.csv,missing,,

@@ -1,0 +1,12 @@
+.env
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+agent/notebooks/.ipynb_checkpoints/
+agent/notebooks/_local/
+
+# Local source data is large and should not be committed.
+data/raw/
