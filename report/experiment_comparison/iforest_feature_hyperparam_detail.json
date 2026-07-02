@@ -1,0 +1,123 @@
+{
+  "base_feature_contract_count": 195,
+  "base_feature_contract_source": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_baseline\\models\\baseline_model_metadata.json",
+  "feature_sets": {
+    "contract_195_full": 195,
+    "sensor_numeric_only": 137,
+    "sensor_plus_cyclic": 143,
+    "sensor_cyclic_event": 145,
+    "sensor_cyclic_onehot": 187,
+    "no_time_context": 189,
+    "no_drift_candidates": 190,
+    "no_context_features": 143,
+    "thermal_core_plus_cyclic_event": 121
+  },
+  "param_sets": {
+    "default_300_auto": {
+      "n_estimators": 300,
+      "contamination": "auto",
+      "max_samples": "auto",
+      "max_features": 1.0,
+      "bootstrap": false
+    },
+    "trees_600": {
+      "n_estimators": 600,
+      "contamination": "auto",
+      "max_samples": "auto",
+      "max_features": 1.0,
+      "bootstrap": false
+    },
+    "max_samples_256": {
+      "n_estimators": 400,
+      "contamination": "auto",
+      "max_samples": 256,
+      "max_features": 1.0,
+      "bootstrap": false
+    },
+    "max_samples_512": {
+      "n_estimators": 400,
+      "contamination": "auto",
+      "max_samples": 512,
+      "max_features": 1.0,
+      "bootstrap": false
+    },
+    "max_features_075": {
+      "n_estimators": 400,
+      "contamination": "auto",
+      "max_samples": "auto",
+      "max_features": 0.75,
+      "bootstrap": false
+    },
+    "bootstrap_true": {
+      "n_estimators": 400,
+      "contamination": "auto",
+      "max_samples": "auto",
+      "max_features": 1.0,
+      "bootstrap": true
+    }
+  },
+  "baseline_holdout": {
+    "feature_set": "contract_195_full",
+    "param_set": "default_300_auto",
+    "feature_count": 195,
+    "evaluation_split_column": "split_time_based",
+    "split": "holdout",
+    "threshold_quantile": 0.99,
+    "threshold_value": 0.5357784270858823,
+    "row_count": 394,
+    "normal_count": 261,
+    "pre_fault_count": 133,
+    "roc_auc": 0.7152363667790166,
+    "average_precision": 0.6929799703112345,
+    "precision": 1.0,
+    "recall": 0.12781954887218044,
+    "f1": 0.22666666666666666,
+    "false_positive_rate": 0.0
+  },
+  "best_holdout_by_roc_auc": {
+    "feature_set": "thermal_core_plus_cyclic_event",
+    "param_set": "trees_600",
+    "feature_count": 121,
+    "evaluation_split_column": "split_time_based",
+    "split": "holdout",
+    "threshold_quantile": 0.99,
+    "threshold_value": 0.5228940092556549,
+    "row_count": 394,
+    "normal_count": 261,
+    "pre_fault_count": 133,
+    "roc_auc": 0.7475009362486678,
+    "average_precision": 0.6624551019714837,
+    "precision": 1.0,
+    "recall": 0.20300751879699247,
+    "f1": 0.3375,
+    "false_positive_rate": 0.0,
+    "delta_roc_auc_vs_baseline": 0.03226456946965117,
+    "delta_ap_vs_baseline": -0.030524868339750766,
+    "delta_f1_vs_baseline": 0.11083333333333337,
+    "delta_recall_vs_baseline": 0.07518796992481203,
+    "delta_fpr_vs_baseline": 0.0
+  },
+  "best_holdout_by_average_precision": {
+    "feature_set": "no_drift_candidates",
+    "param_set": "bootstrap_true",
+    "feature_count": 190,
+    "evaluation_split_column": "split_time_based",
+    "split": "holdout",
+    "threshold_quantile": 0.99,
+    "threshold_value": 0.551771111765988,
+    "row_count": 394,
+    "normal_count": 261,
+    "pre_fault_count": 133,
+    "roc_auc": 0.7201624751534008,
+    "average_precision": 0.7066298572175891,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "false_positive_rate": 0.0,
+    "delta_roc_auc_vs_baseline": 0.0049261083743842304,
+    "delta_ap_vs_baseline": 0.013649886906354602,
+    "delta_f1_vs_baseline": -0.22666666666666666,
+    "delta_recall_vs_baseline": -0.12781954887218044,
+    "delta_fpr_vs_baseline": 0.0
+  }
+}

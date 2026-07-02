@@ -1,0 +1,73 @@
+﻿{
+  "model_version": "priority_engine_v3_lgbm_regression_candidate",
+  "priority_v2_input_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_priority\\priority_engine_scores_tuned.csv",
+  "priority_v2_threshold48_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_priority\\priority_engine_scores_v2_threshold48.csv",
+  "risk_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_risk\\lgbm_risk_scores_calibrated.csv",
+  "model_output_path": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_priority\\models\\lightgbm_priority_regression_v3_candidate.joblib",
+  "target_definition": {
+    "normal": 0.0,
+    "pre_fault_0-24h": 100.0,
+    "pre_fault_1-3d": 80.0,
+    "pre_fault_3-7d": 60.0,
+    "pre_fault_unknown_bucket": 70.0
+  },
+  "guarded_numeric_features": [
+    "anomaly_score",
+    "risk_probability",
+    "risk_score",
+    "days_since_last_fault_event",
+    "days_since_last_task_event",
+    "days_since_last_any_event",
+    "risk_base_score",
+    "risk_probability_component_score",
+    "anomaly_component_score",
+    "history_adjustment_score"
+  ],
+  "guarded_categorical_features": [
+    "manufacturer",
+    "risk_level_calibrated"
+  ],
+  "leak_diagnostic_numeric_features": [
+    "anomaly_score",
+    "risk_probability",
+    "risk_score",
+    "predicted_lead_time_confidence",
+    "leadtime_prob_0-24h",
+    "leadtime_prob_1-3d",
+    "leadtime_prob_3-7d",
+    "lead_time_bucket_distance",
+    "days_since_last_fault_event",
+    "days_since_last_task_event",
+    "days_since_last_any_event",
+    "risk_base_score",
+    "risk_probability_component_score",
+    "leadtime_bucket_base_score",
+    "leadtime_confidence_multiplier",
+    "leadtime_component_score",
+    "anomaly_component_score",
+    "history_adjustment_score"
+  ],
+  "leak_diagnostic_categorical_features": [
+    "manufacturer",
+    "risk_level_calibrated",
+    "predicted_lead_time_bucket"
+  ],
+  "threshold_map": {
+    "v2_threshold48_fixed": 48.0,
+    "risk_gated_urgency_x8_fixed": 52.0,
+    "lgbm_guarded_fpr0": 74.0,
+    "lgbm_guarded_fpr1pct": 74.0,
+    "lgbm_guarded_fpr5pct": 74.0,
+    "lgbm_leak_diagnostic_fpr0": 69.0
+  },
+  "split_counts": {
+    "train": 1631,
+    "validation": 431,
+    "holdout": 300
+  },
+  "notes": [
+    "This is a candidate experiment and does not replace priority_engine_v2_threshold48.",
+    "The model is trained on a proxy target because actual dispatch priority labels are unavailable.",
+    "Validation split is used to select candidate thresholds; holdout is used only for final comparison."
+  ]
+}

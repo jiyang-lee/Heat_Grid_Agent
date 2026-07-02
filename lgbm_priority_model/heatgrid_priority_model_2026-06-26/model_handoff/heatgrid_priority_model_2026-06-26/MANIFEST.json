@@ -1,0 +1,24 @@
+{
+  "package": "heatgrid_priority_model_2026-06-26",
+  "created_at": "2026-06-26T05:13:40.648421+00:00",
+  "branch_source": "proto",
+  "source": "agent/priority/models",
+  "target_usage": "Priority regression inference handoff only",
+  "files": [
+    {
+      "path": "priority/lightgbm_priority_model.joblib",
+      "bytes": 285378,
+      "sha256": "2c4640f199f5baa744abbb07891056e9c158f6304ab31a848e5f8e62a7bc8bfa"
+    },
+    {
+      "path": "priority/priority_model_metadata.json",
+      "bytes": 2245,
+      "sha256": "265a22eed80a885073aa6550ff989c17dba8affa839c3d04c412e4490549dd1a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1004,
+      "sha256": "93bef8f059a3f7a23288b32469253d99eb2c55de4c03167e0a031aca3e03a350"
+    }
+  ]
+}

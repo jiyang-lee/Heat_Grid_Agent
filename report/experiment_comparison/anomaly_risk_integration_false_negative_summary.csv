@@ -1,0 +1,13 @@
+﻿variant,metric_type,false_negative_count,fn_1_3d_count,fn_medium_count,fn_low_count,mean_risk_probability
+risk_plus_both_iforest_scores,base,51,31,20,31,0.2096257492491602
+risk_plus_thermal_iforest,base,52,33,19,33,0.17604606934692305
+risk_plus_nodrift_iforest,base,54,34,24,30,0.20228625293256694
+risk_baseline_retrained,base,57,35,23,34,0.21129239070369482
+risk_plus_thermal_iforest_z,base,57,35,23,34,0.2042175738513027
+risk_plus_both_iforest_z,base,58,34,35,23,0.24580623772638982
+risk_plus_both_iforest_scores,calibrated,56,33,25,31,0.2534681388754855
+risk_plus_thermal_iforest,calibrated,57,35,24,33,0.2124365644342601
+risk_plus_thermal_iforest_z,calibrated,59,35,25,34,0.21595156834135662
+risk_plus_nodrift_iforest,calibrated,59,36,29,30,0.23408148073445836
+risk_plus_both_iforest_z,calibrated,61,35,38,23,0.2680566289244371
+risk_baseline_retrained,calibrated,62,37,28,34,0.24746055344061377
