@@ -35,3 +35,4 @@ data/raw_data/
 data/_downloads/
 data/processed/
 report/priority_model_comparison/raw_inference_scores.csv
+_zip_read/
