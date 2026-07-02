@@ -1,0 +1,1955 @@
+{
+  "source": {
+    "feature_columns_csv": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_features\\feature_columns.csv",
+    "metadata_columns_csv": "C:\\Project3\\HeatGrid_Agent\\data\\processed\\ml_features\\metadata_columns.csv"
+  },
+  "counts": {
+    "selected_feature_count": 195,
+    "metadata_column_count": 37,
+    "all_feature_rows_count": 259
+  },
+  "selected_feature_columns": [
+    {
+      "column_name": "dow_cos",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 7,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "dow_sin",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 7,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "doy_cos",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 216,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "doy_sin",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 209,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hour_cos",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 4,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hour_sin",
+      "dtype": "float64",
+      "feature_family": "cyclic_time",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 3,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__sh",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__sh_dhw",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__sh_dhw_with_sub_circuits",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__sh_with_buffer_tank",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "configuration_type__is__sh_with_sub_circuits",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "manufacturer__is__manufacturer_1",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "manufacturer__is__manufacturer_2",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_3-way_valve_status__dominant__is__aus",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_3-way_valve_status__dominant__is__ein",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_3-way_valve_status__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_control_unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_control_unit_mode__dominant__is__standby",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_control_unit_mode__dominant__is__tag",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.1_control_unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.1_control_unit_mode__dominant__is__nacht",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.1_control_unit_mode__dominant__is__tag",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.1_heating_pump_status__dominant__is__ein",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.1_heating_pump_status__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_control_unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_control_unit_mode__dominant__is__nacht",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_control_unit_mode__dominant__is__standby",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_control_unit_mode__dominant__is__tag",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_dhw_control unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_dhw_control unit_mode__dominant__is__standby",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_heating_pump_status__dominant__is__aus",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_heating_pump_status__dominant__is__ein",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.2_heating_pump_status__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.3_control_unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.3_control_unit_mode__dominant__is__tag",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.3_heating_pump_status__dominant__is__aus",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.3_heating_pump_status__dominant__is__ein",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1.3_heating_pump_status__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_control_unit_mode__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_control_unit_mode__dominant__is__nacht",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_control_unit_mode__dominant__is__standby",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_control_unit_mode__dominant__is__tag",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_heating_pump_status_setpoint__dominant__is__aus",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_heating_pump_status_setpoint__dominant__is__ein",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_heating_pump_status_setpoint__dominant__is__missing",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "season_bucket__is__autumn",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "season_bucket__is__spring",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "season_bucket__is__summer",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "season_bucket__is__winter",
+      "dtype": "int8",
+      "feature_family": "derived_one_hot",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "days_since_last_any_event",
+      "dtype": "float64",
+      "feature_family": "event_context",
+      "missing_rate_train": 0.2092326139088729,
+      "unique_count_train": 1286,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "days_since_last_task_event",
+      "dtype": "float64",
+      "feature_family": "event_context",
+      "missing_rate_train": 0.2092326139088729,
+      "unique_count_train": 1286,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "dhw_supply_temperature_gap__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 214,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "dhw_supply_temperature_gap__max_abs",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 250,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "dhw_supply_temperature_gap__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 909,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "extreme_change_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 61,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "has_buffer_tank",
+      "dtype": "bool",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "has_dhw",
+      "dtype": "bool",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hc1_supply_temperature_gap__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 536,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hc1_supply_temperature_gap__max_abs",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 541,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hc1_supply_temperature_gap__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 1570,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "max_timestamp_gap_minutes",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 9,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 44,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 70,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "network_temperature_gap__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 695,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "network_temperature_gap__max_abs",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 462,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "network_temperature_gap__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1333,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 668,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 380,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 574,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 452,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1572,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 478,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "outdoor_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1644,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 686,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 457,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 682,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 503,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1588,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 488,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_hc1_return_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1652,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 980,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1634,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1638,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1638,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1647,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1634,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_energy__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1610,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1261,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1096,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1320,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1302,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1634,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 959,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_flow__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1643,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 937,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 678,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 949,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 917,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1539,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 551,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_heat_power__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1610,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1250,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1643,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1646,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1646,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1653,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1643,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_meter_volume__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1641,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 499,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 355,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 502,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 382,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1198,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 410,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_return_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1604,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 446,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 369,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 481,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 393,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1184,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 407,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "p_net_supply_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1558,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "row_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 13,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 724,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 427,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 589,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 333,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 1076,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 380,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__missing_count",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_lower_storage_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 1094,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 367,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 187,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 258,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 219,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 838,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 298,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__missing_count",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3974820143884892,
+      "unique_count_train": 1000,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 10,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 13,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 15,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 13,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 93,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 10,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__missing_count",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 4,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 4,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_supply_temperature_setpoint__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.4436450839328537,
+      "unique_count_train": 197,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 491,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 291,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 398,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 250,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 1033,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 388,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__missing_count",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_dhw_upper_storage_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.3405275779376499,
+      "unique_count_train": 1094,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 849,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 530,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 787,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 555,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1590,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 549,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 1654,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__delta",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 689,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__first",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 452,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__last",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 622,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__max",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 495,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__mean",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 1241,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__min",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 472,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__missing_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 35,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__missing_rate",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 36,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "s_hc1_supply_temperature_setpoint__std",
+      "dtype": "float64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0065947242206235,
+      "unique_count_train": 1259,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "timestamp_gap_count",
+      "dtype": "int64",
+      "feature_family": "sensor_numeric",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "day_of_week",
+      "dtype": "int64",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 7,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "day_of_year",
+      "dtype": "int64",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 236,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "hour_of_day",
+      "dtype": "float64",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 4,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "is_heating_season",
+      "dtype": "bool",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "is_weekend",
+      "dtype": "bool",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 2,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    },
+    {
+      "column_name": "month",
+      "dtype": "int64",
+      "feature_family": "time_context",
+      "missing_rate_train": 0.0,
+      "unique_count_train": 12,
+      "selection_split_column": "split_regime_based",
+      "selection_split_value": "train"
+    }
+  ],
+  "metadata_columns": [
+    {
+      "column_name": "manufacturer",
+      "role": "identifier",
+      "dtype": "str"
+    },
+    {
+      "column_name": "substation_id",
+      "role": "identifier",
+      "dtype": "int64"
+    },
+    {
+      "column_name": "source_file",
+      "role": "source_trace",
+      "dtype": "str"
+    },
+    {
+      "column_name": "window_start",
+      "role": "time_range",
+      "dtype": "str"
+    },
+    {
+      "column_name": "window_end",
+      "role": "time_range",
+      "dtype": "str"
+    },
+    {
+      "column_name": "main_missing_sensors",
+      "role": "explanation_text",
+      "dtype": "str"
+    },
+    {
+      "column_name": "main_changed_sensors",
+      "role": "explanation_text",
+      "dtype": "str"
+    },
+    {
+      "column_name": "season_bucket",
+      "role": "time_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "label",
+      "role": "target",
+      "dtype": "str"
+    },
+    {
+      "column_name": "fault_label",
+      "role": "target_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "fault_event_id",
+      "role": "event_identifier",
+      "dtype": "float64"
+    },
+    {
+      "column_name": "estimated_lead_time_hours",
+      "role": "lead_time_target",
+      "dtype": "float64"
+    },
+    {
+      "column_name": "normal_event_related",
+      "role": "label_context",
+      "dtype": "bool"
+    },
+    {
+      "column_name": "maintenance_related",
+      "role": "interpretation_context",
+      "dtype": "bool"
+    },
+    {
+      "column_name": "disturbance_count",
+      "role": "interpretation_context",
+      "dtype": "int64"
+    },
+    {
+      "column_name": "leakage_blocked_fault_count",
+      "role": "leakage_guard",
+      "dtype": "int64"
+    },
+    {
+      "column_name": "window_source_type",
+      "role": "training_control",
+      "dtype": "str"
+    },
+    {
+      "column_name": "use_for_supervised_training",
+      "role": "training_control",
+      "dtype": "bool"
+    },
+    {
+      "column_name": "configuration_type",
+      "role": "configuration_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "normal_reference_group",
+      "role": "configuration_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1_control_unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_dhw_control_unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1_heating_pump_status_setpoint__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_dhw_3-way_valve_status__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.2_heating_pump_status__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.3_heating_pump_status__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.1_control_unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.2_control_unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.2_dhw_control unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.1_heating_pump_status__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "s_hc1.3_control_unit_mode__dominant",
+      "role": "control_context",
+      "dtype": "str"
+    },
+    {
+      "column_name": "split_time_based",
+      "role": "evaluation_split",
+      "dtype": "str"
+    },
+    {
+      "column_name": "split_substation_based",
+      "role": "evaluation_split",
+      "dtype": "str"
+    },
+    {
+      "column_name": "split_regime_based",
+      "role": "evaluation_split",
+      "dtype": "str"
+    },
+    {
+      "column_name": "normal_reference_outlier",
+      "role": "training_control",
+      "dtype": "bool"
+    },
+    {
+      "column_name": "normal_reference_outlier_count",
+      "role": "training_control",
+      "dtype": "int64"
+    },
+    {
+      "column_name": "normal_reference_filter_reason",
+      "role": "training_control",
+      "dtype": "str"
+    }
+  ]
+}
