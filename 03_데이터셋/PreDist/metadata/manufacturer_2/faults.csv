@@ -1,0 +1,41 @@
+Event ID;substation ID;Report date;Problem EN;Event description EN;Possible anomaly start;Possible anomaly end;Training start;Training end;efd_possible;Fault label;Monitoring potential
+0;53;2020-03-23 15:19:00;Noise;Readjusted. New needle throttle valve installed. Pressure fluctuations are eliminated.;;2020-03-25 10:43:51.000;;;False;Incorrect setting of the differential pressure regulator;3.1
+1;24;2020-03-18 11:11:00;no heat;Secondary side shut-off valve closed. The line has been put back into service.;;2020-03-20 04:48:52.000;2019-10-09 08:40:00.310497;2020-03-04 11:11:00;True;Shut-off valve closed;2.8
+2;53;2020-03-16 10:00:00;Noise;Vented. Control line has been rattling. Needle throttle valve readjusted.;;2020-03-25 10:43:51.000;2019-11-15 20:11:09.000000;2020-03-02 10:00:00;True;Incorrect setting of the differential pressure regulator;3.1
+3;45;2020-03-09 12:12:00;no heat;Tavel time of the Motorised control valve (primary side) readjusted.;;2020-03-09 19:39:53.000;2019-12-04 12:40:00.331599;2020-02-24 12:12:00;True;Motorised control valve (primary side): Incorrect setting of the actuator travel time;3.3
+4;39;2020-02-28 10:38:00;Meter;Battery in heat meter replaced.;;2020-02-29 10:38:00.000;;;False;Failure of the thermal energy meter;3.2
+5;8;2020-02-18 14:00:00;leakage;Flange in return line leaking.Gasket replaced.;;2020-02-19 16:55:43.000;2019-10-15 00:00:00.000000;2020-02-04 14:00:00;True;Leakage;1.75
+6;35;2020-02-04 15:27:00;leakage;Corrosion. Gasket above the strainer replaced.;;2020-02-05 16:56:11.000;2019-10-10 00:00:00.000000;2020-01-21 15:27:00;True;Leakage;1.75
+7;18;2020-02-04 08:33:00;leakage;Pressure gauge and screw connection sealed;;2020-02-05 08:33:00.000;;;False;Leakage;1.75
+8;59;2020-01-24 14:46:00;no heat;Heating pump regulation adjusted;;2020-01-25 14:46:00.000;2019-11-27 12:00:00.356912;2020-01-10 14:46:00;True;Failure of the heating circuit pump;3.8
+10;18;2020-01-21 10:53:00;leakage;Strainer was leaking. Gasket replaced.;;2020-02-05 08:33:00.000;2019-11-26 00:00:00.000000;2020-01-07 10:53:00;True;Leakage;1.75
+11;61;2020-01-21 10:04:00;no heat;Pump failure. Pump replaced.;2020-01-06 17:00:00;2020-01-21 18:12:11.000;;;False;Failure of the heating circuit pump;3.8
+12;43;2020-01-10 12:35:00;no heat;No secondary flow. Air in the piping system. Strainer and magnetic separator have been cleaned.;2020-01-08 12:00:00;2020-01-13 11:26:40.000;2019-11-20 14:20:00.264168;2019-12-27 12:35:00;True;Strainer (secondary side): Poor flow rate;3.6
+13;15;2019-12-19 08:14:00;leakage;Strainer was leaking. Gasket replaced.;;2019-12-23 01:04:33.000;2019-10-09 12:00:00.317495;2019-11-01 00:00:00;True;Leakage;1.75
+14;11;2019-12-06 12:59:00;leakage;Leak in screw connection on differential pressure regulator. Leak repaired.;;2019-12-09 22:35:58.000;;;False;Leakage;1.75
+15;50;2019-12-01 08:03:24;no heat;Heating pump readjusted and buffer tank loaded.;;2019-12-04 12:33:39.000;;;False;Failure of the domestic hot water storage charging pump;3.7
+17;50;2019-11-28 10:00:15;no heat;Pump was on dry running/malfunction. Air in the system. Pump acknowledged and next week temperature short circuit will be installed.;;2019-12-04 12:33:39.000;;;False;Failure of the domestic hot water storage charging pump;3.7
+18;11;2019-11-26 09:57:00;no heat;Needle throttle valve readjusted.;2019-11-25 17:00:00;2019-11-26 19:05:18.000;2019-09-10 00:00:00.000000;2019-11-12 09:57:00;True;Incorrect setting of the differential pressure regulator;3.1
+19;57;2019-11-21 10:35:00;noise;Needle throttle valve throttled. System does not make any noise.;;2019-11-22 19:24:30.000;;;False;Incorrect setting of the differential pressure regulator;3.1
+20;50;2019-11-18 06:50:40;no heat;Control unit has hung up. Storage tank charging takes a very long time. Pump was malfunctioning and did not deliver.;2019-11-17 15:00:00;2019-12-04 12:33:39.000;2019-09-16 00:00:00.000000;2019-11-04 06:50:40;True;Failure of the domestic hot water storage charging pump;3.7
+21;53;2019-11-15 09:50:00;no heat;System pressure increased. Storage tank flow temperature increased. Pump pressure increased.;;2019-11-15 20:11:09.000;2019-08-29 12:30:00.164418;2019-11-01 09:50:00;True;Failure of the domestic hot water storage charging pump;3.7
+22;26;2019-11-15 09:00:00;noise;Needle throttle valve readjusted.;;2019-11-15 16:04:40.000;2019-08-20 12:50:00.163741;2019-11-01 09:00:00;True;Incorrect setting of the differential pressure regulator;3.1
+23;28;2019-11-11 09:13:00;no heat;Differential pressure regulator defective. Repaired.;;2019-11-12 10:20:58.000;;;False;Differential pressure regulator jams when closed;3.3
+24;57;2019-11-04 13:15:00;Noise;Vented and differential pressure regulator readjusted.;;2019-11-22 19:24:30.000;;;False;Air in the piping system;2.1
+25;10;2019-10-14 11:32:00;no heat;Pump pressure increased.;2019-09-19 12:00:00;2019-10-15 01:13:09.000;2015-10-13 12:39:00.873934;2019-09-30 11:32:00;True;Failure of the heating circuit pump;3.8
+26;39;2019-10-13 15:15:00;noise;Station checked and vented;;2019-10-14 15:15:00.000;2019-09-07 00:00:00.000000;2019-09-29 15:15:00;True;Air in the piping system;2.1
+27;39;2019-10-03 12:17:00;leakage;Screw connection on the strainer leaking on the primary side. The screw connection was retightened.;;2019-10-04 11:46:44.000;;;False;Leakage;1.75
+28;52;2019-02-20 09:16:00;no heat;The cap valve/shut-off valve of the diaphragm expansion vessel was replaced and the nitrogen pressure was readjusted.;;2019-03-05 19:08:22.062;2016-06-10 10:00:00.143868;2019-02-06 09:16:00;True;Low pre-charge at the expansion vessel;2.9
+29;19;2018-12-28 09:01:00;leakage;A defective copper line in the circulation area of the domestic hot water system was replaced and a 3-way valve was exchanged.;;2018-12-28 18:41:55.000;2016-04-26 11:30:00.106617;2018-12-14 09:01:00;True;Leakage;1.75
+30;21;2018-12-03 14:25:00;no DHW;System OK. Flow temperature and room temperature increased.;;2018-12-04 14:25:00.000;2016-05-03 10:30:00.100322;2018-11-19 14:25:00;True;Control unit: Incorrect parameterisation;4
+31;16;2018-05-19 10:57:00;other;The limit switch on motor valve 1 had not switched. Readjusted.;;2018-05-20 10:57:00.000;2016-06-20 11:00:00.124520;2018-05-05 10:57:00;True;Motorised control valve (primary side): Actuator defective;3.4
+32;10;2017-12-18 19:40:00;no heat;"System in ""limiting of return temperature""";2017-12-18 12:00:00;2017-12-19 19:40:00.000;2015-10-13 12:39:00.873934;2017-12-04 19:40:00;True;unknown;unknown
+33;4;2017-04-08 09:53:00;not enough heat;Pump settings readjusted.;;2017-04-09 09:53:00.000;;;False;Failure of the heating circuit pump;3.8
+34;4;2017-04-07 09:03:00;no heat;System pressure adjusted.;;2017-04-09 09:53:00.000;;;False;unknown;unknown
+35;4;2017-03-12 09:11:00;not enough heat;System pressure increased.;;2017-04-09 09:53:00.000;2016-05-01 00:00:00.000000;2017-02-26 09:11:00;True;unknown;unknown
+36;20;2017-01-11 09:00:00;no DHW;3-way valve and DHW pump defective and replaced.;;2017-01-12 09:00:00.000;2016-06-10 09:00:00.137978;2016-12-28 09:00:00;True;Failure of the domestic hot water storage charging pump;3.7
+37;4;2016-12-16 08:39:00;not enough heat;System pressure increased.;;2016-12-17 08:39:00.000;2016-05-01 00:00:00.000000;2016-12-02 08:39:00;True;unknown;unknown
+38;10;2016-12-06 09:43:00;no DHW;Differential pressure regulator needle valve too restricted, was opened.;;2016-12-07 09:43:00.000;2015-10-13 12:39:00.873934;2016-11-22 09:43:00;True;Incorrect setting of the differential pressure regulator;3.1
+40;10;2016-09-29 12:04:00;no heat;"System in ""limiting of return temperature"". Settings must be checked.";;2016-09-30 12:04:00.000;2015-10-13 12:39:00.873934;2016-09-15 12:04:00;True;unknown;unknown
+41;4;2016-08-01 10:34:00;other;System pressure adjusted.;;2016-08-02 10:34:00.000;2016-05-01 00:00:00.000000;2016-07-18 10:34:00;True;Air in the piping system;2.1
+42;16;2016-05-23 01:00:36;Pressure fluctuations;Control system readjusted.;;2016-05-24 01:00:36.000;;;False;Control unit: Incorrect parameterisation;4

@@ -1,0 +1,27 @@
+column;description;unit
+outdoor_temperature;Outdoor temperature;°C
+s_hc1_supply_temperature;Heat circuit 1 flow temperature (secondary);°C
+s_hc1_supply_temperature_setpoint;Heat circuit 1 reference flow temperature (secondary);°C
+s_dhw_supply_temperature;Heat circuit 2 flow temperature (secondary);°C
+s_dhw_supply_temperature_setpoint;Heat circuit 2 reference flow temperature (secondary);°C
+p_hc1_return_temperature;Heat circuit 1 return temperature (primary side);°C
+s_dhw_upper_storage_temperature;DHW upper temperature;°C
+s_dhw_lower_storage_temperature;DHW lower temperature;°C
+p_net_meter_energy;Energy;kWh
+p_net_meter_volume;Volume;m3
+p_net_meter_heat_power;Power;kW
+p_net_meter_flow;Flow;l/h
+p_net_supply_temperature;Primary flow temperature;°C
+p_net_return_temperature;Primary return temperature;°C
+p_hc1_return_temperature_setpoint;Heat circuit 1 reference return temperature (primary side);°C
+s_dhw_upper_storage_temperature_setpoint;DHW upper temperature reference;°C
+p_dhw_return_temperature_setpoint;Heat circuit 2 reference return temperature (primary side);°C
+p_dhw_return_temperature;Heat circuit 2 return temperature (primary side);°C
+s_hc1.1_supply_temperature;Sub-heat circuit 1.1 flow temperature;°C
+s_hc1.2_supply_temperature;Sub-heat circuit 1.2 flow temperature;°C
+s_hc1.1_return_temperature;Sub-heat circuit 1.1 return temperature (primary side);°C
+s_hc1.2_return_temperature;Sub-heat circuit 1.2 return temperature (primary side);°C
+s_hc1.1_supply_temperature_setpoint;Sub-heat circuit 1.1 reference flow temperature (secondary);°C
+s_hc1.1_return_temperature_setpoint;Sub-heat circuit 1.1 reference return temperature (primary side);°C
+s_hc1.2_supply_temperature_setpoint;Sub-heat circuit 1.2 reference flow temperature (secondary);°C
+s_hc1.2_return_temperature_setpoint;Sub-heat circuit 1.2 reference return temperature (primary side);°C

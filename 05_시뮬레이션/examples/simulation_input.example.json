@@ -1,0 +1,71 @@
+{
+  "scenario_id": "predist-m1-substation-001-demo",
+  "generated_at": "2026-07-04T09:00:00+09:00",
+  "priority_card": {
+    "rank": 1,
+    "risk_level": "high",
+    "reason": "자동감지 에이전트가 최근 6시간 구간을 pre_fault 후보로 분류했고 위험 점수가 임계값을 넘었다.",
+    "recommended_action": "해당 기계실을 우선 점검 대상으로 표시한다."
+  },
+  "model_detection": {
+    "manufacturer": "manufacturer_1",
+    "substation_id": "1",
+    "detected_label": "pre_fault",
+    "risk_score": 0.82,
+    "window_start": "2026-07-04T03:00:00+09:00",
+    "window_end": "2026-07-04T09:00:00+09:00",
+    "top_signals": [
+      {
+        "name": "s_supply_temperature",
+        "value": 68.4,
+        "unit": "C",
+        "status": "상승"
+      },
+      {
+        "name": "s_return_temperature",
+        "value": 46.2,
+        "unit": "C",
+        "status": "정상 범위 이탈 후보"
+      },
+      {
+        "name": "flow_rate",
+        "value": 14.7,
+        "unit": "m3/h",
+        "status": "변동 증가"
+      }
+    ]
+  },
+  "rag_answer": {
+    "summary": "최근 온도와 유량 변동이 함께 커져 열교환 효율 저하 또는 밸브/펌프 계통 점검이 필요할 수 있다.",
+    "evidence": [
+      {
+        "source": "RAG Output",
+        "text": "2차측 공급/환수 온도 차이와 유량 변동이 동시에 발생하면 열교환기, 제어밸브, 순환펌프 상태를 함께 확인한다."
+      }
+    ],
+    "check_points": [
+      "열교환기 입출구 온도 차이 확인",
+      "제어밸브 개도율 및 응답 지연 확인",
+      "순환펌프 운전 상태와 유량 센서 이상 여부 확인"
+    ]
+  },
+  "connection_check": {
+    "matched": true,
+    "basis": "priority_card.reason의 pre_fault 후보와 RAG Output의 온도/유량 점검 기준이 같은 시나리오로 연결됨",
+    "missing_items": []
+  },
+  "db_mapping": {
+    "site_name": "PreDist 예시 기계실",
+    "facility_name": "district_heating_substation",
+    "equipment": [
+      "heat_exchanger",
+      "control_valve",
+      "circulation_pump"
+    ],
+    "sensor_keys": [
+      "s_supply_temperature",
+      "s_return_temperature",
+      "flow_rate"
+    ]
+  }
+}
