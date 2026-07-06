@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ops Agent Input v0 Minimal",
+  "type": "object",
+  "required": ["raw_context", "priority_context"],
+  "properties": {
+    "raw_context": {
+      "type": "object",
+      "required": ["window", "features"],
+      "properties": {
+        "window": {
+          "type": "object",
+          "required": [
+            "window_id",
+            "manufacturer_id",
+            "substation_id",
+            "configuration_type",
+            "window_start",
+            "window_end"
+          ],
+          "properties": {
+            "window_id": { "type": "string" },
+            "manufacturer_id": { "type": "string" },
+            "substation_id": { "type": ["integer", "string"] },
+            "configuration_type": { "type": ["string", "null"] },
+            "window_start": { "type": "string", "format": "date-time" },
+            "window_end": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        },
+        "features": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "feature_name",
+              "source_sensor",
+              "meaning",
+              "feature_value"
+            ],
+            "properties": {
+              "feature_name": { "type": "string" },
+              "source_sensor": { "type": "string" },
+              "meaning": { "type": "string" },
+              "feature_value": { "type": ["number", "string", "null"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "priority_context": {
+      "type": "object",
+      "required": ["card", "priority", "model_signals", "explanation"],
+      "properties": {
+        "card": {
+          "type": "object",
+          "required": [
+            "card_id",
+            "operational_label",
+            "primary_state",
+            "review_required",
+            "trust_level"
+          ],
+          "properties": {
+            "card_id": { "type": "string" },
+            "operational_label": { "type": ["string", "null"] },
+            "primary_state": { "type": ["string", "null"] },
+            "review_required": { "type": "boolean" },
+            "trust_level": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "priority": {
+          "type": "object",
+          "required": [
+            "priority_decision_id",
+            "priority_score",
+            "priority_level",
+            "priority_source",
+            "m1_priority_agreement"
+          ],
+          "properties": {
+            "priority_decision_id": { "type": "string" },
+            "priority_score": { "type": ["number", "null"] },
+            "priority_level": { "type": ["string", "null"] },
+            "priority_source": { "type": ["string", "null"] },
+            "m1_priority_agreement": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "model_signals": {
+          "type": "object",
+          "required": [
+            "current_best_priority_score",
+            "current_best_priority_level",
+            "m1_specialist_priority_score",
+            "m1_specialist_priority_level"
+          ],
+          "properties": {
+            "current_best_priority_score": { "type": ["number", "null"] },
+            "current_best_priority_level": { "type": ["string", "null"] },
+            "m1_specialist_priority_score": { "type": ["number", "null"] },
+            "m1_specialist_priority_level": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "explanation": {
+          "type": "object",
+          "required": ["why_reason", "recommended_action"],
+          "properties": {
+            "why_reason": { "type": ["string", "null"] },
+            "recommended_action": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

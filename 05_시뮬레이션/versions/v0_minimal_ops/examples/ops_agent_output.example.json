@@ -1,0 +1,5 @@
+{
+  "summary": "Substation 31 is marked urgent because both the hybrid priority result and M1 specialist signal indicate elevated pre-fault risk during the selected window.",
+  "action_plan": "Review return temperature behavior for the window and check whether the gap change is consistent with recent operation.",
+  "caution": "This v0 simulation uses DB features and priority card fields only; it does not include weather context, RAG manuals, or a separate sensor summary table."
+}

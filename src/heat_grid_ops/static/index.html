@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="HeatGrid minimal ops-agent simulation" />
+    <title>HeatGrid Ops Simulation</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">v0_minimal_ops</p>
+          <h1>Priority Card Ops Simulation</h1>
+        </div>
+        <button id="run-button" type="button">카드 1건 실행</button>
+      </header>
+
+      <section class="status-grid" aria-label="service status">
+        <div class="panel compact">
+          <span class="label">Database</span>
+          <strong id="db-status" class="chip warning">확인 중</strong>
+        </div>
+        <div class="panel compact">
+          <span class="label">OpenAI</span>
+          <strong id="openai-status" class="chip warning">확인 중</strong>
+        </div>
+        <div class="panel compact">
+          <span class="label">Card ID</span>
+          <code id="card-id">loading</code>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <article class="panel">
+          <h2>ops_agent_input.json</h2>
+          <pre id="input-json">아직 실행 전입니다.</pre>
+        </article>
+        <article class="panel">
+          <h2>LLM output</h2>
+          <dl class="output-list">
+            <dt>summary</dt>
+            <dd id="summary">아직 실행 전입니다.</dd>
+            <dt>action_plan</dt>
+            <dd id="action-plan">아직 실행 전입니다.</dd>
+            <dt>caution</dt>
+            <dd id="caution">아직 실행 전입니다.</dd>
+          </dl>
+        </article>
+      </section>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
