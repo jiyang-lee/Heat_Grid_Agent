@@ -335,7 +335,7 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         "## Holdout 지표",
         _markdown_table(holdout),
     ]
-    config.M1_SPECIALIST_REPORT_PATH.write_text("\n".join(lines), encoding="utf-8")
+    config.M1_SPECIALIST_REPORT_PATH.write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
     scope_payload = {
         "scope": config.PROJECT_SCOPE,
@@ -378,5 +378,6 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
             ]
         ),
         encoding="utf-8",
+        newline="\n",
     )
     return frame

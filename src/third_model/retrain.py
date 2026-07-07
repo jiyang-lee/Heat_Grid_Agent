@@ -159,7 +159,7 @@ def _m1_script_command(root: Path, script: Path, patch_git_status: bool) -> list
 def _run_command(command: list[str], cwd: Path, log_name: str, env: dict[str, str] | None = None) -> dict[str, object]:
     config.ensure_dirs()
     log_path = config.RETRAIN_LOG_DIR / f"{log_name}.log"
-    with log_path.open("w", encoding="utf-8", errors="replace") as log:
+    with log_path.open("w", encoding="utf-8", errors="replace", newline="\n") as log:
         log.write("command: " + " ".join(_label_command(command)) + "\n")
         log.write("cwd: " + config.path_label(cwd) + "\n\n")
         log.flush()
@@ -176,7 +176,7 @@ def _run_command(command: list[str], cwd: Path, log_name: str, env: dict[str, st
     log_text = log_path.read_text(encoding="utf-8", errors="replace")
     sanitized_log_text = _sanitize_local_paths(log_text)
     if sanitized_log_text != log_text:
-        log_path.write_text(sanitized_log_text, encoding="utf-8")
+        log_path.write_text(sanitized_log_text, encoding="utf-8", newline="\n")
     log_tail = _tail_file(log_path)
     if result.returncode != 0:
         raise RuntimeError(

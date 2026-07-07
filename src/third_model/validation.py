@@ -347,7 +347,7 @@ def ablation_summary() -> pd.DataFrame:
         "",
         _markdown_table(table),
     ]
-    config.ABLATION_SUMMARY_MD_PATH.write_text("\n".join(lines), encoding="utf-8")
+    config.ABLATION_SUMMARY_MD_PATH.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     return table
 
 
@@ -476,7 +476,7 @@ def write_final_validation_report() -> None:
         "",
         f"## Hard Normal Review 건수\n\n{len(hard_normal)}",
     ]
-    config.FINAL_VALIDATION_MD_PATH.write_text("\n".join(lines), encoding="utf-8")
+    config.FINAL_VALIDATION_MD_PATH.write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 
 def run_all_validations() -> None:

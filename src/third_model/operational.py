@@ -382,7 +382,7 @@ def _write_agent_column_group_docs() -> None:
             "- `m1_specialist_parallel_agent_card.csv`는 1252개 M1 canonical window 전체를 보지만, 최종 hybrid card는 current-best risk/leadtime/priority score bridge와 결합 가능한 1226 rows다.",
         ]
     )
-    config.AGENT_CARD_COLUMN_GROUPS_MD_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    config.AGENT_CARD_COLUMN_GROUPS_MD_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_agent_contract_docs() -> None:
@@ -436,7 +436,7 @@ def write_agent_contract_docs() -> None:
         "- `review_required == True`: 근거 충돌 또는 애매한 신호가 있어 사람이 확인해야 한다.",
         "- `review_reasons`: review가 필요한 이유 목록이다.",
     ]
-    config.AGENT_CARD_VALUE_MAPPING_PATH.write_text("\n".join(lines), encoding="utf-8")
+    config.AGENT_CARD_VALUE_MAPPING_PATH.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     _write_agent_column_group_docs()
 
 

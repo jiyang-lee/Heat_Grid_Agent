@@ -649,5 +649,7 @@ nb["cells"] = [
 ]
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-nbf.write(nb, OUT)
+for idx, cell in enumerate(nb.cells):
+    cell["id"] = f"cell-{idx:03d}"
+OUT.write_text(nbf.writes(nb), encoding="utf-8", newline="\n")
 print(f"Wrote {OUT}")
