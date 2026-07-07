@@ -1,0 +1,31 @@
+{
+  "package_id": "heatgrid_ops_v0_handoff",
+  "generated_at": "2026-07-07T00:00:00+09:00",
+  "purpose": "Let another coding agent start Postgres and inspect the v0 ops input JSON without needing the full repository.",
+  "entrypoints": [
+    "README.md",
+    "AGENT_BRIEF.md",
+    "input.json",
+    "scripts/verify.ps1",
+    "scripts/verify.sh"
+  ],
+  "expected": {
+    "current_best_sensor_values_count": 10,
+    "m1_specialist_feature_count": 13,
+    "priority_score": 89.73322568799986,
+    "priority_level": "urgent",
+    "current_best_weight": 0.65,
+    "m1_specialist_weight": 0.35,
+    "calculation_path": "priority_context.priority.calculation",
+    "review_required_path": "priority_context.explanation.review_required",
+    "review_reasons_path": "priority_context.explanation.review_reasons"
+  },
+  "database": {
+    "image": "postgres:16-alpine",
+    "host": "127.0.0.1",
+    "default_port": 55432,
+    "database": "heatgrid_ops",
+    "user": "heatgrid",
+    "password": "heatgrid"
+  }
+}
