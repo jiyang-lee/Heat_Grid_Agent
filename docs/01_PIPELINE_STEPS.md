@@ -31,9 +31,9 @@ validation
 | `retrain_current_best` | `../HeatGrid_Agent/best` | `models/risk`, `models/leadtime`, `models/priority`, retrain metadata | source current-best에서 anomaly/multi-window/risk/leadtime/priority/report/ops_eval 재실행 |
 | `raw` | source raw folder | `data/interim/raw_inventory.csv`, `raw_schema_summary.csv` | raw 파일 존재와 schema 확인 |
 | `windows` | source `trainable_windows.csv` | `data/processed/trainable_windows.csv` | canonical window를 M1만 필터링 |
-| `model_artifacts` | source 또는 packaged model metadata | `models/model_artifacts_metadata.json` | risk/leadtime joblib, priority metadata materialize |
+| `model_artifacts` | source 또는 저장소 보존 model metadata | `models/model_artifacts_metadata.json` | risk/leadtime joblib, priority metadata materialize |
 | `anomaly` | M1 trainable windows | `models/anomaly/`, `output/anomaly_scores.csv` | M1 anomaly 모델과 score 재생성 |
-| `best_scores` | source 또는 packaged risk/leadtime/priority score | `output/risk_scores.csv`, `output/leadtime_scores.csv`, `output/priority_scores.csv` | current-best score를 M1 범위로 bridge |
+| `best_scores` | source 또는 저장소 보존 risk/leadtime/priority score | `output/risk_scores.csv`, `output/leadtime_scores.csv`, `output/priority_scores.csv` | current-best score를 M1 범위로 bridge |
 | `merge` | priority + anomaly | `output/merged_model_scores.csv` | key 기준 병합 |
 | `agent_card` | merged score | `output/agent_priority_card.csv`, schema/dictionary | 최종 agent 입력 계약 생성 |
 | `retrain_m1_specialist` | M1 specialist source + PreDist zip | `models/m1_specialist/`, retrain metadata | fault/task/activity/pre-event gate joblib 재학습 |

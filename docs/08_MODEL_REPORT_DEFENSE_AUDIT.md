@@ -89,7 +89,7 @@
 |---|---|---|
 | risk/leadtime 재현 가능성 | `MODEL_INVENTORY_KO.md`, `docs/07_HANDOFF_FILE_INDEX.md` | 모델 파일은 포함됐지만 기본 실행은 score bridge라는 점 |
 | 외부 경로 의존성 | `docs/01_PIPELINE_STEPS.md`, `docs/05_RUNBOOK.md` | 정적 보고/열람과 full rebuild 요구사항 분리 |
-| raw -> trainable_windows 제한 | `docs/01_PIPELINE_STEPS.md` | raw 재생성 파이프라인은 아직 package-only로 닫혀 있지 않음 |
+| raw -> trainable_windows 제한 | `docs/01_PIPELINE_STEPS.md` | raw 재생성 파이프라인은 아직 저장소 단독 흐름으로 닫혀 있지 않음 |
 | missing row 26개 | `compare` notebooks, `docs/07_HANDOFF_FILE_INDEX.md` | 1252 -> 1226, 전부 pre_fault, holdout 보존 |
 | M1-only scope | 모든 발표/보고서 요약 | M2 일반화 금지, M2 calibration 필요 |
 | hybrid 0.65 표현 | `compare/m1_threshold_weight_rationale_report.ipynb`, 발표본 | best가 아니라 운영 선택점. 0.72/0.90 비교 포함 |
@@ -109,7 +109,7 @@
   - 발견 근거: 이전 버전의 `src/third_model/config.py`는 source path 기본값이 특정 로컬 절대경로였다.
   - 왜 필요한가: 저장소를 받은 사람이 다른 PC에서 full rebuild할 때 실패할 수 있다.
   - 추가 위치: `docs/05_RUNBOOK.md`, `docs/01_PIPELINE_STEPS.md`.
-  - 코드 수정 필요 여부: 필요. env override만이 아니라 package-local config 예시를 제공해야 함.
+  - 코드 수정 필요 여부: 필요. env override만이 아니라 저장소 로컬 config 예시를 제공해야 함.
 
 - 추가 필요 항목:
   - 발견 근거: task/activity gate에 대한 native target label이 최종 산출물에 없음.

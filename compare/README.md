@@ -1,63 +1,64 @@
-# M1 Specialist 보고용 성능비교 노트북
+# 비교 실험 및 보고용 노트북
 
-## 파일
+`compare/`는 발표/보고용 성능 비교와 threshold/weight 선택 근거를 담는 폴더다. Plotly 차트가 포함된 실행 완료 notebook과 이를 재생성하는 script를 함께 둔다.
 
-- `m1_specialist_performance_comparison.ipynb`: 발표/보고용으로 정리한 실행 완료 Plotly 비교 노트북
-- `generate_m1_performance_comparison_notebook.py`: 위 노트북을 재생성하는 스크립트
-- `m1_threshold_weight_rationale_report.ipynb`: threshold, risk/leadtime/anomaly weight, priority engine, hybrid 0.65/0.35 근거를 정리한 실행 완료 Plotly 보고서
-- `generate_threshold_weight_rationale_notebook.py`: threshold/weight 근거 보고서를 재생성하는 스크립트
-- `../output/reports/anomaly_if_mahalanobis_policy_grid.csv`: IF/Mahalanobis ratio threshold 조합별 anomaly 성능 grid
-- `../output/reports/row_flow_summary.csv`: source canonical, M1 canonical, current-best score bridge, final agent row 흐름 요약
-- `../output/reports/key_coverage_by_artifact.csv`: risk/leadtime/priority/card별 key coverage와 missing 26개 row 추적
-- `../output/reports/risk_level_actual_summary.csv`: 실제 M1 risk level 분포와 score 범위
-- `../output/reports/risk_threshold_actual_values.csv`: `risk_scores.csv`에 실제 적용된 risk threshold 값
-- `../output/reports/m1_gate_threshold_sweep.csv`: fault/task/activity/pre-event gate threshold sweep
-- `../output/reports/m1_gate_selected_threshold_summary.csv`: 현재 runtime policy threshold 0.50/0.60에서의 지표
-- `../output/reports/m1_gate_threshold_reference.csv`: 현재 threshold와 대안 후보/FPR guardrail 후보 비교
-- `../output/reports/m1_specialist_priority_weight_ablation.csv`: M1 specialist 0.55/0.30/0.15 및 ablation 비교
-- `../output/reports/m1_specialist_priority_weight_grid.csv`: M1 specialist 내부 weight grid
-- `../output/reports/fault_group_weight_summary.csv`: fault group별 weight, 빈도, pre_fault 분포 요약
-- `../output/reports/level_calibration_fpr_cap_sweep.csv`: FPR cap 0.05/0.10/0.15/0.20 level calibration 비교
-- `../output/reports/hybrid_selected_weight_comparison.csv`: 0.65/0.35, 0.72/0.28, 0.90/0.10 핵심 비교
-- `../output/reports/hybrid_065_vs_072_metric_delta.csv`: 0.65/0.35와 0.72/0.28의 split별 성능 차이
-- `../output/reports/hybrid_065_vs_072_level_transition.csv`: 0.65에서 0.72 변경 시 priority level 이동 집계
-- `../output/reports/hybrid_065_vs_072_changed_rows.csv`: level이 실제로 바뀐 row 목록
+## 핵심 파일
 
-## 범위
+| 파일 | 설명 |
+|---|---|
+| `m1_specialist_performance_comparison.ipynb` | 최종본 도출 과정, 모델 후보 비교, 신뢰도와 고려사항 |
+| `m1_threshold_weight_rationale_report.ipynb` | anomaly/risk/leadtime/priority threshold와 weight 선택 근거 |
+| `generate_m1_performance_comparison_notebook.py` | 성능 비교 notebook 재생성 |
+| `generate_threshold_weight_rationale_notebook.py` | threshold/weight 근거 notebook 재생성 |
 
-이 노트북은 저장소 내부 최종본과 `artifacts/current_best/`에 보존된 이전 실험 CSV 중 최종 의사결정에 실제로 영향을 준 비교만 사용한다.
-
-보고용 핵심 비교 축:
-
-- anomaly 대표 정책 비교와 evidence 역할 설명
-- IF 0.90 / Mahalanobis 1.00 / criticality 5 설정 근거와 threshold grid
-- `2526 -> 1252 -> 1226` row flow 및 missing 26개 row의 성격
-- current-best risk/leadtime 개선 근거
-- risk 후보군 중 official/base/calibrated/promoted/current-best 비교
-- leadtime bucket 설계 및 current-best 개선 비교
-- rule-based priority와 LGBM priority 핵심 후보 비교
-- 최종 M1 hybrid priority 도출 근거
-- anomaly/risk/priority/hybrid threshold 설정 근거
-- 실제 M1 risk applied threshold가 0.22/0.92/0.92이고, 0.44는 active M1 output 기준이 아니라는 점
-- risk가 priority engine에서 가장 큰 축으로 들어가는 이유
-- leadtime과 anomaly가 보조 신호로 남은 이유
-- hybrid engine이 0.65 / 0.35로 잡힌 이유와 0.00~1.00 전구간 weight sweep
-- 0.65가 절대 metric-best가 아니라 운영 선택점이며, 0.72/0.28과 0.90/0.10을 함께 비교
-- 0.65/0.35에서 0.72/0.28로 바꿀 때 FP, precision, FPR, level 이동, score delta가 어떻게 달라지는지 별도 Plotly 섹션으로 비교
-- M1 specialist gate threshold가 독립 알람 최적값이 아니라 evidence runtime policy라는 점, 내부 priority weight ablation, fault_group_weight의 live inference 제한사항
-- level calibration FPR cap 0.05/0.10/0.15/0.20 비교와 현재 cap이 threshold를 바꾸지 않았다는 해석
-- active policy ablation 기반 최종 contract 해석
-- label/proxy, row reconciliation, 표본 수 관련 고려사항
-
-## 실행
+## 재생성
 
 ```powershell
-cd Heat_Grid_Agent
-uv sync
 uv run python compare\generate_m1_performance_comparison_notebook.py
 uv run python compare\generate_threshold_weight_rationale_notebook.py
 ```
 
-노트북을 다시 실행하려면 `plotly`, `nbformat`, `nbclient`, `ipykernel`이 필요하다.
+노트북 실행 확인:
 
-저장소 위치를 옮긴 경우에는 실행 전에 `M1_SPECIALIST_REPO_ROOT` 환경변수를 새 저장소 경로로 지정한다.
+```powershell
+@'
+from pathlib import Path
+import nbformat
+from nbclient import NotebookClient
+
+for path in [
+    Path("compare/m1_specialist_performance_comparison.ipynb"),
+    Path("compare/m1_threshold_weight_rationale_report.ipynb"),
+]:
+    nb = nbformat.read(path, as_version=4)
+    NotebookClient(nb, timeout=1200, kernel_name="python3").execute()
+    print("OK", path)
+'@ | uv run python -
+```
+
+## 보고서에서 다루는 핵심 질문
+
+| 질문 | 근거 파일 |
+|---|---|
+| 왜 M1-only scope인가 | `output/reports/m1_scope_audit.md`, `docs/08_MODEL_REPORT_DEFENSE_AUDIT.md` |
+| 1252 -> 1226 row 차이는 무엇인가 | `output/reports/row_flow_summary.csv`, `key_coverage_by_artifact.csv`, `missing_agent_windows.csv` |
+| IF 0.90 / Mahalanobis 1.00을 왜 쓰는가 | `output/reports/anomaly_if_mahalanobis_policy_grid.csv` |
+| criticality 5를 왜 쓰는가 | `output/reports/anomaly_criticality_threshold_sweep.csv` |
+| risk level 기준은 실제로 얼마인가 | `output/reports/risk_threshold_actual_values.csv`, `risk_level_actual_summary.csv` |
+| M1 gate 0.50 / 0.60은 어떤 의미인가 | `output/reports/m1_gate_threshold_sweep.csv`, `m1_gate_threshold_reference.csv` |
+| M1 specialist 내부 weight 0.55/0.30/0.15 근거는 무엇인가 | `output/reports/m1_specialist_priority_weight_ablation.csv`, `m1_specialist_priority_weight_grid.csv` |
+| hybrid 0.65/0.35가 best인가 | `output/reports/hybrid_weight_sweep.csv`, `hybrid_selected_weight_comparison.csv` |
+| FPR cap 0.20은 어떤 의미인가 | `output/reports/level_calibration_fpr_cap_sweep.csv` |
+
+## 주요 보고 포인트
+
+- `0.65 / 0.35`는 절대 metric-best가 아니라 운영 선택점이다.
+- `0.72 / 0.28`, `0.90 / 0.10`과 비교해서 precision/FPR/level 이동을 함께 설명한다.
+- M1 specialist gate threshold는 standalone alarm optimum이 아니라 evidence runtime policy다.
+- task/activity gate는 native label 부재 때문에 true performance claim을 제한한다.
+- `fault_group_weight`는 label-derived 성격이 있어 live inference에서는 별도 검토가 필요하다.
+- level calibration의 `FPR <= 0.20`은 현재 sweep에서 threshold 차이를 크게 만들지 않았고, future validation 분포에 대한 운영 guardrail로 설명한다.
+
+## Scope
+
+이 폴더의 notebook은 저장소 내부 최종본과 `artifacts/current_best/`에 보존된 이전 실험 CSV 중 최종 의사결정에 영향을 준 비교만 사용한다. 비교조차 어려운 폐기 실험은 보고 흐름에 포함하지 않는다.
