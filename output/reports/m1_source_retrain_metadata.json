@@ -1,0 +1,33 @@
+{
+  "stage": "retrain_m1_specialist",
+  "third_project_root": "../3rd_project_for_ML-main/3rd_project_for_ML-main",
+  "predist_zip": {
+    "status": "already_present",
+    "source": "../3rd_project_for_ML-main/3rd_project_for_ML-main/05_데이터셋/PreDist/predist_dataset.zip",
+    "target": "../3rd_project_for_ML-main/3rd_project_for_ML-main/05_데이터셋/PreDist/predist_dataset.zip",
+    "size_bytes": 266814500
+  },
+  "source_is_git_worktree": false,
+  "git_status_patch_used": true,
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-c",
+    "import runpy, subprocess\n_real_check_output = subprocess.check_output\ndef _patched_check_output(args, *pargs, **kwargs):\n    if isinstance(args, (list, tuple)) and len(args) >= 2 and args[0] == 'git' and args[1] == 'status':\n        return '' if kwargs.get('text') or kwargs.get('encoding') else b''\n    if isinstance(args, (list, tuple)) and len(args) >= 2 and args[0] == 'git' and args[1] == 'rev-parse':\n        return 'unknown\\n' if kwargs.get('text') or kwargs.get('encoding') else b'unknown\\n'\n    return _real_check_output(args, *pargs, **kwargs)\nsubprocess.check_output = _patched_check_output\nnamespace = runpy.run_path('scripts/run_34_full_gate_joblib_xai4heat_scada_runtime_validation.py')\nnamespace['main']()\n"
+  ],
+  "log_path": "output/reports/retrain_logs/retrain_m1_specialist.log",
+  "log_tail": "command: .venv/Scripts/python.exe -c import runpy, subprocess\n_real_check_output = subprocess.check_output\ndef _patched_check_output(args, *pargs, **kwargs):\n    if isinstance(args, (list, tuple)) and len(args) >= 2 and args[0] == 'git' and args[1] == 'status':\n        return '' if kwargs.get('text') or kwargs.get('encoding') else b''\n    if isinstance(args, (list, tuple)) and len(args) >= 2 and args[0] == 'git' and args[1] == 'rev-parse':\n        return 'unknown\\n' if kwargs.get('text') or kwargs.get('encoding') else b'unknown\\n'\n    return _real_check_output(args, *pargs, **kwargs)\nsubprocess.check_output = _patched_check_output\nnamespace = runpy.run_path('scripts/run_34_full_gate_joblib_xai4heat_scada_runtime_validation.py')\nnamespace['main']()\n\ncwd: ../3rd_project_for_ML-main/3rd_project_for_ML-main\n\n{\"decision\": \"joblib_ready_but_scada_schema_blocked\", \"models\": 4}",
+  "materialized_models": {
+    "fault_gate": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
+    "task_gate": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
+    "activity_gate": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
+    "fault_pre_event_gate": "models/m1_specialist/m1_fault_pre_event_logistic.joblib",
+    "runtime_metadata": "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json"
+  },
+  "outputs_expected": {
+    "fault_gate": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
+    "task_gate": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
+    "activity_gate": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
+    "fault_pre_event_gate": "models/m1_specialist/m1_fault_pre_event_logistic.joblib",
+    "runtime_metadata": "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json"
+  }
+}

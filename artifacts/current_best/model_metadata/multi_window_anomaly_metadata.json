@@ -1,0 +1,86 @@
+{
+  "model_version": "best_multi_window_anomaly_v1",
+  "purpose": "Add 1h fast spike, 3h operating context, existing 6h main anomaly, and 12h persistence signals.",
+  "raw_trailing_window_hours": [
+    1,
+    3,
+    12
+  ],
+  "multi_window_hours": [
+    1,
+    3,
+    6,
+    12
+  ],
+  "excluded_window_hours": [
+    24
+  ],
+  "excluded_window_reason": "24h validation showed excessive false-positive rate, so it is not used as an operational feature.",
+  "feature_columns": [
+    "mw_anomaly_1h_iforest_score_ratio",
+    "mw_anomaly_1h_mahalanobis_score_ratio",
+    "mw_anomaly_1h_score",
+    "mw_anomaly_1h_label",
+    "mw_anomaly_1h_strong_label",
+    "mw_anomaly_1h_criticality",
+    "mw_anomaly_1h_event_label",
+    "mw_anomaly_3h_iforest_score_ratio",
+    "mw_anomaly_3h_mahalanobis_score_ratio",
+    "mw_anomaly_3h_score",
+    "mw_anomaly_3h_label",
+    "mw_anomaly_3h_strong_label",
+    "mw_anomaly_3h_criticality",
+    "mw_anomaly_3h_event_label",
+    "mw_anomaly_6h_iforest_score_ratio",
+    "mw_anomaly_6h_mahalanobis_score_ratio",
+    "mw_anomaly_6h_score",
+    "mw_anomaly_6h_label",
+    "mw_anomaly_6h_strong_label",
+    "mw_anomaly_6h_criticality",
+    "mw_anomaly_6h_event_label",
+    "mw_anomaly_12h_iforest_score_ratio",
+    "mw_anomaly_12h_mahalanobis_score_ratio",
+    "mw_anomaly_12h_score",
+    "mw_anomaly_12h_label",
+    "mw_anomaly_12h_strong_label",
+    "mw_anomaly_12h_criticality",
+    "mw_anomaly_12h_event_label",
+    "mw_anomaly_multi_window_count",
+    "mw_anomaly_short_term_confirmed",
+    "mw_anomaly_main_confirmed",
+    "mw_anomaly_persistent_confirmed",
+    "mw_anomaly_fast_spike",
+    "mw_anomaly_operational_confirmed",
+    "mw_anomaly_context_score",
+    "mw_anomaly_has_raw_data",
+    "group_mahalanobis_global_score_ratio",
+    "group_mahalanobis_global_label",
+    "group_mahalanobis_manufacturer_score_ratio",
+    "group_mahalanobis_manufacturer_label",
+    "group_mahalanobis_configuration_score_ratio",
+    "group_mahalanobis_configuration_label",
+    "group_mahalanobis_aux_count"
+  ],
+  "raw_feature_counts": {
+    "1h": 131,
+    "3h": 131,
+    "12h": 131
+  },
+  "raw_thresholds": {
+    "1h": {
+      "iforest": 0.5498338173128262,
+      "mahalanobis": 350.91503445513194
+    },
+    "3h": {
+      "iforest": 0.5425955008835339,
+      "mahalanobis": 300.2840076010302
+    },
+    "12h": {
+      "iforest": 0.5456836735074652,
+      "mahalanobis": 298.8282764103849
+    }
+  },
+  "group_mahalanobis_usage": "auxiliary risk/priority feature only; not a standalone alarm policy",
+  "output_scores_path": "output/multi_window_anomaly_scores.csv",
+  "output_metrics_path": "output/multi_window_anomaly_metrics.csv"
+}

@@ -1,0 +1,7 @@
+evaluation_split_column,split,model_name,threshold_quantile,threshold_value,row_count,normal_count,pre_fault_count,roc_auc,average_precision,precision,recall,f1,false_positive_rate,score_column,prediction_column
+split_time_based,train,isolation_forest,0.99,0.5357784270858823,1770,1263,507,0.6158984041315486,0.40707710580536116,0.6176470588235294,0.04142011834319527,0.07763401109057301,0.010292953285827395,iforest_anomaly_score,iforest_anomaly_label
+split_time_based,validation,isolation_forest,0.99,0.5357784270858823,362,243,119,0.6127537434726977,0.46715291957309,0.0,0.0,0.0,0.0,iforest_anomaly_score,iforest_anomaly_label
+split_time_based,holdout,isolation_forest,0.99,0.5357784270858823,394,261,133,0.7152363667790166,0.6929799703112345,1.0,0.12781954887218044,0.22666666666666666,0.0,iforest_anomaly_score,iforest_anomaly_label
+split_substation_based,train,isolation_forest,0.99,0.5357784270858823,2021,1380,641,0.6520959099233534,0.5040015307580781,0.9,0.056162246489859596,0.10572687224669604,0.002898550724637681,iforest_anomaly_score,iforest_anomaly_label
+split_substation_based,validation,isolation_forest,0.99,0.5357784270858823,249,196,53,0.5219484020023104,0.23083319248513626,0.0,0.0,0.0,0.025510204081632654,iforest_anomaly_score,iforest_anomaly_label
+split_substation_based,holdout,isolation_forest,0.99,0.5357784270858823,256,191,65,0.555618203785743,0.3304512812001653,0.3333333333333333,0.03076923076923077,0.056338028169014086,0.020942408376963352,iforest_anomaly_score,iforest_anomaly_label

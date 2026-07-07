@@ -1,0 +1,4 @@
+risk_level,threshold,basis
+medium,0.22,fixed operating threshold set
+high,0.44,follow-up fixed operating threshold
+critical,0.9,fixed operating threshold set

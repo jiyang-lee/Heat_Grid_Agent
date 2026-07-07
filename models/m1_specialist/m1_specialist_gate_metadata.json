@@ -1,0 +1,38 @@
+{
+  "source": "3rd_project_for_ML-main",
+  "model_scope": "manufacturer 1 runtime context branch",
+  "copied_models": {
+    "fault_gate": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
+    "task_gate": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
+    "activity_gate": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
+    "fault_pre_event_gate": "models/m1_specialist/m1_fault_pre_event_logistic.joblib",
+    "runtime_metadata": "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json"
+  },
+  "feature_count": 13,
+  "features": [
+    "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+    "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+    "outdoor_temperature__last_minus_first",
+    "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+    "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+    "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+    "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+    "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+    "p_return_gap__last_minus_first",
+    "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+    "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+    "s_hc1_supply_temperature_error__last_minus_first",
+    "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean"
+  ],
+  "thresholds": {
+    "fault_gate": 0.5,
+    "task_gate": 0.5,
+    "activity_gate": 0.5,
+    "fault_pre_event_gate": 0.6
+  },
+  "role": "parallel M1 specialist gate/context branch; used by M1 hybrid priority, not a standalone risk/leadtime replacement",
+  "parallel_agent_card_path": "output/agent/m1_specialist_parallel_agent_card.csv",
+  "python_executable": ".venv/Scripts/python.exe",
+  "sklearn_version": "1.9.0",
+  "runtime_policy_source": "m1_full_gate_runtime_policy_joblib_v1"
+}

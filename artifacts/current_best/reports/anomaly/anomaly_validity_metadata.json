@@ -1,0 +1,16 @@
+{
+  "purpose": "Validate the credibility and practical interpretation of the 6h window anomaly score.",
+  "window_length_hours": [
+    1,
+    3,
+    6,
+    12,
+    24
+  ],
+  "outputs_prefix": "output/anomaly_validity_*",
+  "limitations": [
+    "Window length comparison rebuilds simplified raw numeric features, not the exact production 6h engineered feature set.",
+    "Labels are inherited from current event-aligned windows, so this validates pre-fault association rather than true anomaly onset labels.",
+    "Pseudo-clean means no known event in metadata; it does not guarantee physically normal operation."
+  ]
+}

@@ -1,0 +1,6 @@
+﻿manufacturer,configuration_type,group_key,false_negative_count,substation_count,fault_event_count,mean_risk_probability,median_risk_probability,mean_anomaly_score,mean_estimated_lead_time_hours
+manufacturer 2,SH with buffer tank,manufacturer 2 | SH with buffer tank,19,2,2,0.1738360545818539,0.1641803148575472,0.45777471283519167,31.529824561403505
+manufacturer 2,SH + DHW,manufacturer 2 | SH + DHW,8,1,1,0.29525877307912096,0.3277516016138171,0.42069192207981043,42.68333333333333
+manufacturer 1,SH + DHW,manufacturer 1 | SH + DHW,7,2,2,0.3105992347651471,0.2983137002143672,0.4509588733006333,23.523809523809522
+manufacturer 2,SH,manufacturer 2 | SH,6,1,1,0.412217924368177,0.40583510805457174,0.4528053963250669,51.20000000000001
+manufacturer 1,SH + DHW with sub-circuits,manufacturer 1 | SH + DHW with sub-circuits,2,1,1,0.18912164496974104,0.18912164496974104,0.45108884776916036,33.81666666666667
