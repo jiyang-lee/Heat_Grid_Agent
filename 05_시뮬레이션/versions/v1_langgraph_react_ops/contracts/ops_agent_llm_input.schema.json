@@ -1,0 +1,1133 @@
+{
+  "$defs": {
+    "ActionContext": {
+      "properties": {
+        "llm_instruction": {
+          "title": "Llm Instruction",
+          "type": "string"
+        },
+        "focus_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Focus Points",
+          "type": "array"
+        },
+        "recommended_action_seed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recommended Action Seed"
+        }
+      },
+      "required": [
+        "llm_instruction",
+        "focus_points",
+        "recommended_action_seed"
+      ],
+      "title": "ActionContext",
+      "type": "object"
+    },
+    "AuditContext": {
+      "properties": {
+        "input_kind": {
+          "title": "Input Kind",
+          "type": "string"
+        },
+        "card_id": {
+          "title": "Card Id",
+          "type": "string"
+        },
+        "priority_decision_id": {
+          "title": "Priority Decision Id",
+          "type": "string"
+        },
+        "window_id": {
+          "title": "Window Id",
+          "type": "string"
+        },
+        "expected_output_storage": {
+          "title": "Expected Output Storage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_kind",
+        "card_id",
+        "priority_decision_id",
+        "window_id",
+        "expected_output_storage"
+      ],
+      "title": "AuditContext",
+      "type": "object"
+    },
+    "CardContext": {
+      "properties": {
+        "card_id": {
+          "title": "Card Id",
+          "type": "string"
+        },
+        "operational_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Operational Label"
+        },
+        "primary_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary State"
+        },
+        "trust_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trust Level"
+        }
+      },
+      "required": [
+        "card_id",
+        "operational_label",
+        "primary_state",
+        "trust_level"
+      ],
+      "title": "CardContext",
+      "type": "object"
+    },
+    "ControlContext": {
+      "properties": {
+        "policy_context": {
+          "$ref": "#/$defs/PolicyContext"
+        },
+        "action_context": {
+          "$ref": "#/$defs/ActionContext"
+        },
+        "output_contract": {
+          "$ref": "#/$defs/OutputContract"
+        }
+      },
+      "required": [
+        "policy_context",
+        "action_context",
+        "output_contract"
+      ],
+      "title": "ControlContext",
+      "type": "object"
+    },
+    "CurrentBestSensorValues": {
+      "properties": {
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Version"
+        },
+        "source_artifact": {
+          "title": "Source Artifact",
+          "type": "string"
+        },
+        "selection_rule": {
+          "title": "Selection Rule",
+          "type": "string"
+        },
+        "top_n": {
+          "title": "Top N",
+          "type": "integer"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/SensorValueContext"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "model_version",
+        "source_artifact",
+        "selection_rule",
+        "top_n",
+        "values"
+      ],
+      "title": "CurrentBestSensorValues",
+      "type": "object"
+    },
+    "DecisionTrace": {
+      "properties": {
+        "priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Score"
+        },
+        "priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Level"
+        },
+        "priority_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Source"
+        },
+        "priority_calculation": {
+          "$ref": "#/$defs/PriorityCalculationTrace"
+        },
+        "model_interpretation": {
+          "$ref": "#/$defs/ModelInterpretation"
+        },
+        "human_review_signal": {
+          "$ref": "#/$defs/HumanReviewSignal"
+        }
+      },
+      "required": [
+        "priority_score",
+        "priority_level",
+        "priority_source",
+        "priority_calculation",
+        "model_interpretation",
+        "human_review_signal"
+      ],
+      "title": "DecisionTrace",
+      "type": "object"
+    },
+    "EscalationContext": {
+      "properties": {
+        "review_required": {
+          "title": "Review Required",
+          "type": "boolean"
+        },
+        "review_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Reasons",
+          "type": "array"
+        },
+        "priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Level"
+        },
+        "operational_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Operational Label"
+        },
+        "primary_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary State"
+        },
+        "trust_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trust Level"
+        },
+        "suspected_fault_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Suspected Fault Group"
+        }
+      },
+      "required": [
+        "review_required",
+        "review_reasons",
+        "priority_level",
+        "operational_label",
+        "primary_state",
+        "trust_level",
+        "suspected_fault_group"
+      ],
+      "title": "EscalationContext",
+      "type": "object"
+    },
+    "EventContext": {
+      "properties": {
+        "raw_context": {
+          "$ref": "#/$defs/RawContext"
+        },
+        "priority_context": {
+          "$ref": "#/$defs/PriorityContext"
+        },
+        "internal_context": {
+          "$ref": "#/$defs/InternalContext"
+        },
+        "decision_trace": {
+          "$ref": "#/$defs/DecisionTrace"
+        }
+      },
+      "required": [
+        "raw_context",
+        "priority_context",
+        "internal_context",
+        "decision_trace"
+      ],
+      "title": "EventContext",
+      "type": "object"
+    },
+    "ExplanationContext": {
+      "properties": {
+        "why_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Why Reason"
+        },
+        "recommended_action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recommended Action"
+        },
+        "review_required": {
+          "title": "Review Required",
+          "type": "boolean"
+        },
+        "review_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "why_reason",
+        "recommended_action",
+        "review_required",
+        "review_reasons"
+      ],
+      "title": "ExplanationContext",
+      "type": "object"
+    },
+    "HandoffContext": {
+      "properties": {
+        "escalation_context": {
+          "$ref": "#/$defs/EscalationContext"
+        },
+        "audit_context": {
+          "$ref": "#/$defs/AuditContext"
+        }
+      },
+      "required": [
+        "escalation_context",
+        "audit_context"
+      ],
+      "title": "HandoffContext",
+      "type": "object"
+    },
+    "HumanReviewSignal": {
+      "properties": {
+        "review_required": {
+          "title": "Review Required",
+          "type": "boolean"
+        },
+        "review_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Reasons",
+          "type": "array"
+        },
+        "trust_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trust Level"
+        }
+      },
+      "required": [
+        "review_required",
+        "review_reasons",
+        "trust_level"
+      ],
+      "title": "HumanReviewSignal",
+      "type": "object"
+    },
+    "InternalContext": {
+      "properties": {
+        "llm_role": {
+          "title": "Llm Role",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
+          "type": "string"
+        },
+        "audience": {
+          "title": "Audience",
+          "type": "string"
+        },
+        "task_type": {
+          "title": "Task Type",
+          "type": "string"
+        },
+        "situation_summary": {
+          "title": "Situation Summary",
+          "type": "string"
+        },
+        "operator_goal": {
+          "title": "Operator Goal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "llm_role",
+        "language",
+        "audience",
+        "task_type",
+        "situation_summary",
+        "operator_goal"
+      ],
+      "title": "InternalContext",
+      "type": "object"
+    },
+    "JsonScalar": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "M1SpecialistFeatures": {
+      "properties": {
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Version"
+        },
+        "source_artifact": {
+          "title": "Source Artifact",
+          "type": "string"
+        },
+        "feature_count": {
+          "title": "Feature Count",
+          "type": "integer"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/SensorValueContext"
+          },
+          "title": "Features",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "model_version",
+        "source_artifact",
+        "feature_count",
+        "features"
+      ],
+      "title": "M1SpecialistFeatures",
+      "type": "object"
+    },
+    "ModelInterpretation": {
+      "properties": {
+        "current_best_priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Priority Level"
+        },
+        "m1_specialist_priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Priority Level"
+        },
+        "m1_specialist_primary_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Primary State"
+        },
+        "m1_specialist_fault_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Fault Group"
+        },
+        "m1_priority_agreement": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Priority Agreement"
+        }
+      },
+      "required": [
+        "current_best_priority_level",
+        "m1_specialist_priority_level",
+        "m1_specialist_primary_state",
+        "m1_specialist_fault_group",
+        "m1_priority_agreement"
+      ],
+      "title": "ModelInterpretation",
+      "type": "object"
+    },
+    "ModelSignals": {
+      "properties": {
+        "current_best_priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Priority Score"
+        },
+        "current_best_priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Priority Level"
+        },
+        "m1_specialist_priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Priority Score"
+        },
+        "m1_specialist_priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Priority Level"
+        },
+        "m1_specialist_primary_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Primary State"
+        },
+        "m1_specialist_fault_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Fault Group"
+        }
+      },
+      "required": [
+        "current_best_priority_score",
+        "current_best_priority_level",
+        "m1_specialist_priority_score",
+        "m1_specialist_priority_level",
+        "m1_specialist_primary_state",
+        "m1_specialist_fault_group"
+      ],
+      "title": "ModelSignals",
+      "type": "object"
+    },
+    "OutputContract": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "additionalProperties": {
+          "title": "Additionalproperties",
+          "type": "boolean"
+        },
+        "properties": {
+          "$ref": "#/$defs/OutputContractProperties"
+        }
+      },
+      "required": [
+        "type",
+        "required",
+        "additionalProperties",
+        "properties"
+      ],
+      "title": "OutputContract",
+      "type": "object"
+    },
+    "OutputContractProperties": {
+      "properties": {
+        "summary": {
+          "$ref": "#/$defs/OutputFieldContract"
+        },
+        "action_plan": {
+          "$ref": "#/$defs/OutputFieldContract"
+        },
+        "caution": {
+          "$ref": "#/$defs/OutputFieldContract"
+        }
+      },
+      "required": [
+        "summary",
+        "action_plan",
+        "caution"
+      ],
+      "title": "OutputContractProperties",
+      "type": "object"
+    },
+    "OutputFieldContract": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "description"
+      ],
+      "title": "OutputFieldContract",
+      "type": "object"
+    },
+    "PolicyContext": {
+      "properties": {
+        "must_do": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Must Do",
+          "type": "array"
+        },
+        "must_not_do": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Must Not Do",
+          "type": "array"
+        }
+      },
+      "required": [
+        "must_do",
+        "must_not_do"
+      ],
+      "title": "PolicyContext",
+      "type": "object"
+    },
+    "PriorityCalculation": {
+      "properties": {
+        "current_best_weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Weight"
+        },
+        "m1_specialist_weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Weight"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expression"
+        }
+      },
+      "required": [
+        "current_best_weight",
+        "m1_specialist_weight",
+        "expression"
+      ],
+      "title": "PriorityCalculation",
+      "type": "object"
+    },
+    "PriorityCalculationTrace": {
+      "properties": {
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expression"
+        },
+        "current_best_weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Weight"
+        },
+        "current_best_priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Best Priority Score"
+        },
+        "m1_specialist_weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Weight"
+        },
+        "m1_specialist_priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Specialist Priority Score"
+        }
+      },
+      "required": [
+        "expression",
+        "current_best_weight",
+        "current_best_priority_score",
+        "m1_specialist_weight",
+        "m1_specialist_priority_score"
+      ],
+      "title": "PriorityCalculationTrace",
+      "type": "object"
+    },
+    "PriorityContext": {
+      "properties": {
+        "card": {
+          "$ref": "#/$defs/CardContext"
+        },
+        "priority": {
+          "$ref": "#/$defs/PriorityContextBlock"
+        },
+        "model_signals": {
+          "$ref": "#/$defs/ModelSignals"
+        },
+        "explanation": {
+          "$ref": "#/$defs/ExplanationContext"
+        }
+      },
+      "required": [
+        "card",
+        "priority",
+        "model_signals",
+        "explanation"
+      ],
+      "title": "PriorityContext",
+      "type": "object"
+    },
+    "PriorityContextBlock": {
+      "properties": {
+        "priority_decision_id": {
+          "title": "Priority Decision Id",
+          "type": "string"
+        },
+        "priority_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Score"
+        },
+        "priority_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Level"
+        },
+        "priority_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Priority Source"
+        },
+        "m1_priority_agreement": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "M1 Priority Agreement"
+        },
+        "calculation": {
+          "$ref": "#/$defs/PriorityCalculation"
+        }
+      },
+      "required": [
+        "priority_decision_id",
+        "priority_score",
+        "priority_level",
+        "priority_source",
+        "m1_priority_agreement",
+        "calculation"
+      ],
+      "title": "PriorityContextBlock",
+      "type": "object"
+    },
+    "RawContext": {
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/WindowContext"
+        },
+        "current_best_sensor_values": {
+          "$ref": "#/$defs/CurrentBestSensorValues"
+        },
+        "m1_specialist_features": {
+          "$ref": "#/$defs/M1SpecialistFeatures"
+        }
+      },
+      "required": [
+        "window",
+        "current_best_sensor_values",
+        "m1_specialist_features"
+      ],
+      "title": "RawContext",
+      "type": "object"
+    },
+    "SensorValueContext": {
+      "properties": {
+        "rank": {
+          "title": "Rank",
+          "type": "integer"
+        },
+        "feature_name": {
+          "title": "Feature Name",
+          "type": "string"
+        },
+        "source_sensor": {
+          "title": "Source Sensor",
+          "type": "string"
+        },
+        "source_column": {
+          "title": "Source Column",
+          "type": "string"
+        },
+        "feature_value": {
+          "$ref": "#/$defs/JsonScalar"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit"
+        },
+        "calculation": {
+          "title": "Calculation",
+          "type": "string"
+        },
+        "meaning": {
+          "title": "Meaning",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rank",
+        "feature_name",
+        "source_sensor",
+        "source_column",
+        "feature_value",
+        "unit",
+        "calculation",
+        "meaning"
+      ],
+      "title": "SensorValueContext",
+      "type": "object"
+    },
+    "WindowContext": {
+      "properties": {
+        "window_id": {
+          "title": "Window Id",
+          "type": "string"
+        },
+        "manufacturer_id": {
+          "title": "Manufacturer Id",
+          "type": "string"
+        },
+        "substation_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Substation Id"
+        },
+        "configuration_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Configuration Type"
+        },
+        "window_start": {
+          "title": "Window Start",
+          "type": "string"
+        },
+        "window_end": {
+          "title": "Window End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "window_id",
+        "manufacturer_id",
+        "substation_id",
+        "configuration_type",
+        "window_start",
+        "window_end"
+      ],
+      "title": "WindowContext",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "input_version": {
+      "const": "ops-agent-input-v0.2",
+      "default": "ops-agent-input-v0.2",
+      "title": "Input Version",
+      "type": "string"
+    },
+    "event_context": {
+      "$ref": "#/$defs/EventContext"
+    },
+    "control_context": {
+      "$ref": "#/$defs/ControlContext"
+    },
+    "handoff_context": {
+      "$ref": "#/$defs/HandoffContext"
+    }
+  },
+  "required": [
+    "event_context",
+    "control_context",
+    "handoff_context"
+  ],
+  "title": "OpsAgentLlmInput",
+  "type": "object"
+}

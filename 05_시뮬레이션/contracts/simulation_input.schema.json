@@ -5,10 +5,9 @@
   "required": [
     "scenario_id",
     "generated_at",
-    "priority_card",
-    "model_detection",
-    "rag_answer",
-    "connection_check",
+    "raw_context",
+    "priority_context",
+    "connection_context",
     "db_mapping"
   ],
   "properties": {
@@ -21,160 +20,223 @@
       "format": "date-time",
       "description": "이 JSON이 생성된 시각"
     },
-    "priority_card": {
-      "type": "object",
-      "required": ["rank", "risk_level", "reason", "recommended_action"],
-      "properties": {
-        "rank": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "risk_level": {
-          "type": "string",
-          "enum": ["critical", "high", "medium", "low"]
-        },
-        "reason": {
-          "type": "string"
-        },
-        "recommended_action": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "model_detection": {
+    "raw_context": {
       "type": "object",
       "required": [
-        "manufacturer",
-        "substation_id",
-        "detected_label",
-        "risk_score",
-        "window_start",
-        "window_end"
+        "window",
+        "current_best_sensor_values",
+        "m1_specialist_features"
       ],
       "properties": {
-        "manufacturer": {
-          "type": "string",
-          "description": "PreDist 제조사 그룹. substation_id만으로는 전역 고유 키가 아니므로 함께 사용한다."
-        },
-        "substation_id": {
-          "type": "string"
-        },
-        "detected_label": {
-          "type": "string",
-          "description": "예: normal, pre_fault, fault"
-        },
-        "risk_score": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "window_start": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "window_end": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "top_signals": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["name", "value", "unit", "status"],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "value": {
-                "type": ["number", "string"]
-              },
-              "unit": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              }
+        "window": {
+          "type": "object",
+          "required": [
+            "window_id",
+            "manufacturer_id",
+            "substation_id",
+            "configuration_type",
+            "window_start",
+            "window_end"
+          ],
+          "properties": {
+            "window_id": { "type": "string" },
+            "manufacturer_id": {
+              "type": "string",
+              "description": "PreDist 제조사 그룹. substation_id만으로는 전역 고유 키가 아니므로 함께 사용한다."
             },
-            "additionalProperties": false
-          }
+            "substation_id": { "type": ["integer", "string"] },
+            "configuration_type": { "type": ["string", "null"] },
+            "window_start": { "type": "string", "format": "date-time" },
+            "window_end": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        },
+        "current_best_sensor_values": {
+          "type": "object",
+          "required": [
+            "model_id",
+            "source_artifact",
+            "selection_rule",
+            "top_n",
+            "values"
+          ],
+          "properties": {
+            "model_id": { "type": "string" },
+            "model_version": { "type": ["string", "null"] },
+            "source_artifact": { "type": "string" },
+            "selection_rule": {
+              "type": "string",
+              "description": "current-best 입력에서 화면에 넘긴 raw sensor 집계값 선정 기준"
+            },
+            "top_n": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "고정값이 아니라 current-best 쪽에서 넘긴 raw sensor 집계값 개수"
+            },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/sensor_value" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "m1_specialist_features": {
+          "type": "object",
+          "required": [
+            "model_id",
+            "source_artifact",
+            "feature_count",
+            "features"
+          ],
+          "properties": {
+            "model_id": { "type": "string" },
+            "model_version": { "type": ["string", "null"] },
+            "source_artifact": { "type": "string" },
+            "feature_count": {
+              "type": "integer",
+              "const": 13,
+              "description": "M1 specialist 모델에서 전달되는 compact13 feature 개수"
+            },
+            "features": {
+              "type": "array",
+              "minItems": 13,
+              "maxItems": 13,
+              "items": { "$ref": "#/$defs/sensor_value" }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-    "rag_answer": {
+    "priority_context": {
       "type": "object",
-      "required": ["summary", "evidence", "check_points"],
+      "required": [
+        "status",
+        "priority_level",
+        "priority_score",
+        "priority_source",
+        "formula",
+        "review_required",
+        "decision_basis",
+        "recommended_action"
+      ],
       "properties": {
-        "summary": {
-          "type": "string"
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "needs_review"]
         },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["source", "text"],
-            "properties": {
-              "source": {
-                "type": "string"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
+        "priority_level": { "type": "string" },
+        "priority_score": { "type": "number" },
+        "priority_source": { "type": "string" },
+        "formula": {
+          "type": "object",
+          "required": [
+            "current_best_weight",
+            "m1_specialist_weight",
+            "current_best_priority_score",
+            "m1_specialist_priority_score"
+          ],
+          "properties": {
+            "current_best_weight": { "type": "number" },
+            "m1_specialist_weight": { "type": "number" },
+            "current_best_priority_score": { "type": "number" },
+            "m1_specialist_priority_score": { "type": "number" }
+          },
+          "additionalProperties": false
         },
-        "check_points": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "review_required": { "type": "boolean" },
+        "decision_basis": { "type": "string" },
+        "recommended_action": { "type": "string" },
+        "notes": { "type": "string" }
       },
       "additionalProperties": false
     },
-    "connection_check": {
+    "connection_context": {
       "type": "object",
-      "required": ["matched", "basis", "missing_items"],
+      "required": ["status", "matched_keys", "missing_items", "notes"],
       "properties": {
-        "matched": {
-          "type": "boolean"
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "partial", "matched"]
         },
-        "basis": {
-          "type": "string"
+        "matched_keys": {
+          "type": "array",
+          "items": { "type": "string" }
         },
         "missing_items": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" }
       },
       "additionalProperties": false
     },
     "db_mapping": {
       "type": "object",
-      "required": ["site_name", "facility_name", "equipment", "sensor_keys"],
+      "required": ["status", "entity_key", "source_tables", "sensor_key_map", "notes"],
       "properties": {
-        "site_name": {
-          "type": "string"
+        "status": {
+          "type": "string",
+          "enum": ["placeholder", "partial", "confirmed"]
         },
-        "facility_name": {
-          "type": "string"
+        "entity_key": {
+          "type": "object",
+          "required": ["manufacturer_id", "substation_id"],
+          "properties": {
+            "manufacturer_id": { "type": "string" },
+            "substation_id": { "type": ["integer", "string"] }
+          },
+          "additionalProperties": false
         },
-        "equipment": {
+        "source_tables": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sensor_key_map": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "required": ["feature_name", "raw_sensor_key"],
+            "properties": {
+              "feature_name": { "type": "string" },
+              "raw_sensor_key": { "type": "string" },
+              "display_name": { "type": "string" }
+            },
+            "additionalProperties": false
           }
         },
-        "sensor_keys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sensor_value": {
+      "type": "object",
+      "required": [
+        "rank",
+        "feature_name",
+        "source_sensor",
+        "source_column",
+        "feature_value",
+        "unit",
+        "calculation",
+        "meaning"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "feature_name": { "type": "string" },
+        "source_sensor": { "type": "string" },
+        "source_column": { "type": "string" },
+        "feature_value": { "type": ["number", "string", "boolean", "null"] },
+        "unit": { "type": ["string", "null"] },
+        "calculation": {
+          "type": "string",
+          "description": "예: last, mean, last_minus_first, last_1d_mean_minus_prev_6d_mean"
+        },
+        "meaning": { "type": "string" }
       },
       "additionalProperties": false
     }

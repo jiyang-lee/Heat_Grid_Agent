@@ -1,0 +1,5 @@
+{
+  "summary": "manufacturer 1 substation 31에서 urgent 등급의 pre_fault 운영 카드가 생성되었습니다.",
+  "action_plan": "primary return/flow 계열 센서와 열교환기 외부 누수 가능성을 우선 확인합니다.",
+  "caution": "current-best는 urgent, M1 specialist는 medium으로 판단이 갈리므로 운영자 검토가 필요합니다."
+}

@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
+from heat_grid_ops.llm_input import build_ops_agent_llm_input
 from heat_grid_ops.openai_ops import generate_ops_note
 from heat_grid_ops.repository import (
     check_database,
@@ -18,6 +19,8 @@ from heat_grid_ops.repository import (
 from heat_grid_ops.schemas import (
     HealthResponse,
     OpsAgentInput,
+    OpsAgentLlmInput,
+    OpsAgentOutput,
     SimulationResponse,
     StatusResponse,
 )
@@ -57,14 +60,15 @@ def create_app() -> FastAPI:
         except (SQLAlchemyError, OSError):
             return [load_example_input().priority_context.card.card_id]
 
-    @app.get("/api/input/{card_id}", response_model=OpsAgentInput)
-    async def ops_input(card_id: str) -> OpsAgentInput:
-        return await _input_for_card(engine, card_id)
+    @app.get("/api/input/{card_id}", response_model=OpsAgentLlmInput)
+    async def ops_input(card_id: str) -> OpsAgentLlmInput:
+        return build_ops_agent_llm_input(await _input_for_card(engine, card_id))
 
     @app.post("/api/simulate/{card_id}", response_model=SimulationResponse)
     async def simulate(card_id: str) -> SimulationResponse:
-        ops_payload = await _input_for_card(engine, card_id)
-        input_source = _source_for_card(ops_payload, card_id)
+        source_payload = await _input_for_card(engine, card_id)
+        input_source = _source_for_card(source_payload, card_id)
+        ops_payload = build_ops_agent_llm_input(source_payload)
         output = await generate_ops_note(ops_payload, settings)
         saved = await _save_if_possible(engine, ops_payload, output)
         return SimulationResponse(
@@ -90,8 +94,12 @@ async def _input_for_card(engine, card_id: str) -> OpsAgentInput:
     raise HTTPException(status_code=404, detail="card_id를 찾을 수 없습니다.")
 
 
-async def _save_if_possible(engine, ops_input: OpsAgentInput, output) -> bool:
-    card_id = ops_input.priority_context.card.card_id
+async def _save_if_possible(
+    engine,
+    ops_input: OpsAgentLlmInput,
+    output: OpsAgentOutput,
+) -> bool:
+    card_id = ops_input.handoff_context.audit_context.card_id
     try:
         await save_ops_note(engine, card_id, ops_input, output)
     except (SQLAlchemyError, OSError):

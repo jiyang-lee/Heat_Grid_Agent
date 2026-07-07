@@ -8,45 +8,290 @@
       "window_start": "2020-01-11T00:00:00Z",
       "window_end": "2020-01-11T06:00:00Z"
     },
-    "features": [
-      {
-        "feature_name": "missing_rate",
-        "source_sensor": "data_quality",
-        "meaning": "window 내 결측률",
-        "feature_value": 0.02
-      },
-      {
-        "feature_name": "p_return_gap__last_minus_first",
-        "source_sensor": "p_return_gap",
-        "meaning": "window 내 return gap 변화",
-        "feature_value": 4.2
-      }
-    ]
+    "current_best_sensor_values": {
+      "model_id": "current-best",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/data_contract/trainable_windows.csv",
+      "selection_rule": "current-best 입력 feature 중 화면에서 확인할 raw sensor 집계값 top N. 예시 N=10이며 고정값이 아니다.",
+      "top_n": 10,
+      "values": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last",
+          "feature_value": 4.27,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Outdoor temperature의 window 마지막 값"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__mean",
+          "feature_value": 4.471111111111111,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Outdoor temperature의 window 평균"
+        },
+        {
+          "rank": 3,
+          "feature_name": "p_hc1_return_temperature__last",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last",
+          "feature_value": 34.77,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Heat circuit 1 return temperature (primary side)의 window 마지막 값"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__mean",
+          "feature_value": 35.585,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Heat circuit 1 return temperature (primary side)의 window 평균"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_net_meter_flow__last",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last",
+          "feature_value": 1.0,
+          "unit": "l/h",
+          "calculation": "last",
+          "meaning": "Flow의 window 마지막 값"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__mean",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__mean",
+          "feature_value": 194.36111111111111,
+          "unit": "l/h",
+          "calculation": "mean",
+          "meaning": "Flow의 window 평균"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_supply_temperature__last",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__last",
+          "feature_value": 92.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary flow temperature의 window 마지막 값"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_net_supply_temperature__mean",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__mean",
+          "feature_value": 89.30555555555556,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Primary flow temperature의 window 평균"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_net_return_temperature__last",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last",
+          "feature_value": 36.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary return temperature의 window 마지막 값"
+        },
+        {
+          "rank": 10,
+          "feature_name": "p_net_return_temperature__mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__mean",
+          "feature_value": 34.083333333333336,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Primary return temperature의 window 평균"
+        }
+      ]
+    },
+    "m1_specialist_features": {
+      "model_id": "m1-specialist",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/scores/m1_specialist_compact13_features.csv",
+      "feature_count": 13,
+      "features": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.3873611111111126,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Outdoor temperature의 최근 12시간 평균과 이전 12시간 평균 차이"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "feature_value": -0.6669444444444448,
+          "unit": "degC",
+          "calculation": "last_6h_mean_minus_prev_6h_mean",
+          "meaning": "Outdoor temperature의 최근 6시간 평균과 이전 6시간 평균 차이"
+        },
+        {
+          "rank": 3,
+          "feature_name": "outdoor_temperature__last_minus_first",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_minus_first",
+          "feature_value": -0.21000000000000085,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Outdoor temperature의 window 마지막 값과 첫 값 차이"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.9208333333333272,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Heat circuit 1 return temperature (primary side)의 최근 12시간 평균과 이전 12시간 평균 차이"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -2.749386574074073,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Heat circuit 1 return temperature (primary side)의 최근 1일 평균과 이전 6일 평균 차이"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "feature_value": -5.0265147897468125,
+          "unit": "l/h",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Flow의 최근 1일 표준편차와 이전 6일 표준편차 차이"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -3.099537037037038,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary return temperature의 최근 1일 평균과 이전 6일 평균 차이"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.35015046296296287,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary flow-return gap의 최근 1일 평균과 이전 6일 평균 차이"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_return_gap__last_minus_first",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_minus_first",
+          "feature_value": -3.6099999999999994,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Primary flow-return gap의 window 마지막 값과 첫 값 차이"
+        },
+        {
+          "rank": 10,
+          "feature_name": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.37098379629630074,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Heat circuit 1 flow temperature (secondary)의 최근 1일 평균과 이전 6일 평균 차이"
+        },
+        {
+          "rank": 11,
+          "feature_name": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "feature_value": -0.06205405213932913,
+          "unit": "degC",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Heat circuit 1 flow temperature (secondary)의 최근 1일 표준편차와 이전 6일 표준편차 차이"
+        },
+        {
+          "rank": 12,
+          "feature_name": "s_hc1_supply_temperature_error__last_minus_first",
+          "source_sensor": "s_hc1_supply_temperature_error",
+          "source_column": "s_hc1_supply_temperature_error__last_minus_first",
+          "feature_value": 5.009999999999991,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Heat circuit 1 flow temperature error의 window 마지막 값과 첫 값 차이"
+        },
+        {
+          "rank": 13,
+          "feature_name": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature_setpoint",
+          "source_column": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.4045601851852041,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Heat circuit 1 reference flow temperature (secondary)의 최근 1일 평균과 이전 6일 평균 차이"
+        }
+      ]
+    }
   },
   "priority_context": {
     "card": {
       "card_id": "10000000-0000-0000-0000-000000000001",
       "operational_label": "urgent",
       "primary_state": "pre_fault",
-      "review_required": true,
       "trust_level": "medium"
     },
     "priority": {
       "priority_decision_id": "20000000-0000-0000-0000-000000000001",
-      "priority_score": 87.4,
+      "priority_score": 89.73322568799986,
       "priority_level": "urgent",
-      "priority_source": "hybrid",
-      "m1_priority_agreement": "agree"
+      "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+      "m1_priority_agreement": "current_only_high",
+      "calculation": {
+        "current_best_weight": 0.65,
+        "m1_specialist_weight": 0.35,
+        "expression": "priority_score = current_best_weight * current_best_priority_score + m1_specialist_weight * m1_specialist_priority_score"
+      }
     },
     "model_signals": {
-      "current_best_priority_score": 82.1,
-      "current_best_priority_level": "high",
-      "m1_specialist_priority_score": 91.8,
-      "m1_specialist_priority_level": "urgent"
+      "current_best_priority_score": 100.0,
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_score": 70.66635910857104,
+      "m1_specialist_priority_level": "medium",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss"
     },
     "explanation": {
-      "why_reason": "M1 specialist and current-best both indicate elevated priority.",
-      "recommended_action": "Review the substation operation and inspect return temperature behavior."
+      "why_reason": "current-best는 urgent(100.0)이고 M1 specialist는 medium(70.66635910857104)이라 0.65/0.35 hybrid 산식으로 최종 urgent가 됐다.",
+      "recommended_action": "1-3일 리드타임 후보로 표시하고 열교환기 외부 누수 가능성과 primary return/flow 계열 센서를 우선 확인한다.",
+      "review_required": true,
+      "review_reasons": [
+        "current_only_high",
+        "lead_time_1_3d",
+        "fault_group_leakage_water_loss"
+      ]
     }
   }
 }

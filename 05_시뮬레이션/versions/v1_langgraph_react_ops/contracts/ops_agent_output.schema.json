@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "action_plan": {
+      "title": "Action Plan",
+      "type": "string"
+    },
+    "caution": {
+      "title": "Caution",
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary",
+    "action_plan",
+    "caution"
+  ],
+  "title": "OpsAgentOutput",
+  "type": "object"
+}

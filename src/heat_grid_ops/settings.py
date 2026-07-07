@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
     )
-    openai_model: str = "gpt-5.5"
+    openai_model: str = "gpt-5.4-mini"
     openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
 
 
