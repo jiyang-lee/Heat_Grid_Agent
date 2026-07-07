@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import os
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,19 @@ import pandas as pd
 
 from . import config
 from .common import read_json, write_json
+
+
+def _run_timestamp() -> str:
+    if os.environ.get("THIRD_MODEL_REFRESH_RUN_TIMESTAMP") == "1":
+        return datetime.now(timezone.utc).isoformat()
+    if config.PIPELINE_RUN_METADATA_PATH.exists():
+        try:
+            previous = read_json(config.PIPELINE_RUN_METADATA_PATH).get("generated_at_utc")
+            if previous:
+                return str(previous)
+        except Exception:
+            pass
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _markdown_table(frame: pd.DataFrame) -> str:
@@ -139,8 +153,8 @@ def row_reconciliation() -> pd.DataFrame:
             missing_agent = missing
 
     table = pd.DataFrame(rows)
-    table.to_csv(config.ROW_RECONCILIATION_PATH, index=False, encoding="utf-8-sig")
-    missing_agent.to_csv(config.MISSING_AGENT_WINDOWS_PATH, index=False, encoding="utf-8-sig")
+    table.to_csv(config.ROW_RECONCILIATION_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    missing_agent.to_csv(config.MISSING_AGENT_WINDOWS_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return table
 
 
@@ -252,7 +266,7 @@ def pipeline_run_metadata() -> dict[str, object]:
         "m1_specialist_gate_metadata": config.M1_SPECIALIST_GATE_METADATA_PATH,
     }
     payload = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": _run_timestamp(),
         "source_best_root": config.path_label(config.SOURCE_BEST_ROOT, "THIRD_MODEL_SOURCE_BEST_ROOT"),
         "source_best_available": config.SOURCE_BEST_ROOT.exists(),
         "files": [_csv_file_metadata(name, path) for name, path in files.items() if Path(path).suffix.lower() == ".csv"],
@@ -288,7 +302,7 @@ def threshold_sweep() -> pd.DataFrame:
             row["score_name"] = score_name
             rows.append(row)
     table = pd.DataFrame(rows)
-    table.to_csv(config.THRESHOLD_SWEEP_PATH, index=False, encoding="utf-8-sig")
+    table.to_csv(config.THRESHOLD_SWEEP_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return table
 
 
@@ -325,7 +339,7 @@ def ablation_summary() -> pd.DataFrame:
             }
         )
     table = pd.DataFrame(rows)
-    table.to_csv(config.ABLATION_SUMMARY_PATH, index=False, encoding="utf-8-sig")
+    table.to_csv(config.ABLATION_SUMMARY_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     lines = [
         "# Ablation 요약",
         "",
@@ -378,7 +392,7 @@ def priority_sensitivity() -> pd.DataFrame:
             }
         )
     table = pd.DataFrame(rows)
-    table.to_csv(config.PRIORITY_SENSITIVITY_PATH, index=False, encoding="utf-8-sig")
+    table.to_csv(config.PRIORITY_SENSITIVITY_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return table
 
 
@@ -402,7 +416,7 @@ def hard_normal_audit() -> pd.DataFrame:
         "why_reason",
     ]
     audit = audit[[c for c in keep if c in audit.columns]]
-    audit.to_csv(config.HARD_NORMAL_AUDIT_PATH, index=False, encoding="utf-8-sig")
+    audit.to_csv(config.HARD_NORMAL_AUDIT_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return audit
 
 

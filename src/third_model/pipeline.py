@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 from . import config
 from .anomaly import train_score_anomaly
@@ -65,13 +66,21 @@ def run_steps(steps: list[str]) -> None:
         selected = FULL_RETRAIN_STEPS
     else:
         selected = steps
-    for step in selected:
-        if step not in STEP_FUNCTIONS:
-            raise ValueError(f"Unknown step: {step}. Valid steps: all, full_retrain, {', '.join(STEP_FUNCTIONS)}")
-        print(f"\n=== running {step} ===")
-        result = STEP_FUNCTIONS[step]()
-        if hasattr(result, "shape"):
-            print(f"{step}: shape={result.shape}")
+    refresh_timestamp = any(step.startswith("retrain") for step in selected)
+    old_refresh = os.environ.get("THIRD_MODEL_REFRESH_RUN_TIMESTAMP")
+    if refresh_timestamp and old_refresh is None:
+        os.environ["THIRD_MODEL_REFRESH_RUN_TIMESTAMP"] = "1"
+    try:
+        for step in selected:
+            if step not in STEP_FUNCTIONS:
+                raise ValueError(f"Unknown step: {step}. Valid steps: all, full_retrain, {', '.join(STEP_FUNCTIONS)}")
+            print(f"\n=== running {step} ===")
+            result = STEP_FUNCTIONS[step]()
+            if hasattr(result, "shape"):
+                print(f"{step}: shape={result.shape}")
+    finally:
+        if refresh_timestamp and old_refresh is None:
+            os.environ.pop("THIRD_MODEL_REFRESH_RUN_TIMESTAMP", None)
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -194,7 +194,7 @@ def build_compact13_features() -> tuple[pd.DataFrame, list[str]]:
             row[feature] = _compute_feature(window, signal, feature_stat, window_start, window_end) if len(window) else np.nan
         rows.append(row)
     compact = pd.DataFrame(rows)
-    compact.to_csv(config.M1_SPECIALIST_COMPACT13_FEATURES_PATH, index=False, encoding="utf-8-sig")
+    compact.to_csv(config.M1_SPECIALIST_COMPACT13_FEATURES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return compact, features
 
 
@@ -364,8 +364,8 @@ def score_m1_specialist_gates() -> pd.DataFrame:
         "m1_specialist_gate_review_reasons",
     ]
     keep_context = [c for c in keep_context if c in scored.columns]
-    scored[keep_context].to_csv(config.M1_SPECIALIST_GATE_SCORES_PATH, index=False, encoding="utf-8-sig")
-    scored[keep_context].to_csv(config.M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH, index=False, encoding="utf-8-sig")
+    scored[keep_context].to_csv(config.M1_SPECIALIST_GATE_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    scored[keep_context].to_csv(config.M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     write_json(
         config.M1_SPECIALIST_GATE_METADATA_PATH,
         {

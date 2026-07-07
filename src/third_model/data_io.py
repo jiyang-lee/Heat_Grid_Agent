@@ -32,7 +32,7 @@ def build_raw_inventory() -> pd.DataFrame:
                 inventory["path"] = inventory["path"].fillna("").map(
                     lambda value: config.path_label(Path(str(value))) if str(value) else ""
                 )
-                inventory.to_csv(config.RAW_INVENTORY_PATH, index=False, encoding="utf-8-sig")
+                inventory.to_csv(config.RAW_INVENTORY_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
             write_json(
                 config.INTERIM_DIR / "raw_inventory_metadata.json",
                 {
@@ -93,8 +93,8 @@ def build_raw_inventory() -> pd.DataFrame:
 
     inventory = pd.DataFrame(rows)
     schema = pd.DataFrame(schema_rows)
-    inventory.to_csv(config.RAW_INVENTORY_PATH, index=False, encoding="utf-8-sig")
-    schema.to_csv(config.RAW_SCHEMA_PATH, index=False, encoding="utf-8-sig")
+    inventory.to_csv(config.RAW_INVENTORY_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    schema.to_csv(config.RAW_SCHEMA_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     write_json(
         config.INTERIM_DIR / "raw_inventory_metadata.json",
         {
@@ -183,9 +183,9 @@ def import_canonical_windows() -> pd.DataFrame:
         }
     )
 
-    windows.to_csv(config.TRAINABLE_WINDOWS_PATH, index=False, encoding="utf-8-sig")
-    feature_table.to_csv(config.FEATURE_COLUMNS_PATH, index=False, encoding="utf-8-sig")
-    imputation.to_csv(config.IMPUTATION_VALUES_PATH, index=False, encoding="utf-8-sig")
+    windows.to_csv(config.TRAINABLE_WINDOWS_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    feature_table.to_csv(config.FEATURE_COLUMNS_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    imputation.to_csv(config.IMPUTATION_VALUES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     write_json(
         config.PROCESSED_DIR / "window_import_metadata.json",
         {

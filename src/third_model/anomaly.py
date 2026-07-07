@@ -119,8 +119,8 @@ def train_score_anomaly() -> pd.DataFrame:
         for method, (score_col, pred_col) in methods.items():
             metric_rows.append(binary_metrics(part, score_col, pred_col, split, method))
 
-    scored.to_csv(config.ANOMALY_SCORES_PATH, index=False, encoding="utf-8-sig")
-    pd.DataFrame(metric_rows).to_csv(config.ANOMALY_METRICS_PATH, index=False, encoding="utf-8-sig")
+    scored.to_csv(config.ANOMALY_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    pd.DataFrame(metric_rows).to_csv(config.ANOMALY_METRICS_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     joblib.dump(scaler, config.ANOMALY_SCALER_PATH)
     joblib.dump(iforest, config.IFOREST_MODEL_PATH)
     joblib.dump(covariance, config.MAHALANOBIS_MODEL_PATH)

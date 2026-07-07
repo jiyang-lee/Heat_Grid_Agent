@@ -21,7 +21,7 @@ def export_agent_columns(output_path: Path | None = None) -> pd.DataFrame:
     agent = pd.read_csv(config.AGENT_CARD_PATH)
     target = output_path or config.AGENT_CARD_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
-    agent.to_csv(target, index=False, encoding="utf-8-sig")
+    agent.to_csv(target, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return agent
 
 

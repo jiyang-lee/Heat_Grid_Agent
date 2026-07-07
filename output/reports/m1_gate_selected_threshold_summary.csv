@@ -1,9 +1,9 @@
 ﻿gate,probability_column,target_definition,threshold,split,tp,fp,fn,tn,precision,recall,f1,false_positive_rate,balanced_accuracy,positive_rate,target_positive_count,native_label_available
-fault_gate,m1_specialist_fault_probability,pre_fault_proxy,0.5,holdout,52,59,25,47,0.46846846846846846,0.6753246753246753,0.5531914893617021,0.5566037735849056,0.5593604508698848,0.6065573770491803,77,True
-fault_gate,m1_specialist_fault_probability,pre_fault_proxy,0.5,validation,20,91,3,52,0.18018018018018017,0.8695652173913043,0.29850746268656714,0.6363636363636364,0.616600790513834,0.6686746987951807,23,True
-pre_event_gate,m1_specialist_pre_event_probability,pre_fault_proxy,0.6,holdout,46,39,31,67,0.5411764705882353,0.5974025974025974,0.5679012345679013,0.36792452830188677,0.6147390345503553,0.4644808743169399,77,True
-pre_event_gate,m1_specialist_pre_event_probability,pre_fault_proxy,0.6,validation,12,72,11,71,0.14285714285714285,0.5217391304347826,0.2242990654205607,0.5034965034965035,0.5091213134691396,0.5060240963855421,23,True
-task_gate,m1_specialist_task_probability,task_proxy_maintenance_or_disturbance,0.5,holdout,0,0,0,183,0.0,0.0,0.0,0.0,0.5,0.0,0,True
-task_gate,m1_specialist_task_probability,task_proxy_maintenance_or_disturbance,0.5,validation,0,0,0,166,0.0,0.0,0.0,0.0,0.5,0.0,0,True
-activity_gate,m1_specialist_activity_probability,activity_native_label_unavailable,0.5,holdout,0,0,77,106,0.0,0.0,0.0,0.0,0.5,0.0,77,False
-activity_gate,m1_specialist_activity_probability,activity_native_label_unavailable,0.5,validation,0,0,23,143,0.0,0.0,0.0,0.0,0.5,0.0,23,False
+fault_gate,m1_specialist_fault_probability,pre_fault_proxy,0.5,holdout,52,59,25,47,0.468468468468,0.675324675325,0.553191489362,0.556603773585,0.55936045087,0.606557377049,77,True
+fault_gate,m1_specialist_fault_probability,pre_fault_proxy,0.5,validation,20,91,3,52,0.18018018018,0.869565217391,0.298507462687,0.636363636364,0.616600790514,0.668674698795,23,True
+pre_event_gate,m1_specialist_pre_event_probability,pre_fault_proxy,0.6,holdout,46,39,31,67,0.541176470588,0.597402597403,0.567901234568,0.367924528302,0.61473903455,0.464480874317,77,True
+pre_event_gate,m1_specialist_pre_event_probability,pre_fault_proxy,0.6,validation,12,72,11,71,0.142857142857,0.521739130435,0.224299065421,0.503496503497,0.509121313469,0.506024096386,23,True
+task_gate,m1_specialist_task_probability,task_proxy_maintenance_or_disturbance,0.5,holdout,0,0,0,183,0,0,0,0,0.5,0,0,True
+task_gate,m1_specialist_task_probability,task_proxy_maintenance_or_disturbance,0.5,validation,0,0,0,166,0,0,0,0,0.5,0,0,True
+activity_gate,m1_specialist_activity_probability,activity_native_label_unavailable,0.5,holdout,0,0,77,106,0,0,0,0,0.5,0,77,False
+activity_gate,m1_specialist_activity_probability,activity_native_label_unavailable,0.5,validation,0,0,23,143,0,0,0,0,0.5,0,23,False

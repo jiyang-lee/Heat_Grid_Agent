@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | current_best_priority | holdout | row | 183.0 | 0.725 | 0.7532467532467533 | 0.20754716981132076 | 58.0 | 22.0 | 19.0 | 84.0 | 55.04589398907104 |  |  |  |  |
 | current_best_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
-| m1_specialist_priority | holdout | row | 183.0 | 0.64 | 0.4155844155844156 | 0.16981132075471697 | 32.0 | 18.0 | 45.0 | 88.0 | 58.05319207467691 |  |  |  |  |
+| m1_specialist_priority | holdout | row | 183.0 | 0.64 | 0.4155844155844156 | 0.16981132075471697 | 32.0 | 18.0 | 45.0 | 88.0 | 58.053192074677604 |  |  |  |  |
 | m1_specialist_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
-| m1_hybrid_priority | holdout | row | 183.0 | 0.896551724137931 | 0.6753246753246753 | 0.05660377358490566 | 52.0 | 6.0 | 25.0 | 100.0 | 56.098448319033096 |  |  |  |  |
+| m1_hybrid_priority | holdout | row | 183.0 | 0.896551724137931 | 0.6753246753246753 | 0.05660377358490566 | 52.0 | 6.0 | 25.0 | 100.0 | 56.09844831903334 |  |  |  |  |
 | m1_hybrid_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |

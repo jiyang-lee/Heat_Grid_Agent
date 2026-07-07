@@ -341,7 +341,7 @@ def _write_agent_column_group_docs() -> None:
             }
         )
 
-    pd.DataFrame(rows).to_csv(config.AGENT_CARD_COLUMN_GROUPS_PATH, index=False, encoding="utf-8-sig")
+    pd.DataFrame(rows).to_csv(config.AGENT_CARD_COLUMN_GROUPS_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
 
     lines = [
         "# Agent Card 컬럼 분류",
@@ -400,7 +400,7 @@ def write_agent_contract_docs() -> None:
             }
         )
     dictionary = pd.DataFrame(rows)
-    dictionary.to_csv(config.AGENT_CARD_COLUMN_DICTIONARY_PATH, index=False, encoding="utf-8-sig")
+    dictionary.to_csv(config.AGENT_CARD_COLUMN_DICTIONARY_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     lines = [
         "# Agent Card Value Mapping",
         "",
@@ -624,7 +624,7 @@ def build_agent_card() -> pd.DataFrame:
         if column not in frame.columns:
             frame[column] = ""
     agent = frame[config.AGENT_OUTPUT_COLUMNS].copy()
-    agent.to_csv(config.AGENT_CARD_PATH, index=False, encoding="utf-8-sig")
+    agent.to_csv(config.AGENT_CARD_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     write_json(
         config.STATE_CARD_SCHEMA_PATH,
         {

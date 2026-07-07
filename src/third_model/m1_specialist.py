@@ -269,8 +269,8 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         "|".join([part for part in [a, b, c] if str(part)])
         for a, b, c in zip(existing_review, gate_review_text, m1_review_text)
     ]
-    frame.to_csv(config.M1_SPECIALIST_SCORES_PATH, index=False, encoding="utf-8-sig")
-    comparison.to_csv(config.M1_SPECIALIST_COMPARISON_PATH, index=False, encoding="utf-8-sig")
+    frame.to_csv(config.M1_SPECIALIST_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    comparison.to_csv(config.M1_SPECIALIST_COMPARISON_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     agent_columns = [
         *config.KEY_COLUMNS,
         "configuration_type",
@@ -307,8 +307,8 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         if column not in promoted_agent.columns:
             promoted_agent[column] = ""
     promoted_agent = promoted_agent[config.AGENT_OUTPUT_COLUMNS].copy()
-    promoted_agent.to_csv(config.AGENT_CARD_PATH, index=False, encoding="utf-8-sig")
-    promoted_agent.to_csv(config.M1_SPECIALIST_AGENT_CARD_PATH, index=False, encoding="utf-8-sig")
+    promoted_agent.to_csv(config.AGENT_CARD_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
+    promoted_agent.to_csv(config.M1_SPECIALIST_AGENT_CARD_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     write_agent_contract_docs()
 
     holdout = comparison.loc[comparison["split"].eq("holdout")].copy()

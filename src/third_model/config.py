@@ -8,6 +8,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_SCOPE = "m1_specialist"
 M1_MANUFACTURER = os.environ.get("THIRD_MODEL_M1_MANUFACTURER", "manufacturer 1")
+CSV_FLOAT_FORMAT = "%.12g"
+CSV_LINE_TERMINATOR = "\n"
 
 def _env_path(name: str) -> Path | None:
     raw = os.environ.get(name)

@@ -1,19 +1,19 @@
 ﻿policy,split,metric_scope,row_count,precision,recall,false_positive_rate,tp,fp,fn,tn,mean_score,fault_events,detected_fault_events,fault_event_recall,note
-current_best_priority,train,row,877.0,0.9941520467836257,0.8717948717948718,0.001466275659824047,170.0,1.0,25.0,681.0,31.64605735461802,,,,
-current_best_priority,train,fault_event,,,,,,,,,,18.0,18.0,1.0,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_specialist_priority,train,row,877.0,0.3741496598639456,0.28205128205128205,0.1348973607038123,55.0,92.0,140.0,590.0,55.30704076524845,,,,
-m1_specialist_priority,train,fault_event,,,,,,,,,,18.0,14.0,0.7777777777777778,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_hybrid_priority,train,row,877.0,1.0,0.6974358974358974,0.0,136.0,0.0,59.0,682.0,39.927401548338665,,,,
-m1_hybrid_priority,train,fault_event,,,,,,,,,,18.0,17.0,0.9444444444444444,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-current_best_priority,validation,row,166.0,0.36507936507936506,1.0,0.27972027972027974,23.0,40.0,0.0,103.0,44.876834939759036,,,,
-current_best_priority,validation,fault_event,,,,,,,,,,2.0,2.0,1.0,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_specialist_priority,validation,row,166.0,0.4166666666666667,0.43478260869565216,0.0979020979020979,10.0,14.0,13.0,129.0,57.995314870352765,,,,
-m1_specialist_priority,validation,fault_event,,,,,,,,,,2.0,2.0,1.0,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_hybrid_priority,validation,row,166.0,0.7666666666666667,1.0,0.04895104895104895,23.0,7.0,0.0,136.0,49.46830291546684,,,,
-m1_hybrid_priority,validation,fault_event,,,,,,,,,,2.0,2.0,1.0,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-current_best_priority,holdout,row,183.0,0.725,0.7532467532467533,0.20754716981132076,58.0,22.0,19.0,84.0,55.04589398907104,,,,
-current_best_priority,holdout,fault_event,,,,,,,,,,8.0,7.0,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_specialist_priority,holdout,row,183.0,0.64,0.4155844155844156,0.16981132075471697,32.0,18.0,45.0,88.0,58.05319207467691,,,,
-m1_specialist_priority,holdout,fault_event,,,,,,,,,,8.0,7.0,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
-m1_hybrid_priority,holdout,row,183.0,0.896551724137931,0.6753246753246753,0.05660377358490566,52.0,6.0,25.0,100.0,56.098448319033096,,,,
-m1_hybrid_priority,holdout,fault_event,,,,,,,,,,8.0,7.0,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+current_best_priority,train,row,877,0.994152046784,0.871794871795,0.00146627565982,170,1,25,681,31.6460573546,,,,
+current_best_priority,train,fault_event,,,,,,,,,,18,18,1,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_specialist_priority,train,row,877,0.374149659864,0.282051282051,0.134897360704,55,92,140,590,55.3070407652,,,,
+m1_specialist_priority,train,fault_event,,,,,,,,,,18,14,0.777777777778,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_hybrid_priority,train,row,877,1,0.697435897436,0,136,0,59,682,39.9274015483,,,,
+m1_hybrid_priority,train,fault_event,,,,,,,,,,18,17,0.944444444444,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+current_best_priority,validation,row,166,0.365079365079,1,0.27972027972,23,40,0,103,44.8768349398,,,,
+current_best_priority,validation,fault_event,,,,,,,,,,2,2,1,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_specialist_priority,validation,row,166,0.416666666667,0.434782608696,0.0979020979021,10,14,13,129,57.9953148704,,,,
+m1_specialist_priority,validation,fault_event,,,,,,,,,,2,2,1,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_hybrid_priority,validation,row,166,0.766666666667,1,0.048951048951,23,7,0,136,49.4683029155,,,,
+m1_hybrid_priority,validation,fault_event,,,,,,,,,,2,2,1,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+current_best_priority,holdout,row,183,0.725,0.753246753247,0.207547169811,58,22,19,84,55.0458939891,,,,
+current_best_priority,holdout,fault_event,,,,,,,,,,8,7,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_specialist_priority,holdout,row,183,0.64,0.415584415584,0.169811320755,32,18,45,88,58.0531920747,,,,
+m1_specialist_priority,holdout,fault_event,,,,,,,,,,8,7,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.
+m1_hybrid_priority,holdout,row,183,0.896551724138,0.675324675325,0.0566037735849,52,6,25,100,56.098448319,,,,
+m1_hybrid_priority,holdout,fault_event,,,,,,,,,,8,7,0.875,normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다.

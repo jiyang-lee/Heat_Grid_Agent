@@ -241,7 +241,7 @@ nb["cells"] = [
                 metrics.update({"split": split, "criticality_threshold": criticality_threshold})
                 criticality_rows.append(metrics)
         criticality_sweep = pd.DataFrame(criticality_rows)
-        criticality_sweep.to_csv(REPORT / "anomaly_criticality_threshold_sweep.csv", index=False, encoding="utf-8-sig")
+        criticality_sweep.to_csv(REPORT / "anomaly_criticality_threshold_sweep.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         anomaly_policy_grid_rows = []
         for if_threshold in np.round(np.arange(0.75, 1.201, 0.05), 2):
@@ -261,7 +261,7 @@ nb["cells"] = [
                     )
                     anomaly_policy_grid_rows.append(metrics)
         anomaly_policy_grid = pd.DataFrame(anomaly_policy_grid_rows)
-        anomaly_policy_grid.to_csv(REPORT / "anomaly_if_mahalanobis_policy_grid.csv", index=False, encoding="utf-8-sig")
+        anomaly_policy_grid.to_csv(REPORT / "anomaly_if_mahalanobis_policy_grid.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         coverage_rows = []
         for artifact_name, frame in [
@@ -295,7 +295,7 @@ nb["cells"] = [
                 }
             )
         key_coverage_by_artifact = pd.DataFrame(coverage_rows)
-        key_coverage_by_artifact.to_csv(REPORT / "key_coverage_by_artifact.csv", index=False, encoding="utf-8-sig")
+        key_coverage_by_artifact.to_csv(REPORT / "key_coverage_by_artifact.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         risk_threshold_columns = [
             "risk_threshold_medium_applied",
@@ -303,7 +303,7 @@ nb["cells"] = [
             "risk_threshold_critical_applied",
         ]
         risk_threshold_actual_values = risk_scores[risk_threshold_columns].drop_duplicates().sort_values(risk_threshold_columns)
-        risk_threshold_actual_values.to_csv(REPORT / "risk_threshold_actual_values.csv", index=False, encoding="utf-8-sig")
+        risk_threshold_actual_values.to_csv(REPORT / "risk_threshold_actual_values.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
         risk_level_actual_summary = (
             risk_scores.groupby("risk_level_calibrated", dropna=False)
             .agg(
@@ -318,7 +318,7 @@ nb["cells"] = [
         )
         for column in risk_threshold_columns:
             risk_level_actual_summary[column] = float(pd.to_numeric(risk_scores[column], errors="coerce").dropna().iloc[0])
-        risk_level_actual_summary.to_csv(REPORT / "risk_level_actual_summary.csv", index=False, encoding="utf-8-sig")
+        risk_level_actual_summary.to_csv(REPORT / "risk_level_actual_summary.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         gate_scores = read_csv("output/m1_specialist_gate_scores.csv")
         gate_context = trainable_windows[
@@ -381,7 +381,7 @@ nb["cells"] = [
                         }
                     )
         m1_gate_threshold_sweep = pd.DataFrame(gate_rows)
-        m1_gate_threshold_sweep.to_csv(REPORT / "m1_gate_threshold_sweep.csv", index=False, encoding="utf-8-sig")
+        m1_gate_threshold_sweep.to_csv(REPORT / "m1_gate_threshold_sweep.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         m1_gate_selected_threshold_summary = m1_gate_threshold_sweep[
             (
@@ -395,6 +395,8 @@ nb["cells"] = [
             REPORT / "m1_gate_selected_threshold_summary.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         gate_reference_rows = []
@@ -439,7 +441,7 @@ nb["cells"] = [
                         }
                     )
         m1_gate_threshold_reference = pd.DataFrame(gate_reference_rows)
-        m1_gate_threshold_reference.to_csv(REPORT / "m1_gate_threshold_reference.csv", index=False, encoding="utf-8-sig")
+        m1_gate_threshold_reference.to_csv(REPORT / "m1_gate_threshold_reference.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         def choose_threshold(part: pd.DataFrame, score: pd.Series, target_fpr: float = 0.20) -> float:
             y = part["label"].eq("pre_fault")
@@ -491,7 +493,7 @@ nb["cells"] = [
             + 0.20 * hybrid_sweep["fault_event_recall"]
             - 0.50 * hybrid_sweep["false_positive_rate"]
         )
-        hybrid_sweep.to_csv(REPORT / "hybrid_weight_sweep.csv", index=False, encoding="utf-8-sig")
+        hybrid_sweep.to_csv(REPORT / "hybrid_weight_sweep.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         def pick_row(name: str, split: str, frame: pd.DataFrame, sort_columns: list[str], ascending: list[bool]) -> dict:
             row = frame.loc[frame["split"].eq(split)].sort_values(sort_columns, ascending=ascending).head(1)
@@ -521,7 +523,7 @@ nb["cells"] = [
             pick_row("holdout_best_operating_score", "holdout", hybrid_sweep, ["operating_score", "precision"], [False, False]),
         ]
         hybrid_selection_summary = pd.DataFrame(summary_candidates)
-        hybrid_selection_summary.to_csv(REPORT / "hybrid_weight_selection_summary.csv", index=False, encoding="utf-8-sig")
+        hybrid_selection_summary.to_csv(REPORT / "hybrid_weight_selection_summary.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         def evaluate_priority_score(
             frame: pd.DataFrame,
@@ -602,6 +604,8 @@ nb["cells"] = [
             REPORT / "m1_specialist_priority_weight_ablation.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         specialist_grid_rows = []
@@ -625,6 +629,8 @@ nb["cells"] = [
             REPORT / "m1_specialist_priority_weight_grid.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         fault_group_weight_summary = (
@@ -647,7 +653,7 @@ nb["cells"] = [
             fault_group_weight_summary["pre_fault_rows"] / fault_group_weight_summary["rows"].clip(lower=1)
         )
         fault_group_weight_summary = fault_group_weight_summary.sort_values("group_weight", ascending=False)
-        fault_group_weight_summary.to_csv(REPORT / "fault_group_weight_summary.csv", index=False, encoding="utf-8-sig")
+        fault_group_weight_summary.to_csv(REPORT / "fault_group_weight_summary.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         level_calibration_rows = []
         hybrid_score_065 = pd.to_numeric(m1_scores["m1_hybrid_priority_score"], errors="coerce").fillna(0.0)
@@ -666,6 +672,8 @@ nb["cells"] = [
             REPORT / "level_calibration_fpr_cap_sweep.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         hybrid_selected_weight_comparison = hybrid_sweep[
@@ -675,6 +683,8 @@ nb["cells"] = [
             REPORT / "hybrid_selected_weight_comparison.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         def level_from_score(score: pd.Series, high_threshold: float, urgent_threshold: float) -> pd.Series:
@@ -757,6 +767,8 @@ nb["cells"] = [
             REPORT / "hybrid_065_vs_072_metric_delta.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         hybrid_065_vs_072_level_transition = (
@@ -770,6 +782,8 @@ nb["cells"] = [
             REPORT / "hybrid_065_vs_072_level_transition.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         changed_order = [
@@ -784,6 +798,8 @@ nb["cells"] = [
             REPORT / "hybrid_065_vs_072_changed_rows.csv",
             index=False,
             encoding="utf-8-sig",
+            float_format="%.12g",
+            lineterminator="\n",
         )
 
         component_groups = {
@@ -822,7 +838,7 @@ nb["cells"] = [
                 }
             )
         component_summary = pd.DataFrame(summary_rows)
-        component_summary.to_csv(REPORT / "priority_engine_component_summary.csv", index=False, encoding="utf-8-sig")
+        component_summary.to_csv(REPORT / "priority_engine_component_summary.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         source_total_rows = int(window_import_meta.get("source_row_count", len(source_current_best_scores)))
         canonical_m1_rows = int(window_import_meta.get("row_count", len(trainable_windows)))
@@ -863,7 +879,7 @@ nb["cells"] = [
                 },
             ]
         )
-        row_flow_summary.to_csv(REPORT / "row_flow_summary.csv", index=False, encoding="utf-8-sig")
+        row_flow_summary.to_csv(REPORT / "row_flow_summary.csv", index=False, encoding="utf-8-sig", float_format="%.12g", lineterminator="\n")
 
         display(Markdown("저장소 루트: 현재 notebook 실행 경로 기준 자동 탐색"))
         display(

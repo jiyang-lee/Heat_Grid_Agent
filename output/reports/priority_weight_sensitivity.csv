@@ -1,5 +1,5 @@
 ﻿scenario,w_risk,w_leadtime,w_context,top10_overlap_rate,review_required_in_top10,mean_top10_score
-baseline_best,0.55,0.3,0.15,0.2,8,96.03203432341056
-risk_heavy,0.7,0.2,0.1,0.2,8,97.35468954894034
-leadtime_heavy,0.45,0.4,0.15,0.2,8,95.95937909788071
-balanced,0.5,0.3,0.2,0.2,8,94.78203432341054
+baseline_best,0.55,0.3,0.15,0.2,8,96.0320343234
+risk_heavy,0.7,0.2,0.1,0.2,8,97.3546895489
+leadtime_heavy,0.45,0.4,0.15,0.2,8,95.9593790979
+balanced,0.5,0.3,0.2,0.2,8,94.7820343234

@@ -9,8 +9,8 @@
       "exists": true,
       "rows": 1252,
       "columns": 232,
-      "size_bytes": 2375305,
-      "sha256": "cad928ba1aa6ca4e30a4908dcac64bd5e047fe3f20fda1330748cb3b494ddb08"
+      "size_bytes": 1857499,
+      "sha256": "9fb6ad9d379341403213a549682a703325ab489fd6e29f79e7a7928ba9b534c1"
     },
     {
       "name": "anomaly_scores",
@@ -18,8 +18,8 @@
       "exists": true,
       "rows": 1252,
       "columns": 105,
-      "size_bytes": 838824,
-      "sha256": "a1656cd2e05ad09fb34318a2649ed9de48e6aa2af5c76220436ef1727bebeda4"
+      "size_bytes": 763888,
+      "sha256": "a732fd896d83744f35bd73d7815cd943fcd4440eea453e5afb3618290540a6bc"
     },
     {
       "name": "risk_scores",
@@ -27,8 +27,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 240,
-      "size_bytes": 3391162,
-      "sha256": "089898715d92f4fa5451f833fd5aa1e5d84a3561ed4afc528ae700f4dc0f6f6d"
+      "size_bytes": 2593618,
+      "sha256": "4822d1168286fc9c20395827ff7f148436d28ad1c694ab7d5bb4b91c5ee7ccde"
     },
     {
       "name": "leadtime_scores",
@@ -36,8 +36,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 315,
-      "size_bytes": 5087576,
-      "sha256": "e7ae852981f9cf30695539fccf7dd75d605faedc4aaad69f7c623da0167b1b8d"
+      "size_bytes": 3949742,
+      "sha256": "265006f637a5be56a4e19b69b2437608d4eab64aec6cd07cf3b19243a0d2f620"
     },
     {
       "name": "priority_scores",
@@ -45,8 +45,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 135,
-      "size_bytes": 1641338,
-      "sha256": "0138af5f556852863537956c4cb2697c4f7e4d017be07ec3382154be39bd14bd"
+      "size_bytes": 1361621,
+      "sha256": "f700f98db3237a00bda81f3e61373e1750aa0440c834827ef234ad7466b93c32"
     },
     {
       "name": "merged_model_scores",
@@ -54,8 +54,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 136,
-      "size_bytes": 1664324,
-      "sha256": "1037fe36ac53043638e3b761ccfe9e8ed1d33dee3dda8cbe0241d8e012140fb8"
+      "size_bytes": 1379460,
+      "sha256": "cdc2e6d63588fcd20e5d48849977884782d66f429ee0b476bad37b91c85f998c"
     },
     {
       "name": "agent_priority_card",
@@ -63,8 +63,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 55,
-      "size_bytes": 1069274,
-      "sha256": "c8d6ab77cccfc9c3bc3dc4c65d7c6a8074289f22dec327ef366f62d084cfe261"
+      "size_bytes": 995723,
+      "sha256": "1b8f1ea4ff83f9225598be2ab5655c3f2aa9fc65405dfee5fff557b72d7fe76e"
     },
     {
       "name": "agent_card_column_dictionary_ko",
@@ -72,8 +72,8 @@
       "exists": true,
       "rows": 55,
       "columns": 6,
-      "size_bytes": 9470,
-      "sha256": "9293745074865e91aa95adc839e623a163539ea8ec0a73c4a4c872a629b88610"
+      "size_bytes": 9414,
+      "sha256": "694783c128edfcb2117ca605c5fbc04fe79da6bfd6fa7028c1ae1630d14f23a1"
     },
     {
       "name": "agent_card_column_groups_ko",
@@ -81,8 +81,8 @@
       "exists": true,
       "rows": 84,
       "columns": 9,
-      "size_bytes": 22652,
-      "sha256": "1979af8e6432413394dde0ddff0115e02a349916735e609b40169c77b940af51"
+      "size_bytes": 22567,
+      "sha256": "6597f75a62317473272126db72ce6f4db6c8666f24a7e7592dea5ebdc6df9a52"
     },
     {
       "name": "m1_specialist_gate_scores",
@@ -90,8 +90,8 @@
       "exists": true,
       "rows": 1252,
       "columns": 29,
-      "size_bytes": 391870,
-      "sha256": "32b684d4e0f1741895e5d33a1d5b64e71985924b964c9c274b95264a8b4d8b82"
+      "size_bytes": 355355,
+      "sha256": "4a9f486b61259dc0765ae4eb41054834d2f9bc35df4198113e89ecef12ec1b62"
     },
     {
       "name": "m1_specialist_scores",
@@ -99,8 +99,8 @@
       "exists": true,
       "rows": 1226,
       "columns": 73,
-      "size_bytes": 1503841,
-      "sha256": "fd5d22c7f514dc54ba8e227a3ee1b728475cc6b77339ddf9e159d2750cb6d01b"
+      "size_bytes": 1423015,
+      "sha256": "d1202ff065f1e0ac1ee3ec9584423ac71bd825be7bfce94f14cb5d2b53325142"
     },
     {
       "name": "row_reconciliation",
@@ -108,8 +108,8 @@
       "exists": true,
       "rows": 5,
       "columns": 11,
-      "size_bytes": 541,
-      "sha256": "0ef8c1d75fc26942aecdd2a6c7870f43a47bb51d9b93dec4a1e121e2e770dc5f"
+      "size_bytes": 535,
+      "sha256": "d11b813d88203ff71f9cc8a19dae86e42a7db2290214bf6fde58252ca1aadab1"
     },
     {
       "name": "missing_agent_windows",
@@ -117,8 +117,8 @@
       "exists": true,
       "rows": 26,
       "columns": 232,
-      "size_bytes": 58157,
-      "sha256": "26f9eccf1cc7626583152b748a72b502bc1dab81c0cd848cbc0fff1474dce008"
+      "size_bytes": 47409,
+      "sha256": "d0acdd418687b0c96f4461c076f1757fe8770891098b210a976783bc46c150be"
     },
     {
       "name": "ablation_summary",
@@ -126,8 +126,8 @@
       "exists": true,
       "rows": 5,
       "columns": 8,
-      "size_bytes": 556,
-      "sha256": "e87016e3bff2424a6d891a0559767b2d612732d07af3ac5a14998521d195a72f"
+      "size_bytes": 486,
+      "sha256": "6cf6967cb65466aab984edd60561d4d9ed9e4de6e1fa013091ceb0324783e105"
     },
     {
       "name": "threshold_sweep",
@@ -135,8 +135,8 @@
       "exists": true,
       "rows": 36,
       "columns": 10,
-      "size_bytes": 4018,
-      "sha256": "a8c971743ceb8cfc5fc7e7cffb427a68ee012e02ffe9d273996e57e933ef56d8"
+      "size_bytes": 3298,
+      "sha256": "5590a2fa4a260afc24ab2984f6e8c43e2f53e0551e9575e4568fce8d8ecf36c7"
     },
     {
       "name": "priority_weight_sensitivity",
@@ -144,8 +144,8 @@
       "exists": true,
       "rows": 4,
       "columns": 7,
-      "size_bytes": 303,
-      "sha256": "f471c3a2658c826304a4fc5ba11d9d6650cff383f4b29687ff8adde551f24919"
+      "size_bytes": 282,
+      "sha256": "7bbcae865ba0171c0ed4a206a1631cc3b7ebfa64822c4e0dd3fc107602f19522"
     },
     {
       "name": "hard_normal_audit",
@@ -153,8 +153,8 @@
       "exists": true,
       "rows": 55,
       "columns": 13,
-      "size_bytes": 23901,
-      "sha256": "0daacc26e8f4a605ff03aa6bb7728b88722fd546359a081c3cbab3b3d7eb54e6"
+      "size_bytes": 23153,
+      "sha256": "df73624c7f893a46e176f47f861e0fb0a73157b42140fb40f7ad8ee29b56180b"
     },
     {
       "name": "anomaly_criticality_threshold_sweep",
@@ -162,8 +162,8 @@
       "exists": true,
       "rows": 36,
       "columns": 13,
-      "size_bytes": 3328,
-      "sha256": "85c889ff74f97c1c86ae40d9900f81abd9c75307ba79f8fb27988f3bdbb8d8ff"
+      "size_bytes": 2724,
+      "sha256": "879db1dc5269ce36ee62fe5cb7dc96b72636585c7c77b1e00a848d46c7762fb1"
     },
     {
       "name": "anomaly_if_mahalanobis_policy_grid",
@@ -171,8 +171,8 @@
       "exists": true,
       "rows": 330,
       "columns": 14,
-      "size_bytes": 34666,
-      "sha256": "b5d92db7121cffdb606c6f5f8a335d1994134d89a2976c425869b12c4ef4f241"
+      "size_bytes": 28619,
+      "sha256": "7e8a8d104cb624a804c5f2114f3a7462a820f5dd148c0c4d7c68ccc4991236a4"
     },
     {
       "name": "hybrid_weight_sweep",
@@ -180,8 +180,8 @@
       "exists": true,
       "rows": 303,
       "columns": 17,
-      "size_bytes": 44626,
-      "sha256": "837494c245adef80b9b07fc9198944d4134320506e8e909f01558cdcad76fb81"
+      "size_bytes": 35600,
+      "sha256": "b778e4113d895cfbf8a687c1a186eef16bc7b762730367a3ba7d7e4280ab3299"
     },
     {
       "name": "hybrid_weight_selection_summary",
@@ -189,8 +189,8 @@
       "exists": true,
       "rows": 7,
       "columns": 18,
-      "size_bytes": 1384,
-      "sha256": "67855fd7e7c3d0882d196332acfc6af805c26c95f3059789187b74694e3de53e"
+      "size_bytes": 1202,
+      "sha256": "ffe1e4a8455a2c0ea35a89e1bb2983d9f2615a7c1dab9fa62f8c4512041caab5"
     },
     {
       "name": "hybrid_065_vs_072_metric_delta",
@@ -198,8 +198,8 @@
       "exists": true,
       "rows": 33,
       "columns": 5,
-      "size_bytes": 1554,
-      "sha256": "9d7359e33e8f1e096ec6c7628ff78f08737a806cea401ced29806182267a7bff"
+      "size_bytes": 1289,
+      "sha256": "b84c9dcb4aabde60c717d4b9d529622e6c4009cca668729ea3d2cb0cd8285590"
     },
     {
       "name": "hybrid_065_vs_072_level_transition",
@@ -207,8 +207,8 @@
       "exists": true,
       "rows": 32,
       "columns": 5,
-      "size_bytes": 1065,
-      "sha256": "499b02cd04b3752058497f72dc3c8e8fe1af6b7c76f74dc9e7e9be301a1e8193"
+      "size_bytes": 1032,
+      "sha256": "e2fce21929aaf161721b3adf6e6d46aa664d73e74bb80d3e98bcfcac2b1d6322"
     },
     {
       "name": "hybrid_065_vs_072_changed_rows",
@@ -216,8 +216,8 @@
       "exists": true,
       "rows": 103,
       "columns": 18,
-      "size_bytes": 19034,
-      "sha256": "f9cc3f33ead903c728e6945821e5b5d81a5a51ff13352ff2b645b14d735a7acc"
+      "size_bytes": 17103,
+      "sha256": "40924acfa25ace333458d3ac4dd2c3f90dc5afc121e6aa36b1d86368af9ff76d"
     },
     {
       "name": "priority_engine_component_summary",
@@ -225,8 +225,8 @@
       "exists": true,
       "rows": 4,
       "columns": 5,
-      "size_bytes": 286,
-      "sha256": "e73a56d32f7f10115308581809887118fc00a09c25460d1f9ffd5682a9450781"
+      "size_bytes": 221,
+      "sha256": "771bf2bf418d72d1e2c74af14f21659eb0a44563533cdd9a346fd615e514a4ee"
     },
     {
       "name": "row_flow_summary",
@@ -234,8 +234,8 @@
       "exists": true,
       "rows": 5,
       "columns": 4,
-      "size_bytes": 539,
-      "sha256": "04be6cb72989db47cd7d2496a29b6f398836daa4e6f430898649f6f80ae86b43"
+      "size_bytes": 533,
+      "sha256": "b42a1442ddda584fbc7b9ffb40d82caabcf0a422025f35a5f6f17c1025ce218c"
     },
     {
       "name": "key_coverage_by_artifact",
@@ -243,8 +243,8 @@
       "exists": true,
       "rows": 5,
       "columns": 8,
-      "size_bytes": 438,
-      "sha256": "b41a03a9ee23d262024c692f7fa942d3158a54baa127a031c37fe81b5f676d7e"
+      "size_bytes": 432,
+      "sha256": "98cec61c8f5cbf7eca4cbda4e20ea94d3c996433c27b5cbcfa3258783df949c9"
     },
     {
       "name": "risk_level_actual_summary",
@@ -252,8 +252,8 @@
       "exists": true,
       "rows": 3,
       "columns": 10,
-      "size_bytes": 447,
-      "sha256": "66078264e4ea3cf6a4788852c40cffc42a53d7c7e532555ba4fbf50b63e2021d"
+      "size_bytes": 414,
+      "sha256": "0e7cce9db065bf6008f092d3ef99e8b37b4da49257dd437005cdc1b960cf8180"
     },
     {
       "name": "risk_threshold_actual_values",
@@ -261,8 +261,8 @@
       "exists": true,
       "rows": 1,
       "columns": 3,
-      "size_bytes": 110,
-      "sha256": "2b0c02338fe7d8e142a79850b68a45c2cb4fd2a5191d8f8d7b61a703bc2a5f3a"
+      "size_bytes": 108,
+      "sha256": "d1ffe680155580f87d1dd1a375add7f164780533cc0662b50c69c8c007b152e2"
     },
     {
       "name": "m1_gate_threshold_sweep",
@@ -270,8 +270,8 @@
       "exists": true,
       "rows": 132,
       "columns": 17,
-      "size_bytes": 23731,
-      "sha256": "b3701bc1dac41761e091d3e8d0f755c3287426c1baabbe62ffe0a7aab9d71f9e"
+      "size_bytes": 21188,
+      "sha256": "7f1a3f015f51d327ad0413e5acd420e82247815d64ef7fc873079e95983029de"
     },
     {
       "name": "m1_gate_selected_threshold_summary",
@@ -279,8 +279,8 @@
       "exists": true,
       "rows": 8,
       "columns": 17,
-      "size_bytes": 1592,
-      "sha256": "ca88a7961302a207ba57c9cd714d755812d1bf03b4e031f919be3dd7d3dabedd"
+      "size_bytes": 1440,
+      "sha256": "0c7d25cde6937e1fda2b4f429763a2773c4c9f48f59ff4c425b1b09c68ec9c17"
     },
     {
       "name": "m1_gate_threshold_reference",
@@ -288,8 +288,8 @@
       "exists": true,
       "rows": 12,
       "columns": 19,
-      "size_bytes": 3210,
-      "sha256": "502965549dbd6be27676b9403fff8132fbdf71542d9046f1dec924e5e8d21244"
+      "size_bytes": 2843,
+      "sha256": "60c4866c4113e303b7b517c143c92214f9a9ee3c80b369378d1f81dba4d68dde"
     },
     {
       "name": "m1_specialist_priority_weight_ablation",
@@ -297,8 +297,8 @@
       "exists": true,
       "rows": 30,
       "columns": 25,
-      "size_bytes": 7604,
-      "sha256": "507af10b8dc735608df74b0ad83cdab35c401500441a127920dc649451c0084b"
+      "size_bytes": 6248,
+      "sha256": "c4f20428d59718e9c3e6622d55ba7a42cccd4fb63d306c649798ac5f58106c34"
     },
     {
       "name": "m1_specialist_priority_weight_grid",
@@ -306,8 +306,8 @@
       "exists": true,
       "rows": 693,
       "columns": 24,
-      "size_bytes": 152946,
-      "sha256": "7446a97ed8cb9c6359f1f0d438e962650da7578456bf83ed161c35b31549592a"
+      "size_bytes": 124696,
+      "sha256": "4915e7fc3422b020bfa4ba99b588898be9eef4d87e1e4854b7daf99d5444326b"
     },
     {
       "name": "fault_group_weight_summary",
@@ -315,8 +315,8 @@
       "exists": true,
       "rows": 6,
       "columns": 12,
-      "size_bytes": 1016,
-      "sha256": "d3eedef8673dfbe0525f39cb8150ece749305a6f5f6b0de7177bc06ad0b33554"
+      "size_bytes": 876,
+      "sha256": "b160dfc670034619a1509649ea6fb7335ed638fad7208cbf39fb2cbb0af82db2"
     },
     {
       "name": "level_calibration_fpr_cap_sweep",
@@ -324,8 +324,8 @@
       "exists": true,
       "rows": 12,
       "columns": 22,
-      "size_bytes": 2685,
-      "sha256": "fad44d90451d5b04bcd7c99c81e5a99834522d3e775ba717d7c01f8d5c05667e"
+      "size_bytes": 2236,
+      "sha256": "02d6cb4666d6a777388706f3d1ef01596cc189ab343c80b3a1ceedf2aa2822d1"
     },
     {
       "name": "hybrid_selected_weight_comparison",
@@ -333,8 +333,8 @@
       "exists": true,
       "rows": 9,
       "columns": 17,
-      "size_bytes": 1469,
-      "sha256": "90cbe7a1defa02a09d97423bee994b5069c3733fa283b291afe5d8d7ff21cb16"
+      "size_bytes": 1214,
+      "sha256": "9f7edeae24d724db4d095610bb502cc6313b6a04ad0c8a54186c401910c43d5a"
     }
   ],
   "model_files": [
@@ -343,28 +343,28 @@
       "path": "models/anomaly/standard_scaler.joblib",
       "exists": true,
       "size_bytes": 4047,
-      "sha256": "7c72fed9cc0de59d6205091241665de7ff3b14791d38afd3acabacb0d7eec868"
+      "sha256": "8fb20872ba99680ff94fb2b7d32fb33735f2823bab14e456cb36962932c6224d"
     },
     {
       "name": "anomaly_isolation_forest",
       "path": "models/anomaly/isolation_forest.joblib",
       "exists": true,
       "size_bytes": 3754573,
-      "sha256": "328e4b78c915506e6128dc3e96491d85b9f72524979d3101d50eddcbc44537fb"
+      "sha256": "e9d79da272e41d601f3e567ac8ac29319b1da1155942adea6277f00322d3a3de"
     },
     {
       "name": "anomaly_mahalanobis",
       "path": "models/anomaly/mahalanobis_ledoitwolf.joblib",
       "exists": true,
       "size_bytes": 338175,
-      "sha256": "1adcc408aaef07aede6d0f0725a821940cd1a021a6901a45a39aa132a3c4eb67"
+      "sha256": "d44ecbe677e3a15f4b5f7c1dbfe1889eb870f48f66e2612da478a166fa3a21a9"
     },
     {
       "name": "anomaly_metadata",
       "path": "models/anomaly/anomaly_metadata.json",
       "exists": true,
       "size_bytes": 6258,
-      "sha256": "101854db4e02592626942e68f625f3a8ab76a71526483bfa9d4ca528cb08b063"
+      "sha256": "7da283484af36a51557ac96b85085a203de9a1bafb3306d20bde488c0f49867f"
     },
     {
       "name": "risk_model_best",
@@ -645,8 +645,8 @@
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\06_experiment_comparison_summary.md",
       "path": "artifacts/current_best/experiment_traces/report_compare/06_experiment_comparison_summary.md",
       "exists": true,
-      "size_bytes": 8198,
-      "sha256": "d207462e6e9bf41e1d22cbd904a2106af77a52d769a42e80da78b76d5c26def8"
+      "size_bytes": 8534,
+      "sha256": "04f175f105ccad0410b114e312423d2f71dc8d8d0f0ab45bdd6a7c90fa8508d6"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\07_priority_v2_threshold48_promotion.md",
@@ -1093,8 +1093,8 @@
       "name": "artifacts\\current_best\\reports\\DA_REFERENCE_COMPARISON.md",
       "path": "artifacts/current_best/reports/DA_REFERENCE_COMPARISON.md",
       "exists": true,
-      "size_bytes": 8809,
-      "sha256": "7e78908c9f4694c253e60fe674a8183b6e1b0920a806c03fa668ecf64764019f"
+      "size_bytes": 9060,
+      "sha256": "d90d3ad713cc19258d5954f1d2f8ee6d5a8c2e009b919ed8aea88b9b9edc848d"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_confusion.csv",
@@ -1284,29 +1284,29 @@
       "name": "compare\\generate_threshold_weight_rationale_notebook.py",
       "path": "compare/generate_threshold_weight_rationale_notebook.py",
       "exists": true,
-      "size_bytes": 119475,
-      "sha256": "35e9e60335588fdd8c2e1bf16fc11cd64fa42e667c6c5f865f8524d241a58202"
+      "size_bytes": 120527,
+      "sha256": "b975b9e1c64caeb1f46ac785384c9807cf009288a4c0eda2869df5ee4cb2b7a4"
     },
     {
       "name": "compare\\m1_specialist_performance_comparison.ipynb",
       "path": "compare/m1_specialist_performance_comparison.ipynb",
       "exists": true,
-      "size_bytes": 162919,
-      "sha256": "a5e85a846bf7ed44b9a7d0aabcb52da1400b56e946c1ad2d72477622d2aa9b90"
+      "size_bytes": 31787,
+      "sha256": "af33fd8a7781047eaef06a5b30c90d2dcdf1057484eefca0a5baa31513fcbaff"
     },
     {
       "name": "compare\\m1_threshold_weight_rationale_report.ipynb",
       "path": "compare/m1_threshold_weight_rationale_report.ipynb",
       "exists": true,
-      "size_bytes": 1275951,
-      "sha256": "164ed1ac502ff95cedb03da49865e94b328dc673f8d313428a961bfba13fc1c9"
+      "size_bytes": 134032,
+      "sha256": "0ca5b49247550d2dd9868f700d5913d4a202a5dddf425f9c0a947af4d7d7bfd6"
     },
     {
       "name": "compare\\README.md",
       "path": "compare/README.md",
       "exists": true,
-      "size_bytes": 4563,
-      "sha256": "a1b18000869827845a6717a271147c6b8144637e182cd9cba7cc14f11742a495"
+      "size_bytes": 4549,
+      "sha256": "be19f61c9194976a8391c01fcec6764f8faedc30f1040de05e3f6021c9b22552"
     }
   ],
   "markdown_reports": {

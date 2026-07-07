@@ -43,7 +43,7 @@ def _copy_m1_score(source: object, target: object) -> bool:
     if "manufacturer" in frame.columns:
         frame = frame.loc[frame["manufacturer"].astype(str).eq(config.M1_MANUFACTURER)].copy()
     frame = _sanitize_score_frame(frame)
-    pd.DataFrame(frame).to_csv(target_path, index=False, encoding="utf-8-sig")
+    pd.DataFrame(frame).to_csv(target_path, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return True
 
 
@@ -216,5 +216,5 @@ def build_merged_model_scores() -> pd.DataFrame:
             else:
                 merged[column] = merged[duplicate].combine_first(merged[column])
                 merged = merged.drop(columns=[duplicate])
-    merged.to_csv(config.MERGED_SCORES_PATH, index=False, encoding="utf-8-sig")
+    merged.to_csv(config.MERGED_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     return merged
