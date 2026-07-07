@@ -54,6 +54,13 @@ def _resolve_score_source(primary: object, packaged_source: object) -> object:
     return packaged_source
 
 
+def _normalize_copied_metadata(path: Path) -> None:
+    if path.suffix.lower() != ".json" or not path.exists():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def _materialize_artifact(name: str, sources: list[Path], target: Path) -> dict[str, object]:
     target.parent.mkdir(parents=True, exist_ok=True)
     for source in sources:
@@ -62,6 +69,7 @@ def _materialize_artifact(name: str, sources: list[Path], target: Path) -> dict[
         same_path = source.resolve() == target.resolve()
         if not same_path:
             copy_if_exists(source, target)
+            _normalize_copied_metadata(target)
         return {
             "name": name,
             "status": "already_present" if same_path else "copied",

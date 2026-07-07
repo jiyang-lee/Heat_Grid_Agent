@@ -377,8 +377,8 @@
       "name": "risk_model_best_metadata",
       "path": "models/risk/risk_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 38145,
-      "sha256": "3aa81d1a62814e1ac5730c07ca69b9d04e02fc2ebce1fba8c9714d76f2e60399"
+      "size_bytes": 37161,
+      "sha256": "c094082363da90b9a54325a0c002539ec4dfcc2a72aa3d125c54d0eae47c3603"
     },
     {
       "name": "leadtime_model_best",
@@ -391,15 +391,15 @@
       "name": "leadtime_model_best_metadata",
       "path": "models/leadtime/leadtime_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 35833,
-      "sha256": "64dd87587c568f39f0104c57f2d334e218330d98d40c0738bb52f670b247eeb0"
+      "size_bytes": 35000,
+      "sha256": "58b7a00bdfcf4b7e986d5383549942706bb5dcb039d33c64959eb4fd32ee7ff9"
     },
     {
       "name": "priority_engine_best_metadata",
       "path": "models/priority/priority_engine_best_metadata.json",
       "exists": true,
-      "size_bytes": 1875,
-      "sha256": "acfe9a59f8a79f3efd5390d8dbe359e90262dce10bfe7b4f1911d28d1752b608"
+      "size_bytes": 1838,
+      "sha256": "e08090dfc666649a0df554ecef6ae60079d8679ad815f160be78e629e8cb4e35"
     },
     {
       "name": "m1_fault_gate",
