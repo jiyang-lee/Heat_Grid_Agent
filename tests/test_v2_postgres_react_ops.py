@@ -6,6 +6,7 @@ from typing import Final
 from httpx import ASGITransport, AsyncClient
 import orjson
 import pytest
+from sqlalchemy import text
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = (
@@ -67,3 +68,39 @@ async def test_v2_postgres_api_returns_fallback_output(
     assert stream.status_code == 200
     assert "PostgreSQL priority_card 조회 완료" in stream.text
     assert "get_external_context" not in stream.text
+
+
+@pytest.mark.anyio
+async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        enqueue = await client.post("/alerts/enqueue")
+        duplicate_enqueue = await client.post("/alerts/enqueue")
+        open_alerts = await client.get("/alerts", params={"status": "open"})
+        first_alert = open_alerts.json()[0]
+        ack = await client.post(
+            f"/alerts/{first_alert['alert_id']}/ack",
+            json={"acked_by": "pytest"},
+        )
+        acked_alerts = await client.get("/alerts", params={"status": "acked"})
+
+    assert enqueue.status_code == 200
+    assert enqueue.json()["queued_count"] > 0
+    assert duplicate_enqueue.status_code == 200
+    assert duplicate_enqueue.json()["queued_count"] == 0
+    assert open_alerts.status_code == 200
+    assert first_alert["card_id"]
+    assert first_alert["priority_level"] in {"urgent", "high"}
+    assert ack.status_code == 200
+    assert ack.json()["status"] == "acked"
+    assert ack.json()["acked_by"] == "pytest"
+    assert acked_alerts.status_code == 200
+    assert any(item["alert_id"] == first_alert["alert_id"] for item in acked_alerts.json())

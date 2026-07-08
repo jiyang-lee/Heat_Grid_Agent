@@ -10,6 +10,11 @@ from pathlib import Path
 import asyncpg
 import pandas as pd
 
+try:
+    from ops_alert_queue import collect_source_diagnostics, enqueue_priority_alerts
+except ModuleNotFoundError:
+    from scripts.ops_alert_queue import collect_source_diagnostics, enqueue_priority_alerts
+
 
 DEFAULT_DATABASE_URL = "postgresql://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
 CURRENT_BEST_FLOW = "flow1_anomaly_current_best"
@@ -49,6 +54,7 @@ class LoadPaths:
     database_url: str
     append: bool
     model_run_id: str | None
+    enqueue_alerts: bool
 
 
 def parse_args() -> LoadPaths:
@@ -78,6 +84,11 @@ def parse_args() -> LoadPaths:
         default=None,
         help="Optional model_run_id(UUID) for model_outputs rows.",
     )
+    parser.add_argument(
+        "--enqueue-alerts",
+        action="store_true",
+        help="Enqueue urgent/high priority cards into ops_alert_queue.",
+    )
     args = parser.parse_args()
     return LoadPaths(
         agent_card=Path(args.agent_card),
@@ -85,6 +96,7 @@ def parse_args() -> LoadPaths:
         database_url=args.database_url,
         append=args.append,
         model_run_id=args.model_run_id,
+        enqueue_alerts=args.enqueue_alerts,
     )
 
 
@@ -257,6 +269,7 @@ async def reset_tables(conn: asyncpg.Connection) -> None:
         "sensor_summaries",
         "priority_card_review_reasons",
         "llm_ops_notes",
+        "ops_alert_queue",
         "priority_cards",
         "priority_decisions",
         "windows",
@@ -294,6 +307,11 @@ async def load(paths: LoadPaths) -> dict[str, object]:
 
     conn = await asyncpg.connect(normalize_database_url(paths.database_url))
     try:
+        source_diagnostics = await collect_source_diagnostics(
+            conn,
+            agent_rows=len(agent),
+            windows_rows=len(windows),
+        )
         if not paths.append:
             await reset_tables(conn)
 
@@ -572,6 +590,9 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "model_runs": await count_rows(conn, "model_runs"),
             "model_outputs": await count_rows(conn, "model_outputs"),
         }
+        alert_summary = None
+        if paths.enqueue_alerts:
+            alert_summary = await enqueue_priority_alerts(conn)
         actual_counts = {
             "windows": after_counts["windows"],
             "priority_decisions": after_counts["priority_decisions"],
@@ -590,10 +611,13 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                     )
 
         summary = {
+            "source_diagnostics": source_diagnostics,
             "counters": counters,
             "expected": expected_counts,
             "actual": actual_counts,
         }
+        if alert_summary is not None:
+            summary["alerts"] = alert_summary
         if paths.append:
             summary["before"] = before_counts
             summary["added"] = {

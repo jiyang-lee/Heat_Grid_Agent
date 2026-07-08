@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -13,6 +14,8 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import ValidationError
 
+from alert_repository import ensure_alert_queue
+from alert_routes import make_alert_router
 from repository import (
     check_database,
     fetch_ops_input,
@@ -30,7 +33,16 @@ FRONTEND_DIR = ROOT_DIR.parent / "frontend"
 
 settings = Settings()
 engine = make_engine(settings.database_url)
-app = FastAPI(title="HeatGrid V2 Local")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await ensure_alert_queue(engine)
+    yield
+
+
+app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
+app.include_router(make_alert_router(engine))
 
 
 @app.get("/", include_in_schema=False)

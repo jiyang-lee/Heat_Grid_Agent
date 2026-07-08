@@ -13,6 +13,7 @@ import asyncpg
 
 def _load_script():
     path = Path(__file__).resolve().parents[1] / "scripts" / "simulate_predictor_db.py"
+    sys.path.insert(0, str(path.parent))
     spec = importlib.util.spec_from_file_location("simulate_predictor_db", str(path))
     if spec is None or spec.loader is None:
         raise RuntimeError("simulate_predictor_db 모듈을 불러올 수 없습니다.")
@@ -78,6 +79,75 @@ def test_simulate_predictor_db_inserts_model_run_and_outputs() -> None:
                 model_run_id,
             )
             assert output_count == 1252
+        finally:
+            await conn.close()
+
+    asyncio.run(_check())
+
+
+def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
+    model_run_id = uuid.uuid4()
+
+    async def _reset_queue() -> None:
+        conn = await asyncpg.connect(_db_url())
+        try:
+            await conn.execute("DROP TABLE IF EXISTS ops_alert_queue")
+        finally:
+            await conn.close()
+
+    asyncio.run(_reset_queue())
+
+    command = [
+        sys.executable,
+        "scripts/simulate_predictor_db.py",
+        "--model-run-id",
+        str(model_run_id),
+        "--append",
+        "--enqueue-alerts",
+        "--database-url",
+        _db_url(),
+    ]
+    first = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    second = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert first.returncode == 0, first.stderr
+    assert second.returncode == 0, second.stderr
+    assert "'fallback_source': 'csv_windows'" in first.stdout
+
+    async def _check() -> None:
+        conn = await asyncpg.connect(_db_url())
+        try:
+            expected = await conn.fetchval(
+                "SELECT count(*) "
+                "FROM priority_decisions "
+                "WHERE lower(priority_level) IN ('urgent', 'high')"
+            )
+            actual = await conn.fetchval("SELECT count(*) FROM ops_alert_queue")
+            non_priority = await conn.fetchval(
+                "SELECT count(*) "
+                "FROM ops_alert_queue "
+                "WHERE lower(priority_level) NOT IN ('urgent', 'high')"
+            )
+            duplicate_cards = await conn.fetchval(
+                "SELECT count(*) "
+                "FROM ("
+                "SELECT card_id FROM ops_alert_queue GROUP BY card_id HAVING count(*) > 1"
+                ") duplicated"
+            )
+            assert actual == expected
+            assert non_priority == 0
+            assert duplicate_cards == 0
         finally:
             await conn.close()
 

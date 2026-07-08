@@ -71,3 +71,29 @@ class CardSummary(BaseModel):
     window_end: str | None
     window_label: str | None
     fault_event_id: str | None
+
+
+class AlertSummary(BaseModel):
+    alert_id: str
+    card_id: str
+    priority_level: Literal["urgent", "high"]
+    priority_score: float | None
+    status: Literal["open", "acked"]
+    enqueue_reason: str
+    created_at: str
+    acked_at: str | None
+    acked_by: str | None
+
+
+class AlertEnqueueResponse(BaseModel):
+    queued_count: int
+    open_count: int
+    total_count: int
+
+
+class AlertAckRequest(BaseModel):
+    acked_by: str = "operator"
+
+
+class AlertAckResponse(AlertSummary):
+    pass
