@@ -139,6 +139,23 @@ async def ack_alert(
     return None if row is None else _alert_from_row(row)
 
 
+async def get_alert(
+    engine: AsyncEngine,
+    alert_id: str,
+) -> dict[str, JsonValue] | None:
+    await ensure_alert_queue(engine)
+    query = text(
+        "SELECT alert_id, card_id, priority_level, priority_score, status, "
+        "enqueue_reason, created_at, acked_at, acked_by "
+        "FROM ops_alert_queue "
+        "WHERE alert_id = :alert_id"
+    )
+    async with engine.connect() as connection:
+        result = await connection.execute(query, {"alert_id": alert_id})
+    row = result.mappings().one_or_none()
+    return None if row is None else _alert_from_row(row)
+
+
 def _alert_from_row(row: RowMapping) -> dict[str, JsonValue]:
     acked_at = row["acked_at"]
     return {

@@ -127,7 +127,7 @@ async def test_v2_postgres_fixed_ops_scenario_runs_from_enqueue_to_ack(
             params={"status": "open", "priority_level": "urgent"},
         )
         urgent_alert = urgent_alerts.json()[0]
-        simulation = await client.post(f"/simulate/{urgent_alert['card_id']}")
+        simulation = await client.post(f"/alerts/{urgent_alert['alert_id']}/simulate")
         ack = await client.post(
             f"/alerts/{urgent_alert['alert_id']}/ack",
             json={"acked_by": "fixed-scenario"},

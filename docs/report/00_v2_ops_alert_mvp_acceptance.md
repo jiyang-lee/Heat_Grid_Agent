@@ -40,7 +40,7 @@
 | 1 | `scripts/simulate_predictor_db.py --append --enqueue-alerts` | `fallback_source=csv_windows`, `queued_count=0`, `existing_count=147` |
 | 2 | `POST /alerts/enqueue` | `queued_count=0`, `existing_count=147`, `open_count=146`, `total_count=147` |
 | 3 | `GET /alerts?status=open&priority_level=urgent` | urgent alert 선택 |
-| 4 | `POST /simulate/{card_id}` | `200 OK`, `agent_mode=fallback` |
+| 4 | `POST /alerts/{alert_id}/simulate` | `200 OK`, `agent_mode=fallback`, resolved `card_id` 반환 |
 | 5 | `POST /alerts/{alert_id}/ack` | `status=acked`, `acked_by=fixed-scenario` |
 
 고정 선택값:
@@ -53,3 +53,14 @@
 | simulate summary | `manufacturer 1 substation 8에서 urgent priority 카드가 생성됐습니다.` |
 
 이 흐름은 `tests/test_v2_postgres_react_ops.py::test_v2_postgres_fixed_ops_scenario_runs_from_enqueue_to_ack`로 고정했다.
+
+## 6번 입력 계약
+
+운영보조 에이전트의 기본 시작점은 전체 DB가 아니라 urgent/high `ops_alert_queue`다.
+
+| 입력 | 용도 | 상태 |
+| --- | --- | --- |
+| `alert_id` | alert queue에서 선택한 urgent/high 알림을 바로 설명한다. 기본 입력이다. | `POST /alerts/{alert_id}/simulate` |
+| `card_id` | 이미 카드가 특정된 경우 직접 설명한다. 보조 입력이다. | `POST /simulate/{card_id}` |
+
+6번 흐름은 `GET /alerts?status=open`에서 alert를 고른 뒤 `alert_id`로 설명을 요청하는 계약으로 확정한다.
