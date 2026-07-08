@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from alert_repository import ack_alert, enqueue_priority_alerts, list_alerts
+from heating_agent_routes import register_heating_agent_routes
 from schemas import (
     AlertAckRequest,
     AlertAckResponse,
@@ -36,5 +37,7 @@ def make_alert_router(engine: AsyncEngine) -> APIRouter:
         if row is None:
             raise HTTPException(status_code=404, detail="alert_id를 찾을 수 없습니다.")
         return AlertAckResponse.model_validate(row)
+
+    register_heating_agent_routes(router, engine)
 
     return router
