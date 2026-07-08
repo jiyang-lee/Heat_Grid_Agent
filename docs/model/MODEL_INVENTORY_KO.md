@@ -34,7 +34,7 @@
 `risk_model_best.joblib`와 `leadtime_model_best.joblib`는 원천 current-best 프로젝트가 학습한다. 이 저장소는 `retrain_current_best` 단계에서 원천 파이프라인을 호출하고, 모델/metadata/score를 현재 저장소로 가져온다.
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps retrain_current_best
+uv run third-model-pipeline --steps retrain_current_best
 ```
 
 기본 원천 step:
@@ -57,7 +57,7 @@ M1 specialist source는 네 개 gate 모델을 만든다.
 | pre-event gate | `m1_fault_pre_event_logistic.joblib` | 0.60 | event 선행 evidence |
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps retrain_m1_specialist
+uv run third-model-pipeline --steps retrain_m1_specialist
 ```
 
 M1 source는 `05_데이터셋/PreDist/predist_dataset.zip`을 요구한다. 없으면 `THIRD_MODEL_PREDIST_ZIP_PATH` 또는 `../HeatGrid_Agent/data/_downloads/predist_dataset.zip`에서 찾아 source 폴더로 복사한다.

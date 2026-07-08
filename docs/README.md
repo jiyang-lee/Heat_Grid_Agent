@@ -7,8 +7,8 @@
 | 순서 | 문서 | 목적 |
 |---:|---|---|
 | 1 | `../README.md` | 전체 개요, quick start, 최종 산출물 |
-| 2 | `../HANDOFF.md` | 짧은 인계 요약 |
-| 3 | `../PACKAGE_README_KO.md` | 저장소 사용 안내 |
+| 2 | `handoff/HANDOFF.md` | 짧은 인계 요약 |
+| 3 | `package/PACKAGE_README_KO.md` | 저장소 사용 안내 |
 | 4 | `00_SOURCE_TRACE.md` | source 프로젝트 탐색과 파일 출처 |
 | 5 | `01_PIPELINE_STEPS.md` | 실행 step과 row coverage 흐름 |
 | 6 | `02_AGENT_OUTPUT_CONTRACT.md` | 최종 agent card 컬럼 계약 |
@@ -33,7 +33,7 @@
 
 ```text
 02_AGENT_OUTPUT_CONTRACT.md
-../AGENT_HANDOFF_KO.md
+handoff/AGENT_HANDOFF_KO.md
 ../output/agent/agent_card_column_groups_ko.md
 ../output/agent/agent_card_value_mapping_ko.md
 ```
@@ -54,8 +54,8 @@
 00_SOURCE_TRACE.md
 01_PIPELINE_STEPS.md
 05_RUNBOOK.md
-../MODEL_INVENTORY_KO.md
-../PACKAGE_MANIFEST.md
+model/MODEL_INVENTORY_KO.md
+package/PACKAGE_MANIFEST.md
 ```
 
 ## 핵심 파일 요약

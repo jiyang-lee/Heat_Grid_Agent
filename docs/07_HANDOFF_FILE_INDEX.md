@@ -8,11 +8,11 @@
 |---:|---|---|
 | 1 | `README.md` | 전체 개요와 quick start |
 | 2 | `docs/README.md` | 문서 지도 |
-| 3 | `HANDOFF.md` | 짧은 인계 요약 |
-| 4 | `PACKAGE_README_KO.md` | 저장소 사용 안내 |
-| 5 | `M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 인계 |
-| 6 | `MODEL_INVENTORY_KO.md` | 모델 구성과 재학습 책임 |
-| 7 | `PACKAGE_MANIFEST.md` | 포함 파일 목록 |
+| 3 | `docs/handoff/HANDOFF.md` | 짧은 인계 요약 |
+| 4 | `docs/package/PACKAGE_README_KO.md` | 저장소 사용 안내 |
+| 5 | `docs/handoff/M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 인계 |
+| 6 | `docs/model/MODEL_INVENTORY_KO.md` | 모델 구성과 재학습 책임 |
+| 7 | `docs/package/PACKAGE_MANIFEST.md` | 포함 파일 목록 |
 | 8 | `docs/05_RUNBOOK.md` | 실행/검증 명령 |
 | 9 | `docs/00_SOURCE_TRACE.md` | source 탐색과 파일 출처 |
 

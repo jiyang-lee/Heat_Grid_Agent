@@ -938,7 +938,7 @@ nb["cells"] = [
                 }
             )
         retrain_summary = pd.DataFrame(retrain_rows)
-        display(retrain_summary if len(retrain_summary) else Markdown("재학습 metadata가 없으면 `uv run python run_3rd_model_pipeline.py --steps full_retrain`을 먼저 실행한다."))
+        display(retrain_summary if len(retrain_summary) else Markdown("재학습 metadata가 없으면 `uv run third-model-pipeline --steps full_retrain`을 먼저 실행한다."))
 
         if len(retrain_summary):
             fig = px.bar(

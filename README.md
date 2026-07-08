@@ -14,11 +14,30 @@
 ```powershell
 uv sync
 uv run python --version
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 uv run python -m unittest discover -s tests -v
 ```
 
 기준 Python은 `.python-version`의 `3.12`다. `uv run python --version` 결과가 3.12 계열이면 된다.
+
+## 저장소 구조
+
+| 폴더 | 역할 |
+|---|---|
+| `simulator/` | PostgreSQL 기반 운영 보조 API 서버와 시뮬레이션 |
+| `frontend/` | 프론트 프로토타입과 세종 1생활권 지도 데이터 |
+| `scripts/` | DB 적재, notebook 생성, 파이프라인 보조 스크립트 |
+| `src/` | 모델 파이프라인 패키지 코드 |
+| `data/` | 처리 데이터 |
+| `models/` | 학습된 모델 산출물 |
+| `artifacts/` | 모델 메타데이터와 실험 산출물 |
+| `output/` | 최종 card, score, report 산출물 |
+| `docs/` | 모델, 운영, API 문서 |
+| `docs/handoff/` | 인계 문서 |
+| `docs/model/` | 모델 범위와 인벤토리 문서 |
+| `docs/package/` | 패키지 사용 및 구성 문서 |
+| `docs/report/` | 의사결정, 검증, 계약 보고서 |
+| `tests/` | 재현성, API, DB 계약 테스트 |
 
 ## 최종 산출물
 
@@ -43,7 +62,7 @@ priority_score
 ### 1. 저장소 단독 재현
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 ```
 
 source 프로젝트가 없어도 저장소 내부 보존 산출물을 사용해 최종 card를 재생성한다.
@@ -56,7 +75,7 @@ raw -> windows -> model_artifacts -> anomaly -> best_scores -> merge
 ### 2. 원천 재학습 포함 전체 재생성
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 원천 프로젝트가 같은 상위 폴더에 있거나 환경변수로 지정되어 있어야 한다.
@@ -70,8 +89,8 @@ raw -> windows -> model_artifacts -> anomaly -> retrain_current_best -> merge ->
 개별 재학습도 가능하다.
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps retrain_current_best
-uv run python run_3rd_model_pipeline.py --steps retrain_m1_specialist
+uv run third-model-pipeline --steps retrain_current_best
+uv run third-model-pipeline --steps retrain_m1_specialist
 ```
 
 ## Source 탐색
@@ -93,11 +112,11 @@ M1 source 재학습은 source 폴더 안 `05_데이터셋/PreDist/predist_datase
 | 먼저 볼 파일 | 역할 |
 |---|---|
 | `docs/README.md` | 전체 문서 지도와 읽는 순서 |
-| `PACKAGE_README_KO.md` | 저장소 사용 안내 |
-| `HANDOFF.md` | 짧은 인계 요약 |
-| `M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 중심 인계 |
-| `MODEL_INVENTORY_KO.md` | 모델 파일, score, 재학습 책임 정리 |
-| `PACKAGE_MANIFEST.md` | 포함 파일 전체 목록 |
+| `docs/package/PACKAGE_README_KO.md` | 저장소 사용 안내 |
+| `docs/handoff/HANDOFF.md` | 짧은 인계 요약 |
+| `docs/handoff/M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 중심 인계 |
+| `docs/model/MODEL_INVENTORY_KO.md` | 모델 파일, score, 재학습 책임 정리 |
+| `docs/package/PACKAGE_MANIFEST.md` | 포함 파일 전체 목록 |
 | `docs/05_RUNBOOK.md` | 실행/검증 명령 |
 | `docs/07_HANDOFF_FILE_INDEX.md` | 받는 사람이 볼 파일 색인 |
 
@@ -122,7 +141,7 @@ M1 source 재학습은 source 폴더 안 `05_데이터셋/PreDist/predist_datase
 
 ```powershell
 uv run python -m unittest discover -s tests -v
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 git status --short
 ```
 # 2026-07-08 Internal Full Retrain Update
