@@ -38,6 +38,8 @@ async def test_v2_postgres_tools_return_ops_evidence_only(
 
     assert set(tools) == {"get_ops_evidence"}
     assert evidence["priority_context"]["card"]["card_id"] == card_ids[0]
+    assert "model_outputs" in evidence["priority_context"]
+    assert isinstance(evidence["priority_context"]["model_outputs"], list)
     assert "raw_context" in evidence
 
 

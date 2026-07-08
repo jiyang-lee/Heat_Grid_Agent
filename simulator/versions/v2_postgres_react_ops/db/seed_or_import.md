@@ -25,3 +25,11 @@ postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops
 $env:HEATGRID_DATABASE_URL="postgresql+asyncpg://USER:PASSWORD@HOST:PORT/DB"
 uv run python simulator/versions/v2_postgres_react_ops/backend/server.py
 ```
+
+시뮬레이터 입력 적재:
+
+```powershell
+uv run python scripts/simulate_predictor_db.py
+uv run python scripts/simulate_predictor_db.py --model-run-id <UUID>
+uv run python scripts/simulate_predictor_db.py --append
+```
