@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
     alert_id uuid PRIMARY KEY,
     card_id uuid NOT NULL UNIQUE REFERENCES priority_cards(card_id) ON DELETE CASCADE,
     priority_level text NOT NULL CHECK (priority_level IN ('urgent', 'high')),
-    priority_score numeric,
+    priority_score double precision,
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acked')),
     enqueue_reason text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -24,15 +24,14 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
 )
 """
 
+ALERT_QUEUE_TYPE_MIGRATION: Final = """
+ALTER TABLE ops_alert_queue
+ALTER COLUMN priority_score TYPE double precision
+USING priority_score::double precision
+"""
+
 ENQUEUE_ALERTS_SQL: Final = """
-WITH inserted AS (
-    INSERT INTO ops_alert_queue (
-        alert_id,
-        card_id,
-        priority_level,
-        priority_score,
-        enqueue_reason
-    )
+WITH candidates AS (
     SELECT
         md5('ops_alert|' || pc.card_id::text)::uuid,
         pc.card_id,
@@ -43,29 +42,49 @@ WITH inserted AS (
     JOIN priority_decisions pd
     ON pd.priority_decision_id = pc.priority_decision_id
     WHERE lower(pd.priority_level) IN ('urgent', 'high')
+),
+existing AS (
+    SELECT count(*) AS existing_count
+    FROM candidates c
+    JOIN ops_alert_queue q
+    ON q.card_id = c.card_id
+),
+inserted AS (
+    INSERT INTO ops_alert_queue (
+        alert_id,
+        card_id,
+        priority_level,
+        priority_score,
+        enqueue_reason
+    )
+    SELECT * FROM candidates
     ON CONFLICT (card_id) DO NOTHING
     RETURNING 1
 )
-SELECT count(*) AS queued_count FROM inserted
+SELECT
+    (SELECT count(*) FROM inserted) AS queued_count,
+    (SELECT existing_count FROM existing) AS existing_count
 """
 
 
 async def ensure_alert_queue(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(text(ALERT_QUEUE_DDL))
+        await connection.execute(text(ALERT_QUEUE_TYPE_MIGRATION))
 
 
 async def enqueue_priority_alerts(engine: AsyncEngine) -> dict[str, JsonValue]:
     await ensure_alert_queue(engine)
     async with engine.begin() as connection:
         result = await connection.execute(text(ENQUEUE_ALERTS_SQL))
-        queued_count = int(result.scalar_one())
+        inserted = result.mappings().one()
         open_result = await connection.execute(
             text("SELECT count(*) FROM ops_alert_queue WHERE status = 'open'")
         )
         total_result = await connection.execute(text("SELECT count(*) FROM ops_alert_queue"))
     return {
-        "queued_count": queued_count,
+        "queued_count": int(inserted["queued_count"]),
+        "existing_count": int(inserted["existing_count"]),
         "open_count": int(open_result.scalar_one()),
         "total_count": int(total_result.scalar_one()),
     }

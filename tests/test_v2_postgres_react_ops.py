@@ -94,8 +94,10 @@ async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
 
     assert enqueue.status_code == 200
     assert enqueue.json()["queued_count"] > 0
+    assert enqueue.json()["existing_count"] == 0
     assert duplicate_enqueue.status_code == 200
     assert duplicate_enqueue.json()["queued_count"] == 0
+    assert duplicate_enqueue.json()["existing_count"] == enqueue.json()["queued_count"]
     assert open_alerts.status_code == 200
     assert first_alert["card_id"]
     assert first_alert["priority_level"] in {"urgent", "high"}

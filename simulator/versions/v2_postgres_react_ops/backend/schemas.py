@@ -87,6 +87,7 @@ class AlertSummary(BaseModel):
 
 class AlertEnqueueResponse(BaseModel):
     queued_count: int
+    existing_count: int
     open_count: int
     total_count: int
 

@@ -6,6 +6,7 @@ import subprocess
 import uuid
 import asyncio
 import importlib.util
+import ast
 from pathlib import Path
 
 import asyncpg
@@ -39,6 +40,10 @@ def test_predictor_features_do_not_include_validation_fields() -> None:
 
 def _db_url() -> str:
     return normalize_database_url(os.environ.get("HEATGRID_DATABASE_URL", DEFAULT_DATABASE_URL))
+
+
+def _load_summary(stdout: str) -> dict:
+    return ast.literal_eval(stdout.removeprefix("Load complete: ").strip())
 
 
 def test_simulate_predictor_db_inserts_model_run_and_outputs() -> None:
@@ -124,6 +129,8 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
     assert first.returncode == 0, first.stderr
     assert second.returncode == 0, second.stderr
     assert "'fallback_source': 'csv_windows'" in first.stdout
+    first_summary = _load_summary(first.stdout)
+    second_summary = _load_summary(second.stdout)
 
     async def _check() -> None:
         conn = await asyncpg.connect(_db_url())
@@ -145,9 +152,21 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
                 "SELECT card_id FROM ops_alert_queue GROUP BY card_id HAVING count(*) > 1"
                 ") duplicated"
             )
+            score_type = await conn.fetchval(
+                "SELECT data_type "
+                "FROM information_schema.columns "
+                "WHERE table_schema = 'public' "
+                "AND table_name = 'ops_alert_queue' "
+                "AND column_name = 'priority_score'"
+            )
             assert actual == expected
             assert non_priority == 0
             assert duplicate_cards == 0
+            assert score_type == "double precision"
+            assert first_summary["alerts"]["queued_count"] == expected
+            assert first_summary["alerts"]["existing_count"] == 0
+            assert second_summary["alerts"]["queued_count"] == 0
+            assert second_summary["alerts"]["existing_count"] == expected
         finally:
             await conn.close()
 
