@@ -19,6 +19,16 @@ dependencies = [
     "plotly",
     "scikit-learn",
     "tabulate",
+    "fastapi>=0.139.0",
+    "uvicorn>=0.50.2",
+    "orjson>=3.11.9",
+    "pydantic-settings>=2.14.2",
+    "langchain>=1.3.11",
+    "langchain-openai>=1.3.3",
+    "langgraph>=1.2.8",
+    "openai>=2.44.0",
+    "sqlalchemy>=2.0.51",
+    "asyncpg>=0.31.0",
 ]
 
 [project.scripts]
@@ -26,3 +36,9 @@ third-model-pipeline = "third_model.pipeline:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HeatGrid V2 Local</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">HeatGrid V2 Local</p>
+          <h1>로컬 ReAct 운영 보조 에이전트</h1>
+        </div>
+        <div class="status-grid" aria-label="서버 상태">
+          <span id="inputStatus" class="status">입력 확인 중</span>
+          <span id="openaiStatus" class="status">LLM 확인 중</span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel controls" aria-label="시뮬레이션 제어">
+          <label for="cardSelect">priority card</label>
+          <select id="cardSelect"></select>
+          <label for="cardSearch">카드 검색</label>
+          <input id="cardSearch" type="search" placeholder="card_id, 제조사, 서브스테이션 검색" />
+          <label for="priorityFilter">우선순위 레벨</label>
+          <select id="priorityFilter">
+            <option value="">전체</option>
+          </select>
+          <div class="search-meta">
+            <span>조회 건수</span>
+            <strong id="cardCount">-</strong>
+            <span>현재 필터</span>
+            <strong id="activeFilter">전체</strong>
+          </div>
+          <button id="runButton" type="button">실행</button>
+          <div class="metric-strip">
+            <div>
+              <span>입력</span>
+              <strong>PostgreSQL</strong>
+            </div>
+            <div>
+              <span>활성 툴</span>
+              <strong>1</strong>
+            </div>
+            <div>
+              <span>토큰</span>
+              <strong id="tokenTotal">0</strong>
+            </div>
+            <div>
+              <span>비용</span>
+              <strong id="costTotal">$0.000000</strong>
+            </div>
+          </div>
+        </aside>
+
+        <section class="panel trace-panel" aria-label="실시간 에이전트 타임라인">
+          <div class="panel-head">
+            <h2>실시간 툴 타임라인</h2>
+            <span id="runState" class="status idle">대기</span>
+          </div>
+          <ol id="traceList" class="trace-list"></ol>
+        </section>
+
+        <section class="panel output-panel" aria-label="운영 보조 답변">
+          <div class="panel-head">
+            <h2>운영 답변</h2>
+            <span id="agentMode" class="status">준비</span>
+          </div>
+          <article class="output-block">
+            <h3>모델 근거</h3>
+            <p id="modelEvidence">카드를 선택해 주세요.</p>
+          </article>
+          <article class="output-block">
+            <h3>선택 카드 요약</h3>
+            <p id="cardSummary">카드 선택 시 표시됩니다.</p>
+          </article>
+          <article class="output-block">
+            <h3>summary</h3>
+            <p id="summary">아직 실행 결과가 없습니다.</p>
+          </article>
+          <article class="output-block">
+            <h3>action_plan</h3>
+            <p id="actionPlan">카드를 선택하고 실행하세요.</p>
+          </article>
+          <article class="output-block">
+            <h3>caution</h3>
+            <p id="caution">PostgreSQL만 읽고 외부 조회는 하지 않습니다.</p>
+          </article>
+          <article class="output-block">
+            <h3>token_usage / cost</h3>
+            <p id="tokenUsage">실행 후 표시됩니다.</p>
+          </article>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

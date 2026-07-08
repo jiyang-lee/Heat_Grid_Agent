@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpsAgentOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "action_plan", "caution"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_plan": {
+      "type": "string",
+      "minLength": 1
+    },
+    "caution": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
