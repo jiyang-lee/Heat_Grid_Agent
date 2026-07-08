@@ -106,3 +106,45 @@ async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
     assert ack.json()["acked_by"] == "pytest"
     assert acked_alerts.status_code == 200
     assert any(item["alert_id"] == first_alert["alert_id"] for item in acked_alerts.json())
+
+
+@pytest.mark.anyio
+async def test_v2_postgres_fixed_ops_scenario_runs_from_enqueue_to_ack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        initial_enqueue = await client.post("/alerts/enqueue")
+        api_enqueue = await client.post("/alerts/enqueue")
+        urgent_alerts = await client.get(
+            "/alerts",
+            params={"status": "open", "priority_level": "urgent"},
+        )
+        urgent_alert = urgent_alerts.json()[0]
+        simulation = await client.post(f"/simulate/{urgent_alert['card_id']}")
+        ack = await client.post(
+            f"/alerts/{urgent_alert['alert_id']}/ack",
+            json={"acked_by": "fixed-scenario"},
+        )
+
+    assert initial_enqueue.status_code == 200
+    assert initial_enqueue.json()["queued_count"] > 0
+    assert api_enqueue.status_code == 200
+    assert api_enqueue.json()["queued_count"] == 0
+    assert api_enqueue.json()["existing_count"] == initial_enqueue.json()["queued_count"]
+    assert urgent_alerts.status_code == 200
+    assert urgent_alert["priority_level"] == "urgent"
+    assert simulation.status_code == 200
+    assert simulation.json()["card_id"] == urgent_alert["card_id"]
+    assert simulation.json()["agent_mode"] == "fallback"
+    assert simulation.json()["ops_output"]["summary"]
+    assert ack.status_code == 200
+    assert ack.json()["alert_id"] == urgent_alert["alert_id"]
+    assert ack.json()["status"] == "acked"
+    assert ack.json()["acked_by"] == "fixed-scenario"
