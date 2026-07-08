@@ -15,6 +15,10 @@ DEFAULT_DATABASE_URL = "postgresql://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_
 CURRENT_BEST_FLOW = "flow1_anomaly_current_best"
 M1_SPECIALIST_FLOW = "flow2_m1_specialist"
 NAMESPACE = uuid.UUID("8b4f9f4a-6d84-45b8-b0df-4a1dff1b6d4f")
+MODEL_FAMILY = "priority_engine"
+MODEL_NAME = "offline_priority_simulator"
+MODEL_RUN_TYPE = "offline_simulation"
+MODEL_SOURCE_ARTIFACT = "output/agent_priority_card.csv"
 
 CURRENT_BEST_FEATURES = (
     "anomaly_ensemble_score",
@@ -248,6 +252,7 @@ async def table_exists(conn: asyncpg.Connection, table: str) -> bool:
 
 async def reset_tables(conn: asyncpg.Connection) -> None:
     tables = (
+        "model_runs",
         "model_outputs",
         "sensor_summaries",
         "priority_card_review_reasons",
@@ -309,6 +314,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "sensor_summaries": expected_feature_count,
             "review_reasons": expected_reason_count,
             "model_outputs": len(rows) if model_run_id is not None else 0,
+            "model_runs": 1 if model_run_id is not None else 0,
         }
 
         before_counts = {}
@@ -319,6 +325,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 "priority_cards": await count_rows(conn, "priority_cards"),
                 "sensor_summaries": await count_rows(conn, "sensor_summaries"),
                 "review_reasons": await count_rows(conn, "priority_card_review_reasons"),
+                "model_runs": await count_rows(conn, "model_runs"),
                 "model_outputs": await count_rows(conn, "model_outputs"),
             }
 
@@ -363,6 +370,12 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             " VALUES ($1,$2,$3)"
             " ON CONFLICT (card_id, reason_code) DO NOTHING"
         )
+        upsert_model_run = (
+            "INSERT INTO model_runs ("
+            "model_run_id, model_family, model_name, model_version, run_type, source_artifact"
+            ") VALUES ($1,$2,$3,$4,$5,$6)"
+            " ON CONFLICT (model_run_id) DO NOTHING"
+        )
         upsert_model_output = (
             "INSERT INTO model_outputs ("
             "model_output_id, window_id, model_run_id, model_family, score_name, score_value,"
@@ -378,6 +391,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "priority_cards": 0,
             "sensor_summaries": 0,
             "review_reasons": 0,
+            "model_runs": 0,
             "model_outputs": 0,
         }
 
@@ -518,17 +532,29 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 counters["review_reasons"] += 1
 
             if model_run_id is not None:
+                if counters["model_runs"] == 0:
+                    await conn.execute(
+                        upsert_model_run,
+                        model_run_id,
+                        MODEL_FAMILY,
+                        MODEL_NAME,
+                        None,
+                        MODEL_RUN_TYPE,
+                        MODEL_SOURCE_ARTIFACT,
+                    )
+                    counters["model_runs"] += 1
+
                 await conn.execute(
                     upsert_model_output,
                     build_id(
                         "model_output",
                         str(window_id),
                         str(model_run_id),
-                        "priority_engine",
+                        MODEL_FAMILY,
                     ),
                     window_id,
                     model_run_id,
-                    "priority_engine",
+                    MODEL_FAMILY,
                     "priority_score",
                     to_optional_float(row.get("priority_score")),
                     "priority_level",
@@ -543,6 +569,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "priority_cards": await count_rows(conn, "priority_cards"),
             "sensor_summaries": await count_rows(conn, "sensor_summaries"),
             "review_reasons": await count_rows(conn, "priority_card_review_reasons"),
+            "model_runs": await count_rows(conn, "model_runs"),
             "model_outputs": await count_rows(conn, "model_outputs"),
         }
         actual_counts = {
@@ -551,6 +578,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "priority_cards": after_counts["priority_cards"],
             "sensor_summaries": after_counts["sensor_summaries"],
             "review_reasons": after_counts["review_reasons"],
+            "model_runs": after_counts["model_runs"],
             "model_outputs": after_counts["model_outputs"],
         }
 
@@ -574,6 +602,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 "priority_cards": actual_counts["priority_cards"] - before_counts["priority_cards"],
                 "sensor_summaries": actual_counts["sensor_summaries"] - before_counts["sensor_summaries"],
                 "review_reasons": actual_counts["review_reasons"] - before_counts["review_reasons"],
+                "model_runs": actual_counts["model_runs"] - before_counts["model_runs"],
                 "model_outputs": actual_counts["model_outputs"] - before_counts["model_outputs"],
             }
         return summary

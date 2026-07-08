@@ -40,3 +40,13 @@ def sensor_summary_query():
         "where card_id = :card_id and flow_source = :flow_source "
         "order by display_rank, feature_name"
     )
+
+
+def model_outputs_query():
+    return text(
+        "select model_family, score_name, score_value, label_name, label_value, "
+        "display_rank "
+        "from model_outputs "
+        "where window_id = :window_id "
+        "order by display_rank, score_name, label_name"
+    )

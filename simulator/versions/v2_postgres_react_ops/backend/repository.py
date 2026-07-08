@@ -12,6 +12,7 @@ from queries import (
     M1_SPECIALIST_FLOW,
     PRIORITY_CALCULATION_EXPRESSION,
     card_query,
+    model_outputs_query,
     sensor_summary_query,
 )
 
@@ -134,6 +135,10 @@ async def fetch_ops_input(engine: AsyncEngine, card_id: str) -> OpsInput | None:
                 ),
                 {"card_id": card_id},
             )
+            model_outputs_result = await connection.execute(
+                model_outputs_query(),
+                {"window_id": card_row["window_id"]},
+            )
     except (SQLAlchemyError, OSError):
         return None
     return _ops_input_from_rows(
@@ -141,6 +146,7 @@ async def fetch_ops_input(engine: AsyncEngine, card_id: str) -> OpsInput | None:
         current_best_result.mappings().all(),
         m1_result.mappings().all(),
         review_reason_result.mappings().all(),
+        model_outputs_result.mappings().all(),
     )
 
 
@@ -150,6 +156,7 @@ def _ops_input_from_rows(
     current_best_rows: Sequence[RowMapping],
     m1_rows: Sequence[RowMapping],
     review_reason_rows: Sequence[RowMapping],
+    model_output_rows: Sequence[RowMapping],
 ) -> OpsInput:
     current_best_values = [_sensor_value_from_row(row) for row in current_best_rows]
     m1_values = [_sensor_value_from_row(row) for row in m1_rows]
@@ -229,6 +236,17 @@ def _ops_input_from_rows(
                 "review_required": card_row["review_required"],
                 "review_reasons": [str(row["reason_code"]) for row in review_reason_rows],
             },
+            "model_outputs": [
+                {
+                    "model_family": row["model_family"],
+                    "score_name": _row_text(row, "score_name", ""),
+                    "score_value": _json_scalar(row["score_value"]),
+                    "label_name": _row_optional_text(row, "label_name"),
+                    "label_value": _row_optional_text(row, "label_value"),
+                    "display_rank": int(row["display_rank"]),
+                }
+                for row in model_output_rows
+            ],
         },
     }
 
