@@ -12,8 +12,10 @@ import pandas as pd
 
 try:
     from ops_alert_queue import collect_source_diagnostics, enqueue_priority_alerts
+    from predictor_db_schema import ensure_target_schema
 except ModuleNotFoundError:
     from scripts.ops_alert_queue import collect_source_diagnostics, enqueue_priority_alerts
+    from scripts.predictor_db_schema import ensure_target_schema
 
 
 DEFAULT_DATABASE_URL = "postgresql://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
@@ -264,6 +266,8 @@ async def table_exists(conn: asyncpg.Connection, table: str) -> bool:
 
 async def reset_tables(conn: asyncpg.Connection) -> None:
     tables = (
+        "agent_run_artifacts",
+        "agent_runs",
         "model_runs",
         "model_outputs",
         "sensor_summaries",
@@ -307,6 +311,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
 
     conn = await asyncpg.connect(normalize_database_url(paths.database_url))
     try:
+        await ensure_target_schema(conn)
         source_diagnostics = await collect_source_diagnostics(
             conn,
             agent_rows=len(agent),
@@ -353,6 +358,13 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             " source_file, season_bucket, label, fault_event_id"
             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)"
             " ON CONFLICT (window_id) DO NOTHING"
+        )
+        upsert_substation = (
+            "INSERT INTO substations ("
+            "manufacturer_id, substation_id, configuration_type"
+            ") VALUES ($1,$2,$3)"
+            " ON CONFLICT (manufacturer_id, substation_id) DO UPDATE "
+            "SET configuration_type = EXCLUDED.configuration_type"
         )
         upsert_priority_decisions = (
             "INSERT INTO priority_decisions ("
@@ -431,11 +443,20 @@ async def load(paths: LoadPaths) -> dict[str, object]:
 
             window_start = to_utc_datetime(row["window_start"])
             window_end = to_utc_datetime(row["window_end"])
+            manufacturer_id = normalize_key_value(row["manufacturer"])
+            substation_id = to_optional_int(row["substation_id"])
+            if substation_id is not None:
+                await conn.execute(
+                    upsert_substation,
+                    manufacturer_id,
+                    substation_id,
+                    to_optional_str(row.get("configuration_type")),
+                )
             await conn.execute(
                 upsert_windows,
                 window_id,
-                normalize_key_value(row["manufacturer"]),
-                to_optional_int(row["substation_id"]),
+                manufacturer_id,
+                substation_id,
                 window_start,
                 window_end,
                 to_optional_str(row["source_file"]),
