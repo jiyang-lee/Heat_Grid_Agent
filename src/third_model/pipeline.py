@@ -44,12 +44,11 @@ DEFAULT_STEPS = [
 ]
 
 FULL_RETRAIN_STEPS = [
-    "retrain_current_best",
     "raw",
     "windows",
     "model_artifacts",
     "anomaly",
-    "best_scores",
+    "retrain_current_best",
     "merge",
     "agent_card",
     "retrain_m1_specialist",

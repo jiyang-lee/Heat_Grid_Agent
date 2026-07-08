@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-07T13:27:25.141492+00:00",
+  "generated_at_utc": "2026-07-08T00:49:12.987514+00:00",
   "source_best_root": "../HeatGrid_Agent/best",
   "source_best_available": true,
   "files": [
@@ -25,46 +25,46 @@
       "name": "risk_scores",
       "path": "output/risk_scores.csv",
       "exists": true,
-      "rows": 1226,
-      "columns": 240,
-      "size_bytes": 2593618,
-      "sha256": "4822d1168286fc9c20395827ff7f148436d28ad1c694ab7d5bb4b91c5ee7ccde"
+      "rows": 1252,
+      "columns": 272,
+      "size_bytes": 3069745,
+      "sha256": "689fd8c0433a8d0e95875e2efe2e90a18054d3e39d9a4de0c0c7ddc666829d2d"
     },
     {
       "name": "leadtime_scores",
       "path": "output/leadtime_scores.csv",
       "exists": true,
-      "rows": 1226,
-      "columns": 315,
-      "size_bytes": 3949742,
-      "sha256": "265006f637a5be56a4e19b69b2437608d4eab64aec6cd07cf3b19243a0d2f620"
+      "rows": 1252,
+      "columns": 362,
+      "size_bytes": 4037021,
+      "sha256": "e5d59f55403ef88b269c88777d7c54c5c7741ecf743eab24b9f77433b95177a0"
     },
     {
       "name": "priority_scores",
       "path": "output/priority_scores.csv",
       "exists": true,
-      "rows": 1226,
-      "columns": 135,
-      "size_bytes": 1361621,
-      "sha256": "f700f98db3237a00bda81f3e61373e1750aa0440c834827ef234ad7466b93c32"
+      "rows": 1252,
+      "columns": 152,
+      "size_bytes": 1182109,
+      "sha256": "0f2d806783bfb8fa2c2a88c6270b296da86b963fb1412bf913f123efe558a025"
     },
     {
       "name": "merged_model_scores",
       "path": "output/merged_model_scores.csv",
       "exists": true,
-      "rows": 1226,
+      "rows": 1252,
       "columns": 136,
-      "size_bytes": 1379460,
-      "sha256": "cdc2e6d63588fcd20e5d48849977884782d66f429ee0b476bad37b91c85f998c"
+      "size_bytes": 1157691,
+      "sha256": "9be802eef3bd18bf02a271d9c02bb7439e6688b560ddf820d96eab9256939088"
     },
     {
       "name": "agent_priority_card",
       "path": "output/agent_priority_card.csv",
       "exists": true,
-      "rows": 1226,
+      "rows": 1252,
       "columns": 55,
-      "size_bytes": 995723,
-      "sha256": "1b8f1ea4ff83f9225598be2ab5655c3f2aa9fc65405dfee5fff557b72d7fe76e"
+      "size_bytes": 1028212,
+      "sha256": "8ffbe1061ac4d188301dd31391ee29613cc77d167d5661c4473862eb277046ee"
     },
     {
       "name": "agent_card_column_dictionary_ko",
@@ -90,17 +90,17 @@
       "exists": true,
       "rows": 1252,
       "columns": 29,
-      "size_bytes": 355355,
-      "sha256": "4a9f486b61259dc0765ae4eb41054834d2f9bc35df4198113e89ecef12ec1b62"
+      "size_bytes": 357229,
+      "sha256": "8e51f1f898f84bd1ed6b76bbcaecefabbb71d46f541947d9559a9b05645d8a0f"
     },
     {
       "name": "m1_specialist_scores",
       "path": "output/m1_specialist_scores.csv",
       "exists": true,
-      "rows": 1226,
+      "rows": 1252,
       "columns": 73,
-      "size_bytes": 1423015,
-      "sha256": "d1202ff065f1e0ac1ee3ec9584423ac71bd825be7bfce94f14cb5d2b53325142"
+      "size_bytes": 1466164,
+      "sha256": "79d898aeb9822dc21150b356b81a990b2ad570d044bb47f327380c6696d19e21"
     },
     {
       "name": "row_reconciliation",
@@ -108,17 +108,17 @@
       "exists": true,
       "rows": 5,
       "columns": 11,
-      "size_bytes": 535,
-      "sha256": "d11b813d88203ff71f9cc8a19dae86e42a7db2290214bf6fde58252ca1aadab1"
+      "size_bytes": 463,
+      "sha256": "3f09a099f703094108e40a27c2cda94d3973364617699992d04cfd8ef1a6f164"
     },
     {
       "name": "missing_agent_windows",
       "path": "output/reports/missing_agent_windows.csv",
       "exists": true,
-      "rows": 26,
+      "rows": 0,
       "columns": 232,
-      "size_bytes": 47409,
-      "sha256": "d0acdd418687b0c96f4461c076f1757fe8770891098b210a976783bc46c150be"
+      "size_bytes": 7398,
+      "sha256": "be4e22c873e82f71d8654652a42f554d4ff41b730dfd384897681006f567b212"
     },
     {
       "name": "ablation_summary",
@@ -126,8 +126,8 @@
       "exists": true,
       "rows": 5,
       "columns": 8,
-      "size_bytes": 486,
-      "sha256": "6cf6967cb65466aab984edd60561d4d9ed9e4de6e1fa013091ceb0324783e105"
+      "size_bytes": 489,
+      "sha256": "afcc42923ded1b3c191d3430f31d6c38942a1b5e85575be8fc3b42dffe9b19d1"
     },
     {
       "name": "threshold_sweep",
@@ -135,8 +135,8 @@
       "exists": true,
       "rows": 36,
       "columns": 10,
-      "size_bytes": 3298,
-      "sha256": "5590a2fa4a260afc24ab2984f6e8c43e2f53e0551e9575e4568fce8d8ecf36c7"
+      "size_bytes": 3368,
+      "sha256": "0f85cc0dafe4477234be491123592b682aeada1eb39f745c97fad71cd3b2fee8"
     },
     {
       "name": "priority_weight_sensitivity",
@@ -144,17 +144,17 @@
       "exists": true,
       "rows": 4,
       "columns": 7,
-      "size_bytes": 282,
-      "sha256": "7bbcae865ba0171c0ed4a206a1631cc3b7ebfa64822c4e0dd3fc107602f19522"
+      "size_bytes": 280,
+      "sha256": "c4957e9394c70cfcfb0935fd80cf72443fc3dc6f4abee6eb64d8fb02c2d58d4d"
     },
     {
       "name": "hard_normal_audit",
       "path": "output/reports/hard_normal_audit.csv",
       "exists": true,
-      "rows": 55,
+      "rows": 125,
       "columns": 13,
-      "size_bytes": 23153,
-      "sha256": "df73624c7f893a46e176f47f861e0fb0a73157b42140fb40f7ad8ee29b56180b"
+      "size_bytes": 49971,
+      "sha256": "46b2e0e096f10b56f1dd07c6ae2350720dd188d1de38112d333c8d1a9189c7a9"
     },
     {
       "name": "anomaly_criticality_threshold_sweep",
@@ -207,8 +207,8 @@
       "exists": true,
       "rows": 32,
       "columns": 5,
-      "size_bytes": 1032,
-      "sha256": "e2fce21929aaf161721b3adf6e6d46aa664d73e74bb80d3e98bcfcac2b1d6322"
+      "size_bytes": 1065,
+      "sha256": "499b02cd04b3752058497f72dc3c8e8fe1af6b7c76f74dc9e7e9be301a1e8193"
     },
     {
       "name": "hybrid_065_vs_072_changed_rows",
@@ -234,8 +234,8 @@
       "exists": true,
       "rows": 5,
       "columns": 4,
-      "size_bytes": 533,
-      "sha256": "b42a1442ddda584fbc7b9ffb40d82caabcf0a422025f35a5f6f17c1025ce218c"
+      "size_bytes": 539,
+      "sha256": "04be6cb72989db47cd7d2496a29b6f398836daa4e6f430898649f6f80ae86b43"
     },
     {
       "name": "key_coverage_by_artifact",
@@ -243,8 +243,8 @@
       "exists": true,
       "rows": 5,
       "columns": 8,
-      "size_bytes": 432,
-      "sha256": "98cec61c8f5cbf7eca4cbda4e20ea94d3c996433c27b5cbcfa3258783df949c9"
+      "size_bytes": 438,
+      "sha256": "b41a03a9ee23d262024c692f7fa942d3158a54baa127a031c37fe81b5f676d7e"
     },
     {
       "name": "risk_level_actual_summary",
@@ -261,8 +261,8 @@
       "exists": true,
       "rows": 1,
       "columns": 3,
-      "size_bytes": 108,
-      "sha256": "d1ffe680155580f87d1dd1a375add7f164780533cc0662b50c69c8c007b152e2"
+      "size_bytes": 110,
+      "sha256": "2b0c02338fe7d8e142a79850b68a45c2cb4fd2a5191d8f8d7b61a703bc2a5f3a"
     },
     {
       "name": "m1_gate_threshold_sweep",
@@ -370,57 +370,57 @@
       "name": "risk_model_best",
       "path": "models/risk/risk_model_best.joblib",
       "exists": true,
-      "size_bytes": 352172,
-      "sha256": "e5dc2a36aab930d85b7dbf98fa203c8f867d97132562636cde170bd250dfb447"
+      "size_bytes": 239860,
+      "sha256": "b5aca2d6a3874b30ca0ee73b5a33a98777648d95730b4c583899b98662c4f4e8"
     },
     {
       "name": "risk_model_best_metadata",
       "path": "models/risk/risk_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 37161,
-      "sha256": "c094082363da90b9a54325a0c002539ec4dfcc2a72aa3d125c54d0eae47c3603"
+      "size_bytes": 37245,
+      "sha256": "b12c5e950ce40485af87131af522dc2f98ec97a425d1b9127f76eb1fbd8458ce"
     },
     {
       "name": "leadtime_model_best",
       "path": "models/leadtime/leadtime_model_best.joblib",
       "exists": true,
-      "size_bytes": 880912,
-      "sha256": "61794809cbd382f70f1f8e948820e2dc36010cb6ddd9aa597e52f75dd9bf24ae"
+      "size_bytes": 622220,
+      "sha256": "ac6de0f80f59b04da5a56c08c2ec0aa366da873c6a5484821777bb65cc0a3801"
     },
     {
       "name": "leadtime_model_best_metadata",
       "path": "models/leadtime/leadtime_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 35000,
-      "sha256": "58b7a00bdfcf4b7e986d5383549942706bb5dcb039d33c64959eb4fd32ee7ff9"
+      "size_bytes": 35880,
+      "sha256": "8e61010607deda2443e32be1092920bcb22691817ba2cde70a2138d3dca1a77d"
     },
     {
       "name": "priority_engine_best_metadata",
       "path": "models/priority/priority_engine_best_metadata.json",
       "exists": true,
-      "size_bytes": 1838,
-      "sha256": "e08090dfc666649a0df554ecef6ae60079d8679ad815f160be78e629e8cb4e35"
+      "size_bytes": 771,
+      "sha256": "417d35ec079ad04b832b66924a4550778226db6ad847a5c0436d78d327954d84"
     },
     {
       "name": "m1_fault_gate",
       "path": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
       "exists": true,
       "size_bytes": 409090,
-      "sha256": "8fc3dcf316d9aa87ff401fe80b9176f976a26b64c979557a0f1be38fa18b0663"
+      "sha256": "fa64f0efd44a4aa17afcead3f8e66ba05e89f812cc5a3ebe0c6d108cb8e5ebce"
     },
     {
       "name": "m1_task_gate",
       "path": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
       "exists": true,
       "size_bytes": 305938,
-      "sha256": "1f71d552d710c61ee8e0cc8816bd95210e6ef538f580e47a265cadf2483f7bef"
+      "sha256": "83eddf94ac1977474cdb10747a0315300bd7da4a0cd714f187b3a8d4c22a559d"
     },
     {
       "name": "m1_activity_gate",
       "path": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
       "exists": true,
       "size_bytes": 295586,
-      "sha256": "74b49bf5bdffaeb378ba54cc691c455a9b160fa8dfe88809a7405195a1813424"
+      "sha256": "36b25aa942af9849252e243a5de2a7dafaddeed1ecbe027f3cc2d5bee7cf702b"
     },
     {
       "name": "m1_pre_event_gate",
@@ -433,8 +433,8 @@
       "name": "m1_specialist_gate_metadata",
       "path": "models/m1_specialist/m1_specialist_gate_metadata.json",
       "exists": true,
-      "size_bytes": 1823,
-      "sha256": "004d9a6d337188924759014f04327741427c77ce7ee11d5f195b55ef7ec7bcad"
+      "size_bytes": 1832,
+      "sha256": "66db0dabe5b7eccefb952c98d70ea807d6ca0daf1de25bf293e36e6ecd74be9a"
     }
   ],
   "supporting_artifacts": [
@@ -442,834 +442,834 @@
       "name": "artifacts\\current_best\\ARTIFACT_INDEX.csv",
       "path": "artifacts/current_best/ARTIFACT_INDEX.csv",
       "exists": true,
-      "size_bytes": 30183,
-      "sha256": "3f49ac9eab48beeb81265c48214071ebcec114fb6cc6d129fd4af6300568a58e"
+      "size_bytes": 30302,
+      "sha256": "7ad17a56bf70448b7dd737a2a8873076c087c6f59af3574701aa806c991cb3e6"
     },
     {
       "name": "artifacts\\current_best\\contracts\\agent_feature_contract.json",
       "path": "artifacts/current_best/contracts/agent_feature_contract.json",
       "exists": true,
-      "size_bytes": 63116,
-      "sha256": "b418c4e9d289f90565932b7fe400f89d6a182990db4ff4c6ca6a3291c9794d1b"
+      "size_bytes": 65071,
+      "sha256": "39178705f1a1419c407c565adad9c3b99443df18642bc068f508eba4f00e8ac3"
     },
     {
       "name": "artifacts\\current_best\\contracts\\agent_full_data_contract.json",
       "path": "artifacts/current_best/contracts/agent_full_data_contract.json",
       "exists": true,
-      "size_bytes": 31876,
-      "sha256": "2522bb045a0789b2e7da6abf816e87d47257b8600bee6fc7b435cc371cf16553"
+      "size_bytes": 32781,
+      "sha256": "bf10b2b2b662d77f41b44b9bbefb611c67198c537aa18aa9a167086af1127926"
     },
     {
       "name": "artifacts\\current_best\\contracts\\agent_required_raw_columns.json",
       "path": "artifacts/current_best/contracts/agent_required_raw_columns.json",
       "exists": true,
-      "size_bytes": 4454,
-      "sha256": "99d1f1dba52151e5bf25ad1d44fc6583c590a6eca84dc4d55e0a2b6ba31ef3fe"
+      "size_bytes": 4586,
+      "sha256": "c5e90ac93ca091cfd2cb40d29976ee868dee70697094c424172e49b8d9ec8f7c"
     },
     {
       "name": "artifacts\\current_best\\contracts\\categorical_feature_map.csv",
       "path": "artifacts/current_best/contracts/categorical_feature_map.csv",
       "exists": true,
-      "size_bytes": 3712,
-      "sha256": "dbf8c121558a29f26d923760848d88c326b96aeeb4683b90fefcef803198b062"
+      "size_bytes": 3757,
+      "sha256": "3d1151397b63cb8851898f97c73b06efa0fa5642e85bf7a8f38d153b3c5fa7df"
     },
     {
       "name": "artifacts\\current_best\\contracts\\feature_columns.csv",
       "path": "artifacts/current_best/contracts/feature_columns.csv",
       "exists": true,
-      "size_bytes": 32922,
-      "sha256": "96c1257fc369101a4a1166e6a07d51637589900636caea2b1526684997628ced"
+      "size_bytes": 33182,
+      "sha256": "eecddfd66ccf09a048d9a9d10fe022b757baa6579063771390d281dc2e4b0e90"
     },
     {
       "name": "artifacts\\current_best\\contracts\\feature_family_summary.csv",
       "path": "artifacts/current_best/contracts/feature_family_summary.csv",
       "exists": true,
-      "size_bytes": 254,
-      "sha256": "2d95625d8df0e66fe27dd3b3516e56434a871ad59e09c958563c010603bc63f7"
+      "size_bytes": 263,
+      "sha256": "2e962563b366c938ed63fa9bc86d7f4fd698da5de668ad64725bf910b9871bb8"
     },
     {
       "name": "artifacts\\current_best\\contracts\\imputation_values.csv",
       "path": "artifacts/current_best/contracts/imputation_values.csv",
       "exists": true,
-      "size_bytes": 14427,
-      "sha256": "2551cc36f85845fc53796865cb23df87c1eea75b3947196d6e2b0cd8378393ad"
+      "size_bytes": 14623,
+      "sha256": "004f0cc140d27952dbc5d77a89d88549c25c433ae868acb57f917b02256ecd5b"
     },
     {
       "name": "artifacts\\current_best\\contracts\\metadata_columns.csv",
       "path": "artifacts/current_best/contracts/metadata_columns.csv",
       "exists": true,
-      "size_bytes": 1691,
-      "sha256": "68ce91d2a8758ccf057425a6c1c3af1b1076cf4b489d273caa041cfda318422e"
+      "size_bytes": 1729,
+      "sha256": "92f7853a014850ce5f0dc4ffb8ea72dbd3d2d337275211b6aa763a986546608a"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\anomaly_baseline\\anomaly_baseline_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/anomaly_baseline/anomaly_baseline_metrics.csv",
       "exists": true,
-      "size_bytes": 1517,
-      "sha256": "46b814552ca8168e0e7881170aa3a230fa71f34d2c8e14ce510faf03b4d87d37"
+      "size_bytes": 1524,
+      "sha256": "1dcbe5eb299910a3d2b0bca448ea329c2a6c55db7c46fd5e79680709fa642de0"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\anomaly_baseline\\anomaly_baseline_threshold_sweep_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/anomaly_baseline/anomaly_baseline_threshold_sweep_metrics.csv",
       "exists": true,
-      "size_bytes": 3740,
-      "sha256": "da8d2d0f1fd9b1b7933f9fb5c673baabbdbab4f2d7a0ffc99c1add8958ea8b1d"
+      "size_bytes": 3759,
+      "sha256": "aa4e7aaa372d0d4df778423ea4454d89cf0f1f800b4d68c5d2f4e5cbb56d13b1"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\anomaly_baseline\\anomaly_baseline_thresholds.csv",
       "path": "artifacts/current_best/experiment_traces/anomaly_baseline/anomaly_baseline_thresholds.csv",
       "exists": true,
-      "size_bytes": 419,
-      "sha256": "218eb5596878b2c7da00b15d1f889eaef4b645d15bf70d51a9da160c3c4359f4"
+      "size_bytes": 423,
+      "sha256": "a736db8fd1db90ecfe3494f9fe1843069321c191c0a80840a4b0596d2fb8e5bc"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\anomaly_baseline\\baseline_model_metadata.json",
       "path": "artifacts/current_best/experiment_traces/anomaly_baseline/baseline_model_metadata.json",
       "exists": true,
-      "size_bytes": 9555,
-      "sha256": "10181c90b87213acc61ec098516880c98b91243e70da30fc87ceef4825251d14"
+      "size_bytes": 9811,
+      "sha256": "10d2e673bcf06ce4ce6623972ac08857e25f4a7cd9e5d9d620fbe78c2b923a07"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_3_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_3_metrics.csv",
       "exists": true,
-      "size_bytes": 328,
-      "sha256": "3405056cec38152999a192d5aae5f875cd87fdad1d6f06b86d7eed4a2f18e615"
+      "size_bytes": 332,
+      "sha256": "a7664cbe39f19f51d3c24480b20eaac8958767432029d212df6d75b4bad140e5"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_3_model_metadata.json",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_3_model_metadata.json",
       "exists": true,
-      "size_bytes": 948,
-      "sha256": "e3bad8ad9fc9445fee33efc04dfc9b37bdba04ae55d5e60978a692851c16b24c"
+      "size_bytes": 986,
+      "sha256": "dc0d171c241396441bf6462d3a2dcd4c6ab393001fba9469bfb785edc952b504"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_confusion_matrix.csv",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_confusion_matrix.csv",
       "exists": true,
-      "size_bytes": 624,
-      "sha256": "05208a074d64d95e2e68a8f5dbaf576ad83778b28141b0b1b844c9d0310fdca9"
+      "size_bytes": 652,
+      "sha256": "7dce43fd42c869427ddd9feb143bdb45a11584ba83534004c1b7ee9d099709c8"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_confusion_matrix_promoted.csv",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_confusion_matrix_promoted.csv",
       "exists": true,
-      "size_bytes": 627,
-      "sha256": "9ea282017c442ff305bd3845072d4f36390adc2bf491857a50932f63da4232cd"
+      "size_bytes": 655,
+      "sha256": "81e58603f4b8928338730e6aed2b47552a9cebfdc77903c38addc35fcd390187"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_metrics.csv",
       "exists": true,
-      "size_bytes": 329,
-      "sha256": "360e2034c90212ba54822577b85f8fc2d4ae2cfd5996c895916eb07fd122ee25"
+      "size_bytes": 333,
+      "sha256": "79cf2d780099a930a15a19a5a81127e35455c19b02ce895dbee05d3c9c4f196a"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_metrics_promoted.csv",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_metrics_promoted.csv",
       "exists": true,
-      "size_bytes": 331,
-      "sha256": "68dce91a89c75d88ddb1ab569a085e12f78f6e8e789f3b65f5c8a18d854bae9f"
+      "size_bytes": 335,
+      "sha256": "c43e5c6414b5075417fe8949a427ac31265823e1751426a2185fad4bbb085a59"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_model_metadata.json",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_model_metadata.json",
       "exists": true,
-      "size_bytes": 9165,
-      "sha256": "e54248eb47b533ea19205b2f760869ff97116b888644daaf3518292d48dc9ec3"
+      "size_bytes": 9405,
+      "sha256": "25eb090ffbcb697d869f24a16818aef1a5f96d49ffe41224abb094d00b28f846"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\leadtime\\leadtime_bucket_model_promoted_metadata.json",
       "path": "artifacts/current_best/experiment_traces/leadtime/leadtime_bucket_model_promoted_metadata.json",
       "exists": true,
-      "size_bytes": 10681,
-      "sha256": "d0072969ec8cc1e5c1115a02b816dbabab8330772ca0f005ba025bd32b815eb1"
+      "size_bytes": 10953,
+      "sha256": "9fb6714d47690a675db01f95f3abf51d83126271473d7922055506ae70e21703"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_classification_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_classification_metrics.csv",
       "exists": true,
-      "size_bytes": 3054,
-      "sha256": "ad5d079a3851d55995b56c1ca53398f96d092845f7020d636ba1db00cd681065"
+      "size_bytes": 3067,
+      "sha256": "d2c9938141f0a09708919ad2fac75216158e375d8580380c6b2c226d9ff95b7d"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_model_files.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_model_files.csv",
       "exists": true,
-      "size_bytes": 1144,
-      "sha256": "68a160d8f8a490735087a956ec030e5f0d77bf8c75cc742ffe1411d6010e9108"
+      "size_bytes": 1147,
+      "sha256": "c487ad2efbbabf0c73d1ac1aab45c89054ca2eea154562e6afed23b651615a6b"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_package_scope.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_package_scope.csv",
       "exists": true,
-      "size_bytes": 804,
-      "sha256": "e7a566151e7332219ac47ce2eee26bac0da16bcf3a08370f707b5aa9bdd08fcc"
+      "size_bytes": 807,
+      "sha256": "845e8aa00c067435c0bf56547d0dd1b494909aca6545d44da5ab25e79b05a365"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_regression_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_regression_metrics.csv",
       "exists": true,
-      "size_bytes": 2364,
-      "sha256": "ea169c9cd5a7c74623f74d94e83063bb20658c52df3f677e0853d203404f41e5"
+      "size_bytes": 2377,
+      "sha256": "2b95203f2f02d2d05708c1bde5466e570c2641402a6dd06105aa1131a44c4951"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_report.md",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_report.md",
       "exists": true,
-      "size_bytes": 8944,
-      "sha256": "132e8766d13ae44285cf257fe8338c75a87f2f90eda2eb417cffb5afebc38fbf"
+      "size_bytes": 9027,
+      "sha256": "4cb8df4a4558d3603067e2e972dfe4812553e8dd44ef120e62e764e7e9626e42"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_topk_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_topk_metrics.csv",
       "exists": true,
-      "size_bytes": 6763,
-      "sha256": "701d0ea7bc9c1a8d5d616bb5b112995611f921e24e0f13e87481049b6f3d26e5"
+      "size_bytes": 6824,
+      "sha256": "c19859085b3b020480dafbbc3a25382537c27ca2262a5ddfc99b7148f6bc7621"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_lgbm_vs_rule_upstream_hash_check.csv",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_lgbm_vs_rule_upstream_hash_check.csv",
       "exists": true,
-      "size_bytes": 692,
-      "sha256": "49e49a38044f700f0af7976c1fa22baf5b4f28d102d031ee05f13f05755c6d6c"
+      "size_bytes": 697,
+      "sha256": "fc9682c0bf539175f62b8bc3ef43dec028672957ab9f35d841be406a73192898"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\priority_compare\\priority_with_readme_audit.md",
       "path": "artifacts/current_best/experiment_traces/priority_compare/priority_with_readme_audit.md",
       "exists": true,
-      "size_bytes": 4313,
-      "sha256": "774192082f6dced7f86ecfb5c132d17f7f95d5382829b440bb2d779ea851943d"
+      "size_bytes": 4483,
+      "sha256": "e5a06ff7f82b7e444367b677f69499077efa178fb702bf53105c6df81ff527ed"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\06_experiment_comparison_summary.md",
       "path": "artifacts/current_best/experiment_traces/report_compare/06_experiment_comparison_summary.md",
       "exists": true,
-      "size_bytes": 8197,
-      "sha256": "e2ee2ddaf2a6267bf6654ab7f5d5ee76136b282aad503a29becbd96a15c0c2f9"
+      "size_bytes": 8534,
+      "sha256": "04f175f105ccad0410b114e312423d2f71dc8d8d0f0ab45bdd6a7c90fa8508d6"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\07_priority_v2_threshold48_promotion.md",
       "path": "artifacts/current_best/experiment_traces/report_compare/07_priority_v2_threshold48_promotion.md",
       "exists": true,
-      "size_bytes": 1578,
-      "sha256": "30a4347031fb0fc74546fbf225f4cb4db1025b7e6d37c918ded902d6b3a1ff82"
+      "size_bytes": 1628,
+      "sha256": "6f8cdf5446e0613859104c52c363d1916c9e50d043203d219dea27872f9a8956"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\anomaly_risk_integration_holdout.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/anomaly_risk_integration_holdout.csv",
       "exists": true,
-      "size_bytes": 4323,
-      "sha256": "e7658de193cacdbc9ad02e9b33b240ca4b22a068bdbedf44c6fbf2bfb0703d05"
+      "size_bytes": 4348,
+      "sha256": "e8937210087df1c3773350b57f43308c1c9bc2b8ba375c4a28fc5587146165ab"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\anomaly_risk_integration_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/anomaly_risk_integration_metrics.csv",
       "exists": true,
-      "size_bytes": 11206,
-      "sha256": "d3aa3491c9017e1b119a6d152463754ca5aa3873ea530b3e1bb978ec460680ca"
+      "size_bytes": 11279,
+      "sha256": "725144deecc1ed9d4dd2896773da7485ccde2f85d306ba68d2ce39efbc5cec38"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\experiment_summary.json",
       "path": "artifacts/current_best/experiment_traces/report_compare/experiment_summary.json",
       "exists": true,
-      "size_bytes": 2764,
-      "sha256": "36f0eb60aa4248484876911e9a630637baa5dc1c73adae49b1d3d37a404821c5"
+      "size_bytes": 2851,
+      "sha256": "b29bf4802ccf4ffc91d8ea17ead2dfc35018da23f022d82f70d0887530a49787"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\leadtime_bucket_confusion_official_vs_tuned.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/leadtime_bucket_confusion_official_vs_tuned.csv",
       "exists": true,
-      "size_bytes": 725,
-      "sha256": "97bd67d5cd07cb3e0dfe7514f1674fc40276890f361041458fcc00bff7f2b797"
+      "size_bytes": 744,
+      "sha256": "f8871d93c81f7e63741916ac03f1d96e52676135a2c2e4d0fc6f9b7abceba718"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\leadtime_holdout_experiment_comparison.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/leadtime_holdout_experiment_comparison.csv",
       "exists": true,
-      "size_bytes": 2655,
-      "sha256": "33a4e8f05d05aa2307b260e10e562b6f27edadfc2bf12a77bf99c57462cafd96"
+      "size_bytes": 2670,
+      "sha256": "7d7c3ec69353209947f708a31fbc5bde23304223b5b0cdda624beeeacd08152e"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\leadtime_holdout_experiment_comparison_with_delta.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/leadtime_holdout_experiment_comparison_with_delta.csv",
       "exists": true,
-      "size_bytes": 3086,
-      "sha256": "ec0c41317870e64e4f21f0759ffd76fa823bdef13bac4b2ce8e3c05cfac54a9b"
+      "size_bytes": 3101,
+      "sha256": "be4dd907832fc9f0c7aa610168069d9064df6d99b2bbb1a7b24d584d2a8f73c1"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\priority_threshold_sweep_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/priority_threshold_sweep_metrics.csv",
       "exists": true,
-      "size_bytes": 37531,
-      "sha256": "1f736eb50fb9814d228ab1cca4de08f12904fd725fda7a0b8eb0647279134624"
+      "size_bytes": 37847,
+      "sha256": "0f54b27338397e5ba6baf49435f0e0e5e4da396f38683d755cd365d99fc070b4"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\priority_threshold_sweep_summary.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/priority_threshold_sweep_summary.csv",
       "exists": true,
-      "size_bytes": 1424,
-      "sha256": "7e751f2abc712ae91c9cc4ba2dff2dbbd5c3ca0eb01cfbffbadca4d045658138"
+      "size_bytes": 1440,
+      "sha256": "cbf771e44f325d6a74a19cdca6769b9821fee93da2978a66725b9dabb33e9715"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\report_README.md",
       "path": "artifacts/current_best/experiment_traces/report_compare/report_README.md",
       "exists": true,
-      "size_bytes": 1470,
-      "sha256": "b76d5fa8871f95f3602091060800cad769cac7ac735196a09a633f0ffa2a3659"
+      "size_bytes": 1517,
+      "sha256": "c87081b20548f69c808d7e2a78e1746f6339f118e16eef8e5c6d2655baad6f3d"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\risk_holdout_experiment_comparison.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/risk_holdout_experiment_comparison.csv",
       "exists": true,
-      "size_bytes": 14570,
-      "sha256": "7630bb0c9e7d04cbac3e92ad8e7979993c3a493943e6bc99ed6deb2a6e886956"
+      "size_bytes": 14652,
+      "sha256": "5563e147ad1a1df0a89b03d5ddbc40e18fcf1cb85661c718ce279fcc3cef18cb"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\report_compare\\risk_holdout_experiment_comparison_with_delta.csv",
       "path": "artifacts/current_best/experiment_traces/report_compare/risk_holdout_experiment_comparison_with_delta.csv",
       "exists": true,
-      "size_bytes": 20012,
-      "sha256": "ad01186c274b9a8432fdc48476e49905464f78c4a219cefcae6893727ff3cacd"
+      "size_bytes": 20094,
+      "sha256": "39ead10ce278c60022a51a75add1079999e03bc299220914c3c756f3b440ff5f"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\event_split_leakage_audit.csv",
       "path": "artifacts/current_best/experiment_traces/risk/event_split_leakage_audit.csv",
       "exists": true,
-      "size_bytes": 8874,
-      "sha256": "2018c8748e36162f475cfdfeb29ac202b76a03a5a0f1e2f2645724c572f1bf2a"
+      "size_bytes": 9100,
+      "sha256": "cf9effdd34aafb97293d219d17ca7d1f1a3817d70fe0f00420a6b430f1e00138"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_feature_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_feature_summary.csv",
       "exists": true,
-      "size_bytes": 15733,
-      "sha256": "893b804048656c719e56dbfd1ca8691c0bf7d410802aa0df4277e4720396a5da"
+      "size_bytes": 15923,
+      "sha256": "9ff9799cae08fa4db08d95f574d1cd8afd14a560758eb3d84348adc3912a7fb2"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_group_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_group_summary.csv",
       "exists": true,
-      "size_bytes": 907,
-      "sha256": "34d40b6ef07674aea7bd512def3ba623f38c084cb13f0703d08bdb77ff4fc973"
+      "size_bytes": 913,
+      "sha256": "133d000fbd71ac9d882ef171ecdc641cbdf91d4c607a79c3d3ffffd4f7887a47"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_leadtime_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_leadtime_summary.csv",
       "exists": true,
-      "size_bytes": 221,
-      "sha256": "5ec77533881954a32721e179445eb80de88cca2153d29ddd690753349df0948a"
+      "size_bytes": 225,
+      "sha256": "bbe33218805332b0de521941a99a947aaee56302b026f7095102d3a65e09e969"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_level_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_level_summary.csv",
       "exists": true,
-      "size_bytes": 242,
-      "sha256": "49991b6851c49c6d451227fb178071e0c6dd386affed616b6c6e8dc3508b683f"
+      "size_bytes": 245,
+      "sha256": "67510d2348f0b688530e5d30138ebfc5cad545283fabdc7ec275382a6bad0617"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_score_band_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_score_band_summary.csv",
       "exists": true,
-      "size_bytes": 281,
-      "sha256": "d850fb300232a66cb203c8a63c454d0cfadb4e5e5669e589af9be54044643241"
+      "size_bytes": 288,
+      "sha256": "f2e38b699ce7ebd4cd03fb67b2d1f108cdf7a85278ff63d61ab3b2676db5dffd"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\holdout_false_negative_threshold_window.csv",
       "path": "artifacts/current_best/experiment_traces/risk/holdout_false_negative_threshold_window.csv",
       "exists": true,
-      "size_bytes": 4435,
-      "sha256": "dc318a0c76e0370b84ecd282690b836d474a8f31fbe177f28bf5b63870af7a87"
+      "size_bytes": 4457,
+      "sha256": "46393da1324b82eb86417740bce7e25cbe3f569d15a177c3a6617ac9d23331c2"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_event_context_ablation.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_event_context_ablation.csv",
       "exists": true,
-      "size_bytes": 3100,
-      "sha256": "23a5c71a08ca004b99f8385f26d79b90a3abddcd41c31133276673e1222d722a"
+      "size_bytes": 3119,
+      "sha256": "65570973793decb9ce98f4af3cc7a400e8d6b9c616b845a60a0de5e414d83f93"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_event_context_ablation_feature_importance.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_event_context_ablation_feature_importance.csv",
       "exists": true,
-      "size_bytes": 4855,
-      "sha256": "687063035fef9ff260370fcbd5d683d56c6264a9a81a752bea705b5d321d8820"
+      "size_bytes": 4946,
+      "sha256": "e8f3631e52fc23f031a7d6ebbffd5bb80697fb0a41b651676fc18b2b04dc90f6"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_event_context_ablation_group_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_event_context_ablation_group_summary.csv",
       "exists": true,
-      "size_bytes": 1513,
-      "sha256": "ba6aba583f850bb3fba03737fcfb86b35781ad62098b4a6c4e089ae00382fad4"
+      "size_bytes": 1532,
+      "sha256": "59893d97598a8f0066049ba5ea66fb8cfe9b712c0e4d3c1534fb003124464c53"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_event_context_comparison.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_event_context_comparison.csv",
       "exists": true,
-      "size_bytes": 1771,
-      "sha256": "1ab57a009ada23bbde3637000d04ef6ce86df4551a0159bb6f71852350cfa480"
+      "size_bytes": 1775,
+      "sha256": "6b69d237eca8e67451273cd9c14af4041d16a1ef6e004c7c09f4117abc53f3cd"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_feature_importance.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_feature_importance.csv",
       "exists": true,
-      "size_bytes": 7427,
-      "sha256": "46c68a46d9f1ad7218fc72c38af09bf59172da4bd43e132f6e8a6a63f05a1eef"
+      "size_bytes": 7617,
+      "sha256": "8155895cf4f2003ac34c842a3e9d06c0acb08612d4f847977888dfe46bc9d046"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_feature_importance_audit.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_feature_importance_audit.csv",
       "exists": true,
-      "size_bytes": 31298,
-      "sha256": "9e73a5da579efb135eff24c97fa9b9f8ffc29a3a62bbc125aecc69d184a7e0e6"
+      "size_bytes": 31488,
+      "sha256": "474a692b63a1b65581af623992ba0e3d49490b1b2bf917e90688cfd2785c88b8"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_feature_importance_family_summary.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_feature_importance_family_summary.csv",
       "exists": true,
-      "size_bytes": 501,
-      "sha256": "df1ed883b8403096e59f1d6caa1b4b563b9f2577293bbd36c31cfdf2358b9149"
+      "size_bytes": 508,
+      "sha256": "8a536b222f47318d833d05fcdf33e28b10fd21df63d64b7e87838248a727d15c"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_drift_feature_ablation.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_drift_feature_ablation.csv",
       "exists": true,
-      "size_bytes": 5367,
-      "sha256": "190b55c53b05a020151c35688e681334c0efab0dbcc326efa2fbacf3b86b5db1"
+      "size_bytes": 5395,
+      "sha256": "1e123450ef36a17b156fd275a02c42816d2d1be60990dd117a9c3124367e26c6"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_drift_feature_ablation_holdout.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_drift_feature_ablation_holdout.csv",
       "exists": true,
-      "size_bytes": 2202,
-      "sha256": "f02fa6284ba62c1bc5a70e1176bb1721205a6d571dcb3c5db80cde056fd7f367"
+      "size_bytes": 2212,
+      "sha256": "e0ffb3172935d0698dcddae32ff00a4c5df7c908953ecbe77c525e8a5952bc61"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_followup_ablation.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_followup_ablation.csv",
       "exists": true,
-      "size_bytes": 769,
-      "sha256": "76e8206eec30b720bc618c90a06605929c7ed55bed5ed5541b83bec9ed66b7df"
+      "size_bytes": 775,
+      "sha256": "70250ca0405704767e9b13c538a1cb6d4c1a167e9436544870466ac7b0a6b6f8"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_metrics.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_metrics.csv",
       "exists": true,
-      "size_bytes": 2994,
-      "sha256": "44cdc7ec1a9e4eebb282afbf95e039326401c08effe9fbaeb80ff5c677a88556"
+      "size_bytes": 3014,
+      "sha256": "e44156a563eff723f5fed04988970f2663d4d22d143f8b8deab1905a57d10df5"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_metrics_calibrated.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_metrics_calibrated.csv",
       "exists": true,
-      "size_bytes": 905,
-      "sha256": "733c95f4352c0134540da36f689ae4f1e8bd71ace4c5bb30db469ae989cd2fec"
+      "size_bytes": 912,
+      "sha256": "3d4153e3c12fd55d94a8429615bfe2964e2d87ff875cc8815baca9935706742f"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_metrics_promoted.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_metrics_promoted.csv",
       "exists": true,
-      "size_bytes": 1585,
-      "sha256": "8e7dd69aadf75ae966ad995f4fba36d7df740871d030d72cfe2ba63b54f8d0de"
+      "size_bytes": 1598,
+      "sha256": "d2142d6d101475646dd30c5e4214d9df4b3a3f1eca6ce078dc97cae7c63d5dd6"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_threshold_followup_candidates.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_threshold_followup_candidates.csv",
       "exists": true,
-      "size_bytes": 819,
-      "sha256": "765ea6b2703b3bda4065bd59934715447f057b147098ec7eb2846f2af55f05ec"
+      "size_bytes": 823,
+      "sha256": "d05317b1f33b4a703b50663a77644780d780d23f2d85d3d640ee100d176661dd"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_threshold_followup_comparison.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_threshold_followup_comparison.csv",
       "exists": true,
-      "size_bytes": 5611,
-      "sha256": "7a7e88457c0e732a01c1192ef09331cc016c26a0ef6dd05e114a49159ae0e418"
+      "size_bytes": 5643,
+      "sha256": "88c27969cb671e469e442b6db3d8d8b73007bed862db8f29bd9ff40dd12eaaa3"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_thresholds.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_thresholds.csv",
       "exists": true,
-      "size_bytes": 158,
-      "sha256": "b82721cfb63837edb336f8dd4d670205984768eb0be50c9f816f9b4f4fc0c527"
+      "size_bytes": 162,
+      "sha256": "4f1606dba940512032f768bded1942df7276a8c52bfcf2df2abcbf8e5d006e26"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_risk_thresholds_promoted.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_risk_thresholds_promoted.csv",
       "exists": true,
-      "size_bytes": 146,
-      "sha256": "139f2abedc3f19727b5d1d2b125fbe93a9e0cfc490fbd7addf345a1ccef600d8"
+      "size_bytes": 150,
+      "sha256": "db2db795655f5e4c494f374608f078ef7b7a56671bbd5b4bd8fd06a55073df33"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\lgbm_threshold_selection.csv",
       "path": "artifacts/current_best/experiment_traces/risk/lgbm_threshold_selection.csv",
       "exists": true,
-      "size_bytes": 506,
-      "sha256": "4e29b90ae19aa954fc5bef3702302f0ebc89106fc653c1dde49e151efeb03110"
+      "size_bytes": 513,
+      "sha256": "149f85b5b8a98ab7540a4b9ecc887bf1915e523f2d2f70252dc3b44a8042dc5a"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\risk_model_metadata.json",
       "path": "artifacts/current_best/experiment_traces/risk/risk_model_metadata.json",
       "exists": true,
-      "size_bytes": 10580,
-      "sha256": "cb87a6192ffc613e8d67d7e0d51440d42dec601b4dbea6eb30f8a2f14781fbc4"
+      "size_bytes": 10860,
+      "sha256": "ec6e924d558e907758c51ecfbe48884ee01689af3c9833ac04704ae25248bb18"
     },
     {
       "name": "artifacts\\current_best\\experiment_traces\\risk\\risk_model_promoted_metadata.json",
       "path": "artifacts/current_best/experiment_traces/risk/risk_model_promoted_metadata.json",
       "exists": true,
-      "size_bytes": 17315,
-      "sha256": "e4386f7c1bac2478644ef08a1cfcae4debebc45b0629cdc595452c8ebbf09ac0"
+      "size_bytes": 17740,
+      "sha256": "f8f4ebb7856cd1174b96686ed934e891fe9db81049188001378baa167fda5d0c"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\anomaly_baseline_thresholds.csv",
       "path": "artifacts/current_best/model_metadata/anomaly_baseline_thresholds.csv",
       "exists": true,
-      "size_bytes": 419,
-      "sha256": "218eb5596878b2c7da00b15d1f889eaef4b645d15bf70d51a9da160c3c4359f4"
+      "size_bytes": 423,
+      "sha256": "a736db8fd1db90ecfe3494f9fe1843069321c191c0a80840a4b0596d2fb8e5bc"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\anomaly_ensemble_metadata.json",
       "path": "artifacts/current_best/model_metadata/anomaly_ensemble_metadata.json",
       "exists": true,
-      "size_bytes": 8660,
-      "sha256": "cd5dceafaa9bf3e87881459b307fe7521d29831f7ef18abbb6226a413a8303ed"
+      "size_bytes": 8874,
+      "sha256": "a3414ca9fad8e196c2755667bfc1132152d0d04f52a1e71d12fcda3bea350ffd"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\baseline_model_metadata.json",
       "path": "artifacts/current_best/model_metadata/baseline_model_metadata.json",
       "exists": true,
-      "size_bytes": 9555,
-      "sha256": "10181c90b87213acc61ec098516880c98b91243e70da30fc87ceef4825251d14"
+      "size_bytes": 9811,
+      "sha256": "10d2e673bcf06ce4ce6623972ac08857e25f4a7cd9e5d9d620fbe78c2b923a07"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\leadtime_ablation_metadata.json",
       "path": "artifacts/current_best/model_metadata/leadtime_ablation_metadata.json",
       "exists": true,
-      "size_bytes": 2060,
-      "sha256": "75ab33dfb297817c1c0dffec9389995888b82a6274395f7deeff9bf5c24a9e87"
+      "size_bytes": 2129,
+      "sha256": "d1bb92ed90103942d66af18feeb4ed8515c9a1087b08be06180635c4f83c8306"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\leadtime_model_best_metadata.json",
       "path": "artifacts/current_best/model_metadata/leadtime_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 35000,
-      "sha256": "58b7a00bdfcf4b7e986d5383549942706bb5dcb039d33c64959eb4fd32ee7ff9"
+      "size_bytes": 35833,
+      "sha256": "64dd87587c568f39f0104c57f2d334e218330d98d40c0738bb52f670b247eeb0"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\multi_window_anomaly_metadata.json",
       "path": "artifacts/current_best/model_metadata/multi_window_anomaly_metadata.json",
       "exists": true,
-      "size_bytes": 2657,
-      "sha256": "b5d54d445f997479cd1b45c0869a3341df260405aa244028f641054dfa2b7479"
+      "size_bytes": 2742,
+      "sha256": "fee470051549ea2b31432ec1cb494dd5e47282d5f80c57d2c12d39cbecd7f417"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\priority_engine_best_metadata.json",
       "path": "artifacts/current_best/model_metadata/priority_engine_best_metadata.json",
       "exists": true,
-      "size_bytes": 1838,
-      "sha256": "e08090dfc666649a0df554ecef6ae60079d8679ad815f160be78e629e8cb4e35"
+      "size_bytes": 1875,
+      "sha256": "acfe9a59f8a79f3efd5390d8dbe359e90262dce10bfe7b4f1911d28d1752b608"
     },
     {
       "name": "artifacts\\current_best\\model_metadata\\risk_model_best_metadata.json",
       "path": "artifacts/current_best/model_metadata/risk_model_best_metadata.json",
       "exists": true,
-      "size_bytes": 37161,
-      "sha256": "c094082363da90b9a54325a0c002539ec4dfcc2a72aa3d125c54d0eae47c3603"
+      "size_bytes": 38145,
+      "sha256": "3aa81d1a62814e1ac5730c07ca69b9d04e02fc2ebce1fba8c9714d76f2e60399"
     },
     {
       "name": "artifacts\\current_best\\README_KO.md",
       "path": "artifacts/current_best/README_KO.md",
       "exists": true,
-      "size_bytes": 2177,
-      "sha256": "427163affcc35d46c5ecaf3dd075ab97ad3af7b836405dc7c9711b7e3226ceb9"
+      "size_bytes": 2206,
+      "sha256": "db6d34c416302897b67dcfea26a66bd780d111d538233c12b3b5d10f1d837191"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_metrics.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_metrics.csv",
       "exists": true,
-      "size_bytes": 2108,
-      "sha256": "c9d6be930dfbee3d19c22005012779ae9c5f7d14f69b199af3d7674b4cfc5f47"
+      "size_bytes": 2124,
+      "sha256": "489e9862a4be4b47a078dec9c0d5ed75cc0cecf2de7f804091ff80ba8b58e79c"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_event_leadtime.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_event_leadtime.csv",
       "exists": true,
-      "size_bytes": 3374,
-      "sha256": "ba9a2348eaca4929d8cd04a0a9bb06ce6d90b018ef824b568ebdb7b13e01fa12"
+      "size_bytes": 3402,
+      "sha256": "98c9b0c0cc6243372e500f0ee851cad5a0fb95282ccdba6357a491f7661b6923"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_feature_contribution_summary.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_feature_contribution_summary.csv",
       "exists": true,
-      "size_bytes": 824,
-      "sha256": "2279c1be1cbfd2c0a259d413d2c74b5cbba686de4dd3b8501311bd46d7026c1f"
+      "size_bytes": 852,
+      "sha256": "3596a1cd36866cec46ebd492604be092504faf79b0522d9834a98187b41b8e9b"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_group_mahalanobis_event_leadtime.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_group_mahalanobis_event_leadtime.csv",
       "exists": true,
-      "size_bytes": 1316,
-      "sha256": "4b70d986c121669454795c6acbf3a134a24069f2725f2963e7afebd72f752cd0"
+      "size_bytes": 1326,
+      "sha256": "e8e87076e5efd9d95cb43f6ca4dfb89221f5d1461ee7b4331317fd49ff14f520"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_group_mahalanobis_metrics.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_group_mahalanobis_metrics.csv",
       "exists": true,
-      "size_bytes": 1486,
-      "sha256": "48a35c3ff4b3fd7e9ad5b76d8c56c54d8cafa18d2d9174458abe83bca58914c7"
+      "size_bytes": 1496,
+      "sha256": "630033af5db248f75d72d64380683f69797ff3bc14dbe9a0dfdad06679b103d9"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_metadata.json",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_metadata.json",
       "exists": true,
-      "size_bytes": 619,
-      "sha256": "47cc200afabb55782e565141e39f86270ab3295deb78210065d153b1d424830d"
+      "size_bytes": 635,
+      "sha256": "9e694c20fdc6469ccecde786ec9e59259295414a4529a6d37060550bf2b3640c"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_pseudo_clean_false_alarm.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_pseudo_clean_false_alarm.csv",
       "exists": true,
-      "size_bytes": 2025,
-      "sha256": "1026f9d8ba8b27acde5b4d75109e376b880a3f2804d95b658569f1f56a11a787"
+      "size_bytes": 2053,
+      "sha256": "d5d238ebf46e91a074de3b623c894beddb5d2db57ad9c65cd481682dbdb78cd7"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_raw_ae_crosscheck.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_raw_ae_crosscheck.csv",
       "exists": true,
-      "size_bytes": 1208,
-      "sha256": "ad6536979d346bb6369621e8de65b3aa670091410fdb63440b2bdc3deffdfc9c"
+      "size_bytes": 1224,
+      "sha256": "902682b40912818faf5812fb33b4434b6361df48dd5aa3137cd8b7baba700efb"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_summary.md",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_summary.md",
       "exists": true,
-      "size_bytes": 5036,
-      "sha256": "3d25c19513153a0110aedc819b4e3399941748db6528a4cb3c2f5620955984c0"
+      "size_bytes": 5138,
+      "sha256": "1db4cd0f8e8c6ad8305a57cee1a34fb8d76e269d3e3278f81dcd06c920e03a2f"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_window_length_metadata.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_window_length_metadata.csv",
       "exists": true,
-      "size_bytes": 981,
-      "sha256": "d42f9127070d131b6c189375c877a1b6d7498ba590fdfdf1849cbb047b2c3041"
+      "size_bytes": 987,
+      "sha256": "71ea40d3f1fa429586cc1151c478eed46f4cd13043314baab8c6a0fe561c0937"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\anomaly_validity_window_length_metrics.csv",
       "path": "artifacts/current_best/reports/anomaly/anomaly_validity_window_length_metrics.csv",
       "exists": true,
-      "size_bytes": 6305,
-      "sha256": "205809a20421a51a1e6d50b87fd61c58a8a83736660480846433b5d5d0441073"
+      "size_bytes": 6351,
+      "sha256": "c6212d03b2126669e77e578b0892eb0d204778126f288cffa4a75a8c8442b193"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\multi_window_anomaly_metrics.csv",
       "path": "artifacts/current_best/reports/anomaly/multi_window_anomaly_metrics.csv",
       "exists": true,
-      "size_bytes": 3926,
-      "sha256": "c43a3eb149611beb83392dbe548530fb3e300ecb69883b668f3206ecea83a0f8"
+      "size_bytes": 3951,
+      "sha256": "970094d7e8bce2014b401e646f34e03255596dda31bc79ee7ac7a6ce217c985c"
     },
     {
       "name": "artifacts\\current_best\\reports\\anomaly\\raw_point_ae_metrics.csv",
       "path": "artifacts/current_best/reports/anomaly/raw_point_ae_metrics.csv",
       "exists": true,
-      "size_bytes": 1621,
-      "sha256": "2c7863ba70738e226fa80a6d465bc30dc33fd687f34b9cd94644ff32f4b8a810"
+      "size_bytes": 1634,
+      "sha256": "22ae2c86ddc85e2c3bcd7596dc4d38e23e934333b6933279242a62c2780bbc2a"
     },
     {
       "name": "artifacts\\current_best\\reports\\best_pipeline_comparison.csv",
       "path": "artifacts/current_best/reports/best_pipeline_comparison.csv",
       "exists": true,
-      "size_bytes": 1695,
-      "sha256": "b73cbf33bf64159621b7e9867f2b11c0b25d5a422d050a3b0ebd9d9d7d9f0ee7"
+      "size_bytes": 1724,
+      "sha256": "fc18603dd3cfd64a909c9f57800acefa05894c93492a36eacc6741553c79e35c"
     },
     {
       "name": "artifacts\\current_best\\reports\\best_pipeline_comparison.md",
       "path": "artifacts/current_best/reports/best_pipeline_comparison.md",
       "exists": true,
-      "size_bytes": 1265,
-      "sha256": "235515cc1383f6dbc7b5648bddf62239def4cc6390bd6e07388c83960039e201"
+      "size_bytes": 1288,
+      "sha256": "203ad6253ed73ba8abf35be910e5413f1ca728a5b7669e40a79a69d8147a0412"
     },
     {
       "name": "artifacts\\current_best\\reports\\DA_REFERENCE_COMPARISON.md",
       "path": "artifacts/current_best/reports/DA_REFERENCE_COMPARISON.md",
       "exists": true,
-      "size_bytes": 8783,
-      "sha256": "b0b940ea2d332bef140546533ff9018d43a9c16cf7845a53f9327218281874d6"
+      "size_bytes": 9060,
+      "sha256": "d90d3ad713cc19258d5954f1d2f8ee6d5a8c2e009b919ed8aea88b9b9edc848d"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_confusion.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_ablation_confusion.csv",
       "exists": true,
-      "size_bytes": 12320,
-      "sha256": "fc7bebb7d303c4114646d18e7627bb7e0c3edeee90fdb31c3b7df728a2292e50"
+      "size_bytes": 12645,
+      "sha256": "5b189ab6f5ea4128f0971d00dfb687c74e1fa9460e07aea228c62296374503dd"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_feature_groups.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_ablation_feature_groups.csv",
       "exists": true,
-      "size_bytes": 5767,
-      "sha256": "45f3dc5913f84bdf72ec536da346a441d5370a4d13dc267db184684d0b2e7307"
+      "size_bytes": 5881,
+      "sha256": "fb51f9e2ae0ba350b9aca14f053c21f7012d283fe6570371e98f8cba7b6f3e13"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_metrics.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_ablation_metrics.csv",
       "exists": true,
-      "size_bytes": 10720,
-      "sha256": "bb59af5e66660ee6e5293e6100635cf1cef23683709ad8a062dcc88aa18cde9a"
+      "size_bytes": 10757,
+      "sha256": "4d08351b104b4fbc8c8ec36df0f5bdc57b31883de4959bcc2695017f45bf3b13"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_summary.md",
       "path": "artifacts/current_best/reports/leadtime/leadtime_ablation_summary.md",
       "exists": true,
-      "size_bytes": 4595,
-      "sha256": "49b6c10d7dbca1e4c50148aeda43c161bd01712aa3be6f5693f68c3c8376197f"
+      "size_bytes": 4656,
+      "sha256": "51f19b7007f19d7cacc5899f58fb0d502d54c4334602f1458b5f36a2cd616ea8"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_ablation_top_features.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_ablation_top_features.csv",
       "exists": true,
-      "size_bytes": 199819,
-      "sha256": "f8b983460327402bf34301ecdf83e15ad280432293b2048a515194fbc5469210"
+      "size_bytes": 203092,
+      "sha256": "f3832f8858d5ef40deca8d0fce30cf9a51cad0e822e7b3e3e32bc9da6a686718"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_confusion_matrix.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_confusion_matrix.csv",
       "exists": true,
-      "size_bytes": 626,
-      "sha256": "e0a28ac20d719bec1c7556da06b84b7382fd2735954bddf2ebe2272bf7e44f79"
+      "size_bytes": 654,
+      "sha256": "a50452f3104ca64cc7af5e97ecdba497c57eead2d49cd0b83d66ac7e815c743c"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_feature_reliability_audit.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_feature_reliability_audit.csv",
       "exists": true,
-      "size_bytes": 89219,
-      "sha256": "626a7c4ed04c7a42c620f55a195f9249df0f4eab8db62c21f0bb07555819ca3c"
+      "size_bytes": 89674,
+      "sha256": "aeb50193b95e7bee8062209bc7e29f7ef7f964d0f541500c00f2f1062dd72d46"
     },
     {
       "name": "artifacts\\current_best\\reports\\leadtime\\leadtime_metrics.csv",
       "path": "artifacts/current_best/reports/leadtime/leadtime_metrics.csv",
       "exists": true,
-      "size_bytes": 331,
-      "sha256": "1d8f520ea329a9a59d33de2c64cf94ce7a96f4c76688347e64d1b0fcb2838551"
+      "size_bytes": 335,
+      "sha256": "5251c110bb4de403bb9234ff1c32541830f89a2dc9c9aefd84b0a1ae01ebc2b4"
     },
     {
       "name": "artifacts\\current_best\\reports\\MODEL_COMPARISON_GUIDE.md",
       "path": "artifacts/current_best/reports/MODEL_COMPARISON_GUIDE.md",
       "exists": true,
-      "size_bytes": 7950,
-      "sha256": "10d3fc9cc351e6ec36c3de48e500487668549711ca380ef2df2d52472aebfe8d"
+      "size_bytes": 8282,
+      "sha256": "19281886db3edf455ff76fa596904cd8a28a94cf29e1c79c0abf35f42dd966ce"
     },
     {
       "name": "artifacts\\current_best\\reports\\operational\\operational_evaluation_report.md",
       "path": "artifacts/current_best/reports/operational/operational_evaluation_report.md",
       "exists": true,
-      "size_bytes": 6088,
-      "sha256": "413be4cd102d7cdefea76b381e24767e91ab75bf013422035eae14481cf23d2c"
+      "size_bytes": 6170,
+      "sha256": "14fd6eca540c1639215cbc20ae61baad8c0622725af56b61fb53f656e1a81df5"
     },
     {
       "name": "artifacts\\current_best\\reports\\operational\\operational_policy_comparison.csv",
       "path": "artifacts/current_best/reports/operational/operational_policy_comparison.csv",
       "exists": true,
-      "size_bytes": 7671,
-      "sha256": "40ceae06031fd6133ae6a7860854ed85e7f850dbf5a7cadc3409dbdad981de5b"
+      "size_bytes": 7696,
+      "sha256": "09fd94eb4b3783d412888562d679ebc5a23034d78f620b024e237060e6f32349"
     },
     {
       "name": "artifacts\\current_best\\reports\\priority\\priority_ranking_comparison.csv",
       "path": "artifacts/current_best/reports/priority/priority_ranking_comparison.csv",
       "exists": true,
-      "size_bytes": 4478,
-      "sha256": "1cf4d464640b9bbe5f779b129add1a44465ff312b11be0649bab7986488e2a08"
+      "size_bytes": 4509,
+      "sha256": "af5706b4c15fe9c22576a01cca73637c4cb3eefb850d7068e9b7025139cd05dd"
     },
     {
       "name": "artifacts\\current_best\\reports\\priority\\substation_priority_ranking.csv",
       "path": "artifacts/current_best/reports/priority/substation_priority_ranking.csv",
       "exists": true,
-      "size_bytes": 319127,
-      "sha256": "9a4ba407180883717bda532eabd534bf97e448475d6dccfd6ca51783f87f5306"
+      "size_bytes": 320099,
+      "sha256": "f6a25e615b35887535148d44533449ee9999f0bd936967ff35ced22e8724a67e"
     },
     {
       "name": "artifacts\\current_best\\reports\\priority\\substation_priority_ranking_comparison.csv",
       "path": "artifacts/current_best/reports/priority/substation_priority_ranking_comparison.csv",
       "exists": true,
-      "size_bytes": 27690,
-      "sha256": "08e8359c735587abb1092c4608d1f411b710e85d5e29fe37e01ecfb1fbb38206"
+      "size_bytes": 27817,
+      "sha256": "3a685fed541ca2585289212fb524298871077bd682257a27c9b3ca3231e39d83"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_episode_summary.csv",
       "path": "artifacts/current_best/reports/risk/risk_episode_summary.csv",
       "exists": true,
-      "size_bytes": 23623,
-      "sha256": "f1de6e575e8a6479ec5a3ac2a83ef22907d98d53d91076d5135d95a14ce0b776"
+      "size_bytes": 23730,
+      "sha256": "0c4e8beee9c8f83a9bf35d768d3b7ea4e4580ac646a0d28c2bf3a96ef64c7bd0"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_event_metrics.csv",
       "path": "artifacts/current_best/reports/risk/risk_event_metrics.csv",
       "exists": true,
-      "size_bytes": 380,
-      "sha256": "d47a1290688fa8ab41733782180640fe7f8f8d458de14f472ebee3c3ec1382f6"
+      "size_bytes": 384,
+      "sha256": "39b1b37a487d42782db70b1a257ae5a5dad951977d71f0b151717d97fef73ce8"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_feature_importance.csv",
       "path": "artifacts/current_best/reports/risk/risk_feature_importance.csv",
       "exists": true,
-      "size_bytes": 12507,
-      "sha256": "6c1660512b3a03a0c9b6f4901cf1e3ee2322afc5cc1a9d7f489a5069bdcec489"
+      "size_bytes": 12821,
+      "sha256": "545d9ac2dbf6c70a503f3cc690321f8b9696ed5f19d404a40bbe8d50041ea023"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_feature_reliability_audit.csv",
       "path": "artifacts/current_best/reports/risk/risk_feature_reliability_audit.csv",
       "exists": true,
-      "size_bytes": 61703,
-      "sha256": "6bb5f3b81f5e5e474b840c95775576d377241bb08cee7ce0648ad7abb923a45b"
+      "size_bytes": 62017,
+      "sha256": "1330b2dcbb2abe9130e69e87fc896d320981af1b3ddad1220928ea6501a4d4bc"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_group_threshold_selection.csv",
       "path": "artifacts/current_best/reports/risk/risk_group_threshold_selection.csv",
       "exists": true,
-      "size_bytes": 58264,
-      "sha256": "1be95bec00a19a5e2af1891502916dc58afc54ca18925e7ff25124bb0b5783dc"
+      "size_bytes": 58629,
+      "sha256": "41721a86ab8aa5c437b6f3dbbf1b20e3f2cb46e7407a26ce0cf942f6cd5592b6"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_metrics.csv",
       "path": "artifacts/current_best/reports/risk/risk_metrics.csv",
       "exists": true,
-      "size_bytes": 800,
-      "sha256": "d829a5162cb05e770b15c7074468759235cedb6e7ac636f49701e2dec22eeb9e"
+      "size_bytes": 807,
+      "sha256": "d34b3dd36655b5807b9251f616d4702d7dfb1d24b086efcf3f8fb53e40ce9f61"
     },
     {
       "name": "artifacts\\current_best\\reports\\risk\\risk_threshold_selection.csv",
       "path": "artifacts/current_best/reports/risk/risk_threshold_selection.csv",
       "exists": true,
-      "size_bytes": 13890,
-      "sha256": "b19dfcb6bea6061c1b4cf11512d947ae5c2e4997d37e3b3cf0042a0603266315"
+      "size_bytes": 13982,
+      "sha256": "fd387cc4d91130f16a6af88556a1033c80d8b765f55ec663882b8a64f7415ed8"
     },
     {
       "name": "artifacts\\current_best\\source_score_outputs\\anomaly_scores.csv",
       "path": "artifacts/current_best/source_score_outputs/anomaly_scores.csv",
       "exists": true,
-      "size_bytes": 1315997,
-      "sha256": "447d3802f56a78a50d4851a0f2cbcf9a25b3c7a64dabdd3d9e8491b772bf7904"
+      "size_bytes": 1318524,
+      "sha256": "a2913dc3aa14be9d86963b1028173107cb3b75d2d5620ef58af05b6f2ce3bb6b"
     },
     {
       "name": "artifacts\\current_best\\source_score_outputs\\leadtime_scores.csv",
       "path": "artifacts/current_best/source_score_outputs/leadtime_scores.csv",
       "exists": true,
-      "size_bytes": 10393114,
-      "sha256": "4b58431d461a8dd618049c43187a18623ec15224351e32322a2b187d90e476e0"
+      "size_bytes": 10395477,
+      "sha256": "00923708771e61ea0e9556e54efc68d75793260d234b04d20588cda78f0f61ca"
     },
     {
       "name": "artifacts\\current_best\\source_score_outputs\\priority_scores.csv",
       "path": "artifacts/current_best/source_score_outputs/priority_scores.csv",
       "exists": true,
-      "size_bytes": 3394915,
-      "sha256": "222bbb3c4419aa99004945b02dd88df3de5a9714d1a073bb8bee338b1e37cc43"
+      "size_bytes": 3397278,
+      "sha256": "bf6cbb766d0a5243a3edb45b988633d403f0d4bb9be58179ce86acea919f468a"
     },
     {
       "name": "artifacts\\current_best\\source_score_outputs\\risk_scores.csv",
       "path": "artifacts/current_best/source_score_outputs/risk_scores.csv",
       "exists": true,
-      "size_bytes": 6832859,
-      "sha256": "cb8b1cff48cde3f0435745fea23b319fdbc95678bffac9b7a9792d8d31df6a30"
+      "size_bytes": 6835222,
+      "sha256": "15af90b7e2680d947d5b993724e5a25a930168c1db0a95aa9221867612ea1c46"
     }
   ],
   "compare_files": [
@@ -1305,8 +1305,8 @@
       "name": "compare\\README.md",
       "path": "compare/README.md",
       "exists": true,
-      "size_bytes": 4549,
-      "sha256": "be19f61c9194976a8391c01fcec6764f8faedc30f1040de05e3f6021c9b22552"
+      "size_bytes": 3454,
+      "sha256": "19b8e24099c3dc8d266871ce5791c5a10a2286781c0969465c773ac563bf67eb"
     }
   ],
   "markdown_reports": {

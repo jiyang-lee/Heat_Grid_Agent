@@ -1,48 +1,37 @@
 {
-  "package_id": "m1_full_gate_runtime_policy_joblib_v1",
-  "report_id": "34_M1_full_gate_joblib_xai4heat_scada_runtime_validation",
-  "source_commit_hash": "unknown",
+  "package_id": "m1_full_gate_runtime_policy_joblib_v1_internal",
+  "report_id": "internal_m1_specialist_retrain",
+  "source_commit_hash": "4fd5a526c8e84f6aec3d293c070a44b1580393a6",
+  "sklearn_version": "1.9.0",
   "created_artifacts": {
-    "fault_gate": "08_모델산출물\\m1_fault_gate_rf_depth3.joblib",
-    "task_gate": "08_모델산출물\\m1_task_gate_rf_depth3.joblib",
-    "activity_gate": "08_모델산출물\\m1_activity_gate_rf_depth3.joblib",
-    "fault_pre_event_gate": "08_모델산출물\\m1_fault_pre_event_logistic.joblib"
+    "fault_gate": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
+    "task_gate": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
+    "activity_gate": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
+    "fault_pre_event_gate": "models/m1_specialist/m1_fault_pre_event_logistic.joblib",
+    "runtime_metadata": "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json",
+    "model_registry": "output/reports/m1_internal_joblib_model_registry.csv",
+    "reload_validation": "output/reports/m1_internal_joblib_reload_validation.csv",
+    "training_data_audit": "output/reports/m1_internal_training_data_audit.csv"
   },
   "runtime_policy": {
-    "front_gates": {
-      "fault_gate": {
-        "model": "RandomForestClassifier",
-        "max_depth": 3,
-        "threshold": 0.5
-      },
-      "task_gate": {
-        "model": "RandomForestClassifier",
-        "max_depth": 3,
-        "threshold": 0.5
-      },
-      "activity_gate": {
-        "model": "RandomForestClassifier",
-        "max_depth": 3,
-        "threshold": 0.5
-      }
+    "thresholds": {
+      "fault_gate": 0.5,
+      "task_gate": 0.5,
+      "activity_gate": 0.5,
+      "fault_pre_event_gate": 0.6
     },
-    "fault_internal": {
-      "pre_event_gate": {
-        "model": "LogisticRegression_balanced",
-        "threshold": 0.6
-      }
-    },
-    "priority_policy": {
-      "type": "policy_layer_not_ml_model",
-      "weights": {
-        "risk_probability": 0.55,
-        "leadtime_urgency": 0.3,
-        "group_weight": 0.15
-      }
-    }
+    "primary_state_order": [
+      "fault",
+      "task",
+      "activity",
+      "normal"
+    ],
+    "near_threshold_band": 0.05
   },
   "models": {
     "fault_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
       "feature_set": "compact13",
       "features": [
         "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
@@ -61,9 +50,11 @@
       ],
       "threshold": 0.5,
       "training_dataset_id": "fault_no_overlap",
-      "model_path": "08_모델산출물\\m1_fault_gate_rf_depth3.joblib"
+      "model_path": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib"
     },
     "task_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
       "feature_set": "compact13",
       "features": [
         "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
@@ -82,9 +73,11 @@
       ],
       "threshold": 0.5,
       "training_dataset_id": "task_post_1d",
-      "model_path": "08_모델산출물\\m1_task_gate_rf_depth3.joblib"
+      "model_path": "models/m1_specialist/m1_task_gate_rf_depth3.joblib"
     },
     "activity_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
       "feature_set": "compact13",
       "features": [
         "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
@@ -103,9 +96,10 @@
       ],
       "threshold": 0.5,
       "training_dataset_id": "activity_pre_1d",
-      "model_path": "08_모델산출물\\m1_activity_gate_rf_depth3.joblib"
+      "model_path": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib"
     },
     "fault_pre_event_gate": {
+      "model": "LogisticRegression",
       "feature_set": "compact13_overlap",
       "features": [
         "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
@@ -125,15 +119,11 @@
       "threshold": 0.6,
       "training_dataset_id": "expanded_compact13_full_pool",
       "validation_dataset_id": "strict_no_event20_fixed_eval",
-      "model_path": "08_모델산출물\\m1_fault_pre_event_logistic.joblib"
+      "model_path": "models/m1_specialist/m1_fault_pre_event_logistic.joblib"
     }
   },
   "external_runtime_validation": {
-    "dataset": "XAI4HEAT SCADA Dataset 2024",
-    "doi": "10.17632/2mwc6x6kwb.1",
-    "github_repo": "https://github.com/xai4heat/xai4heat",
-    "mendeley": "https://data.mendeley.com/datasets/2mwc6x6kwb/1",
-    "label_performance_evaluation": "not_applicable",
-    "purpose": "schema mapping and runtime compatibility only"
+    "dataset": "not_run_in_internal_retrain",
+    "reason": "package-local retrain focuses on M1 source gate regeneration"
   }
 }

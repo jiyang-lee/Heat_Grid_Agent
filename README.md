@@ -7,7 +7,7 @@
 | 목적 | 실행 방식 | 설명 |
 |---|---|---|
 | 전달본 재현 | `--steps all` | GitHub에서 받은 상태 그대로 최종 card를 다시 생성 |
-| 원천 재학습 | `--steps full_retrain` | current-best source와 M1 specialist source를 다시 학습한 뒤 저장소 산출물 갱신 |
+| 원천 재학습 | `--steps full_retrain` | current-best와 M1 specialist를 현재 저장소 입력으로 다시 학습한 뒤 산출물 갱신 |
 
 ## Quick Start
 
@@ -24,8 +24,8 @@ uv run python -m unittest discover -s tests -v
 
 | 파일 | 역할 | rows | columns |
 |---|---|---:|---:|
-| `output/agent_priority_card.csv` | agent/API/UI가 우선 읽는 공식 card | 1226 | 55 |
-| `output/agent/m1_agent_priority_card.csv` | 공식 card 복사본 | 1226 | 55 |
+| `output/agent_priority_card.csv` | agent/API/UI가 우선 읽는 공식 card | 1252 | 55 |
+| `output/agent/m1_agent_priority_card.csv` | 공식 card 복사본 | 1252 | 55 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 specialist 단독 병렬 evidence card | 1252 | 29 |
 
 공식 `priority_score`는 M1 hybrid priority다.
@@ -62,8 +62,7 @@ uv run python run_3rd_model_pipeline.py --steps full_retrain
 원천 프로젝트가 같은 상위 폴더에 있거나 환경변수로 지정되어 있어야 한다.
 
 ```text
-retrain_current_best
--> raw -> windows -> model_artifacts -> anomaly -> best_scores -> merge -> agent_card
+raw -> windows -> model_artifacts -> anomaly -> retrain_current_best -> merge -> agent_card
 -> retrain_m1_specialist
 -> m1_specialist_gates -> m1_specialist -> validation
 ```
@@ -83,9 +82,9 @@ uv run python run_3rd_model_pipeline.py --steps retrain_m1_specialist
 |---|---|---|
 | `THIRD_MODEL_SOURCE_BEST_ROOT` | current-best source root | `../HeatGrid_Agent/best` |
 | `THIRD_MODEL_CURRENT_BEST_PYTHON` | current-best source 재학습 Python | `../HeatGrid_Agent/.venv/Scripts/python.exe` |
-| `THIRD_MODEL_3RD_PROJECT_ROOT` | M1 specialist source root | `../3rd_project_for_ML-main/3rd_project_for_ML-main` |
-| `THIRD_MODEL_M1_SPECIALIST_PYTHON` | M1 specialist source 재학습 Python | 현재 uv Python |
-| `THIRD_MODEL_PREDIST_ZIP_PATH` | M1 source용 PreDist zip | `../HeatGrid_Agent/data/_downloads/predist_dataset.zip` |
+| `THIRD_MODEL_3RD_PROJECT_ROOT` | M1 specialist training-input bootstrap/external source root | `../3rd_project_for_ML-main/3rd_project_for_ML-main` |
+| `THIRD_MODEL_M1_SPECIALIST_PYTHON` | legacy external M1 specialist 재학습 Python | 현재 uv Python |
+| `THIRD_MODEL_PREDIST_ZIP_PATH` | 첫 M1 training-input bootstrap용 PreDist zip | `../HeatGrid_Agent/data/_downloads/predist_dataset.zip` |
 
 M1 source 재학습은 source 폴더 안 `05_데이터셋/PreDist/predist_dataset.zip`을 요구한다. 없으면 위 zip 후보를 찾아 source 폴더로 복사한다.
 
@@ -114,7 +113,7 @@ M1 source 재학습은 source 폴더 안 `05_데이터셋/PreDist/predist_datase
 ## 핵심 해석 제한
 
 - 현재 검증 범위는 M1이다. M2나 전체 제조사 성능으로 일반화하지 않는다.
-- 최종 card 1226개와 M1 canonical window 1252개의 차이 26개는 모두 `pre_fault` window다. coverage 해석은 `output/reports/key_coverage_by_artifact.csv`, `output/reports/missing_agent_windows.csv`에서 확인한다.
+- 내부 `full_retrain` 기준 최종 card는 M1 canonical window 1252개 전체를 보존한다. 예전 보존 score bridge의 partial coverage 해석은 legacy 비교 맥락에서만 사용한다.
 - anomaly는 정상 분포 이탈 evidence다. 단독 fault classifier로 설명하지 않는다.
 - leadtime은 정확한 고장 시각 예측값이 아니라 priority 참고 신호다.
 - priority는 점검 우선순위 ranking 신호이며 자동 정비 지시가 아니다.
@@ -126,3 +125,11 @@ uv run python -m unittest discover -s tests -v
 uv run python run_3rd_model_pipeline.py --steps all
 git status --short
 ```
+# 2026-07-08 Internal Full Retrain Update
+
+- `--steps full_retrain` now runs inside this repository by default. It no longer requires sibling source folders for the current-best risk/leadtime/priority body.
+- Internal `full_retrain` order is `raw -> windows -> model_artifacts -> anomaly -> retrain_current_best -> merge -> agent_card -> retrain_m1_specialist -> m1_specialist_gates -> m1_specialist -> validation`.
+- Internal current-best regeneration writes `output/risk_scores.csv`, `output/leadtime_scores.csv`, and `output/priority_scores.csv` for all 1252 M1 canonical windows.
+- M1 specialist internal mode now trains the fault/task/activity/pre-event gate joblibs from package-local inputs under `artifacts/m1_specialist/training_inputs/`.
+- If those M1 training inputs are missing, the first internal retrain can bootstrap them from `THIRD_MODEL_3RD_PROJECT_ROOT`; after that, retrain works with that external path unavailable.
+- To force the old external wrappers, set `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external` and/or `THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external`.

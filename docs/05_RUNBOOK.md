@@ -34,14 +34,15 @@ output/reports/final_validation_report.md
 uv run python run_3rd_model_pipeline.py --steps full_retrain
 ```
 
-필요 source:
+기본 `full_retrain`은 현재 저장소 안에서 돈다. M1 학습 입력은 아래 경로에 보존된다.
 
 ```text
-../HeatGrid_Agent/best
-../3rd_project_for_ML-main/3rd_project_for_ML-main
+artifacts/m1_specialist/training_inputs/
+output/reports/source_retrain_metadata.json
+output/reports/m1_source_retrain_metadata.json
 ```
 
-다른 위치면 환경변수로 지정한다.
+아래 환경변수는 첫 M1 학습 입력 bootstrap 또는 external wrapper를 명시적으로 쓸 때만 지정한다.
 
 ```powershell
 $env:THIRD_MODEL_SOURCE_BEST_ROOT="D:\path\HeatGrid_Agent\best"
@@ -128,7 +129,21 @@ git status --short
 절대경로나 과거 전달본 표현이 남았는지 확인:
 
 ```powershell
-rg -n "Project3|m1_specialist[_-][p]ackage|1550.*1226" README.md docs compare scripts src output\reports output\agent -g "!*.csv"
+rg -n "Project3|m1_specialist[_-][p]ackage|partial coverage" README.md docs compare scripts src output\reports output\agent -g "!*.csv"
 ```
 
 `full_retrain`은 source 프로젝트가 있는 환경에서만 공개 전 추가 검증한다.
+# 2026-07-08 Internal Full Retrain Update
+
+Default full retrain is self-contained:
+
+```powershell
+uv run python run_3rd_model_pipeline.py --steps full_retrain
+```
+
+This regenerates local M1 current-best risk/leadtime/priority outputs and the final hybrid agent card without sibling source folders. External wrappers are opt-in:
+
+```powershell
+$env:THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE="external"
+$env:THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE="external"
+```

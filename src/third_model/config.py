@@ -126,6 +126,8 @@ ARTIFACT_DIR = PROJECT_ROOT / "artifacts"
 CURRENT_BEST_ARTIFACT_DIR = ARTIFACT_DIR / "current_best"
 CURRENT_BEST_SOURCE_SCORE_DIR = CURRENT_BEST_ARTIFACT_DIR / "source_score_outputs"
 CURRENT_BEST_MODEL_METADATA_DIR = CURRENT_BEST_ARTIFACT_DIR / "model_metadata"
+M1_SPECIALIST_ARTIFACT_DIR = ARTIFACT_DIR / "m1_specialist"
+M1_SPECIALIST_TRAINING_INPUT_DIR = M1_SPECIALIST_ARTIFACT_DIR / "training_inputs"
 
 RAW_INVENTORY_PATH = INTERIM_DIR / "raw_inventory.csv"
 RAW_SCHEMA_PATH = INTERIM_DIR / "raw_schema_summary.csv"
@@ -144,6 +146,14 @@ M1_SPECIALIST_COMPACT13_FEATURES_PATH = OUTPUT_DIR / "m1_specialist_compact13_fe
 M1_SPECIALIST_GATE_SCORES_PATH = OUTPUT_DIR / "m1_specialist_gate_scores.csv"
 M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH = OUTPUT_DIR / "agent" / "m1_specialist_parallel_agent_card.csv"
 M1_SPECIALIST_GATE_METADATA_PATH = M1_SPECIALIST_MODEL_DIR / "m1_specialist_gate_metadata.json"
+M1_SOURCE_FAULT_GATE_PREDICTIONS_PATH = M1_SPECIALIST_TRAINING_INPUT_DIR / "m1_fault_gate_lock_predictions.csv"
+M1_SOURCE_TASK_ACTIVITY_PREDICTIONS_PATH = M1_SPECIALIST_TRAINING_INPUT_DIR / "m1_task_activity_window_candidate_predictions.csv"
+M1_SOURCE_PRE_EVENT_FEATURE_POOL_PATH = M1_SPECIALIST_TRAINING_INPUT_DIR / "m1_expansion_feature_pool.csv"
+M1_SOURCE_COMPACT_FEATURE_SET_SUMMARY_PATH = M1_SPECIALIST_TRAINING_INPUT_DIR / "m1_compact_feature_set_summary.csv"
+M1_GATE_TRAINING_DATA_PATH = M1_SPECIALIST_TRAINING_INPUT_DIR / "m1_gate_training_data.csv"
+M1_INTERNAL_MODEL_REGISTRY_PATH = REPORT_DIR / "m1_internal_joblib_model_registry.csv"
+M1_INTERNAL_RELOAD_VALIDATION_PATH = REPORT_DIR / "m1_internal_joblib_reload_validation.csv"
+M1_INTERNAL_TRAINING_DATA_AUDIT_PATH = REPORT_DIR / "m1_internal_training_data_audit.csv"
 M1_SPECIALIST_PYTHON_PATH = Path(
     os.environ.get(
         "THIRD_MODEL_M1_SPECIALIST_PYTHON",
@@ -329,6 +339,8 @@ def ensure_dirs() -> None:
         PRIORITY_MODEL_DIR,
         M1_SPECIALIST_MODEL_DIR,
         CURRENT_BEST_ARTIFACT_DIR,
+        M1_SPECIALIST_ARTIFACT_DIR,
+        M1_SPECIALIST_TRAINING_INPUT_DIR,
     ]:
         path.mkdir(parents=True, exist_ok=True)
 

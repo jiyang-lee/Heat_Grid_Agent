@@ -35,6 +35,8 @@
 | activity gate model | `models/m1_specialist/m1_activity_gate_rf_depth3.joblib` |
 | pre-event gate model | `models/m1_specialist/m1_fault_pre_event_logistic.joblib` |
 | runtime metadata | `models/m1_specialist/m1_full_gate_runtime_policy_metadata.json` |
+| source training inputs | `artifacts/m1_specialist/training_inputs/` |
+| internal retrain registry | `output/reports/m1_internal_joblib_model_registry.csv` |
 
 ## 저장소 안에서 새로 만드는 것
 
@@ -60,4 +62,24 @@ output/reports/retrain_logs/retrain_current_best.log
 output/reports/retrain_logs/retrain_m1_specialist.log
 ```
 
-source 프로젝트가 없으면 `full_retrain`은 명확히 실패한다. 반면 `all`은 저장소 보존 산출물을 사용해 최종 card를 재현한다.
+기본 `full_retrain`은 현재 저장소의 내부 재학습 경로를 사용한다. 외부 source 프로젝트는 M1 학습 입력을 처음 bootstrap하거나 external retrain mode를 명시적으로 켰을 때만 필요하다.
+# 2026-07-08 Internal Source Trace Update
+
+The default source of the regenerated current-best body is now this repository:
+
+- `output/risk_scores.csv`
+- `output/leadtime_scores.csv`
+- `output/priority_scores.csv`
+- `models/risk/risk_model_best.joblib`
+- `models/leadtime/leadtime_model_best.joblib`
+- `models/priority/priority_engine_best_metadata.json`
+
+The M1 specialist gate joblibs are regenerated from these package-local inputs:
+
+- `artifacts/m1_specialist/training_inputs/m1_fault_gate_lock_predictions.csv`
+- `artifacts/m1_specialist/training_inputs/m1_task_activity_window_candidate_predictions.csv`
+- `artifacts/m1_specialist/training_inputs/m1_expansion_feature_pool.csv`
+- `artifacts/m1_specialist/training_inputs/m1_compact_feature_set_summary.csv`
+- `artifacts/m1_specialist/training_inputs/m1_gate_training_data.csv`
+
+The old sibling source folders are no longer required for default `full_retrain` after those inputs exist. They are used only for first bootstrap or when `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external` or `THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external` is set.

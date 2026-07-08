@@ -981,5 +981,7 @@
       "false_positive_episodes": 18,
       "normal_count": 288
     }
-  ]
+  ],
+  "internal_regeneration": true,
+  "internal_regeneration_scope": "m1_specialist"
 }

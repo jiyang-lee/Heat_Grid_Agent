@@ -12,17 +12,17 @@
 
 ## Threshold
 
-- m1_specialist high 기준: 77.500
-- m1_specialist urgent 기준: 92.500
-- m1_hybrid high 기준: 67.500
-- m1_hybrid urgent 기준: 82.500
+- m1_specialist high 기준: 75.000
+- m1_specialist urgent 기준: 90.000
+- m1_hybrid high 기준: 82.500
+- m1_hybrid urgent 기준: 95.000
 
 ## Holdout 지표
 | policy | split | metric_scope | row_count | precision | recall | false_positive_rate | tp | fp | fn | tn | mean_score | fault_events | detected_fault_events | fault_event_recall | note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| current_best_priority | holdout | row | 183.0 | 0.725 | 0.7532467532467533 | 0.20754716981132076 | 58.0 | 22.0 | 19.0 | 84.0 | 55.04589398907104 |  |  |  |  |
-| current_best_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
-| m1_specialist_priority | holdout | row | 183.0 | 0.64 | 0.4155844155844156 | 0.16981132075471697 | 32.0 | 18.0 | 45.0 | 88.0 | 58.053192074677604 |  |  |  |  |
+| current_best_priority | holdout | row | 183.0 | 0.423841059602649 | 0.8311688311688312 | 0.8207547169811321 | 64.0 | 87.0 | 13.0 | 19.0 | 75.76836612021859 |  |  |  |  |
+| current_best_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 8.0 | 1.0 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
+| m1_specialist_priority | holdout | row | 183.0 | 0.6730769230769231 | 0.45454545454545453 | 0.16037735849056603 | 35.0 | 17.0 | 42.0 | 89.0 | 56.269451187267975 |  |  |  |  |
 | m1_specialist_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
-| m1_hybrid_priority | holdout | row | 183.0 | 0.896551724137931 | 0.6753246753246753 | 0.05660377358490566 | 52.0 | 6.0 | 25.0 | 100.0 | 56.09844831903334 |  |  |  |  |
-| m1_hybrid_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 7.0 | 0.875 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |
+| m1_hybrid_priority | holdout | row | 183.0 | 0.6341463414634146 | 0.33766233766233766 | 0.14150943396226415 | 26.0 | 15.0 | 51.0 | 91.0 | 68.94374589368587 |  |  |  |  |
+| m1_hybrid_priority | holdout | fault_event |  |  |  |  |  |  |  |  |  | 8.0 | 4.0 | 0.5 | normal-event 기준 FPR은 별도 event contract가 없어 row false_positive_rate를 비교 기준으로 사용한다. |

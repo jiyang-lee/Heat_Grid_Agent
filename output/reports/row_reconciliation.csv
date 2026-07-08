@@ -1,6 +1,6 @@
 ﻿source_stage,target_stage,source_rows,target_rows,source_duplicate_keys,target_duplicate_keys,missing_from_target,missing_pre_fault,missing_normal,missing_label_distribution,missing_split_distribution
-canonical_windows,priority_scores,1252,1226,0,0,26,26,0,pre_fault=26,train=23; validation=3
-canonical_windows,agent_card,1252,1226,0,0,26,26,0,pre_fault=26,train=23; validation=3
-priority_scores,merged_scores,1226,1226,0,0,0,0,0,,
-priority_scores,agent_card,1226,1226,0,0,0,0,0,,
-agent_card,canonical_windows,1226,1252,0,0,0,0,0,,
+canonical_windows,priority_scores,1252,1252,0,0,0,0,0,,
+canonical_windows,agent_card,1252,1252,0,0,0,0,0,,
+priority_scores,merged_scores,1252,1252,0,0,0,0,0,,
+priority_scores,agent_card,1252,1252,0,0,0,0,0,,
+agent_card,canonical_windows,1252,1252,0,0,0,0,0,,

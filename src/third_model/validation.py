@@ -429,13 +429,19 @@ def write_final_validation_report() -> None:
     hard_normal = pd.read_csv(config.HARD_NORMAL_AUDIT_PATH)
     supporting_count = len(metadata.get("supporting_artifacts", []))
     compare_count = len(metadata.get("compare_files", []))
+    agent_rows = agent_cols = 0
+    if config.AGENT_CARD_PATH.exists():
+        agent_rows, agent_cols = pd.read_csv(config.AGENT_CARD_PATH).shape
+    parallel_rows = parallel_cols = 0
+    if config.M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH.exists():
+        parallel_rows, parallel_cols = pd.read_csv(config.M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH).shape
     lines = [
         "# 최종 검증 보고서",
         "",
         "## 현재 활성 계약",
         "- 공식 agent `priority_score`와 `priority_level`은 M1 hybrid priority 산출물이다.",
-        "- 최종 agent card인 `output/agent_priority_card.csv`와 `output/agent/m1_agent_priority_card.csv`는 1226 rows / 55 columns다.",
-        "- `output/agent/m1_specialist_parallel_agent_card.csv`는 1252 rows / 29 columns의 M1 단독 병렬 근거 card이며, 최종 hybrid agent 계약이 아니다.",
+        "",
+        "",
         "- M1 hybrid priority = 0.65 * current-best priority + 0.35 * M1 specialist priority.",
         "- Hybrid 0.65/0.35는 모든 metric의 절대 최적값이 아니라 운영 선택점이다. 0.72/0.28 및 0.90/0.10 비교는 threshold/weight 근거 notebook에서 확인한다.",
         "- Active anomaly policy는 IsolationForest ratio >= 0.90 AND Mahalanobis ratio >= 1.00이며, criticality 지속성을 함께 본다.",
@@ -476,6 +482,14 @@ def write_final_validation_report() -> None:
         "",
         f"## Hard Normal Review 건수\n\n{len(hard_normal)}",
     ]
+    lines[4] = (
+        f"- Final agent cards `output/agent_priority_card.csv` and "
+        f"`output/agent/m1_agent_priority_card.csv` have {agent_rows} rows / {agent_cols} columns."
+    )
+    lines[5] = (
+        f"- `output/agent/m1_specialist_parallel_agent_card.csv` has {parallel_rows} rows / "
+        f"{parallel_cols} columns and is M1-only evidence, not the final hybrid ordering contract."
+    )
     config.FINAL_VALIDATION_MD_PATH.write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 

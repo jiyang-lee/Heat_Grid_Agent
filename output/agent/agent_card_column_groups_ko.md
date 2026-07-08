@@ -2,12 +2,12 @@
 
 ## 결론
 
-- 최종 agent card는 `output/agent_priority_card.csv`와 `output/agent/m1_agent_priority_card.csv`이며, 두 파일 모두 1226 rows / 55 columns로 컬럼 구성이 동일하다.
-- `output/agent/m1_specialist_parallel_agent_card.csv`는 M1 specialist 단독 병렬 산출물이며, 1252 rows / 29 columns다. 최종 hybrid agent 계약이 아니라 M1-only 근거 확인용이다.
+- Final agent cards `output/agent_priority_card.csv` and `output/agent/m1_agent_priority_card.csv` have 1252 rows / 55 columns.
+- `output/agent/m1_specialist_parallel_agent_card.csv` has 1252 rows / 29 columns and is M1-only evidence, not the final hybrid ordering contract.
 - 최종 agent가 우선 읽는 active contract 컬럼은 `priority_score`, `priority_level`, `priority_source`, `priority_high_label`이다. 현재 `priority_score`는 M1 hybrid priority다.
 - M1 단독 모델 계열 컬럼은 `m1_specialist_*`로 남아 있으며, 최종 priority에 35% 반영되는 근거 branch다. risk/leadtime 대체 모델로 설명하지 않는다.
 
-## 최종 Hybrid Agent Card 55개 컬럼
+## Final Hybrid Agent Card 55 columns
 
 | 분류 | 컬럼수 | 모델/출처 | 용도 |
 |---|---:|---|---|
@@ -88,4 +88,4 @@
 - anomaly 컬럼은 정상 패턴 이탈 근거다. 단독 fault classifier로 말하지 않는다.
 - current-best risk/leadtime 컬럼은 기존 best score bridge에서 온 핵심 근거다.
 - M1 specialist 단독 컬럼은 M1-only 근거이며, 최종 agent ordering은 hybrid `priority_score`를 따른다.
-- `m1_specialist_parallel_agent_card.csv`는 1252개 M1 canonical window 전체를 보지만, 최종 hybrid card는 current-best risk/leadtime/priority score bridge와 결합 가능한 1226 rows다.
+- `m1_specialist_parallel_agent_card.csv` covers 1252 M1 windows. The final hybrid card currently has 1252 rows after joining with the current-best body.

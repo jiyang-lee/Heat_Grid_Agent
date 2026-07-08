@@ -1,8 +1,7 @@
 {
-  "engine_version": "best_priority_engine_v1",
+  "engine_version": "internal_m1_current_best_priority_engine_v1",
   "input_risk_scores_path": "output/risk_scores.csv",
   "input_leadtime_scores_path": "output/leadtime_scores.csv",
-  "input_multi_window_anomaly_scores_path": "output/multi_window_anomaly_scores.csv",
   "output_scores_path": "output/priority_scores.csv",
   "risk_level_points": {
     "critical": 38.0,
@@ -22,17 +21,8 @@
     "high": 48.0,
     "medium": 34.0
   },
-  "anomaly_component": "ensemble score excess + consensus + criticality",
-  "multi_window_anomaly_component": "adds bounded priority when 1h/3h/6h/12h anomaly signals confirm each other; 24h is excluded",
-  "raw_point_ae_component": "q999 rolling cmax plus q999_c32/union alarm bonus when raw AE features are available",
-  "risk_episode_component": "adds priority when high/watch risk repeats within the last 48 hours",
-  "multi_horizon_component": "adds priority for 24h/3d/7d persistence and rising risk trend",
-  "leadtime_component": "leadtime is intentionally down-weighted so it acts as a reference signal after leadtime v2 ablation",
-  "leadtime_ordinal_component": "adds a scaled small bonus from expected lead time and near-term probability",
-  "history_adjustment": "recent task/any-event suppression only; days_since_last_fault_event is not used because it is not present in the current primary feature source",
   "notes": [
-    "Risk is model based.",
-    "Leadtime is model based and trained only on pre_fault rows, then inferred for all scored windows.",
-    "Priority remains rule based so operations can inspect and adjust weights separately."
+    "Generated inside this package without calling the external current-best source project.",
+    "Scope is the packaged M1 canonical windows."
   ]
 }

@@ -9,6 +9,8 @@ from typing import Iterable
 from . import config
 from .best_bridge import materialize_current_best_model_artifacts
 from .common import write_json
+from .current_best_internal import regenerate_current_best_source
+from .m1_specialist_internal import regenerate_m1_specialist_source
 from .m1_specialist_gates import materialize_m1_specialist_models
 
 
@@ -193,7 +195,7 @@ def _run_command(command: list[str], cwd: Path, log_name: str, env: dict[str, st
     }
 
 
-def retrain_current_best_source() -> dict[str, object]:
+def _retrain_current_best_external() -> dict[str, object]:
     """Retrain current-best anomaly/risk/leadtime/priority in its source project.
 
     This is the full regeneration path for the baseline body that the M1
@@ -242,7 +244,26 @@ def retrain_current_best_source() -> dict[str, object]:
     return payload
 
 
-def retrain_m1_specialist_source() -> dict[str, object]:
+def retrain_current_best_source() -> dict[str, object]:
+    """Regenerate the current-best body used by the M1 package.
+
+    By default this runs fully inside the package so `full_retrain` does not
+    depend on a sibling HeatGrid_Agent/best checkout. Set
+    THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external to force the legacy source
+    project wrapper.
+    """
+    mode = os.environ.get("THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE", "internal").strip().lower()
+    if mode == "external":
+        return _retrain_current_best_external()
+    if mode not in {"internal", "local", "package"}:
+        raise ValueError(
+            "Unknown THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE="
+            f"{mode!r}. Use internal or external."
+        )
+    return regenerate_current_best_source()
+
+
+def _retrain_m1_specialist_external() -> dict[str, object]:
     """Retrain the original M1 specialist gate models, then refresh packaged artifacts."""
     config.ensure_dirs()
     root = config.THIRD_PROJECT_ROOT
@@ -278,6 +299,27 @@ def retrain_m1_specialist_source() -> dict[str, object]:
     }
     write_json(config.M1_SOURCE_RETRAIN_METADATA_PATH, payload)
     return payload
+
+
+def retrain_m1_specialist_source() -> dict[str, object]:
+    """Regenerate M1 specialist artifacts without requiring the original project after bootstrap.
+
+    Package-local mode trains the fault/task/activity/pre-event gate joblibs
+    from M1 source training inputs stored under artifacts/m1_specialist. If
+    those inputs are not present yet, one bootstrap pass copies/generates them
+    from THIRD_MODEL_3RD_PROJECT_ROOT when available. Set
+    THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external to force the legacy
+    source-project retrain.
+    """
+    mode = os.environ.get("THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE", "internal").strip().lower()
+    if mode == "external":
+        return _retrain_m1_specialist_external()
+    if mode not in {"internal", "local", "package"}:
+        raise ValueError(
+            "Unknown THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE="
+            f"{mode!r}. Use internal or external."
+        )
+    return regenerate_m1_specialist_source()
 
 
 def retrain_sources() -> dict[str, object]:

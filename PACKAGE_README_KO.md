@@ -16,8 +16,8 @@ uv run python -m unittest discover -s tests -v
 
 | 파일 | 역할 | rows | columns |
 |---|---|---:|---:|
-| `output/agent_priority_card.csv` | 최종 hybrid agent card | 1226 | 55 |
-| `output/agent/m1_agent_priority_card.csv` | 최종 hybrid card 복사본 | 1226 | 55 |
+| `output/agent_priority_card.csv` | 최종 hybrid agent card | 1252 | 55 |
+| `output/agent/m1_agent_priority_card.csv` | 최종 hybrid card 복사본 | 1252 | 55 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 단독 병렬 evidence card | 1252 | 29 |
 
 최종 agent가 우선 읽는 값은 `priority_score`, `priority_level`, `review_required`, `review_reasons`, `trust_level`, `why_reason`, `recommended_action`이다.
@@ -35,7 +35,7 @@ uv run python run_3rd_model_pipeline.py --steps full_retrain
 2. risk_model_best.joblib, leadtime_model_best.joblib, priority metadata 갱신
 3. M1 canonical windows와 current-best score 연결
 4. M1 anomaly, merge, agent card 생성
-5. M1 specialist source에서 fault/task/activity/pre-event gate joblib 재학습
+5. 현재 저장소의 M1 training inputs에서 fault/task/activity/pre-event gate joblib 재학습
 6. M1 specialist 모델 산출물 갱신
 7. 최종 hybrid priority와 validation 산출
 ```
@@ -75,5 +75,13 @@ $env:THIRD_MODEL_PREDIST_ZIP_PATH="D:\...\predist_dataset.zip"
 
 - 현재 검증은 M1 전용이다.
 - M1 specialist parallel card는 최종 ordering contract가 아니라 evidence 확인용이다.
-- final card 1226개와 canonical 1252개의 차이는 coverage 보고서에서 설명한다.
+- 내부 `full_retrain` 기준 final card는 canonical 1252개 전체를 보존한다.
 - `0.65 / 0.35` hybrid는 운영 선택점이지 모든 metric의 절대 최적값이 아니다.
+# 2026-07-08 Internal Full Retrain Update
+
+- `uv run python run_3rd_model_pipeline.py --steps full_retrain` is now self-contained by default.
+- Current-best risk/leadtime/priority outputs are regenerated from the packaged M1 windows inside this repository.
+- M1 specialist fault/task/activity/pre-event gate joblibs are regenerated from package-local training inputs under `artifacts/m1_specialist/training_inputs/`.
+- The first internal M1 retrain can bootstrap those inputs from `THIRD_MODEL_3RD_PROJECT_ROOT`; after the inputs exist, the external source path is no longer required.
+- The final hybrid agent card now keeps the full 1252-row M1 canonical coverage when using internal full retrain.
+- Use `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external` and `THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external` only when you explicitly want the legacy sibling-project wrappers.

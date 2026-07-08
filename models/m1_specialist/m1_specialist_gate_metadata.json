@@ -34,5 +34,5 @@
   "parallel_agent_card_path": "output/agent/m1_specialist_parallel_agent_card.csv",
   "python_executable": ".venv/Scripts/python.exe",
   "sklearn_version": "1.9.0",
-  "runtime_policy_source": "m1_full_gate_runtime_policy_joblib_v1"
+  "runtime_policy_source": "m1_full_gate_runtime_policy_joblib_v1_internal"
 }
