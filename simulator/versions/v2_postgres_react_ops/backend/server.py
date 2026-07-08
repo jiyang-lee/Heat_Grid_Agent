@@ -1,12 +1,11 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Literal
 
 import orjson
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
 from langchain_core.tools import BaseTool, tool
@@ -14,6 +13,8 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import ValidationError
 
+from agent_run_repository import ensure_agent_run_tables
+from agent_run_routes import make_agent_run_router
 from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
 from repository import (
@@ -23,13 +24,17 @@ from repository import (
     list_cards,
     make_engine,
 )
-from schemas import CardSummary, JsonValue, OpsAgentOutput, SimulationResponse, TokenCall, TokenUsage
+from schemas import (
+    ApiMetadata,
+    CardSummary,
+    JsonValue,
+    OpsAgentOutput,
+    SimulationResponse,
+    TokenCall,
+    TokenUsage,
+)
 from settings import SYSTEM_PROMPT, Settings
 from usage import usage_with_totals
-
-ROOT_DIR = Path(__file__).resolve().parent
-FRONTEND_DIR = ROOT_DIR.parent / "frontend"
-
 
 settings = Settings()
 engine = make_engine(settings.database_url)
@@ -38,21 +43,23 @@ engine = make_engine(settings.database_url)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await ensure_alert_queue(engine)
+    await ensure_agent_run_tables(engine)
     yield
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
 app.include_router(make_alert_router(engine))
+app.include_router(make_alert_router(engine, prefix="/api"))
 
 
 @app.get("/", include_in_schema=False)
-async def index() -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "index.html")
-
-
-@app.get("/static/{path:path}", include_in_schema=False)
-async def static_file(path: str) -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "static" / path)
+async def index() -> ApiMetadata:
+    return ApiMetadata(
+        service="HeatGrid V2 API",
+        health="/health",
+        docs="/docs",
+        apis=["/api/alerts", "/api/agent-runs"],
+    )
 
 
 @app.get("/health")
@@ -275,6 +282,9 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
 
 def to_json(payload: JsonValue) -> str:
     return orjson.dumps(payload).decode("utf-8")
+
+
+app.include_router(make_agent_run_router(engine, simulate))
 
 
 if __name__ == "__main__":

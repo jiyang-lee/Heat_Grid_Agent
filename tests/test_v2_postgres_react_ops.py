@@ -17,6 +17,7 @@ SERVER_PATH: Final = BACKEND_DIR / "server.py"
 
 def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.chdir(BACKEND_DIR)
     monkeypatch.syspath_prepend(str(BACKEND_DIR))
     spec = importlib.util.spec_from_file_location("v2_postgres_react_ops_server", SERVER_PATH)
     if spec is None or spec.loader is None:
@@ -24,6 +25,13 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+async def reset_contract_tables(module: ModuleType) -> None:
+    async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
 
 
 @pytest.mark.anyio
@@ -45,7 +53,7 @@ async def test_v2_postgres_tools_return_ops_evidence_only(
 
 
 @pytest.mark.anyio
-async def test_v2_postgres_api_returns_fallback_output(
+async def test_api_server_exposes_health_and_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
@@ -54,43 +62,47 @@ async def test_v2_postgres_api_returns_fallback_output(
         transport=ASGITransport(app=module.app),
         base_url="http://test",
     ) as client:
+        root = await client.get("/")
         health = await client.get("/health")
-        cards = await client.get("/cards")
-        card_id = cards.json()[0]["card_id"]
-        response = await client.post(f"/simulate/{card_id}")
-        stream = await client.get(f"/simulate-stream/{card_id}")
+        openapi = await client.get("/openapi.json")
 
+    assert root.status_code == 200
+    assert root.json()["service"] == "HeatGrid V2 API"
+    assert root.json()["health"] == "/health"
+    assert root.json()["docs"] == "/docs"
+    assert "/api/alerts" in root.json()["apis"]
     assert health.status_code == 200
     assert health.json()["input"] == "postgresql"
-    assert cards.status_code == 200
-    assert response.status_code == 200
-    assert response.json()["input_source"] == "postgresql"
-    assert stream.status_code == 200
-    assert "PostgreSQL priority_card 조회 완료" in stream.text
-    assert "get_external_context" not in stream.text
+    assert health.json()["database"] in {"connected", "unavailable"}
+    assert openapi.status_code == 200
+    assert "/api/alerts" in openapi.json()["paths"]
+    assert "/api/agent-runs" in openapi.json()["paths"]
 
 
 @pytest.mark.anyio
-async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
+async def test_api_alerts_enqueue_list_ack_and_resolve(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
-    async with module.engine.begin() as connection:
-        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await reset_contract_tables(module)
 
     async with AsyncClient(
         transport=ASGITransport(app=module.app),
         base_url="http://test",
     ) as client:
-        enqueue = await client.post("/alerts/enqueue")
-        duplicate_enqueue = await client.post("/alerts/enqueue")
-        open_alerts = await client.get("/alerts", params={"status": "open"})
+        enqueue = await client.post("/api/alerts/enqueue")
+        duplicate_enqueue = await client.post("/api/alerts/enqueue")
+        open_alerts = await client.get("/api/alerts", params={"status": "open"})
         first_alert = open_alerts.json()[0]
+        detail = await client.get(f"/api/alerts/{first_alert['alert_id']}")
         ack = await client.post(
-            f"/alerts/{first_alert['alert_id']}/ack",
+            f"/api/alerts/{first_alert['alert_id']}/ack",
             json={"acked_by": "pytest"},
         )
-        acked_alerts = await client.get("/alerts", params={"status": "acked"})
+        resolved = await client.post(
+            f"/api/alerts/{first_alert['alert_id']}/resolve",
+            json={"acked_by": "pytest"},
+        )
 
     assert enqueue.status_code == 200
     assert enqueue.json()["queued_count"] > 0
@@ -99,52 +111,114 @@ async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
     assert duplicate_enqueue.json()["queued_count"] == 0
     assert duplicate_enqueue.json()["existing_count"] == enqueue.json()["queued_count"]
     assert open_alerts.status_code == 200
-    assert first_alert["card_id"]
     assert first_alert["priority_level"] in {"urgent", "high"}
+    assert detail.status_code == 200
+    assert detail.json()["alert_id"] == first_alert["alert_id"]
     assert ack.status_code == 200
     assert ack.json()["status"] == "acked"
     assert ack.json()["acked_by"] == "pytest"
-    assert acked_alerts.status_code == 200
-    assert any(item["alert_id"] == first_alert["alert_id"] for item in acked_alerts.json())
+    assert resolved.status_code == 200
+    assert resolved.json()["status"] == "resolved"
 
 
 @pytest.mark.anyio
-async def test_v2_postgres_fixed_ops_scenario_runs_from_enqueue_to_ack(
+async def test_api_agent_run_creates_completed_run_from_alert(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
-    async with module.engine.begin() as connection:
-        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await reset_contract_tables(module)
 
     async with AsyncClient(
         transport=ASGITransport(app=module.app),
         base_url="http://test",
     ) as client:
-        initial_enqueue = await client.post("/alerts/enqueue")
-        api_enqueue = await client.post("/alerts/enqueue")
-        urgent_alerts = await client.get(
-            "/alerts",
-            params={"status": "open", "priority_level": "urgent"},
+        enqueue = await client.post("/api/alerts/enqueue")
+        alerts = await client.get("/api/alerts", params={"status": "open"})
+        alert = alerts.json()[0]
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
         )
-        urgent_alert = urgent_alerts.json()[0]
-        simulation = await client.post(f"/alerts/{urgent_alert['alert_id']}/simulate")
-        ack = await client.post(
-            f"/alerts/{urgent_alert['alert_id']}/ack",
-            json={"acked_by": "fixed-scenario"},
+        run_id = created.json()["run_id"]
+        fetched = await client.get(f"/api/agent-runs/{run_id}")
+        artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
+        events = await client.get(f"/api/agent-runs/{run_id}/events")
+
+    assert enqueue.status_code == 200
+    assert created.status_code == 200
+    assert created.json()["status"] == "completed"
+    assert created.json()["alert_id"] == alert["alert_id"]
+    assert created.json()["card_id"] == alert["card_id"]
+    assert created.json()["agent_mode"] == "fallback"
+    assert created.json()["ops_output"]["summary"]
+    assert fetched.status_code == 200
+    assert fetched.json() == created.json()
+    assert artifacts.status_code == 200
+    assert artifacts.json() == []
+    assert events.status_code == 200
+    assert '"type":"run_started"' in events.text
+    assert '"type":"run_completed"' in events.text
+
+
+@pytest.mark.anyio
+async def test_api_dashboard_contract_runs_from_alert_feed_to_agent_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        enqueue = await client.post("/api/alerts/enqueue")
+        alert_feed = await client.get("/api/alerts", params={"status": "open"})
+        alert = alert_feed.json()[0]
+        alert_detail = await client.get(f"/api/alerts/{alert['alert_id']}")
+        alert_events = await client.get("/api/alerts/events")
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        run_id = created.json()["run_id"]
+        run_events = await client.get(f"/api/agent-runs/{run_id}/events")
+        artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
+        resolved = await client.post(
+            f"/api/alerts/{alert['alert_id']}/resolve",
+            json={"acked_by": "dashboard-test"},
         )
 
-    assert initial_enqueue.status_code == 200
-    assert initial_enqueue.json()["queued_count"] > 0
-    assert api_enqueue.status_code == 200
-    assert api_enqueue.json()["queued_count"] == 0
-    assert api_enqueue.json()["existing_count"] == initial_enqueue.json()["queued_count"]
-    assert urgent_alerts.status_code == 200
-    assert urgent_alert["priority_level"] == "urgent"
-    assert simulation.status_code == 200
-    assert simulation.json()["card_id"] == urgent_alert["card_id"]
-    assert simulation.json()["agent_mode"] == "fallback"
-    assert simulation.json()["ops_output"]["summary"]
-    assert ack.status_code == 200
-    assert ack.json()["alert_id"] == urgent_alert["alert_id"]
-    assert ack.json()["status"] == "acked"
-    assert ack.json()["acked_by"] == "fixed-scenario"
+    assert enqueue.status_code == 200
+    assert alert_feed.status_code == 200
+    assert alert["status"] == "open"
+    assert alert_detail.status_code == 200
+    assert alert_detail.json()["alert_id"] == alert["alert_id"]
+    assert alert_events.status_code == 200
+    assert '"type":"alerts_snapshot"' in alert_events.text
+    assert created.status_code == 200
+    assert created.json()["alert_id"] == alert["alert_id"]
+    assert created.json()["status"] == "completed"
+    assert run_events.status_code == 200
+    assert '"type":"run_completed"' in run_events.text
+    assert artifacts.status_code == 200
+    assert resolved.status_code == 200
+    assert resolved.json()["status"] == "resolved"
+
+
+@pytest.mark.anyio
+async def test_api_agent_run_rejects_missing_alert_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": "00000000-0000-0000-0000-000000000000"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "alert_id를 찾을 수 없습니다."

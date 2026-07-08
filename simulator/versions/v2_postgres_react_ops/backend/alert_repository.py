@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
     card_id uuid NOT NULL UNIQUE REFERENCES priority_cards(card_id) ON DELETE CASCADE,
     priority_level text NOT NULL CHECK (priority_level IN ('urgent', 'high')),
     priority_score double precision,
-    status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acked')),
+    status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acked', 'resolved')),
     enqueue_reason text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     acked_at timestamptz,
@@ -28,6 +28,17 @@ ALERT_QUEUE_TYPE_MIGRATION: Final = """
 ALTER TABLE ops_alert_queue
 ALTER COLUMN priority_score TYPE double precision
 USING priority_score::double precision
+"""
+
+ALERT_QUEUE_STATUS_MIGRATION: Final = """
+ALTER TABLE ops_alert_queue
+DROP CONSTRAINT IF EXISTS ops_alert_queue_status_check
+"""
+
+ALERT_QUEUE_STATUS_CHECK: Final = """
+ALTER TABLE ops_alert_queue
+ADD CONSTRAINT ops_alert_queue_status_check
+CHECK (status IN ('open', 'acked', 'resolved'))
 """
 
 ENQUEUE_ALERTS_SQL: Final = """
@@ -71,6 +82,8 @@ async def ensure_alert_queue(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(text(ALERT_QUEUE_DDL))
         await connection.execute(text(ALERT_QUEUE_TYPE_MIGRATION))
+        await connection.execute(text(ALERT_QUEUE_STATUS_MIGRATION))
+        await connection.execute(text(ALERT_QUEUE_STATUS_CHECK))
 
 
 async def enqueue_priority_alerts(engine: AsyncEngine) -> dict[str, JsonValue]:
@@ -126,6 +139,28 @@ async def ack_alert(
     query = text(
         "UPDATE ops_alert_queue "
         "SET status = 'acked', acked_at = now(), acked_by = :acked_by "
+        "WHERE alert_id = :alert_id "
+        "RETURNING alert_id, card_id, priority_level, priority_score, status, "
+        "enqueue_reason, created_at, acked_at, acked_by"
+    )
+    async with engine.begin() as connection:
+        result = await connection.execute(
+            query,
+            {"alert_id": alert_id, "acked_by": acked_by},
+        )
+        row = result.mappings().one_or_none()
+    return None if row is None else _alert_from_row(row)
+
+
+async def resolve_alert(
+    engine: AsyncEngine,
+    alert_id: str,
+    acked_by: str,
+) -> dict[str, JsonValue] | None:
+    await ensure_alert_queue(engine)
+    query = text(
+        "UPDATE ops_alert_queue "
+        "SET status = 'resolved', acked_at = now(), acked_by = :acked_by "
         "WHERE alert_id = :alert_id "
         "RETURNING alert_id, card_id, priority_level, priority_score, status, "
         "enqueue_reason, created_at, acked_at, acked_by"
