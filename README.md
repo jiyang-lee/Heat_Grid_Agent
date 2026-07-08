@@ -1,53 +1,65 @@
-# HeatGrid M1 Specialist 모델 저장소
+# HeatGrid 운영 보조 에이전트 저장소
 
-`agent/mlmodel` 브랜치는 `manufacturer 1` 기준 HeatGrid 모델 산출물을 재현하고, 최종 agent card까지 생성하는 실행 저장소다.
+이 저장소는 지역난방 HeatGrid 데이터를 바탕으로 고장 위험을 예측하고, 운영자가 알림을 눌렀을 때 LLM 에이전트가 근거와 조치 초안을 만들 수 있도록 준비한 작업 공간이다.
 
-이 저장소는 두 가지 용도로 정리되어 있다.
+현재 저장소는 네 가지 축으로 나뉜다.
 
-| 목적 | 실행 방식 | 설명 |
-|---|---|---|
-| 전달본 재현 | `--steps all` | GitHub에서 받은 상태 그대로 최종 card를 다시 생성 |
-| 원천 재학습 | `--steps full_retrain` | current-best와 M1 specialist를 현재 저장소 입력으로 다시 학습한 뒤 산출물 갱신 |
+| 영역 | 역할 |
+|---|---|
+| 모델 파이프라인 | M1 기준 risk, leadtime, priority score와 agent card를 재현한다. |
+| 운영 API 서버 | PostgreSQL에 적재된 예측 알림을 `/api/*` 계약으로 제공하고 agent run을 시작한다. |
+| 프론트 프로토타입 | 운영 대시보드 화면과 지도/설비 데이터를 실험한다. |
+| 문서와 인계 자료 | 모델 범위, 실행 근거, API 계약, 프론트/백엔드 역할 분리를 남긴다. |
 
-## Quick Start
+## 전체 흐름
 
-```powershell
-uv sync
-uv run python --version
-uv run third-model-pipeline --steps all
-uv run python -m unittest discover -s tests -v
+```text
+실시간 센서 데이터
+-> DB 적재
+-> 예측 모델 실행
+-> 예측 결과 DB 적재
+-> alert/card 생성
+-> 운영 대시보드 표시
+-> 운영자가 알림 선택
+-> agent run 생성
+-> LangGraph/RAG/SQL evidence/artifact 생성으로 확장
 ```
 
-기준 Python은 `.python-version`의 `3.12`다. `uv run python --version` 결과가 3.12 계열이면 된다.
+지금 본류 기준은 `develop2`다. 데모성 브랜치에서 만들었던 HTML bridge 주입 구조는 본류에 넣지 않고, 백엔드는 API-only 서버로 정리했다. 프론트는 React, Vue, Svelte, Vanilla 등 스택을 나중에 선택해도 되도록 `/api/*` 계약만 맞추면 된다.
 
 ## 저장소 구조
 
-| 폴더 | 역할 |
+| 경로 | 내용 |
 |---|---|
-| `simulator/` | PostgreSQL 기반 운영 보조 API 서버와 시뮬레이션 |
-| `frontend/` | 프론트 프로토타입과 세종 1생활권 지도 데이터 |
-| `scripts/` | DB 적재, notebook 생성, 파이프라인 보조 스크립트 |
-| `src/` | 모델 파이프라인 패키지 코드 |
-| `data/` | 처리 데이터 |
-| `models/` | 학습된 모델 산출물 |
-| `artifacts/` | 모델 메타데이터와 실험 산출물 |
-| `output/` | 최종 card, score, report 산출물 |
-| `docs/` | 모델, 운영, API 문서 |
-| `docs/handoff/` | 인계 문서 |
-| `docs/model/` | 모델 범위와 인벤토리 문서 |
-| `docs/package/` | 패키지 사용 및 구성 문서 |
-| `docs/report/` | 의사결정, 검증, 계약 보고서 |
-| `tests/` | 재현성, API, DB 계약 테스트 |
+| `simulator/` | 운영 시뮬레이션과 PostgreSQL 기반 API 서버. 현재 백엔드는 API-only로 사용한다. |
+| `simulator/versions/v2_postgres_react_ops/backend/` | 알림 큐, agent run, health check, API route 구현. |
+| `frontend/` | 프론트 프로토타입과 세종 1생활권 지도 데이터. 최종 프론트 스택은 아직 고정하지 않았다. |
+| `scripts/` | DB bootstrap, 데이터 적재, 파이프라인 보조 스크립트. |
+| `src/third_model/` | M1 모델 파이프라인 패키지 코드. |
+| `data/` | 처리 데이터. |
+| `models/` | 학습된 모델 산출물. |
+| `artifacts/` | 모델 메타데이터, gate 입력, 실험 산출물. |
+| `output/` | agent card, score, report 등 최종 산출물. |
+| `compare/` | 모델 비교와 threshold/weight 근거 notebook. |
+| `notebooks/` | 분석 notebook. |
+| `docs/` | 모델, 운영, API, 검증 문서. |
+| `docs/handoff/` | 인계 문서. |
+| `docs/model/` | 모델 범위와 모델 인벤토리. |
+| `docs/package/` | 패키지 사용과 구성 문서. |
+| `docs/report/` | 의사결정, 검증, 프론트/백엔드 계약 보고서. |
+| `tests/` | 모델 재현성, DB bootstrap, API 계약 테스트. |
 
-## 최종 산출물
+## 주요 산출물
 
-| 파일 | 역할 | rows | columns |
-|---|---|---:|---:|
-| `output/agent_priority_card.csv` | agent/API/UI가 우선 읽는 공식 card | 1252 | 55 |
-| `output/agent/m1_agent_priority_card.csv` | 공식 card 복사본 | 1252 | 55 |
-| `output/agent/m1_specialist_parallel_agent_card.csv` | M1 specialist 단독 병렬 evidence card | 1252 | 29 |
+| 파일 | 의미 |
+|---|---|
+| `output/agent_priority_card.csv` | 운영 API와 UI가 우선 참조하는 공식 agent card. |
+| `output/agent/m1_agent_priority_card.csv` | 공식 card 복사본. |
+| `output/agent/m1_specialist_parallel_agent_card.csv` | M1 specialist 단독 병렬 evidence card. |
+| `output/reports/final_validation_report.md` | 최종 검증 요약. |
+| `compare/m1_threshold_weight_rationale_report.ipynb` | threshold, weight, hybrid 선택 근거. |
 
-공식 `priority_score`는 M1 hybrid priority다.
+공식 `priority_score`는 current-best baseline과 M1 specialist 신호를 섞은 운영 우선순위다.
 
 ```text
 priority_score
@@ -55,100 +67,50 @@ priority_score
 + 0.35 * m1_specialist_priority_score
 ```
 
-`0.65 / 0.35`는 모든 metric의 절대 최적값이 아니라, current-best baseline 유지와 M1 specialist 반영률을 같이 본 운영 선택점이다. 비교 근거는 `compare/m1_threshold_weight_rationale_report.ipynb`와 `output/reports/hybrid_selected_weight_comparison.csv`에 있다.
+이 값은 자동 정비 지시가 아니라, 운영자가 어떤 알림을 먼저 살펴볼지 정하는 ranking 신호다.
 
-## 실행 모드
+## API와 프론트 계약
 
-### 1. 저장소 단독 재현
+운영 대시보드는 먼저 예측 알림 목록을 보여주고, 운영자가 알림 카드를 누르면 agent run을 시작한다.
 
-```powershell
-uv run third-model-pipeline --steps all
-```
+| 목적 | API |
+|---|---|
+| 알림 목록과 상세 | `GET /api/alerts`, `GET /api/alerts/{alert_id}` |
+| 알림 상태 변경 | `POST /api/alerts/{alert_id}/ack`, `POST /api/alerts/{alert_id}/resolve` |
+| 알림 이벤트 스트림 | `GET /api/alerts/events` |
+| 에이전트 실행 시작 | `POST /api/agent-runs` |
+| 에이전트 실행 조회 | `GET /api/agent-runs/{run_id}` |
+| 에이전트 이벤트와 산출물 | `GET /api/agent-runs/{run_id}/events`, `GET /api/agent-runs/{run_id}/artifacts` |
 
-source 프로젝트가 없어도 저장소 내부 보존 산출물을 사용해 최종 card를 재생성한다.
-
-```text
-raw -> windows -> model_artifacts -> anomaly -> best_scores -> merge
--> agent_card -> m1_specialist_gates -> m1_specialist -> validation
-```
-
-### 2. 원천 재학습 포함 전체 재생성
-
-```powershell
-uv run third-model-pipeline --steps full_retrain
-```
-
-원천 프로젝트가 같은 상위 폴더에 있거나 환경변수로 지정되어 있어야 한다.
-
-```text
-raw -> windows -> model_artifacts -> anomaly -> retrain_current_best -> merge -> agent_card
--> retrain_m1_specialist
--> m1_specialist_gates -> m1_specialist -> validation
-```
-
-개별 재학습도 가능하다.
-
-```powershell
-uv run third-model-pipeline --steps retrain_current_best
-uv run third-model-pipeline --steps retrain_m1_specialist
-```
-
-## Source 탐색
-
-코드는 외부 절대경로를 고정하지 않는다. 환경변수가 있으면 우선 사용하고, 없으면 저장소와 같은 상위 폴더를 자동 탐색한다.
-
-| 변수 | 역할 | 기본 탐색 후보 |
-|---|---|---|
-| `THIRD_MODEL_SOURCE_BEST_ROOT` | current-best source root | `../HeatGrid_Agent/best` |
-| `THIRD_MODEL_CURRENT_BEST_PYTHON` | current-best source 재학습 Python | `../HeatGrid_Agent/.venv/Scripts/python.exe` |
-| `THIRD_MODEL_3RD_PROJECT_ROOT` | M1 specialist training-input bootstrap/external source root | `../3rd_project_for_ML-main/3rd_project_for_ML-main` |
-| `THIRD_MODEL_M1_SPECIALIST_PYTHON` | legacy external M1 specialist 재학습 Python | 현재 uv Python |
-| `THIRD_MODEL_PREDIST_ZIP_PATH` | 첫 M1 training-input bootstrap용 PreDist zip | `../HeatGrid_Agent/data/_downloads/predist_dataset.zip` |
-
-M1 source 재학습은 source 폴더 안 `05_데이터셋/PreDist/predist_dataset.zip`을 요구한다. 없으면 위 zip 후보를 찾아 source 폴더로 복사한다.
+프론트/백엔드 역할과 앞으로의 작업 범위는 `docs/report/01_frontend_backend_contract_status_ko.md`에 정리되어 있다.
 
 ## 문서 지도
 
-| 먼저 볼 파일 | 역할 |
+| 문서 | 내용 |
 |---|---|
-| `docs/README.md` | 전체 문서 지도와 읽는 순서 |
-| `docs/package/PACKAGE_README_KO.md` | 저장소 사용 안내 |
-| `docs/handoff/HANDOFF.md` | 짧은 인계 요약 |
-| `docs/handoff/M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 중심 인계 |
-| `docs/model/MODEL_INVENTORY_KO.md` | 모델 파일, score, 재학습 책임 정리 |
-| `docs/package/PACKAGE_MANIFEST.md` | 포함 파일 전체 목록 |
-| `docs/05_RUNBOOK.md` | 실행/검증 명령 |
-| `docs/07_HANDOFF_FILE_INDEX.md` | 받는 사람이 볼 파일 색인 |
+| `docs/README.md` | 전체 문서 목록과 읽는 순서. |
+| `docs/report/01_frontend_backend_contract_status_ko.md` | 프론트/백엔드 계약, 현재 상태, 다음 작업. |
+| `docs/05_RUNBOOK.md` | 실제 실행과 검증 명령. |
+| `docs/package/PACKAGE_README_KO.md` | 패키지 사용 안내. |
+| `docs/handoff/HANDOFF.md` | 짧은 인계 요약. |
+| `docs/handoff/M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 중심 인계. |
+| `docs/model/MODEL_INVENTORY_KO.md` | 모델 파일, score, 재학습 책임. |
+| `docs/08_MODEL_REPORT_DEFENSE_AUDIT.md` | 보고서 방어 체크리스트. |
 
-## 보고/발표 자료
+## 개발 브랜치 흐름
 
-| 파일 | 내용 |
+| 브랜치 | 용도 |
 |---|---|
-| `compare/m1_specialist_performance_comparison.ipynb` | 최종본 도출 과정과 모델 후보 비교 |
-| `compare/m1_threshold_weight_rationale_report.ipynb` | threshold, weight, hybrid 선택 근거 |
-| `output/reports/final_validation_report.md` | 최종 검증 요약 |
-| `docs/08_MODEL_REPORT_DEFENSE_AUDIT.md` | 보고서 방어 체크리스트 |
+| `develop2` | 본류 개발 기준. |
+| `backend/v3_langgraph_agent_runner` | LangGraph, RAG, SQL evidence tool, artifact generation 확장 작업. |
+| `frontend/v3_ops_dashboard` | 운영 대시보드 프론트 작업. 스택은 프론트 담당자가 선택한다. |
+| `example/HG_f_b_1` | 필요할 때만 시연용으로 갱신하는 데모 브랜치. |
 
-## 핵심 해석 제한
+## 해석 제한
 
 - 현재 검증 범위는 M1이다. M2나 전체 제조사 성능으로 일반화하지 않는다.
-- 내부 `full_retrain` 기준 최종 card는 M1 canonical window 1252개 전체를 보존한다. 예전 보존 score bridge의 partial coverage 해석은 legacy 비교 맥락에서만 사용한다.
 - anomaly는 정상 분포 이탈 evidence다. 단독 fault classifier로 설명하지 않는다.
 - leadtime은 정확한 고장 시각 예측값이 아니라 priority 참고 신호다.
 - priority는 점검 우선순위 ranking 신호이며 자동 정비 지시가 아니다.
 
-## 공개 전 확인
-
-```powershell
-uv run python -m unittest discover -s tests -v
-uv run third-model-pipeline --steps all
-git status --short
-```
-# 2026-07-08 Internal Full Retrain Update
-
-- `--steps full_retrain` now runs inside this repository by default. It no longer requires sibling source folders for the current-best risk/leadtime/priority body.
-- Internal `full_retrain` order is `raw -> windows -> model_artifacts -> anomaly -> retrain_current_best -> merge -> agent_card -> retrain_m1_specialist -> m1_specialist_gates -> m1_specialist -> validation`.
-- Internal current-best regeneration writes `output/risk_scores.csv`, `output/leadtime_scores.csv`, and `output/priority_scores.csv` for all 1252 M1 canonical windows.
-- M1 specialist internal mode now trains the fault/task/activity/pre-event gate joblibs from package-local inputs under `artifacts/m1_specialist/training_inputs/`.
-- If those M1 training inputs are missing, the first internal retrain can bootstrap them from `THIRD_MODEL_3RD_PROJECT_ROOT`; after that, retrain works with that external path unavailable.
-- To force the old external wrappers, set `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external` and/or `THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external`.
+실행 명령이 필요하면 `docs/05_RUNBOOK.md`를 기준으로 본다. 루트 README는 저장소의 역할과 구성을 빠르게 파악하기 위한 문서다.
