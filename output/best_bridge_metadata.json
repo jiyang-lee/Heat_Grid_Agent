@@ -1,0 +1,18 @@
+{
+  "source": "../HeatGrid_Agent/best",
+  "source_best_available": true,
+  "source_mode": "local",
+  "score_sources": {
+    "risk_scores": "output/risk_scores.csv",
+    "leadtime_scores": "output/leadtime_scores.csv",
+    "priority_scores": "output/priority_scores.csv"
+  },
+  "scope": "m1_specialist",
+  "manufacturer_filter": "manufacturer 1",
+  "copied": {
+    "risk_scores": true,
+    "leadtime_scores": true,
+    "priority_scores": true
+  },
+  "role": "M1-only subset of current best risk/leadtime/priority output; used as baseline body for M1 specialist comparison"
+}

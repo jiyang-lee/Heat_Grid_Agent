@@ -1,0 +1,28 @@
+{
+  "engine_version": "internal_m1_current_best_priority_engine_v1",
+  "input_risk_scores_path": "output/risk_scores.csv",
+  "input_leadtime_scores_path": "output/leadtime_scores.csv",
+  "output_scores_path": "output/priority_scores.csv",
+  "risk_level_points": {
+    "critical": 38.0,
+    "high": 28.0,
+    "medium": 15.0,
+    "low": 4.0
+  },
+  "leadtime_bucket_points": {
+    "0-24h": 18.0,
+    "1-3d": 10.0,
+    "3-7d": 4.0
+  },
+  "leadtime_component_scale": 0.75,
+  "leadtime_ordinal_component_scale": 0.75,
+  "priority_level_thresholds": {
+    "urgent": 70.0,
+    "high": 48.0,
+    "medium": 34.0
+  },
+  "notes": [
+    "Generated inside this package without calling the external current-best source project.",
+    "Scope is the packaged M1 canonical windows."
+  ]
+}

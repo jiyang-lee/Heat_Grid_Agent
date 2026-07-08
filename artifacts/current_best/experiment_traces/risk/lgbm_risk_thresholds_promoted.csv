@@ -1,0 +1,4 @@
+﻿level,threshold,note
+medium,0.22,promoted operating threshold
+high,0.44,promoted operating threshold
+critical,0.9,promoted operating threshold

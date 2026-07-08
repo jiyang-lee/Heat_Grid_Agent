@@ -1,0 +1,39 @@
+{
+  "model_version": "lgbm_leadtime_bucket_v1_3bucket",
+  "primary_split_column": "split_event_regime_based",
+  "labels": [
+    "0-24h",
+    "1-3d",
+    "3-7d"
+  ],
+  "feature_count": 191,
+  "metrics": [
+    {
+      "split": "train",
+      "row_count": 407,
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "weighted_f1": 1.0,
+      "top2_accuracy": 1.0,
+      "bucket_distance_mae": 0.0
+    },
+    {
+      "split": "validation",
+      "row_count": 143,
+      "accuracy": 0.4755244755244755,
+      "macro_f1": 0.34795882583493204,
+      "weighted_f1": 0.43188904665481187,
+      "top2_accuracy": 0.7902097902097902,
+      "bucket_distance_mae": 0.6503496503496503
+    },
+    {
+      "split": "holdout",
+      "row_count": 86,
+      "accuracy": 0.6162790697674418,
+      "macro_f1": 0.4118150684931507,
+      "weighted_f1": 0.6067218859509397,
+      "top2_accuracy": 0.9651162790697675,
+      "bucket_distance_mae": 0.4186046511627907
+    }
+  ]
+}

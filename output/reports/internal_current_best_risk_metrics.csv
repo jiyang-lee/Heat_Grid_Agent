@@ -1,0 +1,4 @@
+﻿method,split,row_count,normal_count,pre_fault_count,precision,recall,f1,false_positive_rate,roc_auc,average_precision
+internal_m1_risk,train,896,667,229,1,1,1,0,1,1
+internal_m1_risk,validation,204,178,26,0.134146341463,0.423076923077,0.203703703704,0.398876404494,0.579515989628,0.241603120345
+internal_m1_risk,holdout,152,86,66,0.346666666667,0.393939393939,0.368794326241,0.56976744186,0.342847075405,0.336451038286

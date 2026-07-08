@@ -1,0 +1,39 @@
+command: ../HeatGrid_Agent/.venv/Scripts/python.exe run_best_pipeline.py --steps anomaly multi_window_anomaly risk leadtime priority report ops_eval
+cwd: ../HeatGrid_Agent/best
+
+
+=== running anomaly ===
+../HeatGrid_Agent/best\output\anomaly_scores.csv
+../HeatGrid_Agent/best\output\anomaly_metrics.csv
+
+=== running multi_window_anomaly ===
+multi-window anomaly: scoring trailing 1h raw window
+multi-window anomaly: scoring trailing 3h raw window
+multi-window anomaly: scoring trailing 12h raw window
+../HeatGrid_Agent/best\output\multi_window_anomaly_scores.csv
+../HeatGrid_Agent/best\output\multi_window_anomaly_metrics.csv
+
+=== running risk ===
+../HeatGrid_Agent/best\output\risk_scores.csv
+../HeatGrid_Agent/best\output\risk_metrics.csv
+../HeatGrid_Agent/best\models\risk\risk_model_best.joblib
+
+=== running leadtime ===
+../HeatGrid_Agent/best\output\leadtime_scores.csv
+../HeatGrid_Agent/best\output\leadtime_metrics.csv
+../HeatGrid_Agent/best\models\leadtime\leadtime_model_best.joblib
+
+=== running priority ===
+../HeatGrid_Agent/best\output\priority_scores.csv
+../HeatGrid_Agent/best\models\priority\priority_engine_best_metadata.json
+
+=== running report ===
+../HeatGrid_Agent/best\output\best_pipeline_comparison.csv
+../HeatGrid_Agent/best\output\best_pipeline_comparison.md
+
+=== running ops_eval ===
+../HeatGrid_Agent/best\output\operational_policy_comparison.csv
+../HeatGrid_Agent/best\output\priority_ranking_comparison.csv
+../HeatGrid_Agent/best\output\substation_priority_ranking.csv
+../HeatGrid_Agent/best\output\substation_priority_ranking_comparison.csv
+../HeatGrid_Agent/best\output\operational_evaluation_report.md

@@ -1,0 +1,20 @@
+{
+  "source": "../HeatGrid_Agent/best/data/processed/ml_features/trainable_windows.csv",
+  "scope": "m1_specialist",
+  "manufacturer_filter": "manufacturer 1",
+  "source_row_count": 2526,
+  "row_count": 1252,
+  "column_count": 232,
+  "feature_count": 145,
+  "label_counts": {
+    "normal": 931,
+    "pre_fault": 321
+  },
+  "split_counts": {
+    "train": 900,
+    "holdout": 183,
+    "validation": 169
+  },
+  "fault_event_count": 32,
+  "note": "M1-only canonical windows. Feature columns and imputation values are recomputed from M1 train rows."
+}

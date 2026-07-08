@@ -1,0 +1,6 @@
+﻿window_length_hours,row_count,feature_count,mahalanobis_threshold,iforest_threshold,note
+1,15155,101,440.3143947532374,0.5511554612620119,Raw-data sanity experiment. Labels are inherited from the current 6h trainable window containing each generated window midpoint.
+3,5052,101,333.03161109221594,0.5436838575871908,Raw-data sanity experiment. Labels are inherited from the current 6h trainable window containing each generated window midpoint.
+6,2526,101,261.23012741403727,0.5529449529311986,Raw-data sanity experiment. Labels are inherited from the current 6h trainable window containing each generated window midpoint.
+12,1253,100,214.81977720638685,0.5457487421947226,Raw-data sanity experiment. Labels are inherited from the current 6h trainable window containing each generated window midpoint.
+24,634,98,146.9156768982338,0.5428169208869686,Raw-data sanity experiment. Labels are inherited from the current 6h trainable window containing each generated window midpoint.

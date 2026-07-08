@@ -1,0 +1,6 @@
+﻿component,training_dataset_id,rows,positive_rows,normal_rows,feature_source
+activity_gate,activity_pre_1d,82,47,35,artifacts/m1_specialist/training_inputs/m1_gate_training_data.csv
+fault_gate,fault_no_overlap,90,55,35,artifacts/m1_specialist/training_inputs/m1_gate_training_data.csv
+task_gate,task_post_1d,77,42,35,artifacts/m1_specialist/training_inputs/m1_gate_training_data.csv
+fault_pre_event_gate_train,expanded_compact13_full_pool,131,26,105,artifacts/m1_specialist/training_inputs/m1_expansion_feature_pool.csv
+fault_pre_event_gate_eval,strict_no_event20_fixed_eval,49,14,35,artifacts/m1_specialist/training_inputs/m1_expansion_feature_pool.csv

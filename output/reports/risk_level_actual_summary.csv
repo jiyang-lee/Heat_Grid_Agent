@@ -1,0 +1,4 @@
+﻿risk_level_calibrated,rows,min_risk_score,max_risk_score,mean_risk_score,pre_fault_rows,normal_rows,risk_threshold_medium_applied,risk_threshold_high_applied,risk_threshold_critical_applied
+critical,232,0.92070947242,1,0.993667482446,220,12,0.22,0.92,0.92
+low,790,0.00160322464584,0.219556688605,0.0414126159312,7,783,0.22,0.92,0.92
+medium,204,0.220190239714,0.917923146008,0.580988274318,68,136,0.22,0.92,0.92

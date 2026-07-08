@@ -1,0 +1,129 @@
+{
+  "package_id": "m1_full_gate_runtime_policy_joblib_v1_internal",
+  "report_id": "internal_m1_specialist_retrain",
+  "source_commit_hash": "4fd5a526c8e84f6aec3d293c070a44b1580393a6",
+  "sklearn_version": "1.9.0",
+  "created_artifacts": {
+    "fault_gate": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib",
+    "task_gate": "models/m1_specialist/m1_task_gate_rf_depth3.joblib",
+    "activity_gate": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib",
+    "fault_pre_event_gate": "models/m1_specialist/m1_fault_pre_event_logistic.joblib",
+    "runtime_metadata": "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json",
+    "model_registry": "output/reports/m1_internal_joblib_model_registry.csv",
+    "reload_validation": "output/reports/m1_internal_joblib_reload_validation.csv",
+    "training_data_audit": "output/reports/m1_internal_training_data_audit.csv"
+  },
+  "runtime_policy": {
+    "thresholds": {
+      "fault_gate": 0.5,
+      "task_gate": 0.5,
+      "activity_gate": 0.5,
+      "fault_pre_event_gate": 0.6
+    },
+    "primary_state_order": [
+      "fault",
+      "task",
+      "activity",
+      "normal"
+    ],
+    "near_threshold_band": 0.05
+  },
+  "models": {
+    "fault_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
+      "feature_set": "compact13",
+      "features": [
+        "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+        "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+        "outdoor_temperature__last_minus_first",
+        "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+        "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+        "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_minus_first",
+        "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+        "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+        "s_hc1_supply_temperature_error__last_minus_first",
+        "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean"
+      ],
+      "threshold": 0.5,
+      "training_dataset_id": "fault_no_overlap",
+      "model_path": "models/m1_specialist/m1_fault_gate_rf_depth3.joblib"
+    },
+    "task_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
+      "feature_set": "compact13",
+      "features": [
+        "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+        "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+        "outdoor_temperature__last_minus_first",
+        "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+        "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+        "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_minus_first",
+        "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+        "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+        "s_hc1_supply_temperature_error__last_minus_first",
+        "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean"
+      ],
+      "threshold": 0.5,
+      "training_dataset_id": "task_post_1d",
+      "model_path": "models/m1_specialist/m1_task_gate_rf_depth3.joblib"
+    },
+    "activity_gate": {
+      "model": "RandomForestClassifier",
+      "max_depth": 3,
+      "feature_set": "compact13",
+      "features": [
+        "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+        "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+        "outdoor_temperature__last_minus_first",
+        "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+        "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+        "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_minus_first",
+        "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+        "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+        "s_hc1_supply_temperature_error__last_minus_first",
+        "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean"
+      ],
+      "threshold": 0.5,
+      "training_dataset_id": "activity_pre_1d",
+      "model_path": "models/m1_specialist/m1_activity_gate_rf_depth3.joblib"
+    },
+    "fault_pre_event_gate": {
+      "model": "LogisticRegression",
+      "feature_set": "compact13_overlap",
+      "features": [
+        "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+        "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+        "outdoor_temperature__last_minus_first",
+        "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+        "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+        "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+        "p_return_gap__last_minus_first",
+        "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+        "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+        "s_hc1_supply_temperature_error__last_minus_first",
+        "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean"
+      ],
+      "threshold": 0.6,
+      "training_dataset_id": "expanded_compact13_full_pool",
+      "validation_dataset_id": "strict_no_event20_fixed_eval",
+      "model_path": "models/m1_specialist/m1_fault_pre_event_logistic.joblib"
+    }
+  },
+  "external_runtime_validation": {
+    "dataset": "not_run_in_internal_retrain",
+    "reason": "package-local retrain focuses on M1 source gate regeneration"
+  }
+}

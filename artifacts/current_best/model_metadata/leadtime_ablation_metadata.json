@@ -1,0 +1,69 @@
+{
+  "variants": [
+    {
+      "name": "A0_full_current",
+      "description": "현재 412개 feature 전체",
+      "feature_count": 412
+    },
+    {
+      "name": "A1_no_onehot",
+      "description": "원핫/context one-hot feature 제거",
+      "feature_count": 368
+    },
+    {
+      "name": "A2_no_sensor_horizon",
+      "description": "24h/3d/7d sensor rolling feature 제거",
+      "feature_count": 292
+    },
+    {
+      "name": "A3_no_timeflow",
+      "description": "lag/delta/roll3 timeflow feature 제거",
+      "feature_count": 352
+    },
+    {
+      "name": "A4_no_risk_horizon_episode",
+      "description": "risk horizon 24h/3d/7d + 48h episode feature 제거",
+      "feature_count": 383
+    },
+    {
+      "name": "A5_no_raw_ae_context",
+      "description": "raw AE 직접/lag/alarm feature 제거",
+      "feature_count": 393
+    },
+    {
+      "name": "A6_no_anomaly_context",
+      "description": "anomaly/iforest/mahalanobis feature 제거",
+      "feature_count": 383
+    },
+    {
+      "name": "A7_base_plus_risk_only",
+      "description": "기본 baseline feature + 최소 risk context만 사용",
+      "feature_count": 189
+    },
+    {
+      "name": "A8_top50",
+      "description": "full 모델 중요도 상위 50개 feature만 사용",
+      "feature_count": 50
+    },
+    {
+      "name": "A8_top100",
+      "description": "full 모델 중요도 상위 100개 feature만 사용",
+      "feature_count": 100
+    },
+    {
+      "name": "A8_top150",
+      "description": "full 모델 중요도 상위 150개 feature만 사용",
+      "feature_count": 150
+    },
+    {
+      "name": "A8_top200",
+      "description": "full 모델 중요도 상위 200개 feature만 사용",
+      "feature_count": 200
+    }
+  ],
+  "metrics_path": "output/leadtime_ablation_metrics.csv",
+  "confusion_path": "output/leadtime_ablation_confusion.csv",
+  "feature_groups_path": "output/leadtime_ablation_feature_groups.csv",
+  "top_features_path": "output/leadtime_ablation_top_features.csv",
+  "summary_path": "output/leadtime_ablation_summary.md"
+}
