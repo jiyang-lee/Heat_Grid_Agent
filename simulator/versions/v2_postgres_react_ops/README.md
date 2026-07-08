@@ -5,7 +5,7 @@
 ## Run
 
 ```powershell
-uv run python 05_시뮬레이션/versions/v2_postgres_react_ops/backend/server.py
+uv run python simulator/versions/v2_postgres_react_ops/backend/server.py
 ```
 
 기본 주소:

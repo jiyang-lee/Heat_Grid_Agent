@@ -9,7 +9,7 @@ import pytest
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = (
-    ROOT / "05_시뮬레이션" / "versions" / "v2_postgres_react_ops" / "backend"
+    ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 )
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
 

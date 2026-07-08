@@ -23,5 +23,5 @@ postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops
 
 ```powershell
 $env:HEATGRID_DATABASE_URL="postgresql+asyncpg://USER:PASSWORD@HOST:PORT/DB"
-uv run python 05_시뮬레이션/versions/v2_postgres_react_ops/backend/server.py
+uv run python simulator/versions/v2_postgres_react_ops/backend/server.py
 ```
