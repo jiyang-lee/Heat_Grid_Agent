@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 JsonPrimitive: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+AlertStatus: TypeAlias = Literal["open", "acked", "resolved"]
 
 
 class OpsAgentOutput(BaseModel):
@@ -50,6 +51,37 @@ class SimulationResponse(BaseModel):
     token_usage: TokenUsage
 
 
+class ApiMetadata(BaseModel):
+    service: str
+    health: str
+    docs: str
+    apis: list[str]
+
+
+class AgentRunCreateRequest(BaseModel):
+    alert_id: str
+
+
+class AgentRunResponse(BaseModel):
+    run_id: str
+    status: Literal["completed", "failed"]
+    input_source: Literal["alert"]
+    alert_id: str
+    card_id: str
+    agent_mode: Literal["llm", "fallback"] | None = None
+    ops_output: OpsAgentOutput | None = None
+    token_usage: TokenUsage | None = None
+    error: str | None = None
+
+
+class AgentRunArtifact(BaseModel):
+    artifact_id: str
+    run_id: str
+    kind: str
+    name: str
+    uri: str
+
+
 class CardSummary(BaseModel):
     card_id: str
     manufacturer_id: str
@@ -78,7 +110,7 @@ class AlertSummary(BaseModel):
     card_id: str
     priority_level: Literal["urgent", "high"]
     priority_score: float | None
-    status: Literal["open", "acked"]
+    status: AlertStatus
     enqueue_reason: str
     created_at: str
     acked_at: str | None
