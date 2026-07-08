@@ -6,10 +6,11 @@ from typing import Final
 from httpx import ASGITransport, AsyncClient
 import orjson
 import pytest
+from sqlalchemy import text
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = (
-    ROOT / "05_시뮬레이션" / "versions" / "v2_postgres_react_ops" / "backend"
+    ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 )
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
 
@@ -38,6 +39,8 @@ async def test_v2_postgres_tools_return_ops_evidence_only(
 
     assert set(tools) == {"get_ops_evidence"}
     assert evidence["priority_context"]["card"]["card_id"] == card_ids[0]
+    assert "model_outputs" in evidence["priority_context"]
+    assert isinstance(evidence["priority_context"]["model_outputs"], list)
     assert "raw_context" in evidence
 
 
@@ -65,3 +68,83 @@ async def test_v2_postgres_api_returns_fallback_output(
     assert stream.status_code == 200
     assert "PostgreSQL priority_card 조회 완료" in stream.text
     assert "get_external_context" not in stream.text
+
+
+@pytest.mark.anyio
+async def test_v2_postgres_alert_api_enqueues_lists_and_acks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        enqueue = await client.post("/alerts/enqueue")
+        duplicate_enqueue = await client.post("/alerts/enqueue")
+        open_alerts = await client.get("/alerts", params={"status": "open"})
+        first_alert = open_alerts.json()[0]
+        ack = await client.post(
+            f"/alerts/{first_alert['alert_id']}/ack",
+            json={"acked_by": "pytest"},
+        )
+        acked_alerts = await client.get("/alerts", params={"status": "acked"})
+
+    assert enqueue.status_code == 200
+    assert enqueue.json()["queued_count"] > 0
+    assert enqueue.json()["existing_count"] == 0
+    assert duplicate_enqueue.status_code == 200
+    assert duplicate_enqueue.json()["queued_count"] == 0
+    assert duplicate_enqueue.json()["existing_count"] == enqueue.json()["queued_count"]
+    assert open_alerts.status_code == 200
+    assert first_alert["card_id"]
+    assert first_alert["priority_level"] in {"urgent", "high"}
+    assert ack.status_code == 200
+    assert ack.json()["status"] == "acked"
+    assert ack.json()["acked_by"] == "pytest"
+    assert acked_alerts.status_code == 200
+    assert any(item["alert_id"] == first_alert["alert_id"] for item in acked_alerts.json())
+
+
+@pytest.mark.anyio
+async def test_v2_postgres_fixed_ops_scenario_runs_from_enqueue_to_ack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        initial_enqueue = await client.post("/alerts/enqueue")
+        api_enqueue = await client.post("/alerts/enqueue")
+        urgent_alerts = await client.get(
+            "/alerts",
+            params={"status": "open", "priority_level": "urgent"},
+        )
+        urgent_alert = urgent_alerts.json()[0]
+        simulation = await client.post(f"/alerts/{urgent_alert['alert_id']}/simulate")
+        ack = await client.post(
+            f"/alerts/{urgent_alert['alert_id']}/ack",
+            json={"acked_by": "fixed-scenario"},
+        )
+
+    assert initial_enqueue.status_code == 200
+    assert initial_enqueue.json()["queued_count"] > 0
+    assert api_enqueue.status_code == 200
+    assert api_enqueue.json()["queued_count"] == 0
+    assert api_enqueue.json()["existing_count"] == initial_enqueue.json()["queued_count"]
+    assert urgent_alerts.status_code == 200
+    assert urgent_alert["priority_level"] == "urgent"
+    assert simulation.status_code == 200
+    assert simulation.json()["card_id"] == urgent_alert["card_id"]
+    assert simulation.json()["agent_mode"] == "fallback"
+    assert simulation.json()["ops_output"]["summary"]
+    assert ack.status_code == 200
+    assert ack.json()["alert_id"] == urgent_alert["alert_id"]
+    assert ack.json()["status"] == "acked"
+    assert ack.json()["acked_by"] == "fixed-scenario"

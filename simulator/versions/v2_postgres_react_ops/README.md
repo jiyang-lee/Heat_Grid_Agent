@@ -5,7 +5,7 @@
 ## Run
 
 ```powershell
-uv run python 05_시뮬레이션/versions/v2_postgres_react_ops/backend/server.py
+uv run python simulator/versions/v2_postgres_react_ops/backend/server.py
 ```
 
 기본 주소:
@@ -54,3 +54,13 @@ db/
 - OpenAI 키: `OPENAI_API_KEY`
 - 활성 Agent tool: `get_ops_evidence(card_id)` 하나
 - 외부 context/weather/RAG tool은 아직 노출하지 않는다.
+
+## 데이터 적재 명령
+
+- 기본 적재(기존 DB 치환):  
+  `uv run python scripts/simulate_predictor_db.py`
+- 모델 출력 포함 적재:  
+  `uv run python scripts/simulate_predictor_db.py --model-run-id <UUID>`
+- 기존 데이터 유지하고 추가 적재:  
+  `uv run python scripts/simulate_predictor_db.py --append`
+- 기본 실행은 `TRUNCATE ... CASCADE`로 기존 시뮬레이션 입력 테이블을 일괄 교체한다.

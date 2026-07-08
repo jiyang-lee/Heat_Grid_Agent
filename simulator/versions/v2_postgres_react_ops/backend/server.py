@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -13,6 +14,8 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import ValidationError
 
+from alert_repository import ensure_alert_queue, get_alert
+from alert_routes import make_alert_router
 from repository import (
     check_database,
     fetch_ops_input,
@@ -30,7 +33,16 @@ FRONTEND_DIR = ROOT_DIR.parent / "frontend"
 
 settings = Settings()
 engine = make_engine(settings.database_url)
-app = FastAPI(title="HeatGrid V2 Local")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await ensure_alert_queue(engine)
+    yield
+
+
+app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
+app.include_router(make_alert_router(engine))
 
 
 @app.get("/", include_in_schema=False)
@@ -82,6 +94,14 @@ async def simulate(card_id: str) -> SimulationResponse:
         ops_output=output,
         token_usage=usage,
     )
+
+
+@app.post("/alerts/{alert_id}/simulate", response_model=SimulationResponse)
+async def simulate_alert(alert_id: str) -> SimulationResponse:
+    alert = await get_alert(engine, alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="alert_id를 찾을 수 없습니다.")
+    return await simulate(str(alert["card_id"]))
 
 
 @app.get("/simulate-stream/{card_id}", include_in_schema=False)
