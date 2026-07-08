@@ -21,13 +21,13 @@ M1 specialist는 current-best risk/leadtime/priority를 대체하지 않는다. 
 
 ```powershell
 uv sync
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 ```
 
 원천 재학습 포함:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 `full_retrain` 실행 로그:
@@ -78,7 +78,7 @@ m1_hybrid_priority_score
 | 파일 | 역할 |
 |---|---|
 | `docs/README.md` | 전체 문서 지도 |
-| `MODEL_INVENTORY_KO.md` | 모델 구성과 재학습 책임 |
+| `docs/model/MODEL_INVENTORY_KO.md` | 모델 구성과 재학습 책임 |
 | `docs/02_AGENT_OUTPUT_CONTRACT.md` | agent card 컬럼 계약 |
 | `output/agent/agent_card_column_groups_ko.md` | 최종 55개 컬럼과 병렬 29개 컬럼 분류 |
 | `output/reports/final_validation_report.md` | 최종 검증 요약 |

@@ -18,14 +18,14 @@
 
 ```powershell
 uv sync
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 uv run python -m unittest discover -s tests -v
 ```
 
 원천 current-best와 M1 specialist까지 다시 학습하려면:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 ## 읽는 순서
@@ -34,8 +34,8 @@ uv run python run_3rd_model_pipeline.py --steps full_retrain
 |---:|---|---|
 | 1 | `README.md` | 전체 개요와 실행 모드 |
 | 2 | `docs/README.md` | 문서 지도 |
-| 3 | `PACKAGE_README_KO.md` | 사용 안내 |
-| 4 | `MODEL_INVENTORY_KO.md` | 모델 파일과 책임 경계 |
+| 3 | `docs/package/PACKAGE_README_KO.md` | 사용 안내 |
+| 4 | `docs/model/MODEL_INVENTORY_KO.md` | 모델 파일과 책임 경계 |
 | 5 | `docs/02_AGENT_OUTPUT_CONTRACT.md` | agent card 컬럼 계약 |
 | 6 | `docs/05_RUNBOOK.md` | 실행/검증 명령 |
 | 7 | `docs/07_HANDOFF_FILE_INDEX.md` | 파일 색인 |

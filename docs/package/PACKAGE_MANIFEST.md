@@ -6,7 +6,7 @@
 
 | 경로 | 설명 |
 |---|---|
-| `run_3rd_model_pipeline.py` | CLI 진입점 |
+| `scripts/run_3rd_model_pipeline.py` | CLI 진입점 |
 | `src/third_model/pipeline.py` | `all`, `full_retrain`, 개별 step orchestration |
 | `src/third_model/config.py` | 상대 경로, source 자동 탐색, 환경변수 처리 |
 | `src/third_model/retrain.py` | 원천 current-best/M1 specialist 재학습 wrapper |

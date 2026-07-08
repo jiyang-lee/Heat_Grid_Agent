@@ -6,7 +6,7 @@
 
 ```powershell
 uv sync
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 uv run python -m unittest discover -s tests -v
 ```
 
@@ -25,7 +25,7 @@ uv run python -m unittest discover -s tests -v
 ## 3. 원천 재학습까지 실행
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 `full_retrain`은 다음 순서로 실행된다.
@@ -63,10 +63,10 @@ $env:THIRD_MODEL_PREDIST_ZIP_PATH="D:\...\predist_dataset.zip"
 |---|---|
 | `README.md` | 전체 개요와 quick start |
 | `docs/README.md` | 문서 지도 |
-| `HANDOFF.md` | 짧은 인계 요약 |
-| `M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 인계 |
-| `MODEL_INVENTORY_KO.md` | 모델 파일과 재학습 책임 |
-| `PACKAGE_MANIFEST.md` | 저장소 구성 목록 |
+| `docs/handoff/HANDOFF.md` | 짧은 인계 요약 |
+| `docs/handoff/M1_SPECIALIST_HANDOFF_KO.md` | M1 specialist 인계 |
+| `docs/model/MODEL_INVENTORY_KO.md` | 모델 파일과 재학습 책임 |
+| `docs/package/PACKAGE_MANIFEST.md` | 저장소 구성 목록 |
 | `docs/05_RUNBOOK.md` | 실행 명령 모음 |
 | `output/reports/final_validation_report.md` | 최종 검증 요약 |
 | `compare/m1_threshold_weight_rationale_report.ipynb` | 수치 선택 근거 |
@@ -79,7 +79,7 @@ $env:THIRD_MODEL_PREDIST_ZIP_PATH="D:\...\predist_dataset.zip"
 - `0.65 / 0.35` hybrid는 운영 선택점이지 모든 metric의 절대 최적값이 아니다.
 # 2026-07-08 Internal Full Retrain Update
 
-- `uv run python run_3rd_model_pipeline.py --steps full_retrain` is now self-contained by default.
+- `uv run third-model-pipeline --steps full_retrain` is now self-contained by default.
 - Current-best risk/leadtime/priority outputs are regenerated from the packaged M1 windows inside this repository.
 - M1 specialist fault/task/activity/pre-event gate joblibs are regenerated from package-local training inputs under `artifacts/m1_specialist/training_inputs/`.
 - The first internal M1 retrain can bootstrap those inputs from `THIRD_MODEL_3RD_PROJECT_ROOT`; after the inputs exist, the external source path is no longer required.
