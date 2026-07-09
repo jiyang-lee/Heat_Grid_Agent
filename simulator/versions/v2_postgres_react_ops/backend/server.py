@@ -19,6 +19,7 @@ from agent_run_repository import ensure_agent_run_tables
 from agent_run_routes import make_agent_run_router
 from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
+from evidence_repository import filter_ops_evidence
 from repository import (
     check_database,
     fetch_ops_input,
@@ -166,11 +167,9 @@ def tools_for(
     external_context: dict[str, JsonValue],
 ) -> list[BaseTool]:
     @tool
-    def get_ops_evidence(card_id: str) -> str:
+    def get_ops_evidence(card_id: str, sections: list[str] | None = None) -> str:
         """Return card, raw sensor, and ML model evidence from PostgreSQL."""
-        if card_id != card_id_from_input(source_input):
-            return to_json({"error": "card_id를 찾을 수 없습니다."})
-        return to_json(source_input)
+        return to_json(filter_ops_evidence(source_input, card_id, sections))
 
     @tool
     def get_external_context(card_id: str) -> str:
