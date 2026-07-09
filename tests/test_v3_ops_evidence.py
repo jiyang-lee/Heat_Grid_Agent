@@ -26,6 +26,15 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return module
 
 
+def tools_for_input(
+    module: ModuleType,
+    card_id: str,
+    source_input: dict[str, object],
+) -> dict[str, object]:
+    external_context = module.external_context_for(card_id, source_input)
+    return {item.name: item for item in module.tools_for(source_input, external_context)}
+
+
 @pytest.mark.anyio
 async def test_ops_evidence_tool_returns_selected_schema_sections(
     monkeypatch: pytest.MonkeyPatch,
@@ -33,7 +42,7 @@ async def test_ops_evidence_tool_returns_selected_schema_sections(
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    tools = {item.name: item for item in module.tools_for(source_input)}
+    tools = tools_for_input(module, card_ids[0], source_input)
 
     evidence = orjson.loads(
         tools["get_ops_evidence"].invoke(
@@ -58,7 +67,7 @@ async def test_ops_evidence_tool_keeps_database_section_columns(
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    tools = {item.name: item for item in module.tools_for(source_input)}
+    tools = tools_for_input(module, card_ids[0], source_input)
 
     evidence = orjson.loads(
         tools["get_ops_evidence"].invoke(
@@ -97,7 +106,7 @@ async def test_ops_evidence_tool_reports_unsupported_sections(
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    tools = {item.name: item for item in module.tools_for(source_input)}
+    tools = tools_for_input(module, card_ids[0], source_input)
 
     evidence = orjson.loads(
         tools["get_ops_evidence"].invoke(
