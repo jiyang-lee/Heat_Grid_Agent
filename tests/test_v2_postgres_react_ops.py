@@ -177,6 +177,7 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert '"type":"tool_completed"' in events.text
     assert '"type":"final_output"' in events.text
     assert '"type":"run_completed"' in events.text
+    assert '"type":"report_failed"' in events.text
     assert event_types == [
         "run_started",
         "status_changed",
@@ -191,6 +192,10 @@ async def test_api_agent_run_creates_completed_run_from_alert(
         "final_output",
         "status_changed",
         "run_completed",
+        "llm_decision",
+        "tool_started",
+        "tool_completed",
+        "report_failed",
     ]
 
 
@@ -234,6 +239,7 @@ async def test_api_dashboard_contract_runs_from_alert_feed_to_agent_result(
     assert created.json()["status"] == "completed"
     assert run_events.status_code == 200
     assert '"type":"run_completed"' in run_events.text
+    assert '"type":"report_failed"' in run_events.text
     assert artifacts.status_code == 200
     assert resolved.status_code == 200
     assert resolved.json()["status"] == "resolved"

@@ -79,3 +79,43 @@ async def test_agent_runner_records_failed_run_when_graph_node_fails(
     assert run.status == "failed"
     assert run.error == "forced failure"
     assert event_types[-2:] == ["status_changed", "run_failed"]
+
+
+@pytest.mark.anyio
+async def test_agent_runner_keeps_completed_run_when_report_generation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alerts = await client.get("/api/alerts", params={"status": "open"})
+        alert = alerts.json()[0]
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        run_id = created.json()["run_id"]
+        artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
+
+    async with module.engine.connect() as connection:
+        result = await connection.execute(
+            text(
+                "SELECT event_type FROM agent_run_events "
+                "WHERE run_id = :run_id ORDER BY event_id"
+            ),
+            {"run_id": run_id},
+        )
+    event_types = [str(row["event_type"]) for row in result.mappings().all()]
+
+    assert created.status_code == 200
+    assert created.json()["status"] == "completed"
+    assert created.json()["agent_mode"] == "fallback"
+    assert artifacts.status_code == 200
+    assert artifacts.json() == []
+    assert "run_completed" in event_types
+    assert event_types[-1] == "report_failed"

@@ -28,7 +28,7 @@ from schemas import (
 
 def make_agent_run_router(
     engine: AsyncEngine,
-    simulate_card: SimulateCard,
+    simulate_card: SimulateCard | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
 
