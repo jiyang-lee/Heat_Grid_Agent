@@ -221,11 +221,15 @@
 
   async function simulateAlert(alert) {
     setBridgeStatus(`설명 생성 중 · alert ${alert.alert_id}`);
-    bridgeState.lastSimulation = await requestJson(`/alerts/${alert.alert_id}/simulate`, {
+    bridgeState.lastSimulation = await requestJson("/api/agent-runs", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alert_id: alert.alert_id }),
     });
     render();
-    setBridgeStatus(`설명 생성 완료 · card ${bridgeState.lastSimulation.card_id}`);
+    setBridgeStatus(
+      `설명 생성 완료 · run ${bridgeState.lastSimulation.run_id} · card ${bridgeState.lastSimulation.card_id}`,
+    );
   }
 
   async function ackAlert(alert) {

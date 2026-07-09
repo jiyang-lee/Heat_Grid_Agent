@@ -58,6 +58,7 @@ async def test_heating_agent_bridge_serves_frontend_without_modifying_source(
     assert 'POST"' in script.text
     assert "/alerts/enqueue" in script.text
     assert "/heating-agent/api/alerts?status=open" in script.text
+    assert '"/api/agent-runs"' in script.text
 
 
 @pytest.mark.anyio
