@@ -27,3 +27,7 @@ output/ops_agent/token_check/
 output/ops_agent/style_check/
 output/ops_agent/tmp_*.json
 output/ops_agent/ops_agent_output_*.json
+
+# Local manufacturer datasets (not tracked in repo)
+data/manufacturer 1/
+data/manufacturer 2/
