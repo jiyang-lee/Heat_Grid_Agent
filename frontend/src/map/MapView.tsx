@@ -39,7 +39,13 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
       attributionControl: { compact: true },
     })
     mapRef.current = map
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
+    // 마우스로 방향(회전)·기울기(pitch) 전환 활성화.
+    //  - 오른쪽 버튼 드래그 또는 Ctrl + 왼쪽 드래그: 회전 + 기울이기
+    //  - 우상단 나침반: 드래그로 회전, 클릭하면 정북(N)으로 리셋
+    map.dragRotate.enable()
+    map.touchZoomRotate.enableRotation()
+    map.keyboard.enable()
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), 'top-right')
 
     map.on('load', () => {
       map.addSource('complexes', { type: 'geojson', data: complexFootprints })

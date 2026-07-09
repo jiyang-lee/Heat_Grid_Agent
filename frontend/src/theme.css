@@ -123,6 +123,14 @@
   }
 }
 
+/* 운영 콘솔 오른쪽 열: 토큰·비용 지표 박스 위 + 알림 상세 박스 아래로 세로 스택. */
+.ops-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
 .panel {
   background: var(--glass);
   backdrop-filter: blur(10px);
@@ -201,6 +209,52 @@
 }
 .sel {
   filter: drop-shadow(0 0 14px var(--cyan));
+}
+
+/* ===== 설비 기계 애니메이션 (배관은 정적) ===== */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ledBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.18;
+  }
+}
+@keyframes heatBreathe {
+  0%, 100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.34;
+  }
+}
+.impeller {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 2.4s linear infinite;
+}
+.led {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ledBlink 1.6s ease-in-out infinite;
+}
+.heatband {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: heatBreathe 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .impeller,
+  .led,
+  .heatband {
+    animation: none;
+  }
 }
 
 /* ===== 사이드 리스트 ===== */
