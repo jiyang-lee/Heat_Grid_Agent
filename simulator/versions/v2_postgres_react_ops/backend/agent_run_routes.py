@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_result_contract import build_ops_agent_result_v4
 from agent_runner import AgentRunRequest, SimulateCard, run_agent_graph
 from agent_run_artifact_repository import list_agent_run_artifacts
 from agent_run_event_repository import list_agent_run_events
@@ -20,6 +21,7 @@ from schemas import (
     AgentRunCreateRequest,
     AgentRunEvent,
     AgentRunResponse,
+    OpsAgentResultV4,
     JsonValue,
 )
 
@@ -51,6 +53,16 @@ def make_agent_run_router(
         if run is None:
             raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
         return run
+
+    @router.get("/agent-runs/{run_id}/result", response_model=OpsAgentResultV4)
+    async def agent_run_result(run_id: str) -> OpsAgentResultV4:
+        run = await get_agent_run(engine, run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
+        result = build_ops_agent_result_v4(run)
+        if result is None:
+            raise HTTPException(status_code=409, detail="agent run result is not ready.")
+        return result
 
     @router.get("/agent-runs/{run_id}/artifacts", response_model=list[AgentRunArtifact])
     async def agent_run_artifacts(run_id: str) -> list[AgentRunArtifact]:
