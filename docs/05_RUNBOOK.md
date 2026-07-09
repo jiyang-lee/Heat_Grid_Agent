@@ -14,7 +14,7 @@ Python은 3.12 계열이어야 한다.
 ## 2. 저장소 단독 재현
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 ```
 
 source 프로젝트가 없어도 저장소 내부 보존 파일로 최종 산출물을 재생성한다.
@@ -31,7 +31,7 @@ output/reports/final_validation_report.md
 ## 3. 원천 재학습 포함 전체 실행
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 기본 `full_retrain`은 현재 저장소 안에서 돈다. M1 학습 입력은 아래 경로에 보존된다.
@@ -64,13 +64,13 @@ output/reports/m1_source_retrain_metadata.json
 current-best risk/leadtime/priority 계열:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps retrain_current_best
+uv run third-model-pipeline --steps retrain_current_best
 ```
 
 M1 specialist gate 모델:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps retrain_m1_specialist
+uv run third-model-pipeline --steps retrain_m1_specialist
 ```
 
 ## 5. 부분 실행
@@ -78,13 +78,13 @@ uv run python run_3rd_model_pipeline.py --steps retrain_m1_specialist
 Anomaly와 downstream card만 다시 생성:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps model_artifacts anomaly best_scores merge agent_card m1_specialist_gates m1_specialist validation
+uv run third-model-pipeline --steps model_artifacts anomaly best_scores merge agent_card m1_specialist_gates m1_specialist validation
 ```
 
 Validation만 다시 생성:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps validation
+uv run third-model-pipeline --steps validation
 ```
 
 ## 6. Notebook 재생성
@@ -122,7 +122,7 @@ uv run python -m unittest discover -s tests -v
 
 ```powershell
 uv run python -m unittest discover -s tests -v
-uv run python run_3rd_model_pipeline.py --steps all
+uv run third-model-pipeline --steps all
 git status --short
 ```
 
@@ -138,7 +138,7 @@ rg -n "Project3|m1_specialist[_-][p]ackage|partial coverage" README.md docs comp
 Default full retrain is self-contained:
 
 ```powershell
-uv run python run_3rd_model_pipeline.py --steps full_retrain
+uv run third-model-pipeline --steps full_retrain
 ```
 
 This regenerates local M1 current-best risk/leadtime/priority outputs and the final hybrid agent card without sibling source folders. External wrappers are opt-in:

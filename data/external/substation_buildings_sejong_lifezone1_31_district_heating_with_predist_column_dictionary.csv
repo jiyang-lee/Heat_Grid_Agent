@@ -1,0 +1,49 @@
+﻿column,ko_name,description,usage_note
+substation_id,내부 변전소/서브스테이션 ID,모델 데이터의 익명화된 substation 번호입니다.,Agent와 화면 카드가 참조하는 내부 키로 사용합니다.
+matched_name,표시 단지명,지도와 화면에 표시할 아파트/단지명입니다.,사용자가 알아볼 이름으로 사용합니다.
+kapt_code,K-APT 단지 코드,공동주택관리정보시스템의 단지 식별자입니다.,K-APT 기본정보/관리비/단지정보 조인 키로 사용합니다.
+kapt_bjd_code,K-APT 법정동 코드,K-APT에서 제공하는 법정동 코드입니다.,행정구역 기반 조인이나 필터링에 사용합니다.
+kakao_place_id,Kakao 장소 ID,Kakao Map place search에서 얻은 장소 식별자입니다.,프론트 지도 또는 장소 상세 연결에 사용할 수 있습니다.
+life_zone,생활권 번호,세종 생활권 기반 후보 구분값입니다.,같은 공급권역에 가까운 데모 매핑 그룹으로 사용합니다.
+dong,행정동/법정동명,단지가 위치한 동 이름입니다.,지도 필터와 지역 설명에 사용합니다.
+village,마을명,세종시 생활권 내 마을 브랜드명입니다.,인접 단지 그룹 비교에 사용합니다.
+road_address,도로명주소,단지의 도로명 주소입니다.,지도 표기와 외부 API 주소 조인에 사용합니다.
+jibun_address,지번주소,단지의 지번 주소입니다.,주소 매칭 보조값으로 사용합니다.
+latitude,위도,지도 표시용 위도입니다.,프론트 지도 마커 좌표로 사용합니다.
+longitude,경도,지도 표시용 경도입니다.,프론트 지도 마커 좌표로 사용합니다.
+heating_type,K-APT 난방방식,K-APT 기본정보에서 조회한 난방방식입니다.,31개 모두 지역난방으로 검증된 핵심 컬럼입니다.
+kapt_complex_type,K-APT 단지분류,K-APT의 단지 유형입니다.,아파트/주상복합 등 건물 유형 구분에 사용합니다.
+approval_date,사용승인일,단지 사용승인일입니다.,건물 연식에 따른 열수요 민감도 대리 지표로 사용할 수 있습니다.
+household_count,세대수,K-APT 기준 세대수입니다.,영향 세대 수와 열수요 규모 대리 지표로 사용합니다.
+building_count,동수,K-APT 기준 건물 동 수입니다.,단지 규모 대리 지표로 사용합니다.
+gross_floor_area_m2,연면적 제곱미터,K-APT 기준 단지 연면적입니다.,열수요 규모를 추정하는 핵심 대리 지표입니다.
+exclusive_residential_area_m2,주거전용면적 제곱미터,K-APT 기준 주거전용면적 합계입니다.,실거주 난방 수요 규모 대리 지표로 사용합니다.
+exclusive_area_households_json,전용면적 구간별 세대수,K-APT 기준 면적 구간별 세대수 JSON입니다.,소형/중형/대형 세대 구성에 따른 수요 특성 설명에 사용합니다.
+fee_year,관리비 기준연도,K-APT 관리비 대시보드 요약의 기준연도입니다.,관리비 지표의 시간 기준 확인용입니다.
+fee_latest_month,관리비 최신월,K-APT 관리비 대시보드에서 값이 있는 최신 월입니다.,최신 관리비 비교 시점으로 사용합니다.
+fee_months_count,관리비 집계 개월 수,해당 연도에서 집계된 관리비 월 수입니다.,YTD 금액 해석 시 사용합니다.
+private_usage_cost_ytd_krw,개별사용료 연누계 원,K-APT 대시보드의 사용료 누계입니다.,에너지/수도 등 사용량성 비용의 약한 대리 지표입니다.
+private_usage_cost_latest_month_krw,개별사용료 최신월 원,K-APT 대시보드의 최신월 사용료입니다.,최근 사용량성 비용 비교에 사용합니다.
+private_usage_cost_latest_month_unit_krw_per_m2,개별사용료 최신월 단가 원/제곱미터,K-APT 대시보드의 최신월 사용료 단가입니다.,단지 규모 차이를 보정한 비교 지표로 사용합니다.
+total_mgmt_cost_ytd_krw,총관리비 연누계 원,K-APT 대시보드의 총관리비 누계입니다.,운영 영향도와 비용 규모 대리 지표로 사용합니다.
+total_mgmt_cost_latest_month_krw,총관리비 최신월 원,K-APT 대시보드의 최신월 총관리비입니다.,최근 단지 운영 규모 비교에 사용합니다.
+total_mgmt_cost_latest_month_unit_krw_per_m2,총관리비 최신월 단가 원/제곱미터,K-APT 대시보드의 최신월 총관리비 단가입니다.,면적 대비 비용 수준 비교에 사용합니다.
+total_mgmt_cost_ytd_per_household_krw,세대당 총관리비 연누계 원,총관리비 연누계를 세대수로 나눈 값입니다.,세대 단위 영향도 비교에 사용합니다.
+predist_mapping_type,PreDist 매핑 방식,세종 아파트 행과 PreDist substation_id를 어떤 방식으로 연결했는지 나타냅니다.,현재는 실제 물리 연결이 아닌 substation_id 기준 가상 매핑입니다.
+predist_mapping_note,PreDist 매핑 주석,가상 매핑의 한계를 명시한 설명입니다.,프론트/Agent가 실제 현장 매칭으로 표현하지 않도록 주의 문구로 사용합니다.
+predist_manufacturer,PreDist 제조사 그룹,원본 PreDist 데이터의 제조사 그룹입니다.,현재 모델 스코프는 manufacturer 1 기준입니다.
+predist_source_file,PreDist 원본 파일명,가상 매핑된 PreDist 운영 데이터 파일명입니다.,간단한 출처 표시나 내부 추적용으로 사용합니다.
+predist_raw_file_path,PreDist 원본 파일 경로,원본 운영 데이터 CSV의 상대 경로입니다.,DB 적재 후 원천 추적용이며 프론트 표시용은 아닙니다.
+predist_configuration_type,PreDist 설비 구성 유형,configuration_types.csv에서 가져온 난방/급탕 설비 구성 유형입니다.,예: SH + DHW는 난방 + 급탕 설비를 뜻합니다.
+predist_configuration_ko,PreDist 설비 구성 한글명,configuration_type을 화면/설명에 쓰기 쉽게 풀어쓴 값입니다.,프론트 카드나 Agent 설명에 사용할 수 있습니다.
+predist_sensor_groups,PreDist 센서 그룹,원본 샘플에서 값이 확인된 센서 묶음의 영문 코드입니다.,DB/API에서는 이 값을 필터 조건으로 쓰기 좋습니다.
+predist_sensor_groups_ko,PreDist 센서 그룹 한글명,원본 샘플에서 값이 확인된 센서 묶음의 한글명입니다.,프론트 표시와 Agent 요약 설명에 사용합니다.
+predist_sensor_column_count,사용 가능한 센서 컬럼 수,샘플에서 결측이 아닌 값을 가진 센서 컬럼 수입니다.,센서 구성이 얼마나 풍부한지 보는 간단한 지표입니다.
+predist_raw_sampled_rows,원본 샘플 row 수,raw_inventory 생성 시 샘플링한 row 수입니다.,원본 파일 존재와 샘플 확인용입니다.
+predist_raw_sampled_columns,원본 샘플 컬럼 수,raw_inventory 생성 시 확인한 원본 컬럼 수입니다.,설비별 원본 컬럼 규모 비교에 사용합니다.
+predist_has_outdoor_temperature_sensor,외기온 센서 여부,outdoor_temperature 값이 원본 샘플에 존재하는지 여부입니다.,외부 날씨 데이터와 비교할 수 있는지 판단합니다.
+predist_has_space_heating_sensor,난방 회로 센서 여부,난방 공급온도/설정온도/환수온도 계열 센서가 존재하는지 여부입니다.,난방 회로 상태 판단 가능성 확인에 사용합니다.
+predist_has_dhw_sensor,급탕 센서 여부,급탕 공급온도/설정온도 계열 센서가 존재하는지 여부입니다.,급탕 관련 상태 판단 가능성 확인에 사용합니다.
+predist_has_dhw_storage_sensor,급탕 저장탱크 센서 여부,급탕 상부/하부 저장탱크 온도 센서가 존재하는지 여부입니다.,급탕 저장탱크 상태 판단 가능성 확인에 사용합니다.
+predist_has_primary_heat_meter_sensor,1차측 열량계 센서 여부,1차측 에너지/체적/열출력/유량 계열 센서가 존재하는지 여부입니다.,열부하와 유량 기반 판단 가능성 확인에 사용합니다.
+predist_has_primary_supply_return_temp_sensor,1차측 공급/환수온도 센서 여부,1차측 공급온도와 환수온도 센서가 모두 존재하는지 여부입니다.,공급-환수 온도차 기반 판단 가능성 확인에 사용합니다.

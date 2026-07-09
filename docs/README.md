@@ -7,8 +7,8 @@
 | 순서 | 문서 | 목적 |
 |---:|---|---|
 | 1 | `../README.md` | 전체 개요, quick start, 최종 산출물 |
-| 2 | `../HANDOFF.md` | 짧은 인계 요약 |
-| 3 | `../PACKAGE_README_KO.md` | 저장소 사용 안내 |
+| 2 | `handoff/HANDOFF.md` | 짧은 인계 요약 |
+| 3 | `package/PACKAGE_README_KO.md` | 저장소 사용 안내 |
 | 4 | `00_SOURCE_TRACE.md` | source 프로젝트 탐색과 파일 출처 |
 | 5 | `01_PIPELINE_STEPS.md` | 실행 step과 row coverage 흐름 |
 | 6 | `02_AGENT_OUTPUT_CONTRACT.md` | 최종 agent card 컬럼 계약 |
@@ -19,6 +19,9 @@
 | 11 | `07_HANDOFF_FILE_INDEX.md` | 받는 사람에게 넘길 파일 색인 |
 | 12 | `08_MODEL_REPORT_DEFENSE_AUDIT.md` | 발표/보고서 방어 체크리스트 |
 | 13 | `09_CODEX_MODEL_REPORT_REVIEW_PROMPT.md` | 보고서 재검토용 작업 프롬프트 |
+| 14 | `11_SERVICE_RAG_LOGGING_AND_CONTEXT.md` | RAG, pgvector, 운영 로그, 세종/기상 문맥 서비스화 |
+| 15 | `12_AGENT_RAG_CURRENT_HANDOFF.md` | 현재 Agent/RAG 구성과 추후 모델 서버 연동 인수인계 |
+| 16 | `13_BACKEND_V3_RAG_UPLOAD_PREP.md` | backend/v3_rag 업로드 전 충돌 요인과 정리 기준 |
 
 ## 목적별 바로가기
 
@@ -33,7 +36,7 @@
 
 ```text
 02_AGENT_OUTPUT_CONTRACT.md
-../AGENT_HANDOFF_KO.md
+handoff/AGENT_HANDOFF_KO.md
 ../output/agent/agent_card_column_groups_ko.md
 ../output/agent/agent_card_value_mapping_ko.md
 ```
@@ -54,10 +57,19 @@
 00_SOURCE_TRACE.md
 01_PIPELINE_STEPS.md
 05_RUNBOOK.md
-../MODEL_INVENTORY_KO.md
-../PACKAGE_MANIFEST.md
+model/MODEL_INVENTORY_KO.md
+package/PACKAGE_MANIFEST.md
 ```
 
+
+### RAG/외부 문맥/운영 로그를 볼 때
+
+```text
+11_SERVICE_RAG_LOGGING_AND_CONTEXT.md
+12_AGENT_RAG_CURRENT_HANDOFF.md
+13_BACKEND_V3_RAG_UPLOAD_PREP.md
+../data/README.md
+```
 ## 핵심 파일 요약
 
 | 파일 | 설명 |

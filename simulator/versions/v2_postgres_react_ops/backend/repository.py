@@ -1,20 +1,11 @@
-from collections.abc import Sequence
 from decimal import Decimal
 from typing import TypeAlias
 
 from sqlalchemy import text
-from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from queries import (
-    CURRENT_BEST_FLOW,
-    M1_SPECIALIST_FLOW,
-    PRIORITY_CALCULATION_EXPRESSION,
-    card_query,
-    model_outputs_query,
-    sensor_summary_query,
-)
+from evidence_repository import fetch_ops_evidence
 
 JsonPrimitive: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
@@ -112,171 +103,7 @@ async def list_cards(
 
 
 async def fetch_ops_input(engine: AsyncEngine, card_id: str) -> OpsInput | None:
-    try:
-        async with engine.connect() as connection:
-            card_result = await connection.execute(card_query(), {"card_id": card_id})
-            card_row = card_result.mappings().one_or_none()
-            if card_row is None:
-                return None
-            current_best_result = await connection.execute(
-                sensor_summary_query(),
-                {"card_id": card_id, "flow_source": CURRENT_BEST_FLOW},
-            )
-            m1_result = await connection.execute(
-                sensor_summary_query(),
-                {"card_id": card_id, "flow_source": M1_SPECIALIST_FLOW},
-            )
-            review_reason_result = await connection.execute(
-                text(
-                    "select reason_code "
-                    "from priority_card_review_reasons "
-                    "where card_id = :card_id "
-                    "order by display_rank, reason_code"
-                ),
-                {"card_id": card_id},
-            )
-            model_outputs_result = await connection.execute(
-                model_outputs_query(),
-                {"window_id": card_row["window_id"]},
-            )
-    except (SQLAlchemyError, OSError):
-        return None
-    return _ops_input_from_rows(
-        card_row,
-        current_best_result.mappings().all(),
-        m1_result.mappings().all(),
-        review_reason_result.mappings().all(),
-        model_outputs_result.mappings().all(),
-    )
-
-
-
-def _ops_input_from_rows(
-    card_row: RowMapping,
-    current_best_rows: Sequence[RowMapping],
-    m1_rows: Sequence[RowMapping],
-    review_reason_rows: Sequence[RowMapping],
-    model_output_rows: Sequence[RowMapping],
-) -> OpsInput:
-    current_best_values = [_sensor_value_from_row(row) for row in current_best_rows]
-    m1_values = [_sensor_value_from_row(row) for row in m1_rows]
-    return {
-        "raw_context": {
-            "window": {
-                "window_id": str(card_row["window_id"]),
-                "manufacturer_id": str(card_row["manufacturer_id"]),
-                "substation_id": _json_scalar(card_row["substation_id"]),
-                "configuration_type": card_row["configuration_type"],
-                "window_start": card_row["window_start"].isoformat(),
-                "window_end": card_row["window_end"].isoformat(),
-            },
-            "current_best_sensor_values": {
-                "model_id": _group_text(current_best_rows, "model_id", "current-best"),
-                "model_version": _row_optional_text(
-                    current_best_rows[0], "model_version"
-                )
-                if current_best_rows
-                else None,
-                "source_artifact": _group_text(current_best_rows, "source_artifact", ""),
-                "selection_rule": _group_text(current_best_rows, "selection_rule", ""),
-                "top_n": len(current_best_values),
-                "values": current_best_values,
-            },
-            "m1_specialist_features": {
-                "model_id": _group_text(m1_rows, "model_id", "m1-specialist"),
-                "model_version": _row_optional_text(m1_rows[0], "model_version")
-                if m1_rows
-                else None,
-                "source_artifact": _group_text(m1_rows, "source_artifact", ""),
-                "feature_count": len(m1_values),
-                "features": m1_values,
-            },
-        },
-        "priority_context": {
-            "card": {
-                "card_id": str(card_row["card_id"]),
-                "operational_label": card_row["operational_label"],
-                "primary_state": card_row["primary_state"],
-                "trust_level": card_row["trust_level"],
-                "raw_card": card_row["raw_card"],
-            },
-            "priority": {
-                "priority_decision_id": str(card_row["priority_decision_id"]),
-                "priority_score": _json_scalar(card_row["priority_score"]),
-                "priority_level": card_row["priority_level"],
-                "priority_source": card_row["priority_source"],
-                "m1_priority_agreement": card_row["m1_priority_agreement"],
-                "calculation": {
-                    "current_best_weight": _json_scalar(
-                        card_row["current_best_weight"]
-                    ),
-                    "m1_specialist_weight": _json_scalar(
-                        card_row["m1_specialist_weight"]
-                    ),
-                    "expression": PRIORITY_CALCULATION_EXPRESSION,
-                },
-            },
-            "model_signals": {
-                "current_best_priority_score": _json_scalar(
-                    card_row["current_best_priority_score"]
-                ),
-                "current_best_priority_level": card_row["current_best_priority_level"],
-                "m1_specialist_priority_score": _json_scalar(
-                    card_row["m1_specialist_priority_score"]
-                ),
-                "m1_specialist_priority_level": card_row["m1_specialist_priority_level"],
-                "m1_specialist_primary_state": card_row[
-                    "m1_specialist_primary_state"
-                ],
-                "m1_specialist_fault_group": card_row["m1_specialist_fault_group"],
-            },
-            "explanation": {
-                "why_reason": card_row["why_reason"],
-                "recommended_action": card_row["recommended_action"],
-                "review_required": card_row["review_required"],
-                "review_reasons": [str(row["reason_code"]) for row in review_reason_rows],
-            },
-            "model_outputs": [
-                {
-                    "model_family": row["model_family"],
-                    "score_name": _row_text(row, "score_name", ""),
-                    "score_value": _json_scalar(row["score_value"]),
-                    "label_name": _row_optional_text(row, "label_name"),
-                    "label_value": _row_optional_text(row, "label_value"),
-                    "display_rank": int(row["display_rank"]),
-                }
-                for row in model_output_rows
-            ],
-        },
-    }
-
-
-def _sensor_value_from_row(row: RowMapping) -> dict[str, JsonValue]:
-    return {
-        "rank": int(row["display_rank"]),
-        "feature_name": str(row["feature_name"]),
-        "source_sensor": str(row["source_sensor"]),
-        "source_column": _row_text(row, "source_column", str(row["feature_name"])),
-        "feature_value": _json_scalar(row["feature_value"]),
-        "unit": _row_optional_text(row, "unit"),
-        "calculation": _row_text(row, "calculation", "unknown"),
-        "meaning": _row_text(row, "meaning", ""),
-        "summary_text": _row_optional_text(row, "summary_text"),
-    }
-
-
-def _group_text(rows: Sequence[RowMapping], key: str, fallback: str) -> str:
-    return fallback if len(rows) == 0 else _row_text(rows[0], key, fallback)
-
-
-def _row_text(row: RowMapping, key: str, fallback: str) -> str:
-    value = row[key]
-    return fallback if value is None else str(value)
-
-
-def _row_optional_text(row: RowMapping, key: str) -> str | None:
-    value = row[key]
-    return None if value is None else str(value)
+    return await fetch_ops_evidence(engine, card_id)
 
 
 def _json_scalar(value: JsonValue | Decimal) -> JsonValue:

@@ -28,9 +28,9 @@ prompt
 compare/*.ipynb
 compare/*.py
 docs/*.md
-MODEL_INVENTORY_KO.md
-AGENT_HANDOFF_KO.md
-PACKAGE_MANIFEST.md
+docs/model/MODEL_INVENTORY_KO.md
+docs/handoff/AGENT_HANDOFF_KO.md
+docs/package/PACKAGE_MANIFEST.md
 output/reports/*.csv
 output/reports/*.md
 output/reports/*.json

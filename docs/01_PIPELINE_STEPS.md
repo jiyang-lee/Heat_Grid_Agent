@@ -4,8 +4,8 @@
 
 | 모드 | 명령 | 용도 |
 |---|---|---|
-| 저장소 재현 | `uv run python run_3rd_model_pipeline.py --steps all` | GitHub/전달용 기본 실행. 보존 산출물로 최종 card 재생성 |
-| 원천 재학습 포함 | `uv run python run_3rd_model_pipeline.py --steps full_retrain` | current-best와 M1 specialist를 package-local 입력으로 다시 학습한 뒤 저장소 결과 갱신 |
+| 저장소 재현 | `uv run third-model-pipeline --steps all` | GitHub/전달용 기본 실행. 보존 산출물로 최종 card 재생성 |
+| 원천 재학습 포함 | `uv run third-model-pipeline --steps full_retrain` | current-best와 M1 specialist를 package-local 입력으로 다시 학습한 뒤 저장소 결과 갱신 |
 
 ## full_retrain 순서
 
