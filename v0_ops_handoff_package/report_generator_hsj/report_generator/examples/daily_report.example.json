@@ -1,0 +1,392 @@
+{
+  "report_metadata": {
+    "report_id": "DAILY-20260709",
+    "report_type": "daily_ops_report",
+    "schema_version": "v0.1",
+    "generated_at": "2026-07-09T18:10:00+09:00",
+    "language": "ko",
+    "report_date": "2026-07-09",
+    "coverage_start": "2026-07-09T00:00:00+09:00",
+    "coverage_end": "2026-07-09T18:00:00+09:00",
+    "generated_by": "heatgrid-report-generator"
+  },
+  "daily_summary": {
+    "headline": "금일 31번 및 42번 설비를 중심으로 높은 우선순위 이상징후가 반복 확인되었습니다.",
+    "summary": "보고 기간 동안 총 18건의 Priority Card가 집계되었고, 이 중 Urgent 2건과 High 4건은 다음 교대에서 우선 확인이 필요합니다. 31번 설비는 누수성 수손실 가능성이 반복 관찰되어 작업지시서가 발행되었습니다.",
+    "overall_risk_level": "High",
+    "confidence": "medium",
+    "total_priority_cards": 18,
+    "operator_review_required_count": 7,
+    "key_takeaway": "다음 교대자는 31번 설비 작업지시 진행 상태와 42번 설비의 반복 온도 편차를 먼저 확인해야 합니다."
+  },
+  "priority_counts": {
+    "urgent": 2,
+    "high": 4,
+    "medium": 7,
+    "low": 5,
+    "by_review_required": {
+      "required": 7,
+      "not_required": 11
+    },
+    "by_confidence": {
+      "high": 6,
+      "medium": 9,
+      "low": 3
+    }
+  },
+  "major_patterns": [
+    {
+      "pattern_id": "pattern-leakage-water-loss-001",
+      "pattern_name": "누수성 수손실 가능성 반복",
+      "summary": "31번 설비에서 높은 priority score와 M1 specialist의 leakage_water_loss 신호가 반복적으로 관찰되었습니다.",
+      "priority_level": "Urgent",
+      "affected_assets": [
+        {
+          "substation_id": 31,
+          "asset_label": "31번 열교환 설비",
+          "card_ids": [
+            "card-sub31-20260709-0001",
+            "card-sub31-20260709-0002"
+          ]
+        }
+      ],
+      "card_count": 2,
+      "confidence": "medium",
+      "evidence_ref_ids": [
+        "ev-priority-card-031-001",
+        "ev-model-output-031-001",
+        "ev-rag-doc-001"
+      ]
+    },
+    {
+      "pattern_id": "pattern-temperature-delta-001",
+      "pattern_name": "공급/환수 온도 편차 확대",
+      "summary": "42번 설비에서 공급/환수 온도 차이가 평소보다 크게 나타나는 card가 여러 건 발생했습니다.",
+      "priority_level": "High",
+      "affected_assets": [
+        {
+          "substation_id": 42,
+          "asset_label": "42번 열교환 설비",
+          "card_ids": [
+            "card-sub42-20260709-0003",
+            "card-sub42-20260709-0004",
+            "card-sub42-20260709-0005"
+          ]
+        }
+      ],
+      "card_count": 3,
+      "confidence": "medium",
+      "evidence_ref_ids": [
+        "ev-priority-card-042-003",
+        "ev-ops-evidence-042-003"
+      ]
+    }
+  ],
+  "top_risk_cards": [
+    {
+      "card_id": "card-sub31-20260709-0001",
+      "substation_id": 31,
+      "asset_label": "31번 열교환 설비",
+      "priority_level": "Urgent",
+      "priority_score": 89.73322568799986,
+      "summary": "누수성 수손실 가능성이 높아 즉시 확인이 필요한 card입니다.",
+      "work_order_id": "WO-20260709-031-001",
+      "work_order_status": "sent",
+      "evidence_ref_ids": [
+        "ev-priority-card-031-001",
+        "ev-model-output-031-001"
+      ]
+    },
+    {
+      "card_id": "card-sub42-20260709-0003",
+      "substation_id": 42,
+      "asset_label": "42번 열교환 설비",
+      "priority_level": "High",
+      "priority_score": 81.4,
+      "summary": "공급/환수 온도 편차가 확대되어 운전 조건 확인이 필요합니다.",
+      "work_order_id": "WO-20260709-042-001",
+      "work_order_status": "in_progress",
+      "evidence_ref_ids": [
+        "ev-priority-card-042-003",
+        "ev-ops-evidence-042-003"
+      ]
+    },
+    {
+      "card_id": "card-sub55-20260709-0007",
+      "substation_id": 55,
+      "asset_label": "55번 공급 지점",
+      "priority_level": "High",
+      "priority_score": 77.2,
+      "summary": "일시적 압력 변동이 관찰되어 다음 window에서 재확인이 필요합니다.",
+      "work_order_id": null,
+      "work_order_status": "not_created",
+      "evidence_ref_ids": [
+        "ev-priority-card-055-007"
+      ]
+    }
+  ],
+  "work_order_overview": {
+    "total": 4,
+    "by_status": {
+      "not_created": 1,
+      "drafted": 0,
+      "sent": 1,
+      "acknowledged": 0,
+      "in_progress": 1,
+      "completed": 1,
+      "cancelled": 0
+    },
+    "items": [
+      {
+        "work_order_issued": true,
+        "status": "sent",
+        "work_order_id": "WO-20260709-031-001",
+        "summary": "31번 열교환 설비의 누수성 수손실 가능성에 대한 현장 확인 요청이 발행되었습니다.",
+        "related_card_ids": [
+          "card-sub31-20260709-0001",
+          "card-sub31-20260709-0002"
+        ],
+        "evidence_refs": [
+          "ev-priority-card-031-001",
+          "ev-work-order-031-001"
+        ]
+      },
+      {
+        "work_order_issued": true,
+        "status": "in_progress",
+        "work_order_id": "WO-20260709-042-001",
+        "summary": "42번 설비의 온도 편차 확대 원인 확인 작업이 진행 중입니다.",
+        "related_card_ids": [
+          "card-sub42-20260709-0003",
+          "card-sub42-20260709-0004"
+        ],
+        "evidence_refs": [
+          "ev-priority-card-042-003",
+          "ev-work-order-042-001"
+        ]
+      },
+      {
+        "work_order_issued": true,
+        "status": "completed",
+        "work_order_id": "WO-20260709-018-001",
+        "summary": "18번 설비의 일시 압력 변동 확인 작업이 완료되었습니다.",
+        "related_card_ids": [
+          "card-sub18-20260709-0006"
+        ],
+        "evidence_refs": [
+          "ev-work-order-018-001"
+        ]
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "55번 공급 지점의 압력 변동은 다음 window에서 재확인 후 발행 여부를 결정합니다.",
+        "related_card_ids": [
+          "card-sub55-20260709-0007"
+        ],
+        "evidence_refs": [
+          "ev-priority-card-055-007"
+        ]
+      }
+    ]
+  },
+  "unresolved_items": [
+    {
+      "item_id": "UNRES-20260709-001",
+      "summary": "31번 설비 현장 확인 결과가 아직 회신되지 않았습니다.",
+      "priority_level": "Urgent",
+      "owner_hint": "다음 교대 운영자",
+      "due_hint": "다음 교대 시작 후 1시간 이내",
+      "related_card_ids": [
+        "card-sub31-20260709-0001"
+      ],
+      "work_order_id": "WO-20260709-031-001",
+      "evidence_ref_ids": [
+        "ev-work-order-031-001"
+      ]
+    },
+    {
+      "item_id": "UNRES-20260709-002",
+      "summary": "42번 설비의 온도 편차가 다음 window에서도 유지되는지 확인해야 합니다.",
+      "priority_level": "High",
+      "owner_hint": "다음 교대 운영자",
+      "due_hint": "다음 분석 window 수신 후",
+      "related_card_ids": [
+        "card-sub42-20260709-0003",
+        "card-sub42-20260709-0004"
+      ],
+      "work_order_id": "WO-20260709-042-001",
+      "evidence_ref_ids": [
+        "ev-priority-card-042-003"
+      ]
+    }
+  ],
+  "next_shift_handover": {
+    "handover_summary": "31번 설비는 긴급 점검 요청이 발행되었으므로 현장 회신 여부를 최우선으로 확인합니다. 42번 설비는 온도 편차가 반복되고 있어 다음 window 결과와 작업 진행 상태를 함께 확인해야 합니다.",
+    "priority_watchlist": [
+      {
+        "target": "31번 열교환 설비 / WO-20260709-031-001",
+        "reason": "누수성 수손실 가능성이 높고 작업지시서가 sent 상태입니다.",
+        "priority_level": "Urgent",
+        "related_card_ids": [
+          "card-sub31-20260709-0001"
+        ]
+      },
+      {
+        "target": "42번 열교환 설비 / WO-20260709-042-001",
+        "reason": "온도 편차 확대 패턴이 반복되고 작업이 진행 중입니다.",
+        "priority_level": "High",
+        "related_card_ids": [
+          "card-sub42-20260709-0003",
+          "card-sub42-20260709-0004"
+        ]
+      }
+    ],
+    "cautions": [
+      "31번 설비는 고장 확정이 아니라 예측 기반 위험 신호이므로 현장 확인 결과와 함께 판단합니다.",
+      "작업지시서 전문은 보고서에 포함하지 않고 상태와 요약만 확인합니다.",
+      "55번 공급 지점은 work order 미발행 상태이므로 다음 window 결과에 따라 발행 여부를 재검토합니다."
+    ]
+  },
+  "recommended_daily_actions": [
+    {
+      "action": "31번 설비 작업지시서 수신 및 현장 회신 여부를 확인합니다.",
+      "priority_level": "Urgent",
+      "owner_hint": "다음 교대 운영자",
+      "related_card_ids": [
+        "card-sub31-20260709-0001"
+      ]
+    },
+    {
+      "action": "42번 설비의 온도 편차 관련 작업 진행 상태를 확인하고 다음 분석 결과와 비교합니다.",
+      "priority_level": "High",
+      "owner_hint": "다음 교대 운영자",
+      "related_card_ids": [
+        "card-sub42-20260709-0003"
+      ]
+    },
+    {
+      "action": "55번 공급 지점은 추가 이상 신호가 반복될 경우 작업지시서 발행을 검토합니다.",
+      "priority_level": "Medium",
+      "owner_hint": "운영실",
+      "related_card_ids": [
+        "card-sub55-20260709-0007"
+      ]
+    }
+  ],
+  "operator_memo": {
+    "memo": "금일 긴급 항목은 31번 설비에 집중되어 있습니다. 다음 교대자는 현장 확인 회신과 보충수 사용량 추이를 함께 확인해주세요.",
+    "author": "주간 운영자",
+    "created_at": "2026-07-09T18:05:00+09:00"
+  },
+  "evidence_references": [
+    {
+      "ref_id": "ev-priority-card-031-001",
+      "source_type": "priority_card",
+      "title": "31번 설비 priority card",
+      "source_id": "card-sub31-20260709-0001",
+      "uri": null,
+      "excerpt": "priority_level=urgent, priority_score=89.73322568799986",
+      "created_at": "2026-07-09T08:20:00+09:00"
+    },
+    {
+      "ref_id": "ev-ops-evidence-042-003",
+      "source_type": "ops_evidence",
+      "title": "42번 설비 get_ops_evidence 결과",
+      "source_id": "card-sub42-20260709-0003",
+      "uri": null,
+      "excerpt": "공급/환수 온도 편차 확대와 운영자 검토 필요 신호가 확인되었습니다.",
+      "created_at": "2026-07-09T12:15:00+09:00"
+    },
+    {
+      "ref_id": "ev-model-output-031-001",
+      "source_type": "model_output",
+      "title": "31번 설비 M1 specialist 모델 출력",
+      "source_id": "m1-output-sub31-20260709-0001",
+      "uri": null,
+      "excerpt": "m1_specialist_fault_group=leakage_water_loss",
+      "created_at": "2026-07-09T08:21:00+09:00"
+    },
+    {
+      "ref_id": "ev-rag-doc-001",
+      "source_type": "rag_document",
+      "title": "누수성 수손실 점검 기준",
+      "source_id": "rag-doc-leakage-check-v1",
+      "uri": "rag://technical-standards/leakage-check-v1",
+      "excerpt": "누수 의심 시 보충수 사용량, 유량 변화, 현장 외관 확인을 함께 수행합니다.",
+      "created_at": "2026-07-09T08:22:00+09:00"
+    },
+    {
+      "ref_id": "ev-work-order-031-001",
+      "source_type": "work_order",
+      "title": "31번 설비 작업지시서 상태 요약",
+      "source_id": "WO-20260709-031-001",
+      "uri": null,
+      "excerpt": "현장 확인 요청 발행 완료, 회신 대기 중",
+      "created_at": "2026-07-09T08:25:00+09:00"
+    },
+    {
+      "ref_id": "ev-priority-card-042-003",
+      "source_type": "priority_card",
+      "title": "42번 설비 priority card",
+      "source_id": "card-sub42-20260709-0003",
+      "uri": null,
+      "excerpt": "priority_level=high, priority_score=81.4",
+      "created_at": "2026-07-09T12:14:00+09:00"
+    },
+    {
+      "ref_id": "ev-priority-card-055-007",
+      "source_type": "priority_card",
+      "title": "55번 공급 지점 priority card",
+      "source_id": "card-sub55-20260709-0007",
+      "uri": null,
+      "excerpt": "priority_level=high, work_order_status=not_created",
+      "created_at": "2026-07-09T15:45:00+09:00"
+    },
+    {
+      "ref_id": "ev-work-order-042-001",
+      "source_type": "work_order",
+      "title": "42번 설비 작업지시서 상태 요약",
+      "source_id": "WO-20260709-042-001",
+      "uri": null,
+      "excerpt": "온도 편차 확대 확인 작업 진행 중",
+      "created_at": "2026-07-09T12:30:00+09:00"
+    },
+    {
+      "ref_id": "ev-work-order-018-001",
+      "source_type": "work_order",
+      "title": "18번 설비 작업지시서 완료 요약",
+      "source_id": "WO-20260709-018-001",
+      "uri": null,
+      "excerpt": "일시 압력 변동 확인 작업 완료",
+      "created_at": "2026-07-09T16:00:00+09:00"
+    }
+  ],
+  "rendering_hints": {
+    "display_title": "일간 운영 보고서 - 2026-07-09",
+    "severity_badge": {
+      "label": "높음",
+      "level": "High",
+      "color_hint": "orange"
+    },
+    "section_order": [
+      "report_metadata",
+      "daily_summary",
+      "priority_counts",
+      "major_patterns",
+      "top_risk_cards",
+      "work_order_overview",
+      "unresolved_items",
+      "next_shift_handover",
+      "recommended_daily_actions",
+      "operator_memo",
+      "evidence_references",
+      "rendering_hints"
+    ],
+    "page_break_before": [
+      "work_order_overview",
+      "evidence_references"
+    ]
+  }
+}
