@@ -1,0 +1,124 @@
+/**
+ * API 클라이언트 토대 (골격).
+ *
+ * fetch 래퍼와 SSE(EventSource) 헬퍼의 시그니처만 제공한다.
+ * 실제 화면 훅(예: TanStack Query useQuery/useMutation, 컴포넌트별 데이터 바인딩)은
+ * 이 위에서 각 화면을 만드는 쪽이 작성한다.
+ *
+ * 모든 경로는 상대경로 `/api/...`로 호출한다. 개발 시 Vite dev proxy가
+ * http://127.0.0.1:8002 로 전달하고, 배포 시 동일 오리진 또는 리버스 프록시가 처리한다.
+ */
+
+import type {
+  AgentRunArtifact,
+  AgentRunCreateRequest,
+  AgentRunResponse,
+  AlertAckRequest,
+  AlertAckResponse,
+  AlertListQuery,
+  AlertSummary,
+} from './contracts'
+
+export const API_BASE = '/api'
+
+export class ApiError extends Error {
+  readonly status: number
+  readonly url: string
+
+  constructor(status: number, url: string, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.url = url
+  }
+}
+
+/** 공통 JSON fetch 래퍼. 비정상 응답은 ApiError로 던진다. */
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `${API_BASE}${path}`
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    ...init,
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new ApiError(res.status, url, body || res.statusText)
+  }
+  return res.json() as Promise<T>
+}
+
+function toQueryString(query?: Record<string, string | undefined>): string {
+  if (!query) return ''
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(query)) {
+    if (v != null) params.set(k, v)
+  }
+  const s = params.toString()
+  return s ? `?${s}` : ''
+}
+
+// ---------------------------------------------------------------------------
+// REST 엔드포인트 (계약 표면)
+// ---------------------------------------------------------------------------
+
+export const alertsApi = {
+  list: (query?: AlertListQuery) =>
+    apiFetch<AlertSummary[]>(
+      `/alerts${toQueryString(query as Record<string, string | undefined> | undefined)}`,
+    ),
+  get: (alertId: string) => apiFetch<AlertSummary>(`/alerts/${alertId}`),
+  ack: (alertId: string, body: AlertAckRequest) =>
+    apiFetch<AlertAckResponse>(`/alerts/${alertId}/ack`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  resolve: (alertId: string, body: AlertAckRequest) =>
+    apiFetch<AlertAckResponse>(`/alerts/${alertId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const agentRunsApi = {
+  create: (body: AgentRunCreateRequest) =>
+    apiFetch<AgentRunResponse>('/agent-runs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  get: (runId: string) => apiFetch<AgentRunResponse>(`/agent-runs/${runId}`),
+  artifacts: (runId: string) =>
+    apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),
+}
+
+// ---------------------------------------------------------------------------
+// SSE 헬퍼 (골격)
+// ---------------------------------------------------------------------------
+
+/**
+ * SSE 스트림 구독 헬퍼. native EventSource를 감싼다.
+ * onEvent에는 파싱된 SSE envelope({type, message, payload})가 전달된다.
+ * 반환된 함수를 호출하면 구독을 해제한다.
+ *
+ * 사용 예:
+ *   const stop = subscribeSse('/agent-runs/<run_id>/events', (evt) => { ... })
+ *   // cleanup: stop()
+ */
+export function subscribeSse(
+  path: string,
+  onEvent: (data: unknown) => void,
+  onError?: (err: Event) => void,
+): () => void {
+  const source = new EventSource(`${API_BASE}${path}`)
+  source.onmessage = (e: MessageEvent) => {
+    try {
+      onEvent(JSON.parse(e.data))
+    } catch {
+      onEvent(e.data)
+    }
+  }
+  if (onError) source.onerror = onError
+  return () => source.close()
+}
+
+export const alertEventsPath = '/alerts/events'
+export const agentRunEventsPath = (runId: string) => `/agent-runs/${runId}/events`
