@@ -36,7 +36,9 @@
 | `frontend/` | 프론트 프로토타입과 세종 1생활권 지도 데이터. 최종 프론트 스택은 아직 고정하지 않았다. |
 | `scripts/` | DB bootstrap, 데이터 적재, 파이프라인 보조 스크립트. |
 | `src/third_model/` | M1 모델 파이프라인 패키지 코드. |
-| `data/` | 처리 데이터. |
+| `src/heatgrid_rag/` | RAG 검색, pgvector 연동, 세종 단지 매핑, 운영 로그 보조 코드. |
+| `src/heatgrid_weather/` | 기상청 API허브 ASOS 자료를 운영 부하 문맥으로 변환하는 코드. |
+| `data/` | 처리 데이터, RAG 선별 자료, 세종 매핑, 기상 샘플. |
 | `models/` | 학습된 모델 산출물. |
 | `artifacts/` | 모델 메타데이터, gate 입력, 실험 산출물. |
 | `output/` | agent card, score, report 등 최종 산출물. |
@@ -47,6 +49,7 @@
 | `docs/model/` | 모델 범위와 모델 인벤토리. |
 | `docs/package/` | 패키지 사용과 구성 문서. |
 | `docs/report/` | 의사결정, 검증, 프론트/백엔드 계약 보고서. |
+| `data/rag_sources/` | raw PDF, 선별 markdown, RAG chunk metadata. |
 | `tests/` | 모델 재현성, DB bootstrap, API 계약 테스트. |
 
 ## 주요 산출물

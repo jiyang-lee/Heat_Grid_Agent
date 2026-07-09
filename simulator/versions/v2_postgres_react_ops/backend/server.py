@@ -13,6 +13,8 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import ValidationError
 
+from heatgrid_rag.search import RagSearcher
+
 from agent_run_repository import ensure_agent_run_tables
 from agent_run_routes import make_agent_run_router
 from alert_repository import ensure_alert_queue, get_alert
@@ -39,6 +41,7 @@ from usage import usage_with_totals
 
 settings = Settings()
 engine = make_engine(settings.database_url)
+rag_searcher = RagSearcher()
 
 
 @asynccontextmanager
@@ -65,10 +68,12 @@ async def index() -> ApiMetadata:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    rag_health = rag_searcher.health()
     return {
         "input": "postgresql",
         "database": "connected" if await check_database(engine) else "unavailable",
         "openai": "configured" if settings.openai_api_key is not None else "missing_key",
+        "rag": str(rag_health.get("active_backend") or rag_health.get("status")),
     }
 
 
@@ -137,29 +142,64 @@ def card_id_from_input(source_input: dict[str, JsonValue]) -> str:
     return str(card["card_id"])
 
 
-def tools_for(source_input: dict[str, JsonValue]) -> list[BaseTool]:
+def external_context_for(
+    card_id: str,
+    source_input: dict[str, JsonValue],
+) -> dict[str, JsonValue]:
+    try:
+        return rag_searcher.external_context(
+            card_id=card_id,
+            evidence=source_input,
+            top_k=settings.rag_top_k,
+        )
+    except Exception as exc:  # pragma: no cover - external context boundary
+        return {
+            "status": "unavailable",
+            "message": str(exc),
+            "site": {"status": "unavailable"},
+            "weather": {"status": "unavailable"},
+            "retrieval": {"status": "unavailable", "results": []},
+        }
+
+
+def tools_for(
+    source_input: dict[str, JsonValue],
+    external_context: dict[str, JsonValue],
+) -> list[BaseTool]:
     @tool
     def get_ops_evidence(card_id: str, sections: list[str] | None = None) -> str:
         """Return card, raw sensor, and ML model evidence from PostgreSQL."""
         return to_json(filter_ops_evidence(source_input, card_id, sections))
 
-    return [get_ops_evidence]
+    @tool
+    def get_external_context(card_id: str) -> str:
+        """Return mapped site, weather, and operating reference context."""
+        if card_id != card_id_from_input(source_input):
+            return to_json({"error": "card_id를 찾을 수 없습니다."})
+        return to_json(external_context or {"status": "unavailable"})
+
+    return [get_ops_evidence, get_external_context]
 
 
 async def generate_note(
     card_id: str,
     source_input: dict[str, JsonValue],
 ) -> tuple[OpsAgentOutput, Literal["llm", "fallback"], TokenUsage]:
-    evidence_payload = tools_for(source_input)[0].invoke({"card_id": card_id})
-    usage = TokenUsage(evidence_payload_chars=len(evidence_payload))
+    external_context = external_context_for(card_id, source_input)
+    tools = tools_for(source_input, external_context)
+    evidence_payload = tools[0].invoke({"card_id": card_id})
+    external_payload = tools[1].invoke({"card_id": card_id})
+    usage = TokenUsage(
+        evidence_payload_chars=len(evidence_payload) + len(external_payload)
+    )
     key = settings.openai_api_key
     if key is None:
-        return fallback_note(source_input), "fallback", usage
+        return fallback_note(source_input, external_context), "fallback", usage
 
     model = ChatOpenAI(model=settings.openai_model, api_key=key.get_secret_value())
     agent = create_agent(
         model,
-        tools_for(source_input),
+        tools,
         system_prompt=SYSTEM_PROMPT,
         response_format=ToolStrategy(OpsAgentOutput),
     )
@@ -169,10 +209,13 @@ async def generate_note(
         )
         return OpsAgentOutput.model_validate(result.get("structured_response")), "llm", usage
     except (OpenAIError, ValidationError):
-        return fallback_note(source_input), "fallback", usage
+        return fallback_note(source_input, external_context), "fallback", usage
 
 
-def fallback_note(source_input: dict[str, JsonValue]) -> OpsAgentOutput:
+def fallback_note(
+    source_input: dict[str, JsonValue],
+    external_context: dict[str, JsonValue] | None = None,
+) -> OpsAgentOutput:
     priority_context = source_input["priority_context"]
     raw_context = source_input["raw_context"]
     if not isinstance(priority_context, dict) or not isinstance(raw_context, dict):
@@ -183,18 +226,29 @@ def fallback_note(source_input: dict[str, JsonValue]) -> OpsAgentOutput:
     window = raw_context["window"]
     if not all(isinstance(item, dict) for item in [card, priority, explanation, window]):
         raise HTTPException(status_code=500, detail="PostgreSQL 입력 세부 형식 오류")
+    site = (external_context or {}).get("site")
+    apartment_name = None
+    if isinstance(site, dict) and site.get("status") == "mapped":
+        apartment_name = site.get("apartment_name")
+    location = (
+        f"{apartment_name} ({window['substation_id']}번 열수급 지점)"
+        if apartment_name
+        else f"{window['manufacturer_id']} substation {window['substation_id']}"
+    )
     return OpsAgentOutput(
         summary=(
-            f"{window['manufacturer_id']} substation {window['substation_id']}에서 "
-            f"{priority['priority_level']} priority 카드가 생성됐습니다."
+            f"{location}에서 {priority['priority_level']} 수준의 점검 우선순위가 생성됐습니다."
         ),
         action_plan=str(
             explanation.get(
                 "recommended_action",
-                "priority card, 센서 근거, 모델 근거를 순서대로 확인하세요.",
+                "우선순위 카드, 센서 근거, 위험도 산출 근거를 순서대로 확인하세요.",
             )
         ),
-        caution="OPENAI_API_KEY가 없거나 LLM 호출에 실패해 로컬 fallback 답변을 사용했습니다.",
+        caution=(
+            "OPENAI_API_KEY가 없거나 LLM 호출에 실패해 로컬 fallback 답변을 사용했습니다. "
+            "기상 요인과 운영 참고자료는 보조 맥락이며 고장 원인 확정 근거가 아닙니다."
+        ),
     )
 
 
@@ -203,10 +257,15 @@ async def event_stream(
 ) -> AsyncIterator[str]:
     yield sse("start", f"card_id {card_id} 수신")
     yield sse("input", "PostgreSQL priority_card 조회 완료")
+    external_context = external_context_for(card_id, source_input)
+    yield sse("external_context", "세종 매핑, 기상, 운영 참고자료 조회 완료")
 
-    output = fallback_note(source_input)
+    output = fallback_note(source_input, external_context)
+    tools = tools_for(source_input, external_context)
     usage = TokenUsage(
-        evidence_payload_chars=len(tools_for(source_input)[0].invoke({"card_id": card_id}))
+        evidence_payload_chars=sum(
+            len(item.invoke({"card_id": card_id})) for item in tools
+        )
     )
     key = settings.openai_api_key
     if key is None:
@@ -215,7 +274,7 @@ async def event_stream(
         model = ChatOpenAI(model=settings.openai_model, api_key=key.get_secret_value())
         agent = create_agent(
             model,
-            tools_for(source_input),
+            tools,
             system_prompt=SYSTEM_PROMPT,
             response_format=ToolStrategy(OpsAgentOutput),
         )
@@ -272,7 +331,6 @@ def token_call_from_event(event: dict[str, JsonValue]) -> TokenCall:
         output_tokens=int(usage_metadata.get("output_tokens", 0)),
         total_tokens=int(usage_metadata.get("total_tokens", 0)),
     )
-
 
 
 def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
