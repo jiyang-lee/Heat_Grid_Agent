@@ -1,0 +1,29 @@
+{
+  "source": "KMA APIHub ASOS daily observations",
+  "api_endpoint": "kma_sfcdd3.php",
+  "station_id": "239",
+  "station_name": "세종",
+  "region": "세종",
+  "start_date": "2019-12-01",
+  "end_date": "2019-12-07",
+  "record_count": 7,
+  "weather_factors": [
+    "기간 평균 외기온 낮음",
+    "영하권 일 최저기온 포함",
+    "난방도일 기준 난방 부하 증가 가능"
+  ],
+  "metrics": {
+    "avg_temperature_c": 1.029,
+    "min_temperature_c": -9.4,
+    "max_temperature_c": 9.7,
+    "total_precipitation_mm": 9.7,
+    "max_1h_precipitation_mm": null,
+    "max_snow_depth_cm": null,
+    "avg_humidity_pct": 63.414,
+    "avg_wind_speed_mps": 1.4,
+    "max_wind_speed_mps": 6.9,
+    "heating_degree_days": 118.8
+  },
+  "interpretation": "조회 기간에는 기간 평균 외기온 낮음, 영하권 일 최저기온 포함, 난방도일 기준 난방 부하 증가 가능 요인이 있어 월간 운영 리포트에서 난방/급탕 부하 맥락으로 함께 설명할 수 있습니다.",
+  "caution": "일자료 기상 요약은 월간/기간 리포트의 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다."
+}

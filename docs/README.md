@@ -19,6 +19,9 @@
 | 11 | `07_HANDOFF_FILE_INDEX.md` | 받는 사람에게 넘길 파일 색인 |
 | 12 | `08_MODEL_REPORT_DEFENSE_AUDIT.md` | 발표/보고서 방어 체크리스트 |
 | 13 | `09_CODEX_MODEL_REPORT_REVIEW_PROMPT.md` | 보고서 재검토용 작업 프롬프트 |
+| 14 | `11_SERVICE_RAG_LOGGING_AND_CONTEXT.md` | RAG, pgvector, 운영 로그, 세종/기상 문맥 서비스화 |
+| 15 | `12_AGENT_RAG_CURRENT_HANDOFF.md` | 현재 Agent/RAG 구성과 추후 모델 서버 연동 인수인계 |
+| 16 | `13_BACKEND_V3_RAG_UPLOAD_PREP.md` | backend/v3_rag 업로드 전 충돌 요인과 정리 기준 |
 
 ## 목적별 바로가기
 
@@ -58,6 +61,15 @@ model/MODEL_INVENTORY_KO.md
 package/PACKAGE_MANIFEST.md
 ```
 
+
+### RAG/외부 문맥/운영 로그를 볼 때
+
+```text
+11_SERVICE_RAG_LOGGING_AND_CONTEXT.md
+12_AGENT_RAG_CURRENT_HANDOFF.md
+13_BACKEND_V3_RAG_UPLOAD_PREP.md
+../data/README.md
+```
 ## 핵심 파일 요약
 
 | 파일 | 설명 |
