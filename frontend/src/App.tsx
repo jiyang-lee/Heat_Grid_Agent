@@ -54,7 +54,7 @@ function App() {
               </button>
             )}
           </div>
-          <div className="stage">
+          <div className={`stage ${city ? '' : 'room'}`.trim()}>
             {city ? (
               <MapView selectedId={selBld} onSelectComplex={enterBuilding} />
             ) : sel ? (

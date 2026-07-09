@@ -113,7 +113,7 @@
 /* ===== 2단 그리드 ===== */
 .wrap {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 6fr 4fr;
   gap: 14px;
   align-items: stretch;
 }
@@ -182,6 +182,70 @@
   position: relative;
   width: 100%;
   height: clamp(380px, 60vh, 620px);
+}
+/* 기계실 이미지 뷰는 더 넓고 크게 (지도 뷰 영향 없음) */
+.stage.room {
+  height: clamp(460px, 74vh, 780px);
+}
+
+/* ===== 기계실 설비 이미지 타일 ===== */
+.room2 {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.mtile {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.mtile:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+}
+.mtile .mimg {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.55));
+  -webkit-user-drag: none;
+}
+.mtile.sensor-off .mimg {
+  filter: grayscale(1) brightness(0.85) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.5));
+}
+.mtile .mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1.4px solid;
+  background: rgba(4, 10, 26, 0.85);
+  white-space: nowrap;
+}
+.mtile .mdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+.mtile .mcap {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #b7c8e4;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 .stage svg {
   width: 100%;

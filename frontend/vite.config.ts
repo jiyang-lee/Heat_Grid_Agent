@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      port: Number(process.env.PORT) || 5173,
       // 실 백엔드(simulator v2 postgres_react_ops)로 계약 요청 프록시.
       // 프론트는 상대경로 `/api/...`로만 호출하고, 백엔드 주소는 여기서만 관리한다.
       proxy: {

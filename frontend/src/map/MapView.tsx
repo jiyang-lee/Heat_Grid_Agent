@@ -33,9 +33,9 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
       container: containerRef.current,
       style: mapStyleUrl,
       center: SEJONG_CENTER,
-      zoom: 14,
-      pitch: 55,
-      bearing: -18,
+      zoom: 13.3,
+      pitch: 45,
+      bearing: 0,
       attributionControl: { compact: true },
     })
     mapRef.current = map
