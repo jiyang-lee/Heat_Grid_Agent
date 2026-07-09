@@ -15,6 +15,7 @@ from alert_repository import (
     list_alerts,
     resolve_alert,
 )
+from heating_agent_routes import register_heating_agent_routes
 from schemas import (
     AlertAckRequest,
     AlertAckResponse,
@@ -85,6 +86,9 @@ def make_alert_router(engine: AsyncEngine, prefix: str = "") -> APIRouter:
         if row is None:
             raise HTTPException(status_code=404, detail="alert_id를 찾을 수 없습니다.")
         return AlertAckResponse.model_validate(row)
+
+    if prefix == "":
+        register_heating_agent_routes(router, engine)
 
     return router
 

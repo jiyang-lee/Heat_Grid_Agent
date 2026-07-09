@@ -172,15 +172,23 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert events.status_code == 200
     assert '"type":"run_started"' in events.text
     assert '"type":"status_changed"' in events.text
+    assert '"type":"llm_decision"' in events.text
     assert '"type":"tool_started"' in events.text
     assert '"type":"tool_completed"' in events.text
+    assert '"type":"final_output"' in events.text
     assert '"type":"run_completed"' in events.text
     assert event_types == [
         "run_started",
         "status_changed",
         "status_changed",
+        "llm_decision",
         "tool_started",
         "tool_completed",
+        "llm_decision",
+        "tool_started",
+        "tool_completed",
+        "llm_decision",
+        "final_output",
         "status_changed",
         "run_completed",
     ]
