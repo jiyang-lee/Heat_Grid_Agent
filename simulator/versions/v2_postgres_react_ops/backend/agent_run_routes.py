@@ -11,12 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agent_run_repository import (
     get_agent_run,
     list_agent_run_artifacts,
+    list_agent_run_events,
     save_completed_agent_run,
 )
 from alert_repository import get_alert
 from schemas import (
     AgentRunArtifact,
     AgentRunCreateRequest,
+    AgentRunEvent,
     AgentRunResponse,
     JsonValue,
     SimulationResponse,
@@ -60,36 +62,17 @@ def make_agent_run_router(
 
     @router.get("/agent-runs/{run_id}/events")
     async def agent_run_events_response(run_id: str) -> StreamingResponse:
-        run = await get_agent_run(engine, run_id)
-        if run is None:
+        events = await list_agent_run_events(engine, run_id)
+        if events is None:
             raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
-        return StreamingResponse(agent_run_events(run), media_type="text/event-stream")
+        return StreamingResponse(agent_run_events(events), media_type="text/event-stream")
 
     return router
 
 
-async def agent_run_events(run: AgentRunResponse) -> AsyncIterator[str]:
-    yield sse(
-        "run_started",
-        "agent run loaded",
-        {"run_id": run.run_id, "alert_id": run.alert_id},
-    )
-    yield sse(
-        "run_completed",
-        "agent run completed",
-        {
-            "run_id": run.run_id,
-            "status": run.status,
-            "card_id": run.card_id,
-            "agent_mode": run.agent_mode,
-            "ops_output": None
-            if run.ops_output is None
-            else run.ops_output.model_dump(mode="json"),
-            "token_usage": None
-            if run.token_usage is None
-            else run.token_usage.model_dump(mode="json"),
-        },
-    )
+async def agent_run_events(events: list[AgentRunEvent]) -> AsyncIterator[str]:
+    for event in events:
+        yield sse(event.event_type, event.message, event.payload)
 
 
 def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:

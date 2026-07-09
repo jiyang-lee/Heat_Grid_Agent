@@ -30,6 +30,7 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
         await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
 
@@ -143,6 +144,15 @@ async def test_api_agent_run_creates_completed_run_from_alert(
         fetched = await client.get(f"/api/agent-runs/{run_id}")
         artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
         events = await client.get(f"/api/agent-runs/{run_id}/events")
+    async with module.engine.connect() as connection:
+        result = await connection.execute(
+            text(
+                "SELECT event_type FROM agent_run_events "
+                "WHERE run_id = :run_id ORDER BY event_id"
+            ),
+            {"run_id": run_id},
+        )
+    event_types = [str(row["event_type"]) for row in result.mappings().all()]
 
     assert enqueue.status_code == 200
     assert created.status_code == 200
@@ -157,7 +167,9 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert artifacts.json() == []
     assert events.status_code == 200
     assert '"type":"run_started"' in events.text
+    assert '"type":"status_changed"' in events.text
     assert '"type":"run_completed"' in events.text
+    assert event_types == ["run_started", "status_changed", "run_completed"]
 
 
 @pytest.mark.anyio
