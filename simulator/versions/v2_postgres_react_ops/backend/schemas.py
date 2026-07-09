@@ -7,12 +7,50 @@ JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"
 JsonObject: TypeAlias = dict[str, JsonPrimitive]
 AlertStatus: TypeAlias = Literal["open", "acked", "resolved"]
 AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed"]
+OpsAgentEvidenceSource: TypeAlias = Literal[
+    "postgres",
+    "pgvector",
+    "jsonl",
+    "kma",
+    "fallback",
+    "manual",
+]
 
 
 class OpsAgentOutput(BaseModel):
     summary: str
     action_plan: str
     caution: str
+
+
+class OpsAgentEvidenceItem(BaseModel):
+    label: str
+    content: str
+    source: OpsAgentEvidenceSource
+
+
+class OpsAgentActionItem(BaseModel):
+    priority: int
+    title: str
+    detail: str
+
+
+class OpsAgentReport(BaseModel):
+    title: str
+    format: Literal["markdown"] = "markdown"
+    content: str
+
+
+class OpsAgentResultV4(BaseModel):
+    schema_version: Literal["ops_agent_result.v4"] = "ops_agent_result.v4"
+    run_id: str
+    card_id: str
+    headline: str
+    situation: str
+    evidence: list[OpsAgentEvidenceItem]
+    actions: list[OpsAgentActionItem]
+    cautions: list[str]
+    report: OpsAgentReport
 
 
 class TokenCall(BaseModel):
