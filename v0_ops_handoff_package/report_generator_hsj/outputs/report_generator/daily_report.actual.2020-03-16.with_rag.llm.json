@@ -1,0 +1,508 @@
+{
+  "report_metadata": {
+    "report_id": "DAILY-20200316",
+    "report_type": "daily_ops_report",
+    "schema_version": "1.0",
+    "generated_at": "2026-07-09T16:05:33+09:00",
+    "language": "ko",
+    "report_date": "2020-03-16",
+    "coverage_start": "2020-03-16T00:00:00+09:00",
+    "coverage_end": "2020-03-17T00:00:00+09:00",
+    "generated_by": "heatgrid-report-generator"
+  },
+  "daily_summary": {
+    "headline": "세종 두 열수급 지점에서 높음 위험도 신호가 집중된 하루였습니다",
+    "summary": "제공된 카드 기준으로 오늘은 총 6건의 위험도 카드가 집계되었고, 그중 높음 3건과 보통 1건이 핵심 관리 대상이었습니다. 범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30에서 높음 위험도가 연속으로 나타났고, 가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22에서도 같은 지점의 여러 시간대에 걸쳐 경계 신호가 이어졌습니다. 세종 지역은 전반적으로 외기온이 낮고 난방 부하가 증가할 수 있는 조건이어서, 신호 해석 시 운영 맥락을 함께 봐야 합니다. 다만 현재 단계에서는 원인이나 고장을 단정할 수 없고, 현장 확인 전까지는 위험도 경향과 검토 필요 여부를 중심으로 관리해야 합니다.",
+    "overall_risk_level": "High",
+    "confidence": "high",
+    "total_priority_cards": 6,
+    "operator_review_required_count": 5,
+    "key_takeaway": "오늘은 두 열수급 지점에 위험이 집중되었습니다. 특히 지점 30은 우선 확인 대상이며, 지점 22는 시간대별 변화와 검토 사유를 이어서 봐야 합니다."
+  },
+  "priority_counts": {
+    "urgent": 0,
+    "high": 3,
+    "medium": 1,
+    "low": 2,
+    "by_review_required": {
+      "required": 5,
+      "not_required": 1
+    },
+    "by_confidence": {
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    }
+  },
+  "major_patterns": [
+    {
+      "pattern_id": "pattern-30-cluster",
+      "pattern_name": "지점 30의 연속 높음 경계",
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30에서 오전 두 구간 모두 높음 위험도가 반복되었습니다. 기준 위험도 결과와 보조 의심 유형이 같은 방향으로 움직여 단일 시간대 신호보다 연속 경향으로 볼 수 있습니다. 현장 확인이 아직 없어 누수 또는 수손실 의심을 포함한 구체 원인은 단정할 수 없습니다.",
+      "priority_level": "High",
+      "affected_assets": [
+        {
+          "substation_id": 30,
+          "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+          "card_ids": [
+            "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+            "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+          ]
+        }
+      ],
+      "card_count": 2,
+      "confidence": "high",
+      "evidence_ref_ids": [
+        "evi-card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "evi-card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ]
+    },
+    {
+      "pattern_id": "pattern-22-mixed-review",
+      "pattern_name": "지점 22의 시간대별 혼재 신호",
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22에서 오전에는 높음 경계가, 야간에는 보통과 낮음이 혼재하는 흐름이 나타났습니다. 같은 지점에서 검토 사유가 반복되지만 시간대별 일관성이 완전하지 않아 반복 패턴으로 보기에는 아직 제한적입니다. 이 경우 센서 상태와 부하 변화, 점검 기준 충족 여부를 함께 확인해야 합니다.",
+      "priority_level": "Medium",
+      "affected_assets": [
+        {
+          "substation_id": 22,
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "card_ids": [
+            "card-4d37728c-8228-567f-a327-9b19969cad65",
+            "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+            "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+            "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+          ]
+        }
+      ],
+      "card_count": 4,
+      "confidence": "medium",
+      "evidence_ref_ids": [
+        "evi-card-4d37728c-8228-567f-a327-9b19969cad65",
+        "evi-card-0b99826d-17d6-58f0-a490-166e4686c53f",
+        "evi-card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+        "evi-card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ]
+    }
+  ],
+  "top_risk_cards": [
+    {
+      "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "priority_level": "High",
+      "priority_score": 93.58,
+      "summary": "오전 시간대에 높음 위험도가 매우 높게 산정되었고, 보조 의심 유형도 같은 방향으로 일치했습니다. 제공된 근거상 누수 또는 수손실 의심이 가장 먼저 검토되어야 하며, 현장 확인 전까지는 경보 수준으로 다루는 것이 안전합니다.",
+      "work_order_id": null,
+      "work_order_status": "not_created",
+      "evidence_ref_ids": [
+        "evi-card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "evi-ops-30-am"
+      ]
+    },
+    {
+      "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "priority_level": "High",
+      "priority_score": 93.54,
+      "summary": "같은 지점의 전 구간에서 높음 위험도가 이어졌고, 검토 필요 조건도 일부 확인되었습니다. 전일 대비 기온이 낮아 난방 부하가 커질 수 있는 맥락이 있어, 운영 부하와 이상 신호를 함께 점검해야 합니다.",
+      "work_order_id": null,
+      "work_order_status": "not_created",
+      "evidence_ref_ids": [
+        "evi-card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+        "evi-weather-30-am",
+        "evi-standards-1"
+      ]
+    },
+    {
+      "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "priority_level": "High",
+      "priority_score": 88.51,
+      "summary": "오전 구간에서 높음 위험도가 확인되었고, 기준 위험도 결과와 보조 의심 유형이 같은 방향으로 일치했습니다. 원인 확정은 어렵지만 24시간 이내 추세 변화를 우선 확인할 필요가 있습니다.",
+      "work_order_id": null,
+      "work_order_status": "not_created",
+      "evidence_ref_ids": [
+        "evi-card-4d37728c-8228-567f-a327-9b19969cad65",
+        "evi-ops-22-am",
+        "evi-weather-22-am"
+      ]
+    },
+    {
+      "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "priority_level": "Medium",
+      "priority_score": 74.2,
+      "summary": "야간 구간에서 보통 위험도로 내려갔지만, 기준 위험도 결과와 보조 의심 유형이 서로 다르게 나와 검토 필요가 남아 있습니다. 급상승 가능성을 완전히 배제할 수 없어 다음 교대에서 먼저 재확인해야 합니다.",
+      "work_order_id": null,
+      "work_order_status": "not_created",
+      "evidence_ref_ids": [
+        "evi-card-0b99826d-17d6-58f0-a490-166e4686c53f",
+        "evi-ops-22-night"
+      ]
+    }
+  ],
+  "work_order_overview": {
+    "total": 6,
+    "by_status": {
+      "not_created": 6,
+      "drafted": 0,
+      "sent": 0,
+      "acknowledged": 0,
+      "in_progress": 0,
+      "completed": 0,
+      "cancelled": 0
+    },
+    "items": [
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며, 긴급 수준으로 전환할지 검토가 필요한 상태입니다.",
+        "related_card_ids": [
+          "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f"
+        ],
+        "evidence_refs": []
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며, 연속 신호 확인 후 발행 여부를 판단해야 합니다.",
+        "related_card_ids": [
+          "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+        ],
+        "evidence_refs": []
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며, 현장 확인 전에 우선 점검 대상으로 남아 있습니다.",
+        "related_card_ids": [
+          "card-4d37728c-8228-567f-a327-9b19969cad65"
+        ],
+        "evidence_refs": []
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며, 야간 신호 재확인이 필요합니다.",
+        "related_card_ids": [
+          "card-0b99826d-17d6-58f0-a490-166e4686c53f"
+        ],
+        "evidence_refs": []
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며, 시간대별 변동 확인 후 판단이 필요합니다.",
+        "related_card_ids": [
+          "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0"
+        ],
+        "evidence_refs": []
+      },
+      {
+        "work_order_issued": false,
+        "status": "not_created",
+        "work_order_id": null,
+        "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며, 낮은 위험도로 보이더라도 검토 종료로 보기 어렵습니다.",
+        "related_card_ids": [
+          "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+        ],
+        "evidence_refs": []
+      }
+    ]
+  },
+  "unresolved_items": [
+    {
+      "item_id": "unresolved-30-1",
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30의 높음 위험도 신호가 연속으로 나타났으므로, 다음 교대에서 먼저 현장 점검 여부를 확인해야 합니다.",
+      "priority_level": "High",
+      "owner_hint": "운영자와 현장 점검 담당",
+      "due_hint": "다음 교대 시작 직후",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ],
+      "work_order_id": null,
+      "evidence_ref_ids": [
+        "evi-card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "evi-card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ]
+    },
+    {
+      "item_id": "unresolved-22-1",
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22는 오전과 야간의 신호가 다르므로, 시간대별 추세를 다시 비교해야 합니다.",
+      "priority_level": "High",
+      "owner_hint": "운영자",
+      "due_hint": "다음 교대 중 우선",
+      "related_card_ids": [
+        "card-4d37728c-8228-567f-a327-9b19969cad65",
+        "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+        "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+        "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ],
+      "work_order_id": null,
+      "evidence_ref_ids": [
+        "evi-card-4d37728c-8228-567f-a327-9b19969cad65",
+        "evi-card-0b99826d-17d6-58f0-a490-166e4686c53f",
+        "evi-card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+        "evi-card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ]
+    },
+    {
+      "item_id": "unresolved-wo-1",
+      "summary": "모든 상위 위험 건에 작업지시서가 아직 생성되지 않았으므로, 긴급 전환 기준과 발행 우선순위를 정해야 합니다.",
+      "priority_level": "High",
+      "owner_hint": "교대 책임자",
+      "due_hint": "즉시",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+        "card-4d37728c-8228-567f-a327-9b19969cad65"
+      ],
+      "work_order_id": null,
+      "evidence_ref_ids": [
+        "evi-card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "evi-card-4d37728c-8228-567f-a327-9b19969cad65"
+      ]
+    }
+  ],
+  "next_shift_handover": {
+    "handover_summary": "다음 교대는 범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30을 최우선으로 확인하고, 그다음으로 가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 시간대별 변동을 점검해야 합니다. 오늘은 두 지점 모두 원인 확정이 되지 않았고 작업지시서도 발행되지 않았으므로, 현장 확인 가능 여부와 추가 계측 필요성을 먼저 판단해야 합니다. 특히 지점 30은 연속 높음 경계가 확인되어 경보 유지와 즉시 점검 검토가 필요합니다. 지점 22는 오전과 야간의 결과가 달라 추세 재확인이 중요합니다.",
+    "priority_watchlist": [
+      {
+        "target": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+        "reason": "연속 높음 위험도와 누수 또는 수손실 의심이 같은 방향으로 나타났기 때문에 가장 먼저 현장 확인이 필요합니다.",
+        "priority_level": "High",
+        "related_card_ids": [
+          "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+          "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+        ]
+      },
+      {
+        "target": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+        "reason": "오전과 야간의 신호가 달라 검토 사유가 남아 있으며, 다음 구간에서 다시 높아질 수 있습니다.",
+        "priority_level": "High",
+        "related_card_ids": [
+          "card-4d37728c-8228-567f-a327-9b19969cad65",
+          "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+          "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+          "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+        ]
+      },
+      {
+        "target": "작업지시서 미발행 상태",
+        "reason": "상위 위험 건이 모두 작업지시서 없이 남아 있어, 다음 교대에서 발행 여부를 먼저 결정해야 합니다.",
+        "priority_level": "High",
+        "related_card_ids": [
+          "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+          "card-4d37728c-8228-567f-a327-9b19969cad65"
+        ]
+      }
+    ],
+    "cautions": [
+      "세종 지역 기상은 난방 부하를 키울 수 있는 조건이었지만, 이것만으로 이상 원인을 설명할 수는 없습니다.",
+      "가상 매핑 정보는 대상 설명에만 참고하고, 실제 현장 연결 여부는 따로 확인해야 합니다.",
+      "점수와 위험도는 제공된 카드 기준이며, 현장 확인 전에는 고장으로 단정하지 않아야 합니다."
+    ]
+  },
+  "recommended_daily_actions": [
+    {
+      "action": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30의 계측값과 경보 이력을 즉시 확인해 연속 높음 신호가 실제 운영 이상인지 점검하십시오.",
+      "priority_level": "High",
+      "owner_hint": "운영자와 현장 점검 담당",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ]
+    },
+    {
+      "action": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 오전, 낮, 야간 데이터를 비교해 기준 위험도 결과와 보조 의심 유형의 차이를 확인하십시오.",
+      "priority_level": "High",
+      "owner_hint": "운영자",
+      "related_card_ids": [
+        "card-4d37728c-8228-567f-a327-9b19969cad65",
+        "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+        "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+        "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ]
+    },
+    {
+      "action": "지점 30과 지점 22에 대해 차압, 공급과 환수 온도, 급탕 관련 신호의 동시 변화를 확인해 운영 부하 영향과 이상 징후를 분리하십시오.",
+      "priority_level": "High",
+      "owner_hint": "교대 책임자",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-4d37728c-8228-567f-a327-9b19969cad65"
+      ]
+    },
+    {
+      "action": "작업지시서가 없는 상위 위험 건에 대해 현장 확인 우선순위를 정하고, 필요 시 즉시 발행 기준을 적용하십시오.",
+      "priority_level": "High",
+      "owner_hint": "교대 책임자",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-4d37728c-8228-567f-a327-9b19969cad65"
+      ]
+    },
+    {
+      "action": "세종 기상 부하 조건을 함께 보며 같은 시각대의 평상시 패턴과 비교해 과도한 난방 요구인지 재점검하십시오.",
+      "priority_level": "Medium",
+      "owner_hint": "운영자",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+        "card-4d37728c-8228-567f-a327-9b19969cad65",
+        "card-0b99826d-17d6-58f0-a490-166e4686c53f"
+      ]
+    }
+  ],
+  "operator_memo": {
+    "memo": "오늘은 지점 30의 연속 높음 위험도와 지점 22의 시간대별 혼재 신호가 핵심이었습니다. 두 지점 모두 아직 원인 확정이 아니므로, 다음 교대에서는 현장 확인 가능 여부와 작업지시서 발행 판단을 우선 이어받아야 합니다.",
+    "author": "heatgrid-report-generator",
+    "created_at": "2026-07-09T16:05:33+09:00"
+  },
+  "evidence_references": [
+    {
+      "ref_id": "evi-card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "source_type": "priority_card",
+      "title": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30의 오전 높음 위험도 카드",
+      "source_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "uri": null,
+      "excerpt": "오전 구간에서 높음 위험도가 매우 높게 산정되었고, 기준 위험도 결과와 보조 의심 유형이 같은 방향으로 일치했습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "source_type": "priority_card",
+      "title": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30의 야간 연속 높음 위험도 카드",
+      "source_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "uri": null,
+      "excerpt": "전 구간에서 높음 위험도가 이어졌고, 검토 필요 조건도 일부 확인되었습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-card-4d37728c-8228-567f-a327-9b19969cad65",
+      "source_type": "priority_card",
+      "title": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 오전 높음 위험도 카드",
+      "source_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "uri": null,
+      "excerpt": "오전 구간에서 높음 위험도가 확인되었고, 기준 위험도 결과와 보조 의심 유형이 같은 방향으로 일치했습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "source_type": "priority_card",
+      "title": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 야간 보통 위험도 카드",
+      "source_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "uri": null,
+      "excerpt": "야간 구간에서 보통 위험도로 내려갔지만 기준 위험도 결과와 보조 의심 유형이 서로 다르게 나왔습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+      "source_type": "priority_card",
+      "title": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 오후 낮음 위험도 카드",
+      "source_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+      "uri": null,
+      "excerpt": "오후 구간에서 낮음 위험도로 평가되었으나 기준 위험도 결과와 보조 의심 유형의 차이가 남아 있습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+      "source_type": "priority_card",
+      "title": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22의 오전 낮음 위험도 카드",
+      "source_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+      "uri": null,
+      "excerpt": "초기 구간에서 낮음 위험도로 평가되었고, 단독 신호만으로는 반복 패턴으로 보기 어렵습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-ops-30-am",
+      "source_type": "ops_evidence",
+      "title": "지점 30 운영 근거와 센서 구간 정보",
+      "source_id": "window-d083bbb5-1bb2-5ef0-b942-cfcfe61de1b5",
+      "uri": null,
+      "excerpt": "범지기마을9단지한신휴플러스리버파크아파트, 세종특별자치시 달빛1로 206, 난방과 급탕 구성, 외기온과 난방 회로, 급탕, 저장탱크, 1차측 열량계, 1차측 공급과 환수온도 관련 센서군이 확인되었습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-ops-22-am",
+      "source_type": "ops_evidence",
+      "title": "지점 22 오전 운영 근거와 센서 구간 정보",
+      "source_id": "window-41ae6a10-ac1b-512a-b4f4-6c151667c967",
+      "uri": null,
+      "excerpt": "가재마을12단지중흥S클래스센텀파크2차아파트, 세종특별자치시 달빛로 80, 난방과 급탕 구성, 외기온과 난방 회로, 급탕, 저장탱크 센서군이 확인되었습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-ops-22-night",
+      "source_type": "ops_evidence",
+      "title": "지점 22 야간 운영 근거와 센서 구간 정보",
+      "source_id": "window-09805eaa-23de-53b2-9a9c-ada2870b3c73",
+      "uri": null,
+      "excerpt": "야간 구간에서 위험도는 낮아졌지만 기준 위험도 결과와 보조 의심 유형이 서로 다르게 나타났습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-weather-30-am",
+      "source_type": "external_context",
+      "title": "세종 지역의 낮은 외기온과 난방 부하 증가 맥락",
+      "source_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "uri": null,
+      "excerpt": "평균기온 0.13도, 최저기온 영하 1.5도 수준으로 난방 부하가 커질 수 있는 조건이 관찰되었습니다. 이는 원인 확정이 아니라 운영 맥락 보조 근거입니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-weather-22-am",
+      "source_type": "external_context",
+      "title": "세종 지역 오전 난방 부하 증가 맥락",
+      "source_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "uri": null,
+      "excerpt": "평균기온 2.70도, 최저기온 영하 1.6도 수준으로 난방 부하가 증가할 수 있는 조건이 확인되었습니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    },
+    {
+      "ref_id": "evi-standards-1",
+      "source_type": "rag_document",
+      "title": "지점 점검 시 우선 확인 기준",
+      "source_id": "danfoss_substation_operation_extract__p024__c01",
+      "uri": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+      "excerpt": "운전 이상 시에는 우선 연결 상태, 전원 공급, 공급온도 정상 여부, 스트레이너 청결, 차압 정상 여부, 공기 혼입 여부를 확인하도록 안내합니다.",
+      "created_at": "2026-07-09T16:05:33+09:00"
+    }
+  ],
+  "rendering_hints": {
+    "display_title": "세종 일간 운영 보고서",
+    "severity_badge": {
+      "label": "높음",
+      "level": "High",
+      "color_hint": "#E67E22"
+    },
+    "section_order": [
+      "report_metadata",
+      "daily_summary",
+      "priority_counts",
+      "major_patterns",
+      "top_risk_cards",
+      "work_order_overview",
+      "unresolved_items",
+      "next_shift_handover",
+      "recommended_daily_actions",
+      "operator_memo",
+      "evidence_references",
+      "rendering_hints"
+    ],
+    "page_break_before": [
+      "major_patterns",
+      "top_risk_cards",
+      "unresolved_items",
+      "evidence_references"
+    ]
+  }
+}

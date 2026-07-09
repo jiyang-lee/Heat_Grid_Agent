@@ -52,6 +52,8 @@ $env:PYTHONPATH = "src"
 - `data/external/substation_buildings_sejong_lifezone1_31_district_heating_context_with_predist.csv`
 
 월간 리포트/고장보고서가 들어오면 기존 RAG 청크 생성 흐름에 넣고, 같은 스크립트로 `rag_chunks`에 추가 적재한다.
+문서 적재 원칙은 [13_RAG_DB_DOCUMENT_POLICY.md](./13_RAG_DB_DOCUMENT_POLICY.md)를 따른다.
+작업지시서, 월간리포트, 고장보고서 모두 원본을 통째로 DB에 넣지 않고, 필요한 부분만 선별한 curated chunk와 metadata만 검색 DB에 적재한다.
 
 ## 기상청 문맥
 

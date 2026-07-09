@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any, Callable
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 try:
     from jsonschema import Draft7Validator
@@ -22,6 +26,7 @@ REPORT_GENERATOR_DIR = SRC_DIR.parent
 SCHEMAS_DIR = REPORT_GENERATOR_DIR / "schemas"
 PROMPTS_DIR = REPORT_GENERATOR_DIR / "prompts"
 EXAMPLES_DIR = REPORT_GENERATOR_DIR / "examples"
+PROJECT_ROOT = REPORT_GENERATOR_DIR.parents[1]
 
 
 class ReportValidationError(ValueError):
@@ -132,9 +137,10 @@ def _validate_report_fallback(value: Any, schema: ReportJson, path: str = "$") -
 
 
 def build_llm_payload(prompt: str, inputs: ReportJson) -> ReportJson:
+    public_inputs = {key: value for key, value in inputs.items() if key != "_output_schema"}
     return {
         "prompt": prompt,
-        "inputs": inputs,
+        "inputs": public_inputs,
         "output_contract": {
             "format": "json_only",
             "language": "ko",
@@ -144,12 +150,135 @@ def build_llm_payload(prompt: str, inputs: ReportJson) -> ReportJson:
     }
 
 
+def load_project_env() -> None:
+    env_path = PROJECT_ROOT / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key.startswith("export "):
+            key = key.removeprefix("export ").strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip().strip('"').strip("'")
+
+
+def extract_json_object(text: str) -> ReportJson:
+    stripped = text.strip()
+    if stripped.startswith("{"):
+        return json.loads(stripped)
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ReportValidationError("LLM 응답에서 JSON 객체를 찾지 못했습니다.")
+    return json.loads(stripped[start : end + 1])
+
+
 def call_llm_json(prompt: str, inputs: ReportJson) -> ReportJson:
-    """Interface placeholder for a future OpenAI API integration."""
-    _ = build_llm_payload(prompt, inputs)
-    raise NotImplementedError(
-        "실제 LLM 호출은 아직 연결하지 않았습니다. mock=True로 실행하거나 llm_caller를 주입하세요."
+    load_project_env()
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY가 .env 또는 환경변수에 없습니다.")
+
+    model = (
+        os.getenv("OPENAI_MODEL", "").strip()
+        or os.getenv("HEATGRID_OPENAI_MODEL", "").strip()
+        or "gpt-5.4-mini"
     )
+    system = "\n".join(
+        [
+            "You are a Korean district-heating report generator.",
+            "Return only one valid JSON object. Do not wrap it in Markdown.",
+            "The JSON must match the report schema described by the prompt.",
+            "Write all user-facing report sentences in natural Korean for operations staff.",
+            "Generate a substantive operational report, not a short alert. Prefer complete explanatory sentences over terse labels.",
+            "Follow a practical incident/maintenance report flow: executive summary, asset and time context, impact assessment, detection evidence, operating context, suspected causes, immediate actions, follow-up monitoring, and traceable references.",
+            "When the schema has situation_summary.summary, write 4 to 6 Korean sentences covering severity, affected asset, analysis window, observed signals, mapped site or missing site context, weather/load context if available, and uncertainty.",
+            "When the schema has situation_summary.current_status, write 2 to 4 Korean sentences explaining what is known now, what is not confirmed, what has not yet been field-verified, and what should be checked first.",
+            "When the schema has situation_summary.impact_summary, write 2 to 3 Korean sentences about possible operational impact such as heat supply stability, customer comfort, hot-water quality, energy efficiency, monitoring burden, and escalation risk.",
+            "When the schema has daily_summary, write a daily operations summary for shift handover. Counts must be based on the provided priority_cards input, not invented.",
+            "When the schema has next_shift_handover, make it concrete enough for the next shift operator to act on immediately.",
+            "When the schema has major_patterns, include only repeated or clustered patterns supported by provided cards. Do not overstate a single signal as a recurring pattern.",
+            "When the schema has key_evidence, structure evidence like detection evidence: signal, observed value or qualitative pattern, operational interpretation, and confidence.",
+            "When the schema has risk_analysis.risk_summary and operational_impact, write 3 to 5 Korean sentences each. Explain risk pathways, affected operating functions, and why this needs attention while avoiding confirmed-cause wording.",
+            "When the schema has risk_analysis.monitoring_points, provide 4 to 6 concrete monitoring points.",
+            "When the schema has suspected_causes, provide 2 to 4 cautious candidates only when supported by evidence. Each rationale should explain why it is plausible and what would confirm or rule it out.",
+            "When the schema has recommended_actions, provide 4 to 6 concrete actions in priority order. Each action should include an executable check, the reason for doing it, and should set owner_hint and urgency.",
+            "When the schema has recommended_daily_actions, provide 3 to 6 daily-level actions in priority order. Each action should include a target, reason, and owner_hint.",
+            "When the schema has recommended_actions.expected_outcome, state the expected confirmation, exclusion, or operational decision from the action when the schema allows it.",
+            "For work_order_summary, keep it as metadata only, but make the summary explain whether a work order is not created, drafted, or should be considered based on urgency.",
+            "For work_order_overview, keep it as metadata only. Never draft full work order text.",
+            "For operator_note.note, write 2 to 4 Korean sentences summarizing the operator takeaway, uncertainty limits, and what should be handed over to the next shift.",
+            "For operator_memo.memo, write 2 to 4 Korean sentences summarizing the daily operator takeaway and handover focus.",
+            "For evidence_references, use readable Korean titles for operator-visible references and reserve technical ids for source_id only.",
+            "Round user-visible score values to at most two decimal places.",
+            "Do not start recommended_actions.action with numbering, bullets, or prefixes such as '1.' because the UI may number actions separately.",
+            "Avoid raw separators such as '|', '\\', '/', bracketed code labels, or pipe-joined sensor lists in user-facing prose. Rewrite them as natural Korean lists.",
+            "Do not expose implementation terms such as RAG, chunk, pgvector, API key, raw endpoint, tool function names, or variable names in narrative sections.",
+            "Do not expose internal model or engineering terms in any user-facing title, summary, action, caution, or evidence title.",
+            "Forbidden terms in user-facing strings include: Priority Card, current_best, m1_specialist, M1 Specialist, fault_group, leakage_water_loss, RAG, retrieval, chunk, pgvector, get_ops_evidence, get_external_context, KMA API, APIHub, model, 모델, 전문 모델, Urgent, High, Medium, Low.",
+            "Schema enum values may remain Urgent/High/Medium/Low where required, but all Korean narrative fields must use 긴급/높음/보통/낮음.",
+            "Use Korean operator terms instead: 위험도 산정 결과, 운영 근거, 의심 유형, 기술 점검 기준, 기상 부하 조건.",
+            "You may include technical source ids only inside evidence_references.source_id or uri when the schema requires traceability.",
+            "External weather is operating-load context only. Never treat it as confirmed fault cause.",
+            "Retrieved documents are supporting references only. Never override the official priority score, priority level, counts, or diagnostic evidence.",
+            "Do not invent missing values. Use null or cautious wording when evidence is incomplete.",
+        ]
+    )
+    output_schema = inputs.get("_output_schema") if isinstance(inputs.get("_output_schema"), dict) else None
+    user = build_llm_payload(prompt, inputs)
+    text_format: dict[str, Any]
+    if output_schema:
+        text_format = {
+            "type": "json_schema",
+            "name": "heatgrid_report",
+            "schema": output_schema,
+            "strict": False,
+        }
+    else:
+        text_format = {"type": "json_object"}
+    body = json.dumps(
+        {
+            "model": model,
+            "input": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+            ],
+            "text": {"format": text_format},
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    request = Request(
+        "https://api.openai.com/v1/responses",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=90) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"OpenAI API HTTP {exc.code}: {detail[:500]}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"OpenAI API request failed: {exc.reason}") from exc
+
+    text = payload.get("output_text")
+    if not text:
+        parts: list[str] = []
+        for item in payload.get("output", []) or []:
+            for content in item.get("content", []) or []:
+                if isinstance(content, dict):
+                    parts.append(str(content.get("text") or ""))
+        text = "".join(parts)
+    return extract_json_object(text or "")
 
 
 def ensure_no_work_order_body(report: ReportJson) -> None:
@@ -197,15 +326,52 @@ def make_cli_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         dest="output_path",
-        help="생성된 보고서 JSON을 저장할 경로입니다.",
+        help="생성한 보고서 JSON 또는 보강 입력 JSON을 저장할 경로입니다.",
     )
     parser.add_argument(
         "--mock",
         action="store_true",
         help="LLM 호출 없이 examples/*.example.json을 반환하고 schema validation을 수행합니다.",
     )
+    parser.add_argument(
+        "--with-rag",
+        action="store_true",
+        help="입력 JSON에 RAG/외부 문맥을 보강한 뒤 보고서를 생성합니다.",
+    )
+    parser.add_argument(
+        "--rag-url",
+        dest="rag_url",
+        help="RAG 서버 URL입니다. 생략하면 HEATGRID_RAG_URL 또는 로컬 RagSearcher를 사용합니다.",
+    )
+    parser.add_argument(
+        "--rag-top-k",
+        dest="rag_top_k",
+        type=int,
+        default=5,
+        help="RAG 검색에서 가져올 chunk 개수입니다.",
+    )
+    parser.add_argument(
+        "--force-rag",
+        action="store_true",
+        help="입력에 기존 external_context/rag_evidence가 있어도 다시 보강합니다.",
+    )
+    parser.add_argument(
+        "--enrich-only",
+        action="store_true",
+        help="보고서를 생성하지 않고 RAG로 보강된 입력 JSON만 출력합니다.",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="stdout 출력 없이 --output 파일만 저장합니다.",
+    )
     return parser
 
 
 def print_json(report: ReportJson) -> None:
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    text = json.dumps(report, ensure_ascii=False, indent=2)
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write(text.encode("utf-8"))
+        sys.stdout.buffer.write(b"\n")

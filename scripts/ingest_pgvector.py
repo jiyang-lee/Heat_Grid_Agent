@@ -13,18 +13,48 @@ except ImportError as exc:  # pragma: no cover - dependency guard
     raise SystemExit("psycopg is required. Run `uv sync` first.") from exc
 
 from heatgrid_rag.embedding import hash_embedding, vector_literal
-from heatgrid_rag.pgstore import DEFAULT_DATABASE_URL, database_url_from_env, normalize_database_url
+from heatgrid_rag.pgstore import DEFAULT_DATABASE_URL, database_url_from_env
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHUNKS = ROOT / "data" / "rag_sources" / "metadata" / "rag_chunks.jsonl"
-SCHEMA_SQL = ROOT / "docker" / "postgres" / "init" / "001_heatgrid_schema.sql"
 DEFAULT_SITE_CONTEXT = (
     ROOT
     / "data"
     / "external"
     / "substation_buildings_sejong_lifezone1_31_district_heating_context_with_predist.csv"
 )
+
+REQUIRED_CHUNK_FIELDS = {
+    "chunk_id",
+    "document_title",
+    "source_file",
+    "curated_file",
+    "source_type",
+    "rag_role",
+    "domain",
+    "language",
+    "section_title",
+    "text",
+}
+
+ALLOWED_RAG_ROLES = {
+    "symptom_cause_action_table",
+    "troubleshooting_manual",
+    "fault_priority_research",
+    "domestic_inspection_standard",
+    "dhc_structure_handbook",
+    "international_substation_standard",
+    "work_order_procedure",
+    "monthly_ops_context",
+    "fault_case_history",
+}
+
+REPORT_DOCUMENT_ROLES = {
+    "work_order_procedure": "작업지시서",
+    "monthly_ops_context": "월간리포트",
+    "fault_case_history": "고장보고서",
+}
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -36,6 +66,42 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         if line:
             rows.append(json.loads(line))
     return rows
+
+
+def validate_chunks(chunks: list[dict[str, Any]]) -> None:
+    errors: list[str] = []
+    for index, chunk in enumerate(chunks, start=1):
+        chunk_id = str(chunk.get("chunk_id") or f"line-{index}")
+        missing = sorted(field for field in REQUIRED_CHUNK_FIELDS if chunk.get(field) in {None, ""})
+        if missing:
+            errors.append(f"{chunk_id}: missing required metadata fields: {', '.join(missing)}")
+
+        rag_role = str(chunk.get("rag_role") or "").strip()
+        if rag_role and rag_role not in ALLOWED_RAG_ROLES:
+            errors.append(f"{chunk_id}: unsupported rag_role '{rag_role}'")
+
+        curated_file = str(chunk.get("curated_file") or "").strip().lower()
+        if not curated_file.endswith((".md", ".markdown", ".jsonl", ".csv")):
+            errors.append(f"{chunk_id}: curated_file must point to a curated artifact, not a raw document")
+
+        text = str(chunk.get("text") or "")
+        if len(text) > 12000:
+            errors.append(f"{chunk_id}: chunk text is too large; split before DB ingestion")
+
+        if rag_role in REPORT_DOCUMENT_ROLES:
+            source_type = str(chunk.get("source_type") or "").strip()
+            if source_type not in {"work_order", "monthly_report", "fault_report"}:
+                errors.append(
+                    f"{chunk_id}: {REPORT_DOCUMENT_ROLES[rag_role]} chunks must use source_type "
+                    "work_order/monthly_report/fault_report"
+                )
+            if not chunk.get("extraction_reason"):
+                errors.append(f"{chunk_id}: report document chunks require extraction_reason")
+
+    if errors:
+        preview = "\n".join(errors[:20])
+        suffix = f"\n... {len(errors) - 20} more errors" if len(errors) > 20 else ""
+        raise SystemExit(f"Invalid RAG chunk input. DB ingestion stopped.\n{preview}{suffix}")
 
 
 def document_id_for(chunk: dict[str, Any]) -> str:
@@ -88,18 +154,6 @@ def to_float(value: Any) -> float | None:
         return None
 
 
-
-def ensure_schema(conn: psycopg.Connection) -> None:
-    if not SCHEMA_SQL.exists():
-        raise FileNotFoundError(f"schema SQL not found: {SCHEMA_SQL}")
-    statements = [
-        statement.strip()
-        for statement in SCHEMA_SQL.read_text(encoding="utf-8").split(";")
-        if statement.strip()
-    ]
-    with conn.cursor() as cur:
-        for statement in statements:
-            cur.execute(statement)
 def ingest_chunks(conn: psycopg.Connection, chunks: list[dict[str, Any]]) -> int:
     documents: dict[str, dict[str, Any]] = {}
     for chunk in chunks:
@@ -294,9 +348,8 @@ def main() -> None:
     args = parser.parse_args()
 
     chunks = read_jsonl(args.chunks)
-    database_url = normalize_database_url(args.database_url)
-    with psycopg.connect(database_url, connect_timeout=10) as conn:
-        ensure_schema(conn)
+    validate_chunks(chunks)
+    with psycopg.connect(args.database_url, connect_timeout=10) as conn:
         chunk_count = ingest_chunks(conn, chunks)
         site_count = ingest_site_context(conn, args.site_context)
         conn.commit()
@@ -305,7 +358,7 @@ def main() -> None:
         "status": "ok",
         "chunks": chunk_count,
         "site_context_rows": site_count,
-        "database_url": database_url.replace(database_url.split("@")[0].split("//")[-1], "***") if "@" in database_url else database_url,
+        "database_url": args.database_url.replace(args.database_url.split("@")[0].split("//")[-1], "***") if "@" in args.database_url else args.database_url,
     }, ensure_ascii=False, indent=2))
 
 

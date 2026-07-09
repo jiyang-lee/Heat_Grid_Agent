@@ -144,6 +144,20 @@ python .\report_generator\src\generate_daily_report.py --mock --output .\outputs
 
 실제 LLM 호출은 아직 연결하지 않았습니다. 이후 OpenAI API 또는 내부 LLM gateway를 `llm_caller` interface로 주입합니다.
 
+RAG/외부 문맥 로컬 보강 테스트:
+
+```powershell
+python .\report_generator_hsj\report_generator\src\generate_anomaly_report.py `
+  --input .\v0_ops_handoff_package\input.json `
+  --with-rag `
+  --enrich-only `
+  --output .\report_generator_hsj\outputs\report_generator\anomaly_report.enriched_input.json
+```
+
+`--with-rag`는 `HEATGRID_RAG_URL` 또는 `--rag-url`이 있으면 RAG 서버의 `/external-context`를 호출합니다.
+둘 다 없으면 현재 프로젝트의 `src/heatgrid_rag` 로컬 검색기를 사용합니다.
+`--enrich-only`는 LLM 호출 없이 `external_context`와 `rag_evidence`가 붙은 보고서 입력 JSON만 출력합니다.
+
 ### examples
 
 샘플 입력과 샘플 출력을 둡니다.
