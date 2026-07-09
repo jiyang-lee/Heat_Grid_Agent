@@ -1,0 +1,33 @@
+{
+  "decision": {
+    "priority": "urgent",
+    "operator_review": "Required",
+    "data_quality": "Medium"
+  },
+  "summary": "공식 priority card 기준 최종 우선순위는 urgent입니다. current-best는 urgent로 강하게 경고하지만 M1 specialist는 medium으로 낮아, 근거 불일치가 있어 운영자 검토가 필요합니다.",
+  "action_plan": [
+    "current-best가 긴급으로 판단한 근거를 먼저 확인합니다.",
+    "M1 specialist의 fault 상태 신호와 leakage_water_loss 고장군 가능성을 함께 검토합니다.",
+    "anomaly가 확정되지 않은 상태에서 risk가 높은 케이스이므로 센서 품질과 최근 흐름을 같이 확인합니다."
+  ],
+  "caution": [
+    "risk는 높지만 active anomaly 근거가 확정되지 않았으므로 단독 자동 조치보다 운영자 확인이 필요합니다.",
+    "external context는 현재 설정되지 않았으므로 판단 근거로 사용하지 않습니다."
+  ],
+  "evidence": {
+    "priority_score": 89.73322568799986,
+    "current_best": "urgent",
+    "m1_specialist": "leakage_water_loss",
+    "main_signals": [
+      "review_reason: risk_high_but_anomaly_not_confirmed",
+      "review_reason: m1_priority_disagreement",
+      "m1_priority_agreement: current_only_high",
+      "current-best 우선순위 등급: urgent",
+      "M1 specialist 상태/고장군: fault, leakage_water_loss"
+    ],
+    "used_tools": [
+      "get_ops_evidence",
+      "get_external_context"
+    ]
+  }
+}

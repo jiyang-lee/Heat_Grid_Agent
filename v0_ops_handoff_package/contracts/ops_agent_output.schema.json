@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ops Agent Output v0",
+  "type": "object",
+  "required": ["decision", "summary", "action_plan", "caution", "evidence"],
+  "properties": {
+    "decision": {
+      "type": "object",
+      "required": ["priority", "operator_review", "data_quality"],
+      "properties": {
+        "priority": {
+          "type": ["string", "null"],
+          "description": "Mapped from priority_context.priority.priority_level."
+        },
+        "operator_review": {
+          "type": "string",
+          "enum": ["Required", "Not Required"],
+          "description": "Required when priority_context.explanation.review_required is true; otherwise Not Required."
+        },
+        "data_quality": {
+          "type": "string",
+          "enum": ["Good", "Medium", "Low", "Unknown"],
+          "description": "Derived from internal_context.data_quality."
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "description": "Short operator-facing summary, ideally 1 to 3 sentences."
+    },
+    "action_plan": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "caution": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "priority_score",
+        "current_best",
+        "m1_specialist",
+        "main_signals",
+        "used_tools"
+      ],
+      "properties": {
+        "priority_score": {
+          "type": ["number", "null"],
+          "description": "Mapped from priority_context.priority.priority_score."
+        },
+        "current_best": {
+          "type": ["string", "null"],
+          "description": "Mapped from priority_context.model_signals.current_best_priority_level."
+        },
+        "m1_specialist": {
+          "type": ["string", "null"],
+          "description": "Use m1_specialist_fault_group when available; otherwise m1_specialist_priority_level."
+        },
+        "main_signals": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Three to five compact signals from review reasons, key sensor changes, and M1 feature evidence."
+        },
+        "used_tools": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Names of tools actually called during the agent run."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
