@@ -1,9 +1,20 @@
-/** 헤더 — heating_agent.html 헤더 이식(로고 + 타이틀 + 긴급/주의/정상 요약 배지). */
+/** 헤더 — 로고 + 타이틀 + 뷰 전환(지도/운영) + 헬스 + 긴급/주의/정상 요약. */
 
 import { summaryCounts } from '../domain/model'
+import { useHealth } from '../api/hooks'
 
-export default function Header() {
+export type AppView = 'map' | 'ops'
+
+interface Props {
+  appView: AppView
+  onAppView: (v: AppView) => void
+}
+
+export default function Header({ appView, onAppView }: Props) {
   const c = summaryCounts()
+  const health = useHealth()
+  const h = health.data
+
   return (
     <header className="app-header">
       <svg className="logo" viewBox="0 0 48 48" aria-hidden="true">
@@ -21,7 +32,23 @@ export default function Header() {
         <h1>지역난방 보조운영 에이전트</h1>
         <div className="sub">세종 1생활권 · 지역난방 31개 단지 · MACHINE ROOM CONTROL</div>
       </div>
+
+      <div className="app-nav">
+        <button type="button" className={`nav-b ${appView === 'map' ? 'on' : ''}`} onClick={() => onAppView('map')}>
+          지도 관제
+        </button>
+        <button type="button" className={`nav-b ${appView === 'ops' ? 'on' : ''}`} onClick={() => onAppView('ops')}>
+          운영 콘솔
+        </button>
+      </div>
+
       <div className="summary">
+        {h && (
+          <div className="badge health" title={`input=${h.input} db=${h.database} openai=${h.openai}`}>
+            <i className={`dot ${h.database === 'unavailable' ? 'u' : 'n'}`} />
+            DB {h.database} · LLM {h.openai}
+          </div>
+        )}
         <div className="badge">
           <i className="dot u" />
           긴급 <b className="u">{c.urgent}</b>

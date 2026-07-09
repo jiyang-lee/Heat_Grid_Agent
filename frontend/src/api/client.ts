@@ -15,8 +15,10 @@ import type {
   AgentRunResponse,
   AlertAckRequest,
   AlertAckResponse,
+  AlertEnqueueResponse,
   AlertListQuery,
   AlertSummary,
+  HealthStatus,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -43,6 +45,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     throw new ApiError(res.status, url, body || res.statusText)
+  }
+  return res.json() as Promise<T>
+}
+
+/** 서버 루트 경로용(예: /health) — /api prefix를 붙이지 않는다. */
+export async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    ...init,
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new ApiError(res.status, path, body || res.statusText)
   }
   return res.json() as Promise<T>
 }
@@ -77,6 +92,11 @@ export const alertsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  enqueue: () => apiFetch<AlertEnqueueResponse>('/alerts/enqueue', { method: 'POST' }),
+}
+
+export const healthApi = {
+  get: () => rawFetch<HealthStatus>('/health'),
 }
 
 export const agentRunsApi = {

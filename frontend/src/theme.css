@@ -391,3 +391,202 @@
 .legend .note {
   color: #6f90bd;
 }
+
+/* ===== 작업 지시서 패널 ===== */
+.wo {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wo-btn {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #04121f;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  border: none;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+  transition: 0.15s;
+}
+.wo-btn:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+}
+.wo-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.wo-card {
+  background: rgba(4, 12, 30, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 11px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wo-mode {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+  padding-bottom: 6px;
+}
+.wo-sec .wo-k {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #7f9ecb;
+  margin-bottom: 3px;
+}
+.wo-sec .wo-v {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #dff0ff;
+}
+.wo-sec .wo-v.pre {
+  white-space: pre-line;
+}
+.wo-err {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--urgent);
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 23, 68, 0.4);
+  border-radius: 9px;
+}
+
+/* ===== 상단 뷰 전환 + 헬스 ===== */
+.app-nav {
+  display: flex;
+  gap: 6px;
+  background: rgba(4, 12, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 3px;
+}
+.nav-b {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #9db8de;
+  background: transparent;
+  border: none;
+  transition: 0.15s;
+}
+.nav-b:hover {
+  color: #eaf4ff;
+}
+.nav-b.on {
+  color: #04121f;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  font-weight: 700;
+}
+.badge.health {
+  font-size: 11px;
+}
+
+/* ===== 운영 콘솔 ===== */
+.ops-filters {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.12);
+  flex-wrap: wrap;
+}
+.seg {
+  display: flex;
+  gap: 2px;
+  background: rgba(4, 12, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  padding: 2px;
+}
+.seg-b {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  color: #9db8de;
+  background: transparent;
+  border: none;
+}
+.seg-b.on {
+  color: #04121f;
+  background: var(--cyan);
+  font-weight: 700;
+}
+.ops-actions {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.mini {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  color: #cdefff;
+  background: rgba(0, 120, 200, 0.18);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  transition: 0.15s;
+}
+.mini:hover:not(:disabled) {
+  background: rgba(0, 180, 255, 0.3);
+}
+.mini:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ops-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #9db8de;
+  padding: 8px 10px;
+  background: rgba(4, 12, 30, 0.5);
+  border: 1px solid rgba(0, 229, 255, 0.12);
+  border-radius: 9px;
+}
+.ev {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ev-t {
+  color: var(--cyan);
+  min-width: 92px;
+}
+.ops-artifacts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.artifact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #dff0ff;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(6, 16, 38, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.artifact:hover {
+  border-color: var(--cyan);
+}
+.artifact .pill {
+  color: var(--cyan);
+}

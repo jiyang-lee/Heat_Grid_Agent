@@ -12,6 +12,8 @@ export default defineConfig({
         target: 'http://127.0.0.1:8002',
         changeOrigin: true,
       },
+      // 서버 루트 엔드포인트(/api prefix 없음)
+      '/health': { target: 'http://127.0.0.1:8002', changeOrigin: true },
     },
   },
 })

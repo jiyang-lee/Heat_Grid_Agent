@@ -4,6 +4,7 @@ import type { Complex } from '../data/complexes'
 import { MACHINES, machineMonitored } from '../domain/machines'
 import { machineStatus } from '../domain/model'
 import { STATUS, sev } from '../domain/status'
+import WorkOrderPanel from './WorkOrderPanel'
 
 interface Props {
   complex: Complex
@@ -55,6 +56,7 @@ export default function DetailAside({ complex, selMachine, onSelectMachine }: Pr
             </div>
           )
         })}
+        <WorkOrderPanel key={complex.id} complex={complex} />
       </div>
     </>
   )

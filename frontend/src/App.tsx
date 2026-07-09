@@ -7,16 +7,18 @@
 
 import { useState } from 'react'
 import './theme.css'
-import Header from './components/Header'
+import Header, { type AppView } from './components/Header'
 import MapView from './map/MapView'
 import PriorityAside from './components/PriorityAside'
 import DetailAside from './components/DetailAside'
 import RoomSchematic from './room/RoomSchematic'
+import OpsConsole from './ops/OpsConsole'
 import { complexById } from './domain/model'
 
 type View = 'city' | 'room'
 
 function App() {
+  const [appView, setAppView] = useState<AppView>('map')
   const [view, setView] = useState<View>('city')
   const [selBld, setSelBld] = useState<number | null>(null)
   const [selMachine, setSelMachine] = useState<string | null>(null)
@@ -37,7 +39,9 @@ function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header appView={appView} onAppView={setAppView} />
+      {appView === 'ops' && <OpsConsole />}
+      {appView === 'map' && (
       <div className="wrap">
         {/* 메인 패널 */}
         <section className="panel">
@@ -93,6 +97,7 @@ function App() {
           ) : null}
         </aside>
       </div>
+      )}
     </div>
   )
 }

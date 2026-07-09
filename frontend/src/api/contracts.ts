@@ -136,3 +136,13 @@ export interface SseEnvelope<TPayload = unknown> {
   message?: string
   payload: TPayload
 }
+
+// ---------------------------------------------------------------------------
+// Health (GET /health, 서버 루트 — /api prefix 없음)
+// ---------------------------------------------------------------------------
+
+export interface HealthStatus {
+  input: string // "postgresql"
+  database: string // "connected" | "unavailable" | "mock"
+  openai: string // "configured" | "missing_key" | "mock"
+}
