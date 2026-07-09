@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ops Agent Input v0 Minimal",
+  "type": "object",
+  "required": ["raw_context", "priority_context"],
+  "properties": {
+    "raw_context": {
+      "type": "object",
+      "required": ["window", "current_best_sensor_values", "m1_specialist_features"],
+      "properties": {
+        "window": { "$ref": "#/$defs/window" },
+        "current_best_sensor_values": {
+          "type": "object",
+          "required": [
+            "model_id",
+            "source_artifact",
+            "selection_rule",
+            "top_n",
+            "values"
+          ],
+          "properties": {
+            "model_id": { "type": "string" },
+            "model_version": { "type": ["string", "null"] },
+            "source_artifact": { "type": "string" },
+            "selection_rule": {
+              "type": "string",
+              "description": "Selection rule for current-best raw sensor aggregate values."
+            },
+            "top_n": { "type": "integer", "minimum": 1 },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/sensor_value" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "m1_specialist_features": {
+          "type": "object",
+          "required": ["model_id", "source_artifact", "feature_count", "features"],
+          "properties": {
+            "model_id": { "type": "string" },
+            "model_version": { "type": ["string", "null"] },
+            "source_artifact": { "type": "string" },
+            "feature_count": { "type": "integer", "const": 13 },
+            "features": {
+              "type": "array",
+              "minItems": 13,
+              "maxItems": 13,
+              "items": { "$ref": "#/$defs/sensor_value" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "priority_context": {
+      "type": "object",
+      "required": ["card", "priority", "model_signals", "explanation"],
+      "properties": {
+        "card": {
+          "type": "object",
+          "required": ["card_id", "operational_label", "primary_state", "trust_level"],
+          "properties": {
+            "card_id": { "type": "string" },
+            "operational_label": { "type": ["string", "null"] },
+            "primary_state": { "type": ["string", "null"] },
+            "trust_level": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "priority": {
+          "type": "object",
+          "required": [
+            "priority_decision_id",
+            "priority_score",
+            "priority_level",
+            "priority_source",
+            "m1_priority_agreement",
+            "calculation"
+          ],
+          "properties": {
+            "priority_decision_id": { "type": "string" },
+            "priority_score": { "type": ["number", "null"] },
+            "priority_level": { "type": ["string", "null"] },
+            "priority_source": { "type": ["string", "null"] },
+            "m1_priority_agreement": { "type": ["string", "null"] },
+            "calculation": {
+              "type": "object",
+              "required": ["current_best_weight", "m1_specialist_weight", "expression"],
+              "properties": {
+                "current_best_weight": { "type": ["number", "null"] },
+                "m1_specialist_weight": { "type": ["number", "null"] },
+                "expression": { "type": ["string", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "model_signals": {
+          "type": "object",
+          "required": [
+            "current_best_priority_score",
+            "current_best_priority_level",
+            "m1_specialist_priority_score",
+            "m1_specialist_priority_level",
+            "m1_specialist_primary_state",
+            "m1_specialist_fault_group"
+          ],
+          "properties": {
+            "current_best_priority_score": { "type": ["number", "null"] },
+            "current_best_priority_level": { "type": ["string", "null"] },
+            "m1_specialist_priority_score": { "type": ["number", "null"] },
+            "m1_specialist_priority_level": { "type": ["string", "null"] },
+            "m1_specialist_primary_state": { "type": ["string", "null"] },
+            "m1_specialist_fault_group": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "explanation": {
+          "type": "object",
+          "required": ["why_reason", "recommended_action", "review_required", "review_reasons"],
+          "properties": {
+            "why_reason": { "type": ["string", "null"] },
+            "recommended_action": { "type": ["string", "null"] },
+            "review_required": { "type": "boolean" },
+            "review_reasons": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "internal_context": {
+      "type": "object",
+      "required": [
+        "data_quality",
+        "model_provenance",
+        "asset_context",
+        "ops_history",
+        "window_context"
+      ],
+      "properties": {
+        "data_quality": {
+          "type": "object",
+          "required": [
+            "review_required",
+            "trust_level",
+            "feature_coverage",
+            "raw_sensor_coverage"
+          ],
+          "properties": {
+            "review_required": { "type": "boolean" },
+            "trust_level": { "type": ["string", "null"] },
+            "feature_coverage": {
+              "type": "object",
+              "required": [
+                "current_best_sensor_values_count",
+                "m1_specialist_feature_count",
+                "expected_current_best_sensor_values_count",
+                "expected_m1_specialist_feature_count"
+              ],
+              "properties": {
+                "current_best_sensor_values_count": { "type": "integer", "minimum": 0 },
+                "m1_specialist_feature_count": { "type": "integer", "minimum": 0 },
+                "expected_current_best_sensor_values_count": { "type": "integer", "minimum": 0 },
+                "expected_m1_specialist_feature_count": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "raw_sensor_coverage": {
+              "type": "object",
+              "required": [
+                "sensor_reading_count",
+                "source_sensor_count",
+                "window_has_sensor_readings"
+              ],
+              "properties": {
+                "sensor_reading_count": { "type": ["integer", "null"], "minimum": 0 },
+                "source_sensor_count": { "type": ["integer", "null"], "minimum": 0 },
+                "window_has_sensor_readings": { "type": ["boolean", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "model_provenance": {
+          "type": "object",
+          "required": ["priority_policy"],
+          "properties": {
+            "priority_policy": {
+              "type": "object",
+              "required": ["policy_version", "priority_source", "decision_basis", "weights"],
+              "properties": {
+                "policy_version": { "type": ["string", "null"] },
+                "priority_source": { "type": ["string", "null"] },
+                "decision_basis": { "type": ["string", "null"] },
+                "weights": {
+                  "type": "object",
+                  "required": [
+                    "current_best_priority_score",
+                    "m1_specialist_priority_score"
+                  ],
+                  "properties": {
+                    "current_best_priority_score": { "type": ["number", "null"] },
+                    "m1_specialist_priority_score": { "type": ["number", "null"] }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "asset_context": {
+          "type": "object",
+          "required": ["manufacturer_id", "substation_id", "configuration_type"],
+          "properties": {
+            "manufacturer_id": { "type": "string" },
+            "substation_id": { "type": ["integer", "string"] },
+            "configuration_type": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "ops_history": {
+          "type": "object",
+          "required": ["previous_llm_notes"],
+          "properties": {
+            "previous_llm_notes": {
+              "type": "array",
+              "items": { "type": "object" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "window_context": {
+          "type": "object",
+          "required": ["window_id", "window_start", "window_end", "season_bucket", "source_file"],
+          "properties": {
+            "window_id": { "type": "string" },
+            "window_start": { "type": "string", "format": "date-time" },
+            "window_end": { "type": "string", "format": "date-time" },
+            "season_bucket": { "type": ["string", "null"] },
+            "source_file": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "window": {
+      "type": "object",
+      "required": [
+        "window_id",
+        "manufacturer_id",
+        "substation_id",
+        "configuration_type",
+        "window_start",
+        "window_end"
+      ],
+      "properties": {
+        "window_id": { "type": "string" },
+        "manufacturer_id": { "type": "string" },
+        "substation_id": { "type": ["integer", "string"] },
+        "configuration_type": { "type": ["string", "null"] },
+        "window_start": { "type": "string", "format": "date-time" },
+        "window_end": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "sensor_value": {
+      "type": "object",
+      "required": [
+        "rank",
+        "feature_name",
+        "source_sensor",
+        "source_column",
+        "feature_value",
+        "unit",
+        "calculation",
+        "meaning"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "feature_name": { "type": "string" },
+        "source_sensor": { "type": "string" },
+        "source_column": { "type": "string" },
+        "feature_value": { "type": ["number", "string", "boolean", "null"] },
+        "unit": { "type": ["string", "null"] },
+        "calculation": { "type": "string" },
+        "meaning": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

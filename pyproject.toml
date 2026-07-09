@@ -17,6 +17,7 @@ dependencies = [
     "numpy",
     "pandas",
     "plotly",
+    "psycopg[binary]",
     "scikit-learn",
     "tabulate",
     "fastapi>=0.139.0",

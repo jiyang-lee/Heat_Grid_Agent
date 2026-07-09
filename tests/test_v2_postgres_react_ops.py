@@ -35,22 +35,26 @@ async def reset_contract_tables(module: ModuleType) -> None:
 
 
 @pytest.mark.anyio
-async def test_v2_postgres_tools_return_ops_evidence_only(
+async def test_v2_postgres_tools_return_ops_and_external_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    tools = {item.name: item for item in module.tools_for(source_input)}
+    external_context = module.external_context_for(card_ids[0], source_input)
+    tools = {item.name: item for item in module.tools_for(source_input, external_context)}
 
     evidence = orjson.loads(tools["get_ops_evidence"].invoke({"card_id": card_ids[0]}))
+    context = orjson.loads(tools["get_external_context"].invoke({"card_id": card_ids[0]}))
 
-    assert set(tools) == {"get_ops_evidence"}
+    assert set(tools) == {"get_ops_evidence", "get_external_context"}
+    assert "site" in context
+    assert "weather" in context
+    assert "retrieval" in context
     assert evidence["priority_context"]["card"]["card_id"] == card_ids[0]
     assert "model_outputs" in evidence["priority_context"]
     assert isinstance(evidence["priority_context"]["model_outputs"], list)
     assert "raw_context" in evidence
-
 
 @pytest.mark.anyio
 async def test_api_server_exposes_health_and_metadata(
