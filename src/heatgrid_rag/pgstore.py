@@ -74,7 +74,12 @@ class PgVectorStore:
                 with conn.cursor() as cur:
                     cur.execute("select 1")
                     cur.fetchone()
-            return True
+                    cur.execute(
+                        "select to_regclass('public.rag_chunks'), "
+                        "to_regclass('public.substation_building_context')"
+                    )
+                    rag_chunks, site_context = cur.fetchone()
+                    return rag_chunks is not None and site_context is not None
         except Exception:
             return False
 
