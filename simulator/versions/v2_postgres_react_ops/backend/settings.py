@@ -22,7 +22,11 @@ GPT_5_4_MINI_PRICING_SOURCE: Final = (
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="HEATGRID_")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="HEATGRID_",
+        extra="ignore",
+    )
 
     database_url: str = (
         "postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
