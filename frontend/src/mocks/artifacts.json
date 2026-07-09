@@ -1,0 +1,16 @@
+[
+  {
+    "artifact_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "run_id": "99999999-9999-9999-9999-999999999999",
+    "kind": "evidence",
+    "name": "substation_3_pressure_window.csv",
+    "uri": "/artifacts/99999999/substation_3_pressure_window.csv"
+  },
+  {
+    "artifact_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "run_id": "99999999-9999-9999-9999-999999999999",
+    "kind": "report",
+    "name": "ops_action_report.md",
+    "uri": "/artifacts/99999999/ops_action_report.md"
+  }
+]

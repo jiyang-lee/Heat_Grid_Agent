@@ -1,0 +1,24 @@
+{
+  "run_id": "99999999-9999-9999-9999-999999999999",
+  "status": "completed",
+  "input_source": "alert",
+  "alert_id": "11111111-1111-1111-1111-111111111111",
+  "card_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "agent_mode": "llm",
+  "ops_output": {
+    "summary": "세종 1생활권 substation 3번 공급 헤더 압력이 임계 곡선에 근접 중입니다.",
+    "action_plan": "1) 순환펌프 유량 10% 상향 2) 3번 밸브 개도 점검 3) 2시간 내 재평가",
+    "caution": "동시에 팽창탱크 수위를 감시하십시오. 급격한 압력 강하 시 즉시 수동 개입."
+  },
+  "token_usage": {
+    "model_calls": 2,
+    "input_tokens": 4200,
+    "cached_input_tokens": 0,
+    "output_tokens": 380,
+    "total_tokens": 4580,
+    "evidence_payload_chars": 8123,
+    "cost_estimate": null,
+    "calls": []
+  },
+  "error": null
+}
