@@ -5,6 +5,7 @@
  */
 
 import type { AgentRunResponse, AlertSummary, OpsAgentResultV4 } from '../api/contracts'
+import { useBuildingNameResolver } from './useBuildingName'
 
 interface Props {
   alert: AlertSummary | null
@@ -18,6 +19,7 @@ interface Props {
 const DASH = '—'
 
 export default function AlertDetail({ alert, run, opsResult, resultLoading, resultError, running }: Props) {
+  const buildingName = useBuildingNameResolver()
   if (!alert) return <div className="empty">왼쪽에서 알림을 선택하세요</div>
 
   const ops = run?.ops_output
@@ -30,7 +32,7 @@ export default function AlertDetail({ alert, run, opsResult, resultLoading, resu
   return (
     <div className="aside-body">
       <div className="aside-meta" style={{ padding: 0, border: 'none' }}>
-        <div className="bn">{alert.enqueue_reason}</div>
+        <div className="bn">{buildingName(alert.card_id) ?? alert.enqueue_reason}</div>
         <div className="ba">
           {alert.priority_level} · score {alert.priority_score?.toFixed(3) ?? '-'} · {alert.status}
           {alert.acked_by ? ` · ${alert.acked_by}` : ''}

@@ -4,12 +4,14 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_BACKEND_URL || 'http://127.0.0.1:8003'
+  const backendTarget = env.VITE_BACKEND_URL || 'http://127.0.0.1:8002'
 
   return {
     plugins: [react()],
     server: {
       port: Number(process.env.PORT) || 5173,
+      // 같은 네트워크(LAN)에서 내 PC IP로 접속 가능하게 0.0.0.0 바인딩.
+      host: true,
       // 실 백엔드(simulator v2 postgres_react_ops)로 계약 요청 프록시.
       // 프론트는 상대경로 `/api/...`로만 호출하고, 백엔드 주소는 여기서만 관리한다.
       proxy: {
@@ -19,6 +21,8 @@ export default defineConfig(({ mode }) => {
         },
         // 서버 루트 엔드포인트(/api prefix 없음)
         '/health': { target: backendTarget, changeOrigin: true },
+        // 계약 밖 읽기전용. 알림에 건물명을 붙이기 위한 card_id→substation_id 매핑용.
+        '/cards': { target: backendTarget, changeOrigin: true },
       },
     },
   }

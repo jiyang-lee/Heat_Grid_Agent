@@ -8,7 +8,7 @@
 
 import type { Complex } from '../data/complexes'
 import { MACHINES, machineMonitored } from '../domain/machines'
-import { machineStatus } from '../domain/model'
+import { useModel } from '../domain/ModelProvider'
 import { STATUS } from '../domain/status'
 import { machineImg } from './machineArt'
 
@@ -21,6 +21,7 @@ interface Props {
 }
 
 export default function RoomSchematic({ complex, selMachine, onSelectMachine }: Props) {
+  const { machineStatus } = useModel()
   const st = machineStatus(complex.id)
   // 뒤(위)에 있는 타일이 먼저, 앞(아래) 타일이 나중에 그려지도록 ay 오름차순.
   const order = [...MACHINES].sort((m, n) => m.ay - n.ay)

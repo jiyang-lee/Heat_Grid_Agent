@@ -1,7 +1,7 @@
 /** 수리 우선순위 사이드 — heating_agent.html renderAsideCity 이식. */
 
 import { complexes } from '../data/complexes'
-import { counts, overall } from '../domain/model'
+import { useModel } from '../domain/ModelProvider'
 import { STATUS } from '../domain/status'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function PriorityAside({ selectedId, onSelect }: Props) {
+  const { overall, counts } = useModel()
   // 종합상태 정상 제외, [긴급 수 → 주의 수 → 관리비단가] 내림차순
   const list = complexes
     .filter((b) => overall(b.id) !== 'normal')
