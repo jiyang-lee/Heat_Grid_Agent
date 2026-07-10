@@ -25,6 +25,7 @@ data/external/source/
 output/rag_server/
 output/ops_agent/token_check/
 output/ops_agent/style_check/
+output/ops_agent/reports/
 output/ops_agent/tmp_*.json
 output/ops_agent/ops_agent_output_*.json
 
