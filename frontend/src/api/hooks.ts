@@ -1,7 +1,8 @@
 /** 계약 소비 훅 (TanStack Query). alertsApi/agentRunsApi/healthApi는 backend.ts 스위치. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { agentRunsApi, alertsApi, healthApi } from './backend'
+import { agentRunsApi, alertsApi, cardsApi, healthApi } from './backend'
+import { USE_MOCK } from './config'
 import type { AlertListQuery } from './contracts'
 
 export const qk = {
@@ -17,6 +18,27 @@ export function useAlerts(query?: AlertListQuery) {
 
 export function useHealth() {
   return useQuery({ queryKey: qk.health, queryFn: () => healthApi.get(), refetchInterval: 15000 })
+}
+
+/**
+ * card_id → substation_id 매핑(계약 밖 읽기전용 /cards). mock 모드에선 비활성.
+ * 건물명 enrichment와 지도 모델-tier 산출이 공유한다.
+ */
+export function useCardSubstationMap() {
+  return useQuery({
+    queryKey: ['cards-substation-map'],
+    queryFn: async () => {
+      const rows = await cardsApi.list()
+      const map = new Map<string, number>()
+      for (const row of rows) {
+        if (row.substation_id != null) map.set(row.card_id, row.substation_id)
+      }
+      return map
+    },
+    enabled: !USE_MOCK,
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
 }
 
 export function useAckAlert() {

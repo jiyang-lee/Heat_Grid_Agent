@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
         },
         // 서버 루트 엔드포인트(/api prefix 없음)
         '/health': { target: backendTarget, changeOrigin: true },
+        // 계약 밖 읽기전용. 알림에 건물명을 붙이기 위한 card_id→substation_id 매핑용.
+        '/cards': { target: backendTarget, changeOrigin: true },
       },
     },
   }

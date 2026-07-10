@@ -11,7 +11,8 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { hasMapStyle, mapStyleUrl } from './mapConfig'
-import { SEJONG_CENTER, complexFootprints } from './footprints'
+import { SEJONG_CENTER, buildComplexFootprints } from './footprints'
+import { useModel } from '../domain/ModelProvider'
 
 interface Props {
   selectedId: number | null
@@ -21,9 +22,12 @@ interface Props {
 export default function MapView({ selectedId, onSelectComplex }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  // 최신 콜백을 ref로 유지(맵 초기화는 1회라 클로저 고정 방지)
+  const { overall } = useModel()
+  // 최신 값을 ref로 유지(맵 초기화는 1회라 클로저 고정 방지)
   const onSelectRef = useRef(onSelectComplex)
   onSelectRef.current = onSelectComplex
+  const overallRef = useRef(overall)
+  overallRef.current = overall
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -48,7 +52,10 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), 'top-right')
 
     map.on('load', () => {
-      map.addSource('complexes', { type: 'geojson', data: complexFootprints })
+      map.addSource('complexes', {
+        type: 'geojson',
+        data: buildComplexFootprints(overallRef.current),
+      })
       map.addLayer({
         id: 'complexes-3d',
         type: 'fill-extrusion',
@@ -110,6 +117,18 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
     if (map.isStyleLoaded()) apply()
     else map.once('load', apply)
   }, [selectedId])
+
+  // 모델 tier(백엔드 우선순위) 변경 시 지도 색 데이터 갱신
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const apply = () => {
+      const src = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
+      if (src) src.setData(buildComplexFootprints(overall))
+    }
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
+  }, [overall])
 
   if (!hasMapStyle) {
     return (

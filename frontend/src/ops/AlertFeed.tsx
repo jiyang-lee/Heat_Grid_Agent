@@ -2,6 +2,7 @@
 
 import type { AlertStatus, PriorityLevel } from '../api/contracts'
 import { useAckAlert, useAlerts, useResolveAlert } from '../api/hooks'
+import { useBuildingNameResolver } from './useBuildingName'
 
 const STATUS_KO: Record<AlertStatus | 'all', string> = {
   open: '열림',
@@ -26,6 +27,7 @@ function fmtTime(iso: string): string {
 
 export default function AlertFeed({ status, priority, onStatus, onPriority, selectedId, onSelect }: Props) {
   const alerts = useAlerts({ status, priority_level: priority === 'all' ? undefined : priority })
+  const buildingName = useBuildingNameResolver()
   const ack = useAckAlert()
   const resolve = useResolveAlert()
 
@@ -62,7 +64,7 @@ export default function AlertFeed({ status, priority, onStatus, onPriority, sele
               {a.priority_level === 'urgent' ? '긴급' : '높음'}
             </div>
             <div className="info">
-              <div className="nm">{a.enqueue_reason}</div>
+              <div className="nm">{buildingName(a.card_id) ?? a.enqueue_reason}</div>
               <div className="ad">
                 score {a.priority_score?.toFixed(3) ?? '-'} · {fmtTime(a.created_at)} · {STATUS_KO[a.status]}
                 {a.acked_by ? ` · ${a.acked_by}` : ''}

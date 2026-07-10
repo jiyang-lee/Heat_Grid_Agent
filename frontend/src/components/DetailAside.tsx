@@ -2,7 +2,7 @@
 
 import type { Complex } from '../data/complexes'
 import { MACHINES, machineMonitored } from '../domain/machines'
-import { machineStatus } from '../domain/model'
+import { useModel } from '../domain/ModelProvider'
 import { STATUS, sev } from '../domain/status'
 import WorkOrderPanel from './WorkOrderPanel'
 
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export default function DetailAside({ complex, selMachine, onSelectMachine }: Props) {
+  const { machineStatus } = useModel()
   const st = machineStatus(complex.id)
   // 설비 목록: 심각도 높은 순
   const order = [...MACHINES].sort((m, n) => sev(st[n.key] ?? 'normal') - sev(st[m.key] ?? 'normal'))

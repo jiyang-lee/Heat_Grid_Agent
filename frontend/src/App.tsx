@@ -14,6 +14,8 @@ import DetailAside from './components/DetailAside'
 import RoomSchematic from './room/RoomSchematic'
 import OpsConsole from './ops/OpsConsole'
 import { complexById } from './domain/model'
+import { ModelProvider } from './domain/ModelProvider'
+import { USE_MOCK } from './api/config'
 
 type View = 'city' | 'room'
 
@@ -38,6 +40,7 @@ function App() {
   const sel = selBld != null ? complexById.get(selBld) ?? null : null
 
   return (
+    <ModelProvider>
     <div className="app">
       <Header appView={appView} onAppView={setAppView} />
       {appView === 'ops' && <OpsConsole />}
@@ -76,7 +79,9 @@ function App() {
             </span>
             <span className="note">
               {city
-                ? '· 상태=총관리비 단가(대리 열부하) 기반 데모 · 위치=실제 위경도'
+                ? USE_MOCK
+                  ? '· 상태=총관리비 단가(대리 열부하) 기반 데모 · 위치=실제 위경도'
+                  : '· 상태=모델 우선순위(priority_score) 기반 · 위치=실제 위경도'
                 : '· 회색=해당 PreDist 센서 미탑재(감시 불가)'}
             </span>
           </div>
@@ -99,6 +104,7 @@ function App() {
       </div>
       )}
     </div>
+    </ModelProvider>
   )
 }
 

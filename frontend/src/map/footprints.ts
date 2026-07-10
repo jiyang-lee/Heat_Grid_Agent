@@ -10,6 +10,7 @@
 import type { Feature, FeatureCollection, Polygon } from 'geojson'
 import { complexes } from '../data/complexes'
 import { overall } from '../domain/model'
+import type { Tier } from '../domain/status'
 
 /** 지도 초기 중심: 단지 좌표 평균 (세종 1생활권) */
 export const SEJONG_CENTER: [number, number] = (() => {
@@ -42,24 +43,35 @@ function squareFootprint(lng: number, lat: number, halfMeters: number): number[]
   ]
 }
 
-export const complexFootprints: FeatureCollection<Polygon> = {
-  type: 'FeatureCollection',
-  features: complexes.map((c): Feature<Polygon> => {
-    const norm = (c.households - hhMin) / hhSpan
-    const height = Math.round(22 + norm * 62) // heightOf 이식
-    const halfMeters = 30 + norm * 30
-    return {
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [squareFootprint(c.lng, c.lat, halfMeters)],
-      },
-      properties: {
-        id: c.id,
-        name: c.name,
-        height,
-        tier: overall(c.id),
-      },
-    }
-  }),
+/**
+ * 단지 3D 돌출 GeoJSON 생성. tier(색)는 주입된 overallFn으로 결정한다.
+ * MapView가 백엔드 모델 tier(useModel().overall)를 넣어 반응형으로 setData한다.
+ */
+export function buildComplexFootprints(
+  overallFn: (id: number) => Tier,
+): FeatureCollection<Polygon> {
+  return {
+    type: 'FeatureCollection',
+    features: complexes.map((c): Feature<Polygon> => {
+      const norm = (c.households - hhMin) / hhSpan
+      const height = Math.round(22 + norm * 62) // heightOf 이식
+      const halfMeters = 30 + norm * 30
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [squareFootprint(c.lng, c.lat, halfMeters)],
+        },
+        properties: {
+          id: c.id,
+          name: c.name,
+          height,
+          tier: overallFn(c.id),
+        },
+      }
+    }),
+  }
 }
+
+/** 데모 tier 기본 GeoJSON(모듈 최상위 사용/초기 렌더용). 런타임 색은 MapView가 갱신. */
+export const complexFootprints: FeatureCollection<Polygon> = buildComplexFootprints(overall)

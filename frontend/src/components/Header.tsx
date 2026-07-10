@@ -1,6 +1,6 @@
 /** 헤더 — 로고 + 타이틀 + 뷰 전환(지도/운영) + 헬스 + 긴급/주의/정상 요약. */
 
-import { summaryCounts } from '../domain/model'
+import { useModel } from '../domain/ModelProvider'
 import { useHealth } from '../api/hooks'
 
 export type AppView = 'map' | 'ops'
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function Header({ appView, onAppView }: Props) {
+  const { summaryCounts } = useModel()
   const c = summaryCounts()
   const health = useHealth()
   const h = health.data
