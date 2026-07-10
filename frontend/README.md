@@ -22,7 +22,7 @@ npm run dev               # → http://localhost:5173
 |---|---|
 | `VITE_MAP_STYLE_URL` | MapTiler 키 또는 전체 style JSON URL. **비워두면 지도 안 뜸.** 키는 레포에 커밋하지 말고 팀 채널에서 공유받거나 각자 [MapTiler](https://cloud.maptiler.com/)에서 발급. |
 | `VITE_USE_MOCK` | `true`면 백엔드 없이 mock 데이터로 전체 화면 구동(데모 권장). 미설정/`false`면 실백엔드(`VITE_BACKEND_URL`) 호출. |
-| `VITE_BACKEND_URL` | 실백엔드 프록시 대상. 기본 `http://127.0.0.1:8003`. |
+| `VITE_BACKEND_URL` | 실백엔드 프록시 대상. 기본 `http://127.0.0.1:8002`. |
 
 **백엔드 없이 전체 화면을 보려면** `.env`에 다음 두 줄이면 충분합니다:
 
