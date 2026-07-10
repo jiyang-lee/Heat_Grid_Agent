@@ -25,6 +25,7 @@ from heatgrid_ops.agent.helpers import (
     fallback_note,
     to_json,
     token_call_from_event,
+    token_calls_from_messages,
     unavailable_external_context,
 )
 from heatgrid_ops.agent.tools import make_operational_tools
@@ -83,6 +84,7 @@ class AgentRuntime:
         evidence_assessment: EvidenceAssessment | None = None,
         external_candidates: list[dict[str, JsonValue]] | None = None,
         revision_feedback: list[str] | None = None,
+        usage: TokenUsage | None = None,
     ) -> OpsAgentOutput:
         key = self.settings.openai_api_key
         if key is None:
@@ -117,6 +119,8 @@ class AgentRuntime:
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": request}]}
         )
+        if usage is not None:
+            usage.calls.extend(token_calls_from_messages(result.get("messages")))
         return OpsAgentOutput.model_validate(result.get("structured_response"))
 
     async def assess_evidence(
@@ -260,7 +264,12 @@ async def generate_note(
     external_context = runtime.external_context_for(card_id, source_input)
     usage = runtime.token_usage_for(source_input, external_context, card_id)
     try:
-        output = await runtime.generate_llm_output(source_input, external_context, card_id)
+        output = await runtime.generate_llm_output(
+            source_input,
+            external_context,
+            card_id,
+            usage=usage,
+        )
     except (MissingApiKeyError, OpenAIError, ValidationError):
         return fallback_note(source_input, external_context), "fallback", usage
     return output, "llm", usage

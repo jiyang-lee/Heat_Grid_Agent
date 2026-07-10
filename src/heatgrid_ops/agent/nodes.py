@@ -423,6 +423,7 @@ async def generate_operational_answer(
             evidence_assessment=state.get("evidence_assessment"),
             external_candidates=state.get("external_candidates"),
             revision_feedback=state.get("revision_feedback"),
+            usage=usage,
         )
     except (MissingApiKeyError, OpenAIError, ValidationError):
         return {"token_usage": usage, "agent_mode": "fallback"}

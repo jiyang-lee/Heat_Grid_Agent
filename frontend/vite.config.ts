@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: Number(process.env.PORT) || 5173,
+      // 같은 네트워크(LAN)에서 내 PC IP로 접속 가능하게 0.0.0.0 바인딩.
+      host: true,
       // 실 백엔드(simulator v2 postgres_react_ops)로 계약 요청 프록시.
       // 프론트는 상대경로 `/api/...`로만 호출하고, 백엔드 주소는 여기서만 관리한다.
       proxy: {

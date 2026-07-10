@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from heatgrid_ops.agent.assessment import assess_evidence, validate_output
+from heatgrid_ops.agent.helpers import token_calls_from_messages
 from schemas import ModelVerificationResult, OpsAgentOutput
 
 
@@ -104,3 +106,25 @@ def test_sufficient_evidence_finalizes_and_bad_output_requests_revision() -> Non
     assert result.decision == "finalize"
     assert validation.valid is False
     assert validation.issues
+
+
+def test_non_streaming_llm_messages_record_token_usage() -> None:
+    calls = token_calls_from_messages(
+        [
+            SimpleNamespace(usage_metadata=None),
+            SimpleNamespace(
+                usage_metadata={
+                    "input_tokens": 120,
+                    "input_token_details": {"cache_read": 20},
+                    "output_tokens": 30,
+                    "total_tokens": 150,
+                }
+            ),
+        ]
+    )
+
+    assert len(calls) == 1
+    assert calls[0].input_tokens == 120
+    assert calls[0].cached_input_tokens == 20
+    assert calls[0].output_tokens == 30
+    assert calls[0].total_tokens == 150

@@ -6,6 +6,7 @@
 
 import type { AgentRunResponse, AlertSummary, OpsAgentResultV4 } from '../api/contracts'
 import { useAgentIterations } from '../api/hooks'
+import { complexById } from '../domain/model'
 
 interface Props {
   alert: AlertSummary | null
@@ -21,6 +22,9 @@ const DASH = '—'
 export default function AlertDetail({ alert, run, opsResult, resultLoading, resultError, running }: Props) {
   const iterations = useAgentIterations(run?.run_id ?? null)
   if (!alert) return <div className="empty">왼쪽에서 알림을 선택하세요</div>
+  const location = alert.substation_id == null
+    ? 'Substation -'
+    : `${complexById.get(alert.substation_id)?.name ?? '미등록 단지'} · Substation ${alert.substation_id}`
 
   const ops = run?.ops_output
   const summary = opsResult?.headline ?? ops?.summary ?? DASH
@@ -32,7 +36,7 @@ export default function AlertDetail({ alert, run, opsResult, resultLoading, resu
   return (
     <div className="aside-body">
       <div className="aside-meta" style={{ padding: 0, border: 'none' }}>
-        <div className="bn">Substation {alert.substation_id ?? '-'} · 전체 {alert.priority_rank ?? '-'}위</div>
+        <div className="bn">{location} · 전체 {alert.priority_rank ?? '-'}위</div>
         <div className="ba">
           {alert.priority_level} · score {alert.priority_score?.toFixed(1) ?? '-'} · {alert.status}
           {alert.acked_by ? ` · ${alert.acked_by}` : ''}
