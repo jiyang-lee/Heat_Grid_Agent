@@ -5,7 +5,7 @@
  * 기계실(ROOM) 뷰: 단지 클릭 시 진입 (Phase D에서 스키매틱/상세 구현).
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './theme.css'
 import Header, { type AppView } from './components/Header'
 import MapView from './map/MapView'
@@ -18,12 +18,21 @@ import { ModelProvider } from './domain/ModelProvider'
 import { USE_MOCK } from './api/config'
 
 type View = 'city' | 'room'
+type Theme = 'dark' | 'light'
 
 function App() {
   const [appView, setAppView] = useState<AppView>('map')
   const [view, setView] = useState<View>('city')
   const [selBld, setSelBld] = useState<number | null>(null)
   const [selMachine, setSelMachine] = useState<string | null>(null)
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') === 'light' ? 'light' : 'dark'))
+
+  // 테마를 <html data-theme>에 반영 + localStorage 저장.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('theme', theme)
+  }, [theme])
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
 
   const enterBuilding = (id: number) => {
     setSelBld(id)
@@ -42,7 +51,7 @@ function App() {
   return (
     <ModelProvider>
     <div className="app">
-      <Header appView={appView} onAppView={setAppView} />
+      <Header appView={appView} onAppView={setAppView} theme={theme} onToggleTheme={toggleTheme} />
       {appView === 'ops' && <OpsConsole />}
       {appView === 'map' && (
       <div className="wrap">
@@ -59,7 +68,7 @@ function App() {
           </div>
           <div className={`stage ${city ? '' : 'room'}`.trim()}>
             {city ? (
-              <MapView selectedId={selBld} onSelectComplex={enterBuilding} />
+              <MapView selectedId={selBld} onSelectComplex={enterBuilding} theme={theme} />
             ) : sel ? (
               <RoomSchematic complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
             ) : null}

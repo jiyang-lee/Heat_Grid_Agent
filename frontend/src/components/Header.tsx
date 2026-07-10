@@ -8,9 +8,11 @@ export type AppView = 'map' | 'ops'
 interface Props {
   appView: AppView
   onAppView: (v: AppView) => void
+  theme: 'dark' | 'light'
+  onToggleTheme: () => void
 }
 
-export default function Header({ appView, onAppView }: Props) {
+export default function Header({ appView, onAppView, theme, onToggleTheme }: Props) {
   const { summaryCounts } = useModel()
   const c = summaryCounts()
   const health = useHealth()
@@ -63,6 +65,16 @@ export default function Header({ appView, onAppView }: Props) {
           정상 <b className="n">{c.normal}</b>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="theme-toggle"
+        onClick={onToggleTheme}
+        title={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+        aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+      >
+        {theme === 'dark' ? '☀️ 라이트' : '🌙 다크'}
+      </button>
     </header>
   )
 }
