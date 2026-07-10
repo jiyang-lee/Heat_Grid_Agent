@@ -88,7 +88,7 @@ Agent는 `headline`, `situation`, `evidence`, `actions`, `cautions`, `report`를
 
 - Python 3.12와 [uv](https://docs.astral.sh/uv/)를 설치한다.
 - Node.js LTS와 Docker Desktop을 설치한다.
-- 루트 `.env`에 필요한 키를 넣고, 실제 키는 커밋하지 않는다.
+- 실 LLM과 기상 맥락까지 확인할 때는 루트 `.env`에 키를 넣고, 실제 키는 커밋하지 않는다.
 
 ```dotenv
 OPENAI_API_KEY=
@@ -98,10 +98,14 @@ KMA_SERVICE_KEY=
 ### 2. 데이터베이스와 백엔드 실행
 
 ```bash
-docker compose up -d
+docker compose up -d --wait
 uv sync
+# 로컬 DB 테이블을 초기화하고, 저장된 agent card와 urgent/high 알림을 적재한다.
+uv run python scripts/simulate_predictor_db.py --enqueue-alerts
 uv run uvicorn --app-dir simulator/versions/v2_postgres_react_ops/backend server:app --host 127.0.0.1 --port 8002
 ```
+
+`simulate_predictor_db.py`는 기본적으로 로컬 simulation 테이블을 초기화한다. 기존 로컬 데이터를 보존하려면 `--append` 옵션을 사용한다.
 
 ### 3. 프론트엔드 실행
 
@@ -173,6 +177,7 @@ curl http://127.0.0.1:5173/health
 - 현재 검증 범위는 M1이며 M2나 전체 제조사 성능으로 일반화하지 않는다.
 - priority는 점검 대상을 정렬하는 신호다. 자동 제어·자동 정비·고장 시각 확정에 사용하지 않는다.
 - 세종 단지 매핑은 데모용 가상 매핑이다. 실서비스 전환 전 실제 설비·단지·기계실 매핑 DB로 교체해야 한다.
-- OpenAI 키, 기상청 키, MapTiler 키와 로컬 Docker 데이터베이스가 있어야 전체 데모 경로를 확인할 수 있다.
+- OpenAI·기상청·MapTiler 키는 각각 실 LLM, 기상 맥락, 지도 스타일 통합을 확인할 때 필요하다. OpenAI 키가 없으면 Agent는 로컬 fallback 답변을 사용하고, 기상 키가 없으면 기상 맥락을 제외한다.
+- 실백엔드 Agent 흐름은 운영 콘솔의 알림 → agent run 경로에 연결되어 있다. 기계실 상세의 작업 지시서 버튼은 현재 mock 전용이다.
 
 PR 검토 시에는 이 제한을 전제로, M1 card 정합성·v4 계약·로컬 데모 실행 경로를 함께 확인한다.
