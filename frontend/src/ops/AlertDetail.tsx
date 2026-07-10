@@ -5,6 +5,7 @@
  */
 
 import type { AgentRunResponse, AlertSummary, OpsAgentResultV4 } from '../api/contracts'
+import { useAgentIterations } from '../api/hooks'
 
 interface Props {
   alert: AlertSummary | null
@@ -18,6 +19,7 @@ interface Props {
 const DASH = '—'
 
 export default function AlertDetail({ alert, run, opsResult, resultLoading, resultError, running }: Props) {
+  const iterations = useAgentIterations(run?.run_id ?? null)
   if (!alert) return <div className="empty">왼쪽에서 알림을 선택하세요</div>
 
   const ops = run?.ops_output
@@ -30,16 +32,44 @@ export default function AlertDetail({ alert, run, opsResult, resultLoading, resu
   return (
     <div className="aside-body">
       <div className="aside-meta" style={{ padding: 0, border: 'none' }}>
-        <div className="bn">{alert.enqueue_reason}</div>
+        <div className="bn">Substation {alert.substation_id ?? '-'} · 전체 {alert.priority_rank ?? '-'}위</div>
         <div className="ba">
-          {alert.priority_level} · score {alert.priority_score?.toFixed(3) ?? '-'} · {alert.status}
+          {alert.priority_level} · score {alert.priority_score?.toFixed(1) ?? '-'} · {alert.status}
           {alert.acked_by ? ` · ${alert.acked_by}` : ''}
         </div>
+        <div className="ba">평가 {alert.evaluation_run_id ?? '-'} · 기준 {alert.as_of_time ? new Date(alert.as_of_time).toLocaleString('ko-KR') : '-'}</div>
       </div>
 
       {/* 작업 지시서(작업지시서 카드) — 골격 항상 고정 표시. */}
       <div className="wo-card">
         <div className="wo-mode">{run ? `${(run.agent_mode ?? 'mock').toUpperCase()} · ${run.run_id} · ${run.status}` : running ? '작업 지시서 생성 중…' : DASH}</div>
+        {run?.loop_summary && (
+          <div className="loop-summary">
+            <span>반복 <b>{run.loop_summary.iterations}/{run.loop_summary.max_iterations}</b></span>
+            <span>근거 <b>{Math.round(run.loop_summary.evidence_score * 100)}%</b></span>
+            <span>신뢰 <b>{Math.round(run.loop_summary.confidence * 100)}%</b></span>
+            <span>최종 검수 <b>{run.review_status}</b></span>
+          </div>
+        )}
+        {run?.loop_summary?.model_verification && (
+          <div className="model-check">
+            <div><span>모델 재검증</span><b>{run.loop_summary.model_verification.status}</b></div>
+            <div><span>입력 충족</span><b>{Math.round(run.loop_summary.model_verification.feature_coverage * 100)}%</b></div>
+            <div><span>기존 결과 일치</span><b>{run.loop_summary.model_verification.agreement == null ? '확인 불가' : run.loop_summary.model_verification.agreement ? '일치' : '불일치'}</b></div>
+            <div><span>평가 실행</span><b>{run.loop_summary.model_verification.evaluation_run_id?.slice(0, 8) ?? '-'}</b></div>
+            <div><span>Substation</span><b>{run.loop_summary.model_verification.substation_id ?? '-'}</b></div>
+          </div>
+        )}
+        {iterations.data && iterations.data.length > 0 && (
+          <div className="ops-timeline">
+            {iterations.data.map((item) => (
+              <div className="ev" key={item.iteration_id}>
+                <span className="ev-t">회차 {item.iteration}</span>
+                <span>{item.decision} · 근거 {Math.round(item.evidence_score * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="wo-sec">
           <div className="wo-k">요약</div>
           <div className="wo-v">{summary}</div>

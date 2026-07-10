@@ -16,6 +16,9 @@ def build_ops_agent_result_v4(run: AgentRunResponse) -> OpsAgentResultV4 | None:
     return OpsAgentResultV4(
         run_id=run.run_id,
         card_id=run.card_id,
+        evaluation_run_id=run.evaluation_run_id,
+        manufacturer_id=run.manufacturer_id,
+        substation_id=run.substation_id,
         headline=output.summary,
         situation=output.summary,
         evidence=[

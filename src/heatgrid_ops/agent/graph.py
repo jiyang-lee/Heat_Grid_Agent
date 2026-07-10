@@ -13,15 +13,24 @@ from agent_run_repository import (
 )
 from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
 from heatgrid_ops.agent.nodes import (
+    assess_collected_evidence,
     complete_run,
+    create_final_review,
+    expand_internal_evidence,
     generate_fallback_output,
     generate_operational_answer,
     get_external_context,
     get_ops_evidence,
     load_ops_input,
     mark_running,
+    prepare_output_retry,
+    rerun_model_verification,
+    route_after_assessment,
     route_after_llm,
+    route_after_output_validation,
+    search_external_evidence,
     validate_output,
+    verify_model_output,
 )
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
 from heatgrid_ops.agent.services import AgentRuntime
@@ -54,10 +63,19 @@ async def run_persistent_agent_graph(
                 "alert_id": request.alert_id,
                 "card_id": request.card_id,
                 "used_tools": [],
-            }
+                "external_candidates": [],
+                "external_candidate_ids": [],
+                "loop_iteration": 1,
+                "max_iterations": context.runtime.settings.agent_max_iterations,
+                "model_attempts": 0,
+                "revision_count": 0,
+            },
+            config={"recursion_limit": 64},
         )
     except HTTPException as exc:
         return await fail_agent_run(context.engine, request.run_id, str(exc.detail))
+    except Exception as exc:  # graph execution boundary
+        return await fail_agent_run(context.engine, request.run_id, str(exc))
     return state["result"]
 
 
@@ -67,16 +85,37 @@ def build_agent_graph(context: AgentGraphContext):
     graph.add_node("load_ops_input", partial(load_ops_input, context))
     graph.add_node("get_ops_evidence", partial(get_ops_evidence, context))
     graph.add_node("get_external_context", partial(get_external_context, context))
+    graph.add_node("verify_model_output", partial(verify_model_output, context))
+    graph.add_node("assess_collected_evidence", partial(assess_collected_evidence, context))
+    graph.add_node("expand_internal_evidence", partial(expand_internal_evidence, context))
+    graph.add_node("search_external_evidence", partial(search_external_evidence, context))
+    graph.add_node("rerun_model_verification", partial(rerun_model_verification, context))
     graph.add_node("generate_operational_answer", partial(generate_operational_answer, context))
     graph.add_node("generate_fallback_output", partial(generate_fallback_output, context))
     graph.add_node("validate_output", partial(validate_output, context))
+    graph.add_node("prepare_output_retry", partial(prepare_output_retry, context))
+    graph.add_node("create_final_review", partial(create_final_review, context))
     graph.add_node("complete_run", partial(complete_run, context))
     graph.add_node("write_anomaly_report", partial(write_anomaly_report, context))
     graph.add_edge(START, "mark_running")
     graph.add_edge("mark_running", "load_ops_input")
     graph.add_edge("load_ops_input", "get_ops_evidence")
     graph.add_edge("get_ops_evidence", "get_external_context")
-    graph.add_edge("get_external_context", "generate_operational_answer")
+    graph.add_edge("get_external_context", "verify_model_output")
+    graph.add_edge("verify_model_output", "assess_collected_evidence")
+    graph.add_conditional_edges(
+        "assess_collected_evidence",
+        route_after_assessment,
+        {
+            "expand_internal_evidence": "expand_internal_evidence",
+            "search_external_evidence": "search_external_evidence",
+            "rerun_model_verification": "rerun_model_verification",
+            "generate_operational_answer": "generate_operational_answer",
+        },
+    )
+    graph.add_edge("expand_internal_evidence", "assess_collected_evidence")
+    graph.add_edge("search_external_evidence", "assess_collected_evidence")
+    graph.add_edge("rerun_model_verification", "assess_collected_evidence")
     graph.add_conditional_edges(
         "generate_operational_answer",
         route_after_llm,
@@ -86,7 +125,16 @@ def build_agent_graph(context: AgentGraphContext):
         },
     )
     graph.add_edge("generate_fallback_output", "validate_output")
-    graph.add_edge("validate_output", "complete_run")
+    graph.add_conditional_edges(
+        "validate_output",
+        route_after_output_validation,
+        {
+            "prepare_output_retry": "prepare_output_retry",
+            "create_final_review": "create_final_review",
+        },
+    )
+    graph.add_edge("prepare_output_retry", "generate_operational_answer")
+    graph.add_edge("create_final_review", "complete_run")
     graph.add_edge("complete_run", "write_anomaly_report")
     graph.add_edge("write_anomaly_report", END)
     return graph.compile()

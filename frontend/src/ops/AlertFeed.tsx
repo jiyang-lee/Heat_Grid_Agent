@@ -62,9 +62,9 @@ export default function AlertFeed({ status, priority, onStatus, onPriority, sele
               {a.priority_level === 'urgent' ? '긴급' : '높음'}
             </div>
             <div className="info">
-              <div className="nm">{a.enqueue_reason}</div>
+              <div className="nm">Substation {a.substation_id ?? '-'} · 전체 {a.priority_rank ?? '-'}위</div>
               <div className="ad">
-                score {a.priority_score?.toFixed(3) ?? '-'} · {fmtTime(a.created_at)} · {STATUS_KO[a.status]}
+                score {a.priority_score?.toFixed(1) ?? '-'} · 기준 {a.as_of_time ? fmtTime(a.as_of_time) : '-'} · {STATUS_KO[a.status]}
                 {a.acked_by ? ` · ${a.acked_by}` : ''}
               </div>
             </div>

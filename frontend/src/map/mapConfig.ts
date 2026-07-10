@@ -1,19 +1,42 @@
+import type { StyleSpecification } from 'maplibre-gl'
+
 /**
- * 지도 스타일 소스 해석.
- *
- * .env 의 VITE_MAP_STYLE_URL 에는 다음 중 하나가 들어올 수 있다:
- *   - MapTiler 키 문자열만 (예: FsR1dkb8O6f7EcDVJDOT) → 다크 스타일 URL을 조립
- *   - 전체 style JSON URL (https://...) → 그대로 사용
+ * VITE_MAP_STYLE_URL이 전체 MapLibre style URL이면 해당 스타일을 사용한다.
+ * 설정이 없거나 예전 MapTiler 키만 있으면 별도 키가 필요 없는 CARTO 타일을 사용한다.
  */
-
-const MAPTILER_DARK_STYLE = 'dataviz-dark'
-
 const raw = (import.meta.env.VITE_MAP_STYLE_URL ?? '').trim()
 
-export const mapStyleUrl: string = raw.startsWith('http')
-  ? raw
-  : raw
-    ? `https://api.maptiler.com/maps/${MAPTILER_DARK_STYLE}/style.json?key=${raw}`
-    : ''
+const defaultMapStyle: StyleSpecification = {
+  version: 8,
+  sources: {
+    'carto-dark': {
+      type: 'raster',
+      tiles: [
+        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    },
+  },
+  layers: [
+    {
+      id: 'background',
+      type: 'background',
+      paint: { 'background-color': '#07111f' },
+    },
+    {
+      id: 'carto-dark',
+      type: 'raster',
+      source: 'carto-dark',
+      minzoom: 0,
+      maxzoom: 22,
+      paint: { 'raster-opacity': 0.92 },
+    },
+  ],
+}
 
-export const hasMapStyle = mapStyleUrl.length > 0
+export const mapStyle: string | StyleSpecification = raw.startsWith('http')
+  ? raw
+  : defaultMapStyle

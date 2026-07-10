@@ -11,6 +11,15 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import ValidationError
 
+from heatgrid_ops.agent.assessment import (
+    EvidenceAssessment,
+    assess_evidence,
+    guard_llm_assessment,
+)
+from heatgrid_ops.agent.external_search import (
+    ExternalEvidenceSearchResult,
+    OpenAIWebEvidenceProvider,
+)
 from heatgrid_ops.agent.helpers import (
     card_id_from_input,
     fallback_note,
@@ -20,7 +29,7 @@ from heatgrid_ops.agent.helpers import (
 )
 from heatgrid_ops.agent.tools import make_operational_tools
 from heatgrid_rag.search import RagSearcher
-from schemas import JsonValue, OpsAgentOutput, TokenUsage
+from schemas import JsonValue, ModelVerificationResult, OpsAgentOutput, TokenUsage
 from settings import SYSTEM_PROMPT, Settings
 
 
@@ -33,12 +42,14 @@ class AgentRuntime:
         self,
         card_id: str,
         source_input: dict[str, JsonValue],
+        *,
+        top_k: int | None = None,
     ) -> dict[str, JsonValue]:
         try:
             return self.rag_searcher.external_context(
                 card_id=card_id,
                 evidence=source_input,
-                top_k=self.settings.rag_top_k,
+                top_k=top_k or self.settings.rag_top_k,
             )
         except (OSError, RuntimeError, ValueError) as exc:
             return unavailable_external_context(str(exc))
@@ -67,6 +78,11 @@ class AgentRuntime:
         source_input: dict[str, JsonValue],
         external_context: dict[str, JsonValue],
         card_id: str,
+        *,
+        model_verification: ModelVerificationResult | None = None,
+        evidence_assessment: EvidenceAssessment | None = None,
+        external_candidates: list[dict[str, JsonValue]] | None = None,
+        revision_feedback: list[str] | None = None,
     ) -> OpsAgentOutput:
         key = self.settings.openai_api_key
         if key is None:
@@ -76,16 +92,115 @@ class AgentRuntime:
             model=self.settings.openai_model,
             api_key=key.get_secret_value(),
         )
+        enriched_context = dict(external_context)
+        if model_verification is not None:
+            enriched_context["model_verification"] = model_verification.model_dump(
+                mode="json"
+            )
+        if evidence_assessment is not None:
+            enriched_context["evidence_assessment"] = evidence_assessment.model_dump(
+                mode="json"
+            )
+        if external_candidates:
+            enriched_context["pending_external_evidence"] = external_candidates
         agent = create_agent(
             model,
-            self.tools_for(source_input, external_context),
+            self.tools_for(source_input, enriched_context),
             system_prompt=SYSTEM_PROMPT,
             response_format=ToolStrategy(OpsAgentOutput),
         )
+        request = f"card_id={card_id}"
+        if revision_feedback:
+            request += "\n이전 답변의 다음 문제를 고쳐 다시 작성하세요: " + "; ".join(
+                revision_feedback
+            )
         result = await agent.ainvoke(
-            {"messages": [{"role": "user", "content": f"card_id={card_id}"}]}
+            {"messages": [{"role": "user", "content": request}]}
         )
         return OpsAgentOutput.model_validate(result.get("structured_response"))
+
+    async def assess_evidence(
+        self,
+        *,
+        source_input: dict[str, JsonValue],
+        external_context: dict[str, JsonValue],
+        model_verification: ModelVerificationResult | None,
+        iteration: int,
+        max_iterations: int,
+        external_candidate_count: int,
+    ) -> EvidenceAssessment:
+        deterministic = assess_evidence(
+            source_input=source_input,
+            external_context=external_context,
+            model_verification=model_verification,
+            iteration=iteration,
+            max_iterations=max_iterations,
+            threshold=self.settings.agent_evidence_threshold,
+            external_search_enabled=self.settings.external_search_enabled,
+            external_candidate_count=external_candidate_count,
+        )
+        key = self.settings.openai_api_key
+        if key is None:
+            return deterministic
+        compact: dict[str, JsonValue] = {
+            "iteration": iteration,
+            "max_iterations": max_iterations,
+            "deterministic_score": deterministic.evidence_score,
+            "missing_evidence": deterministic.missing_evidence,
+            "model_verification": None
+            if model_verification is None
+            else model_verification.model_dump(mode="json"),
+            "retrieval_status": external_context.get("status"),
+            "external_candidate_count": external_candidate_count,
+        }
+        model = ChatOpenAI(
+            model=self.settings.openai_model,
+            api_key=key.get_secret_value(),
+        ).with_structured_output(EvidenceAssessment)
+        try:
+            candidate = await model.ainvoke(
+                [
+                    (
+                        "system",
+                        "근거 수집 루프의 다음 행동을 선택하세요. 가능한 행동은 "
+                        "expand_internal, search_external, rerun_model, request_human, "
+                        "finalize입니다. 안전 관련 불확실성은 사람 검수로 보냅니다.",
+                    ),
+                    ("human", to_json(compact)),
+                ]
+            )
+            candidate = EvidenceAssessment.model_validate(candidate)
+        except (OpenAIError, ValidationError, ValueError, TypeError):
+            return deterministic
+        return guard_llm_assessment(
+            candidate,
+            deterministic,
+            iteration=iteration,
+            max_iterations=max_iterations,
+            external_search_enabled=self.settings.external_search_enabled,
+            model_verification=model_verification,
+        )
+
+    async def search_external_evidence(self, query: str) -> ExternalEvidenceSearchResult:
+        domains = tuple(
+            item.strip()
+            for item in self.settings.external_search_allowed_domains.split(",")
+            if item.strip()
+        )
+        key = self.settings.openai_api_key
+        provider = OpenAIWebEvidenceProvider(
+            api_key=None if key is None else key.get_secret_value(),
+            model=self.settings.external_search_model,
+            max_results=self.settings.external_search_max_results,
+            allowed_domains=domains,
+        )
+        if not self.settings.external_search_enabled:
+            return ExternalEvidenceSearchResult(
+                status="disabled",
+                query=query,
+                message="외부 검색이 비활성화되어 있습니다.",
+            )
+        return await provider.search(query)
 
     async def stream_events(
         self,

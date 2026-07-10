@@ -1,7 +1,7 @@
 /**
  * MapLibre GL JS 지도: 다크 타일 + "내 단지만" 3D 돌출.
  *
- * - 배경: MapTiler 다크 스타일(mapConfig.ts, .env의 VITE_MAP_STYLE_URL)
+ * - 배경: 기본 CARTO 다크 타일 또는 VITE_MAP_STYLE_URL의 사용자 지정 스타일
  * - 내 31개 단지: complexFootprints를 fill-extrusion으로 3D 돌출
  * - 상태(tier) → fill-extrusion-color 데이터 바인딩(긴급 빨강/주의 노랑/정상 초록)
  * - 단지 클릭 → onSelectComplex(id), 선택 단지는 시안 외곽선 강조
@@ -10,28 +10,32 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { hasMapStyle, mapStyleUrl } from './mapConfig'
-import { SEJONG_CENTER, complexFootprints } from './footprints'
+import type { PriorityEvaluationResult } from '../api/contracts'
+import { mapStyle } from './mapConfig'
+import { buildComplexFootprints, buildComplexMarkers, SEJONG_CENTER } from './footprints'
 
 interface Props {
   selectedId: number | null
   onSelectComplex: (id: number) => void
+  results: PriorityEvaluationResult[]
+  loading: boolean
+  error: boolean
 }
 
-export default function MapView({ selectedId, onSelectComplex }: Props) {
+export default function MapView({ selectedId, onSelectComplex, results, loading, error }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   // 최신 콜백을 ref로 유지(맵 초기화는 1회라 클로저 고정 방지)
   const onSelectRef = useRef(onSelectComplex)
   onSelectRef.current = onSelectComplex
+  const resultsRef = useRef(results)
+  resultsRef.current = results
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
-    if (!hasMapStyle) return
-
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: mapStyleUrl,
+      style: mapStyle,
       center: SEJONG_CENTER,
       zoom: 13.3,
       pitch: 45,
@@ -48,7 +52,8 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), 'top-right')
 
     map.on('load', () => {
-      map.addSource('complexes', { type: 'geojson', data: complexFootprints })
+      map.addSource('complexes', { type: 'geojson', data: buildComplexFootprints(resultsRef.current) })
+      map.addSource('complex-markers', { type: 'geojson', data: buildComplexMarkers(resultsRef.current) })
       map.addLayer({
         id: 'complexes-3d',
         type: 'fill-extrusion',
@@ -56,10 +61,13 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
         paint: {
           'fill-extrusion-color': [
             'match',
-            ['get', 'tier'],
+            ['get', 'status'],
             'urgent', '#ff1744',
-            'caution', '#ffc400',
-            /* normal */ '#00e676',
+            'high', '#ff8f00',
+            'medium', '#ffd740',
+            'low', '#00c853',
+            'stale', '#64748b',
+            /* missing */ '#334155',
           ],
           'fill-extrusion-height': ['get', 'height'],
           'fill-extrusion-base': 0,
@@ -78,17 +86,46 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
           'line-blur': 1,
         },
       })
+      map.addLayer({
+        id: 'complex-markers',
+        type: 'circle',
+        source: 'complex-markers',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': [
+            'match', ['get', 'status'],
+            'urgent', '#ff1744',
+            'high', '#ff8f00',
+            'medium', '#ffd740',
+            'low', '#00c853',
+            'stale', '#64748b',
+            '#334155',
+          ],
+          'circle-stroke-color': '#e2e8f0',
+          'circle-stroke-width': 1.5,
+          'circle-opacity': 0.95,
+        },
+      })
     })
 
-    map.on('click', 'complexes-3d', (e) => {
+    const selectFeature = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0]
-      const id = f?.properties?.id
-      if (typeof id === 'number') onSelectRef.current(id)
-    })
+      const rawId = f?.properties?.id
+      const id = typeof rawId === 'number' ? rawId : Number(rawId)
+      if (Number.isInteger(id)) onSelectRef.current(id)
+    }
+    map.on('click', 'complexes-3d', selectFeature)
+    map.on('click', 'complex-markers', selectFeature)
     map.on('mouseenter', 'complexes-3d', () => {
       map.getCanvas().style.cursor = 'pointer'
     })
     map.on('mouseleave', 'complexes-3d', () => {
+      map.getCanvas().style.cursor = ''
+    })
+    map.on('mouseenter', 'complex-markers', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'complex-markers', () => {
       map.getCanvas().style.cursor = ''
     })
 
@@ -111,15 +148,18 @@ export default function MapView({ selectedId, onSelectComplex }: Props) {
     else map.once('load', apply)
   }, [selectedId])
 
-  if (!hasMapStyle) {
-    return (
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#e5e7eb' }}>
-        <p>
-          지도 스타일이 설정되지 않았습니다. <code>.env</code>의 <code>VITE_MAP_STYLE_URL</code>를 확인하세요.
-        </p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.isStyleLoaded()) return
+    const footprintSource = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
+    const markerSource = map.getSource('complex-markers') as maplibregl.GeoJSONSource | undefined
+    footprintSource?.setData(buildComplexFootprints(results))
+    markerSource?.setData(buildComplexMarkers(results))
+  }, [results])
 
-  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+  return <div className="map-runtime">
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+    {loading && <div className="map-state">최신 Priority 평가를 불러오는 중입니다.</div>}
+    {error && <div className="map-state error">Priority 평가 API에 연결할 수 없습니다.</div>}
+  </div>
 }

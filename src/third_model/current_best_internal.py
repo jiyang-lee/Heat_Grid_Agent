@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
 import warnings
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -220,6 +223,7 @@ def _lead_time_bucket(hours: object) -> str:
 
 def _load_windows() -> pd.DataFrame:
     windows = pd.read_csv(config.TRAINABLE_WINDOWS_PATH)
+    windows = _apply_reviewed_training_feedback(windows)
     if config.RISK_SPLIT_COLUMN not in windows.columns:
         source_split = "split_regime_based" if "split_regime_based" in windows.columns else config.ANOMALY_SPLIT_COLUMN
         windows[config.RISK_SPLIT_COLUMN] = windows[source_split]
@@ -231,6 +235,49 @@ def _load_windows() -> pd.DataFrame:
         if column not in windows.columns:
             windows[column] = np.nan
     return windows
+
+
+def _apply_reviewed_training_feedback(windows: pd.DataFrame) -> pd.DataFrame:
+    feedback_path = os.environ.get("HEATGRID_TRAINING_FEEDBACK_PATH", "").strip()
+    if not feedback_path:
+        return windows
+    path = Path(feedback_path)
+    if not path.exists():
+        return windows
+    rows: list[dict[str, object]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            rows.append(json.loads(line))
+    if not rows:
+        return windows
+
+    result = windows.copy()
+    manufacturer = result["manufacturer"].astype(str).str.strip()
+    substation = pd.to_numeric(result["substation_id"], errors="coerce")
+    window_start = pd.to_datetime(result["window_start"], errors="coerce", utc=True)
+    window_end = pd.to_datetime(result["window_end"], errors="coerce", utc=True)
+    applied = 0
+    for row in rows:
+        corrected_label = str(row.get("corrected_label") or "").strip()
+        if corrected_label not in {"normal", "pre_fault"}:
+            continue
+        target_start = pd.to_datetime(row.get("window_start"), errors="coerce", utc=True)
+        target_end = pd.to_datetime(row.get("window_end"), errors="coerce", utc=True)
+        target_substation = pd.to_numeric(row.get("substation_id"), errors="coerce")
+        mask = (
+            manufacturer.eq(str(row.get("manufacturer") or "").strip())
+            & substation.eq(target_substation)
+            & window_start.eq(target_start)
+            & window_end.eq(target_end)
+        )
+        matched = int(mask.sum())
+        if matched != 1:
+            continue
+        result.loc[mask, "label"] = corrected_label
+        applied += matched
+    result.attrs["reviewed_feedback_applied"] = applied
+    return result
 
 
 def _base_modeling_frame() -> pd.DataFrame:

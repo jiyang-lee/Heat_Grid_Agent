@@ -82,6 +82,7 @@ async def test_api_server_exposes_health_and_metadata(
     assert openapi.status_code == 200
     assert "/api/alerts" in openapi.json()["paths"]
     assert "/api/agent-runs" in openapi.json()["paths"]
+    assert "/api/priority-evaluations/latest" in openapi.json()["paths"]
 
 
 @pytest.mark.anyio
@@ -117,6 +118,8 @@ async def test_api_alerts_enqueue_list_ack_and_resolve(
     assert duplicate_enqueue.json()["existing_count"] == enqueue.json()["queued_count"]
     assert open_alerts.status_code == 200
     assert first_alert["priority_level"] in {"urgent", "high"}
+    assert first_alert["evaluation_run_id"] == enqueue.json()["evaluation_run_id"]
+    assert first_alert["freshness_status"] == "fresh"
     assert detail.status_code == 200
     assert detail.json()["alert_id"] == first_alert["alert_id"]
     assert ack.status_code == 200
@@ -147,6 +150,7 @@ async def test_api_agent_run_creates_completed_run_from_alert(
         run_id = created.json()["run_id"]
         fetched = await client.get(f"/api/agent-runs/{run_id}")
         artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
+        iterations = await client.get(f"/api/agent-runs/{run_id}/iterations")
         events = await client.get(f"/api/agent-runs/{run_id}/events")
     async with module.engine.connect() as connection:
         result = await connection.execute(
@@ -163,12 +167,27 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert created.json()["status"] == "completed"
     assert created.json()["alert_id"] == alert["alert_id"]
     assert created.json()["card_id"] == alert["card_id"]
+    assert created.json()["evaluation_run_id"] == alert["evaluation_run_id"]
+    assert created.json()["substation_id"] == alert["substation_id"]
     assert created.json()["agent_mode"] == "fallback"
     assert created.json()["ops_output"]["summary"]
+    assert created.json()["loop_summary"]["iterations"] >= 1
+    assert created.json()["loop_summary"]["model_verification"]["status"] in {
+        "verified",
+        "partial",
+        "unavailable",
+        "error",
+    }
+    assert created.json()["loop_summary"]["model_verification"]["evaluation_run_id"] == alert["evaluation_run_id"]
+    assert created.json()["loop_summary"]["model_verification"]["substation_id"] == alert["substation_id"]
+    assert created.json()["review_status"] == "pending"
+    assert created.json()["review_task_id"]
     assert fetched.status_code == 200
     assert fetched.json() == created.json()
     assert artifacts.status_code == 200
     assert artifacts.json() == []
+    assert iterations.status_code == 200
+    assert iterations.json()
     assert events.status_code == 200
     assert '"type":"run_started"' in events.text
     assert '"type":"status_changed"' in events.text
@@ -178,7 +197,7 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert '"type":"final_output"' in events.text
     assert '"type":"run_completed"' in events.text
     assert '"type":"report_failed"' in events.text
-    assert event_types == [
+    assert event_types[:9] == [
         "run_started",
         "status_changed",
         "status_changed",
@@ -188,15 +207,13 @@ async def test_api_agent_run_creates_completed_run_from_alert(
         "llm_decision",
         "tool_started",
         "tool_completed",
-        "llm_decision",
-        "final_output",
-        "status_changed",
-        "run_completed",
-        "llm_decision",
-        "tool_started",
-        "tool_completed",
-        "report_failed",
     ]
+    assert "model_verification" in event_types
+    assert "loop_decision" in event_types
+    assert "review_requested" in event_types
+    assert event_types.index("final_output") < event_types.index("review_requested")
+    assert event_types.index("review_requested") < event_types.index("run_completed")
+    assert event_types[-1] == "report_failed"
 
 
 @pytest.mark.anyio

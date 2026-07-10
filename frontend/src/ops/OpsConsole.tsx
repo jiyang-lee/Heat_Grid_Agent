@@ -6,8 +6,19 @@ import { useAgentRunResult, useAlerts, useCreateAgentRun } from '../api/hooks'
 import AlertFeed from './AlertFeed'
 import AlertDetail from './AlertDetail'
 import AgentStats from './AgentStats'
+import AutomationPolicyPanel from './AutomationPolicyPanel'
+import EvidenceReview from './EvidenceReview'
+import ModelLifecycle from './ModelLifecycle'
+import ReviewQueue from './ReviewQueue'
 
-export default function OpsConsole() {
+type Workspace = 'alerts' | 'reviews' | 'evidence' | 'models' | 'policy'
+
+interface Props {
+  initialAlertId?: string | null
+}
+
+export default function OpsConsole({ initialAlertId = null }: Props) {
+  const [workspace, setWorkspace] = useState<Workspace>('alerts')
   const [status, setStatus] = useState<AlertStatus | 'all'>('open')
   const [priority, setPriority] = useState<PriorityLevel | 'all'>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -15,6 +26,14 @@ export default function OpsConsole() {
   const alerts = useAlerts({ status, priority_level: priority === 'all' ? undefined : priority })
   const list = alerts.data
   const selected = list?.find((a) => a.alert_id === selectedId) ?? null
+
+  useEffect(() => {
+    if (!initialAlertId) return
+    setWorkspace('alerts')
+    setStatus('all')
+    setPriority('all')
+    setSelectedId(initialAlertId)
+  }, [initialAlertId])
 
   // 진입/필터 변경 시 선택 알림이 없으면 첫 알림을 자동 선택 → 상세·지표 박스를 항상 고정 표시.
   useEffect(() => {
@@ -47,11 +66,23 @@ export default function OpsConsole() {
   }, [selected?.alert_id])
 
   return (
-    <div className="wrap">
+    <div className="ops-console">
+      <nav className="ops-workspaces" aria-label="운영 자동화 작업면">
+        {([
+          ['alerts', '알림 실행'],
+          ['reviews', '검수함'],
+          ['evidence', '근거 승인'],
+          ['models', '재학습·모델'],
+          ['policy', '자동화 정책'],
+        ] as const).map(([value, label]) => (
+          <button key={value} type="button" className={`workspace-b ${workspace === value ? 'on' : ''}`} onClick={() => setWorkspace(value)}>{label}</button>
+        ))}
+      </nav>
+      {workspace === 'alerts' && <div className="wrap">
       <section className="panel">
         <div className="panel-head">
           <span>알림 큐 · ALERT QUEUE</span>
-          <span className="tag">{list?.length ?? 0} ALERTS</span>
+          <span className="tag">{selected?.evaluation_run_id ? `SNAPSHOT ${selected.evaluation_run_id.slice(0, 8)}` : `${list?.length ?? 0} ALERTS`}</span>
         </div>
         <AlertFeed
           status={status}
@@ -87,6 +118,11 @@ export default function OpsConsole() {
           />
         </aside>
       </div>
+      </div>}
+      {workspace === 'reviews' && <ReviewQueue />}
+      {workspace === 'evidence' && <EvidenceReview />}
+      {workspace === 'models' && <ModelLifecycle />}
+      {workspace === 'policy' && <AutomationPolicyPanel />}
     </div>
   )
 }
