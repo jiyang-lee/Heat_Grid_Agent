@@ -1,0 +1,340 @@
+{
+  "raw_context": {
+    "window": {
+      "window_id": "00000000-0000-0000-0000-000000000001",
+      "manufacturer_id": "manufacturer 1",
+      "substation_id": 31,
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-01-11T00:00:00Z",
+      "window_end": "2020-01-11T06:00:00Z"
+    },
+    "current_best_sensor_values": {
+      "model_id": "current-best",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/data_contract/trainable_windows.csv",
+      "selection_rule": "Top raw sensor aggregates selected from the current-best input features for operator-facing context. v0 uses top_n=10.",
+      "top_n": 10,
+      "values": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last",
+          "feature_value": 4.27,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Outdoor temperature at the end of the window"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__mean",
+          "feature_value": 4.471111111111111,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean outdoor temperature during the window"
+        },
+        {
+          "rank": 3,
+          "feature_name": "p_hc1_return_temperature__last",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last",
+          "feature_value": 34.77,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary-side heat circuit 1 return temperature at the end of the window"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__mean",
+          "feature_value": 35.585,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary-side heat circuit 1 return temperature during the window"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_net_meter_flow__last",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last",
+          "feature_value": 1.0,
+          "unit": "l/h",
+          "calculation": "last",
+          "meaning": "Primary network flow at the end of the window"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__mean",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__mean",
+          "feature_value": 194.36111111111111,
+          "unit": "l/h",
+          "calculation": "mean",
+          "meaning": "Mean primary network flow during the window"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_supply_temperature__last",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__last",
+          "feature_value": 92.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary supply temperature at the end of the window"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_net_supply_temperature__mean",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__mean",
+          "feature_value": 89.30555555555556,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary supply temperature during the window"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_net_return_temperature__last",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last",
+          "feature_value": 36.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary return temperature at the end of the window"
+        },
+        {
+          "rank": 10,
+          "feature_name": "p_net_return_temperature__mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__mean",
+          "feature_value": 34.083333333333336,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary return temperature during the window"
+        }
+      ]
+    },
+    "m1_specialist_features": {
+      "model_id": "m1-specialist",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/scores/m1_specialist_compact13_features.csv",
+      "feature_count": 13,
+      "features": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.3873611111111126,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Outdoor temperature recent 12h mean minus previous 12h mean"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "feature_value": -0.6669444444444448,
+          "unit": "degC",
+          "calculation": "last_6h_mean_minus_prev_6h_mean",
+          "meaning": "Outdoor temperature recent 6h mean minus previous 6h mean"
+        },
+        {
+          "rank": 3,
+          "feature_name": "outdoor_temperature__last_minus_first",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_minus_first",
+          "feature_value": -0.21000000000000085,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Outdoor temperature change across the window"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.9208333333333272,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Primary-side heat circuit 1 return temperature recent 12h mean minus previous 12h mean"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -2.749386574074073,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary-side heat circuit 1 return temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "feature_value": -5.0265147897468125,
+          "unit": "l/h",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Primary network flow recent 1d standard deviation minus previous 6d standard deviation"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -3.099537037037038,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary return temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.35015046296296287,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary flow-return gap recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_return_gap__last_minus_first",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_minus_first",
+          "feature_value": -3.6099999999999994,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Primary flow-return gap change across the window"
+        },
+        {
+          "rank": 10,
+          "feature_name": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.37098379629630074,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Secondary heat circuit 1 supply temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 11,
+          "feature_name": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "feature_value": -0.06205405213932913,
+          "unit": "degC",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Secondary heat circuit 1 supply temperature recent 1d standard deviation minus previous 6d standard deviation"
+        },
+        {
+          "rank": 12,
+          "feature_name": "s_hc1_supply_temperature_error__last_minus_first",
+          "source_sensor": "s_hc1_supply_temperature_error",
+          "source_column": "s_hc1_supply_temperature_error__last_minus_first",
+          "feature_value": 5.009999999999991,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Secondary heat circuit 1 supply temperature error change across the window"
+        },
+        {
+          "rank": 13,
+          "feature_name": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature_setpoint",
+          "source_column": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.4045601851852041,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Secondary heat circuit 1 supply setpoint recent 1d mean minus previous 6d mean"
+        }
+      ]
+    }
+  },
+  "priority_context": {
+    "card": {
+      "card_id": "10000000-0000-0000-0000-000000000001",
+      "operational_label": "urgent",
+      "primary_state": "predictive_fault_risk",
+      "trust_level": "medium"
+    },
+    "priority": {
+      "priority_decision_id": "20000000-0000-0000-0000-000000000001",
+      "priority_score": 89.73322568799986,
+      "priority_level": "urgent",
+      "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+      "m1_priority_agreement": "current_only_high",
+      "calculation": {
+        "current_best_weight": 0.65,
+        "m1_specialist_weight": 0.35,
+        "expression": "priority_score = current_best_weight * current_best_priority_score + m1_specialist_weight * m1_specialist_priority_score"
+      }
+    },
+    "model_signals": {
+      "current_best_priority_score": 100.0,
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_score": 70.66635910857104,
+      "m1_specialist_priority_level": "medium",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss"
+    },
+    "explanation": {
+      "why_reason": "Current-best is urgent at 100.0, while M1 specialist is medium at 70.66635910857104. The 0.65/0.35 hybrid calculation produces a final urgent priority.",
+      "recommended_action": "Treat this as an urgent review candidate and prioritize checking primary return and flow behavior before field escalation.",
+      "review_required": true,
+      "review_reasons": [
+        "current_only_high",
+        "lead_time_1_3d",
+        "fault_group_leakage_water_loss"
+      ]
+    }
+  },
+  "internal_context": {
+    "data_quality": {
+      "review_required": true,
+      "trust_level": "medium",
+      "feature_coverage": {
+        "current_best_sensor_values_count": 10,
+        "m1_specialist_feature_count": 13,
+        "expected_current_best_sensor_values_count": 10,
+        "expected_m1_specialist_feature_count": 13
+      },
+      "raw_sensor_coverage": {
+        "sensor_reading_count": null,
+        "source_sensor_count": null,
+        "window_has_sensor_readings": null
+      }
+    },
+    "model_provenance": {
+      "priority_policy": {
+        "policy_version": "v0_minimal_ops",
+        "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+        "decision_basis": "priority_score = 0.65 * current_best_priority_score + 0.35 * m1_specialist_priority_score",
+        "weights": {
+          "current_best_priority_score": 0.65,
+          "m1_specialist_priority_score": 0.35
+        }
+      }
+    },
+    "asset_context": {
+      "manufacturer_id": "manufacturer 1",
+      "substation_id": 31,
+      "configuration_type": "SH + DHW"
+    },
+    "ops_history": {
+      "previous_llm_notes": []
+    },
+    "window_context": {
+      "window_id": "00000000-0000-0000-0000-000000000001",
+      "window_start": "2020-01-11T00:00:00Z",
+      "window_end": "2020-01-11T06:00:00Z",
+      "season_bucket": "winter",
+      "source_file": "substation_31.csv"
+    }
+  }
+}

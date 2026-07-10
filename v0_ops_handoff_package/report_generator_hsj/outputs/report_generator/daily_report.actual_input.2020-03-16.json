@@ -1,0 +1,1884 @@
+{
+  "report_context": {
+    "report_id": "DAILY-20200316",
+    "schema_version": "1.0",
+    "generated_at": "2026-07-09T16:05:33+09:00",
+    "report_date": "2020-03-16",
+    "coverage_start": "2020-03-16T00:00:00+09:00",
+    "coverage_end": "2020-03-17T00:00:00+09:00",
+    "generated_by": "heatgrid-report-generator",
+    "source": {
+      "priority_csv": "output\\agent_priority_card.csv",
+      "site_context_csv": "data\\external\\substation_buildings_sejong_lifezone1_31_district_heating_context_with_predist.csv",
+      "row_count": 6,
+      "priority_counts": {
+        "urgent": 0,
+        "high": 3,
+        "medium": 1,
+        "low": 2
+      },
+      "input_note": "output/agent_priority_card.csv를 하루 단위로 집계한 실제 모델 산출물 기반 입력입니다."
+    }
+  },
+  "priority_cards": [
+    {
+      "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "location_label": "아름동 범지기마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T06:00:00+09:00",
+      "window_end": "2020-03-16T12:00:00+09:00",
+      "priority_score": 93.58,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss",
+      "review_required": false,
+      "review_reasons": [],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.894; pre_event=1.000; fault_group=leakage_water_loss",
+      "risk_probability": 1.0,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": "Leakage",
+        "fault_event_id": "10",
+        "trust_level": "high"
+      }
+    },
+    {
+      "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "location_label": "아름동 범지기마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T00:00:00+09:00",
+      "window_end": "2020-03-16T06:00:00+09:00",
+      "priority_score": 93.54,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss",
+      "review_required": true,
+      "review_reasons": [
+        "m1_specialist_gate_near_threshold"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.534; pre_event=0.999; fault_group=leakage_water_loss",
+      "risk_probability": 1.0,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": "Leakage",
+        "fault_event_id": "10",
+        "trust_level": "high"
+      }
+    },
+    {
+      "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T06:00:00+09:00",
+      "window_end": "2020-03-16T12:00:00+09:00",
+      "priority_score": 88.51,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.643; pre_event=1.000; fault_group=unknown_review",
+      "risk_probability": 0.96,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "medium"
+      }
+    },
+    {
+      "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T18:00:00+09:00",
+      "window_end": "2020-03-17T00:00:00+09:00",
+      "priority_score": 74.2,
+      "priority_level": "medium",
+      "priority_level_ko": "보통",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "normal",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review|m1_priority_disagreement"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=low; m1_hybrid_priority=medium; agreement=current_only_high; fault_gate=0.211; pre_event=0.003; fault_group=unknown_review",
+      "risk_probability": 0.93,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "medium"
+      }
+    },
+    {
+      "card_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T12:00:00+09:00",
+      "window_end": "2020-03-16T18:00:00+09:00",
+      "priority_score": 49.44,
+      "priority_level": "low",
+      "priority_level_ko": "낮음",
+      "current_best_priority_level": "high",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_anomaly_threshold|m1_specialist_gate_near_threshold|m1_priority_disagreement"
+      ],
+      "operational_label": "normal_monitor",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.520; pre_event=0.117; fault_group=unknown_review",
+      "risk_probability": 0.86,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "low_review"
+      }
+    },
+    {
+      "card_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T00:00:00+09:00",
+      "window_end": "2020-03-16T06:00:00+09:00",
+      "priority_score": 44.52,
+      "priority_level": "low",
+      "priority_level_ko": "낮음",
+      "current_best_priority_level": "high",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "normal",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "m1_priority_disagreement"
+      ],
+      "operational_label": "normal_monitor",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.344; pre_event=0.256; fault_group=unknown_review",
+      "risk_probability": 0.65,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "low"
+      }
+    }
+  ],
+  "agent_outputs": [],
+  "ops_evidence_list": [
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-d083bbb5-1bb2-5ef0-b942-cfcfe61de1b5",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T06:00:00+09:00",
+          "window_end": "2020-03-16T12:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+          "location_label": "아름동 범지기마을",
+          "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+          "road_address": "세종특별자치시 달빛1로 206",
+          "heating_type": "지역난방",
+          "household_count": 687,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크",
+            "1차측 열량계",
+            "1차측 공급",
+            "환수온도"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 40.29,
+          "risk_probability": 1.0,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 15
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "high"
+        },
+        "priority": {
+          "priority_decision_id": "priority-eac2d93d-0d77-5b69-82ae-b9a3a6f7e9b6",
+          "priority_score": 93.58,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 81.66,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "leakage_water_loss",
+          "m1_specialist_fault_probability": 0.89
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.894; pre_event=1.000; fault_group=leakage_water_loss",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": false,
+          "review_reasons": []
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": false,
+          "trust_level": "high"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_30.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-1da8856c-a8cc-58e0-956f-5f06fc0fed79",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T00:00:00+09:00",
+          "window_end": "2020-03-16T06:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+          "location_label": "아름동 범지기마을",
+          "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+          "road_address": "세종특별자치시 달빛1로 206",
+          "heating_type": "지역난방",
+          "household_count": 687,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크",
+            "1차측 열량계",
+            "1차측 공급",
+            "환수온도"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 39.05,
+          "risk_probability": 1.0,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 14
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "high"
+        },
+        "priority": {
+          "priority_decision_id": "priority-b13d56c7-ed10-5261-b04d-e2c4704cf203",
+          "priority_score": 93.54,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 81.54,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "leakage_water_loss",
+          "m1_specialist_fault_probability": 0.53
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.534; pre_event=0.999; fault_group=leakage_water_loss",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": true,
+          "review_reasons": [
+            "m1_specialist_gate_near_threshold"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "high"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_30.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-41ae6a10-ac1b-512a-b4f4-6c151667c967",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T06:00:00+09:00",
+          "window_end": "2020-03-16T12:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.33,
+          "risk_probability": 0.96,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 1,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "medium"
+        },
+        "priority": {
+          "priority_decision_id": "priority-f06bdd15-9c6e-5e03-94c4-3267f68605f7",
+          "priority_score": 88.51,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 91.34,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 83.26,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.64
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.643; pre_event=1.000; fault_group=unknown_review",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": true,
+          "review_reasons": [
+            "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "medium"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-09805eaa-23de-53b2-9a9c-ada2870b3c73",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T18:00:00+09:00",
+          "window_end": "2020-03-17T00:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.85,
+          "risk_probability": 0.93,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 1
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "medium"
+        },
+        "priority": {
+          "priority_decision_id": "priority-b6fb1296-82cf-5c50-b191-356ff8f36285",
+          "priority_score": 74.2,
+          "priority_level": "medium",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 26.28,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "normal",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.21
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=low; m1_hybrid_priority=medium; agreement=current_only_high; fault_gate=0.211; pre_event=0.003; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review|m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "medium"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-5b694e3b-fb7b-5c6e-9f04-fdd5abe0bbc5",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T12:00:00+09:00",
+          "window_end": "2020-03-16T18:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.11,
+          "risk_probability": 0.86,
+          "risk_level_calibrated": "medium",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 1,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+          "operational_label": "normal_monitor",
+          "primary_state": "normal_monitor",
+          "trust_level": "low_review"
+        },
+        "priority": {
+          "priority_decision_id": "priority-d6c8a167-2ec5-521e-bba7-95efd56e4429",
+          "priority_score": 49.44,
+          "priority_level": "low",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 58.52,
+          "current_best_priority_level": "high",
+          "m1_specialist_priority_score": 32.57,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.52
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.520; pre_event=0.117; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "near_anomaly_threshold|m1_specialist_gate_near_threshold|m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "low_review"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-bb22ae33-343c-5bad-abd7-7ed54ad7ce11",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T00:00:00+09:00",
+          "window_end": "2020-03-16T06:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 0.66,
+          "risk_probability": 0.65,
+          "risk_level_calibrated": "medium",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 0,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+          "operational_label": "normal_monitor",
+          "primary_state": "normal_monitor",
+          "trust_level": "low"
+        },
+        "priority": {
+          "priority_decision_id": "priority-6e5d0f12-ccb2-5e33-8466-4d5a4e6730bf",
+          "priority_score": 44.52,
+          "priority_level": "low",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 49.0,
+          "current_best_priority_level": "high",
+          "m1_specialist_priority_score": 36.19,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "normal",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.34
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.344; pre_event=0.256; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "low"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    }
+  ],
+  "external_context_list": [
+    {
+      "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 30,
+        "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+        "kapt_code": "A10028118",
+        "life_zone": "2",
+        "dong": "아름동",
+        "village": "범지기마을",
+        "road_address": "세종특별자치시 달빛1로 206",
+        "jibun_address": "세종특별자치시 아름동 1282",
+        "latitude": 36.51663761,
+        "longitude": 127.24656363,
+        "heating_type": "지역난방",
+        "household_count": 687,
+        "building_count": 9,
+        "gross_floor_area_m2": 113864.0,
+        "latest_private_usage_cost_krw": 100673000.0,
+        "latest_private_usage_unit_krw_per_m2": 1561.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크|1차측 열량계|1차측 공급/환수온도",
+        "predist_sensor_column_count": 17,
+        "predist_source_file": "substation_30.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 06:00:00",
+        "window_end": "2020-03-16 12:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": true,
+        "relevance_level": "high",
+        "relevance_score": 5,
+        "weather_factors": [
+          "외기온 낮음",
+          "영하권 시간대 포함",
+          "전일 동시간대 대비 기온 하락",
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 2.7,
+          "min_temperature_c": -1.6,
+          "max_temperature_c": 7.9,
+          "temperature_delta_24h_c": -3.014,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 50.571,
+          "max_wind_speed_mps": 1.9,
+          "heating_degree_hours": 107.1
+        },
+        "interpretation": "기상 조건이 뚜렷하게 불리해 난방 부하 증가 가능성이 큽니다. 다만 이는 고장 원인 확정이 아니라 위험도 판단을 보완하는 운영 맥락입니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "leakage_water_loss fault high current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.894; pre_event=1.000; fault_group=leakage_water_loss urgent review: current best and M1 specialist both support high priority. leak leakage water loss pressure differential pressure flow valve strainer filter meter pipe 누수 압력 차압 유량 밸브 스트레이너 필터 배관",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "fault_priority_extract__p008__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 8,
+            "page_end": 8,
+            "section_title": "monitoring potential (grey) and maintenance capability (light orange).",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 204.006,
+            "matched_terms": [],
+            "text": "Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),\nmonitoring potential (grey) and maintenance capability (light orange).\nTable A.5\nList of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)\nratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.\nRank Component Fault description MPN Occ Sev Mon Main\n1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2\n2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1\n3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6\n4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8\n5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3\n6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2\n7 Piping system Air in the piping..."
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+            "document_id": "abf06e5876fb90d0",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "rag_role": "troubleshooting_manual",
+            "language": "en",
+            "page_start": 24,
+            "page_end": 24,
+            "section_title": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER",
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 147.853,
+            "matched_terms": [],
+            "text": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER\nFundamental\nIn the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check\nwhether:\n• the system is correctly connected • there is a power supply to the system - pump and automatics\n• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean\n• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)\nheating supplier if necessary\nProblem Possible cause Solution\nDHW*, no hot water Non-return valve in the circulation pipe\nReplace the non-return valve.\ndefective (leads to mixing - the circula-\ntion water pipes become cold during\ntapping).\nNon-return valve in thermostatic mixer Replace the mixer or perhaps only the\nTemperature too low / variations in in the bathroom defective - results in hot non-return valve.\ntemperature and cold water mixing. Please note that\nfluctuating temperatures may occur at\nother tapping points in the system!\nNB, Check all mixers in the house for\nfaults/defects!\nLack of hot water pressure Clogged strainer in the cold water meter..."
+          },
+          {
+            "chunk_id": "fault_priority_extract__p009__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 9,
+            "page_end": 9,
+            "section_title": "36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "leakage_water_loss",
+            "risk_level": null,
+            "score": 138.985,
+            "matched_terms": [],
+            "text": "Table A.5 (continued).\nRank Component Fault description MPN Occ Sev Mon Main\n36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6\n37 Temperature sensor (secondary side) Temperature sensor gives wrong signal 107 3.3 6.0 3.0 2.5\n38 Motorised control valve (primary side) Control valve jammed in open state (imminent danger if type-tested 106 2.2 9.0 3.6 2.0\nunit with safety function)\n39 Temperature sensor (primary side) Temperature sensor is defective and gives no signal 106 3.5 4.7 3.6 2.7\n40 Safety temperature monitor Safety temperature monitor defective 105 3.1 7.9 2.6 1.8\n41 Shut-off valve Leakage, external 104 3.0 7.2 2.1 2.8\n42 Motorised control valve (primary side) External leakage (e.g. stuffing box leaking, seal leaking) 103 3.5 6.9 1.5 3.0\n43 Control unit Incorrect control sequence (incorrect connection) 100 2.5 6.7 3.1 2.9\n44 Heat exchanger Leakage, external 100 3.0 7.5 2.0 2.5\n45 Motorised control valve (3-way valve, External leakage (e.g. stuffing box leaking, seal leaking) 99 3.5 6.7 1.6 2.8\nsecondary side)\n46 Pressure independent control valve Differential pressure regulator jams when closed 96 2..."
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "fault_priority_extract__p008__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 8,
+            "page_end": 8,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "page_start": 24,
+            "page_end": 24,
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p009__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 9,
+            "page_end": 9,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          }
+        ],
+        "regulations": []
+      }
+    },
+    {
+      "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 30,
+        "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+        "kapt_code": "A10028118",
+        "life_zone": "2",
+        "dong": "아름동",
+        "village": "범지기마을",
+        "road_address": "세종특별자치시 달빛1로 206",
+        "jibun_address": "세종특별자치시 아름동 1282",
+        "latitude": 36.51663761,
+        "longitude": 127.24656363,
+        "heating_type": "지역난방",
+        "household_count": 687,
+        "building_count": 9,
+        "gross_floor_area_m2": 113864.0,
+        "latest_private_usage_cost_krw": 100673000.0,
+        "latest_private_usage_unit_krw_per_m2": 1561.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크|1차측 열량계|1차측 공급/환수온도",
+        "predist_sensor_column_count": 17,
+        "predist_source_file": "substation_30.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 00:00:00",
+        "window_end": "2020-03-16 06:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": true,
+        "relevance_level": "high",
+        "relevance_score": 5,
+        "weather_factors": [
+          "외기온 낮음",
+          "영하권 시간대 포함",
+          "전일 동시간대 대비 기온 하락",
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 0.129,
+          "min_temperature_c": -1.5,
+          "max_temperature_c": 1.4,
+          "temperature_delta_24h_c": -3.042,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 53.286,
+          "max_wind_speed_mps": 2.3,
+          "heating_degree_hours": 125.1
+        },
+        "interpretation": "기상 조건이 뚜렷하게 불리해 난방 부하 증가 가능성이 큽니다. 다만 이는 고장 원인 확정이 아니라 위험도 판단을 보완하는 운영 맥락입니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "leakage_water_loss fault high current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.534; pre_event=0.999; fault_group=leakage_water_loss urgent review: current best and M1 specialist both support high priority. m1_specialist_gate_near_threshold leak leakage water loss pressure differential pressure flow valve strainer filter meter pipe 누수 압력 차압 유량 밸브 스트레이너 필터",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "fault_priority_extract__p008__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 8,
+            "page_end": 8,
+            "section_title": "monitoring potential (grey) and maintenance capability (light orange).",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 197.558,
+            "matched_terms": [],
+            "text": "Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),\nmonitoring potential (grey) and maintenance capability (light orange).\nTable A.5\nList of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)\nratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.\nRank Component Fault description MPN Occ Sev Mon Main\n1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2\n2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1\n3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6\n4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8\n5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3\n6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2\n7 Piping system Air in the piping..."
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+            "document_id": "abf06e5876fb90d0",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "rag_role": "troubleshooting_manual",
+            "language": "en",
+            "page_start": 24,
+            "page_end": 24,
+            "section_title": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER",
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 139.706,
+            "matched_terms": [],
+            "text": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER\nFundamental\nIn the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check\nwhether:\n• the system is correctly connected • there is a power supply to the system - pump and automatics\n• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean\n• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)\nheating supplier if necessary\nProblem Possible cause Solution\nDHW*, no hot water Non-return valve in the circulation pipe\nReplace the non-return valve.\ndefective (leads to mixing - the circula-\ntion water pipes become cold during\ntapping).\nNon-return valve in thermostatic mixer Replace the mixer or perhaps only the\nTemperature too low / variations in in the bathroom defective - results in hot non-return valve.\ntemperature and cold water mixing. Please note that\nfluctuating temperatures may occur at\nother tapping points in the system!\nNB, Check all mixers in the house for\nfaults/defects!\nLack of hot water pressure Clogged strainer in the cold water meter..."
+          },
+          {
+            "chunk_id": "fault_priority_extract__p009__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 9,
+            "page_end": 9,
+            "section_title": "36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "leakage_water_loss",
+            "risk_level": null,
+            "score": 131.505,
+            "matched_terms": [],
+            "text": "Table A.5 (continued).\nRank Component Fault description MPN Occ Sev Mon Main\n36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6\n37 Temperature sensor (secondary side) Temperature sensor gives wrong signal 107 3.3 6.0 3.0 2.5\n38 Motorised control valve (primary side) Control valve jammed in open state (imminent danger if type-tested 106 2.2 9.0 3.6 2.0\nunit with safety function)\n39 Temperature sensor (primary side) Temperature sensor is defective and gives no signal 106 3.5 4.7 3.6 2.7\n40 Safety temperature monitor Safety temperature monitor defective 105 3.1 7.9 2.6 1.8\n41 Shut-off valve Leakage, external 104 3.0 7.2 2.1 2.8\n42 Motorised control valve (primary side) External leakage (e.g. stuffing box leaking, seal leaking) 103 3.5 6.9 1.5 3.0\n43 Control unit Incorrect control sequence (incorrect connection) 100 2.5 6.7 3.1 2.9\n44 Heat exchanger Leakage, external 100 3.0 7.5 2.0 2.5\n45 Motorised control valve (3-way valve, External leakage (e.g. stuffing box leaking, seal leaking) 99 3.5 6.7 1.6 2.8\nsecondary side)\n46 Pressure independent control valve Differential pressure regulator jams when closed 96 2..."
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "fault_priority_extract__p008__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 8,
+            "page_end": 8,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "page_start": 24,
+            "page_end": 24,
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p009__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 9,
+            "page_end": 9,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          }
+        ],
+        "regulations": []
+      }
+    },
+    {
+      "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 22,
+        "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+        "kapt_code": "A10028197",
+        "life_zone": "3",
+        "dong": "종촌동",
+        "village": "가재마을",
+        "road_address": "세종특별자치시 달빛로 80",
+        "jibun_address": "세종특별자치시 종촌동 652",
+        "latitude": 36.50582666,
+        "longitude": 127.25164517,
+        "heating_type": "지역난방",
+        "household_count": 1371,
+        "building_count": 21,
+        "gross_floor_area_m2": 221165.0,
+        "latest_private_usage_cost_krw": 205588000.0,
+        "latest_private_usage_unit_krw_per_m2": 1715.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크",
+        "predist_sensor_column_count": 12,
+        "predist_source_file": "substation_22.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 06:00:00",
+        "window_end": "2020-03-16 12:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": true,
+        "relevance_level": "high",
+        "relevance_score": 5,
+        "weather_factors": [
+          "외기온 낮음",
+          "영하권 시간대 포함",
+          "전일 동시간대 대비 기온 하락",
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 2.7,
+          "min_temperature_c": -1.6,
+          "max_temperature_c": 7.9,
+          "temperature_delta_24h_c": -3.014,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 50.571,
+          "max_wind_speed_mps": 1.9,
+          "heating_degree_hours": 107.1
+        },
+        "interpretation": "기상 조건이 뚜렷하게 불리해 난방 부하 증가 가능성이 큽니다. 다만 이는 고장 원인 확정이 아니라 위험도 판단을 보완하는 운영 맥락입니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "unknown_review fault high current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.643; pre_event=1.000; fault_group=unknown_review urgent review: current best and M1 specialist both support high priority. near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review district heating substation heat exchanger operation maintenance inspection 지역난방 기계실 열교환기 점검 유지관리",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "swedish_f101_operation_extract__p028__c01",
+            "document_id": "32faeeaafca59de4",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "rag_role": "international_substation_standard",
+            "language": "en",
+            "page_start": 28,
+            "page_end": 28,
+            "section_title": "8 commissioning and maintenance",
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 121.432,
+            "matched_terms": [],
+            "text": "8 commissioning and maintenance\n8.1 Operating and care instructions 8.3 Function checking\nWritten operating and maintenance instructions When installation is concluded, and the system has\nmust be available before the substation is taken into been properly set up and balanced, a function\nuse. These instructions must include: inspection should be carried out, with measurement\nof temperatures, in order to confirm that the\n• A description of the equipment’s function, with\npromised performance has been achieved.\nassociated drawings, flow diagrams and\noperation cards with instructions.\nAppendix 4 describes the necessary function checks.\n• Data sheets and manufacturers’ instructions for\ncomponents.\n• A list of components that need periodic\ninspection or attention.\n• A description of inspection and maintenance\nprocedures that are regarded as necessary for\nproblem-free and uninterrupted operation.\n• Addresses and telephone numbers for calling for\nservice and/or corrective maintenance.\nOperating and maintenance instructions are\nintended to facilitate good performance of the\nsubstation and the building’s heating system. The\nAssociation’s report “Your district heating\nsubstation” (2004:1) des..."
+          },
+          {
+            "chunk_id": "swedish_f101_operation_extract__p050__c01",
+            "document_id": "32faeeaafca59de4",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "rag_role": "international_substation_standard",
+            "language": "en",
+            "page_start": 50,
+            "page_end": 50,
+            "section_title": "District heating substations F:101",
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+            "equipment_type": null,
+            "fault_type": "control_controller",
+            "risk_level": null,
+            "score": 116.68,
+            "matched_terms": [],
+            "text": "technical regulations\nDistrict heating substations F:101\nUtförande och installation (Execution and installation)\nDistrict cooling substations F:102\nUtförande och installation (Execution and installation}\nCertification of district heating substations F:103-n\nProgram för provning och kontroll\n(Programme for testing and monitoring)\nHeat meters F:104\nTekniska branschkrav och råd om mätarhantering\n(Technical sector requirements and advice on meter management)\nTesting heat exchangers and water heaters F:109\nHeat meters F:111\nDynamisk funktionskontroll av värmemätare för småhus\n(Dynamic functional control of heat meters for detached houses)\nreports\nYour district heating substation 2004:1\nA handbook for building caretakers\nSafety of district heating installations 2004:2\nRegulations and advice for risk assessment\nDistrict heating substations 2009:3\nConnection principles\nKey performance indicator values 1998:12\nfor district heating substations\nThe Work Environment Handbook 2013\n_________________________________________________________________\npublikations\nPublications can be downloaded from the Association’s website:\nwww.svenskfjarrvarme.se"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p001__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 1,
+            "page_end": 1,
+            "section_title": "Prioritisation of faults in district heating substations: Towards predictive",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 112.204,
+            "matched_terms": [],
+            "text": "Contents lists available at ScienceDirect\nEnergy\njournal homepage: www.elsevier.com/locate/energy\nPrioritisation of faults in district heating substations: Towards predictive\nmaintenance and optimised operation\nEdison Guevara Bastidas a ,∗, Stefan Faulstich a , Holger Dittmer a, Martin Neumayer b,\nGowtham Sakthivel Mohan a , Kibriye Sercan-Calismaz c, Frank Hosenfelder d,\nThilo Glenewinkel d, Karsten Fischer-Florschütz e, Anna Cadenbach a\na Fraunhofer IEE, Joseph-Beuys-Straße 8, D-34117 Kassel, Germany\nb Institut für nachhaltige Energieversorgung GmbH - INEV, Anton-Kathrein-Str. 1, D-83022 Rosenheim, Germany\nc Der Energieeffizienzverband für Wärme, Kälte und KWK e. V. - AGFW, Stresemannallee 30, D-60596 Frankfurt am Main, Germany\nd Enercity Netz GmbH, Auf der Papenburg 18 D-30459 Hannover, Germany\ne YADOS GmbH, Yados-Straße 1 D-02977 Hoyerswerda, Germany\nA R T I C L E I N F O A B S T R A C T\nKeywords: Effectively detecting and handling faults in district heating substations is vital to ensure the security of heat\nDistrict heating substations supply and improve system efficiency. This is a challenging task due to the growing number of substations and\nPredictive maintenance limited..."
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "swedish_f101_operation_extract__p028__c01",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "page_start": 28,
+            "page_end": 28,
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf"
+          },
+          {
+            "chunk_id": "swedish_f101_operation_extract__p050__c01",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "page_start": 50,
+            "page_end": 50,
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p001__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 1,
+            "page_end": 1,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          }
+        ],
+        "regulations": []
+      }
+    },
+    {
+      "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 22,
+        "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+        "kapt_code": "A10028197",
+        "life_zone": "3",
+        "dong": "종촌동",
+        "village": "가재마을",
+        "road_address": "세종특별자치시 달빛로 80",
+        "jibun_address": "세종특별자치시 종촌동 652",
+        "latitude": 36.50582666,
+        "longitude": 127.25164517,
+        "heating_type": "지역난방",
+        "household_count": 1371,
+        "building_count": 21,
+        "gross_floor_area_m2": 221165.0,
+        "latest_private_usage_cost_krw": 205588000.0,
+        "latest_private_usage_unit_krw_per_m2": 1715.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크",
+        "predist_sensor_column_count": 12,
+        "predist_source_file": "substation_22.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 18:00:00",
+        "window_end": "2020-03-17 00:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": true,
+        "relevance_level": "medium",
+        "relevance_score": 3,
+        "weather_factors": [
+          "외기온 낮음",
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 4.429,
+          "min_temperature_c": 2.6,
+          "max_temperature_c": 7.6,
+          "temperature_delta_24h_c": 1.943,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 41.857,
+          "max_wind_speed_mps": 2.5,
+          "heating_degree_hours": 95.0
+        },
+        "interpretation": "외기 조건상 난방 또는 급탕 부하가 증가했을 가능성이 있어 이상 신호 해석 시 운영 맥락으로 함께 확인할 필요가 있습니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "unknown_review normal medium current_best_priority=urgent; m1_specialist_priority=low; m1_hybrid_priority=medium; agreement=current_only_high; fault_gate=0.211; pre_event=0.003; fault_group=unknown_review baseline review: current best is high but M1 specialist is not aligned. near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review|m1_priority_disagreement district heating substation heat exchanger operation maintenance inspection 지역난방 기계실 열교환기 점검 유지관리",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 5,
+            "page_end": 5,
+            "section_title": "Occurrence scale for district heating substations.",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "control_controller",
+            "risk_level": null,
+            "score": 135.839,
+            "matched_terms": [],
+            "text": "Table 1 Table 2\nRating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by\ncondition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component\ncomponent condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected\n(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.\nfault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault\npotential is given by rating 5.\nRepair 5 2\nDetection Before the fault After the fault No detection\nDeferment 3\nWith existing instrumentation 5 3 Replacement 4 1\nWith additional effort 4 2\nTable 3\nOccurrence scale for district heating substations.\n3.2.2. The monitoring & maintenance factor Occurrence\nThe third factor in the O&M-FMEA accounts for the handl..."
+          },
+          {
+            "chunk_id": "iea_sh_dhw_substation_extract__p075__c01",
+            "document_id": "f95051b3330013d6",
+            "document_title": "f95051b3330013d6",
+            "source_file": "iea_dhc_connection_handbook.pdf",
+            "curated_file": "iea_sh_dhw_substation_extract.md",
+            "rag_role": "dhc_structure_handbook",
+            "language": "en",
+            "page_start": 75,
+            "page_end": 75,
+            "section_title": "PRIMARY SECONDARY",
+            "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 126.749,
+            "matched_terms": [],
+            "text": "PRIMARY SECONDARY\nC\nPI TI\nTE PI TI\nPI TI\nPI TI\nPRIMARY SECONDARY\nPart II Figure 11.7: Schematic representation of an indirect connection\nWhen a building has a number of different heating requirements, the use of separate heat\nexchangers may be warranted. Typical examples of this are air conditioning, perimeter heating,\nand special requirements such as hospital theatre rooms. The use of individual heat exchangers\noffers a greater degree of flexibility, especially when maintenance is required.\nThe generation of hot water is always carried out using a separate heat exchanger. Systems with a\nlarge hot water demand would normally benefit from the use of a heat exchanger arrangement that\nuses the DH return water to pre-heat the cold water make-up. This is achieved through a separate\nheat exchanger after which the DHW mixes with the re-circulated hot water and is then heated\nthrough an after-heater to be raised to the required temperature. The result is that the DH return\nwater temperature is lowered further. This arrangement is illustrated in Figure 11.8.\nPI TI\nCHF\nPI TI TE C\nHWS F\nLPHW\nHEATING\nTI HEAT\nEXCHANGER\nHWS R\nPI\nCWS\nPI TI\nCHR\nPart II Figure 11.8: Schematic representation of DHW..."
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_id": "abf06e5876fb90d0",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "rag_role": "troubleshooting_manual",
+            "language": "en",
+            "page_start": 18,
+            "page_end": 18,
+            "section_title": "13. HEATING CIRCUIT, PUMP",
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 125.367,
+            "matched_terms": [],
+            "text": "13. HEATING CIRCUIT, PUMP\nGrundfos Pump UPM3\nGrundfos UPM3 Auto has 12 optional settings, which can be select-\ned with the push-botton. See fig. 1 - User interface.\nThe pump is set from factory to Proportional pressure AUTOadapt.\nFig. 1. User interface\nwith a push button and\nfive LEDs.\nThe user interface shows:\n* performance view (during operation)\n- operation status\n- alarm status\n* settings view (after pressing the button)\nDuring operation, the display shows the performance of the pump.\nBy pressing the button, the display changes status or you can\nchange settings.\nFig. 2. Performance view\nThe LEDs show the power consumption for the pump.\nWhen the pump is running, LED 1 is green. The four yellow Performance\nGreen Yellow Yellow Yellow Yellow\nLEDs indicate the current power consumption. % of P max.\n0% (standby)\nSee fig. 2 - Performance view.\n0 - 25%\n25 - 50%\n50 - 75%\n75 - 100 %\n18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx"
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 5,
+            "page_end": 5,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          },
+          {
+            "chunk_id": "iea_sh_dhw_substation_extract__p075__c01",
+            "document_title": "f95051b3330013d6",
+            "source_file": "iea_dhc_connection_handbook.pdf",
+            "curated_file": "iea_sh_dhw_substation_extract.md",
+            "page_start": 75,
+            "page_end": 75,
+            "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf"
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "page_start": 18,
+            "page_end": 18,
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+          }
+        ],
+        "regulations": []
+      }
+    },
+    {
+      "card_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 22,
+        "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+        "kapt_code": "A10028197",
+        "life_zone": "3",
+        "dong": "종촌동",
+        "village": "가재마을",
+        "road_address": "세종특별자치시 달빛로 80",
+        "jibun_address": "세종특별자치시 종촌동 652",
+        "latitude": 36.50582666,
+        "longitude": 127.25164517,
+        "heating_type": "지역난방",
+        "household_count": 1371,
+        "building_count": 21,
+        "gross_floor_area_m2": 221165.0,
+        "latest_private_usage_cost_krw": 205588000.0,
+        "latest_private_usage_unit_krw_per_m2": 1715.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크",
+        "predist_sensor_column_count": 12,
+        "predist_source_file": "substation_22.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 12:00:00",
+        "window_end": "2020-03-16 18:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": false,
+        "relevance_level": "low",
+        "relevance_score": 1,
+        "weather_factors": [
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 8.914,
+          "min_temperature_c": 7.6,
+          "max_temperature_c": 10.1,
+          "temperature_delta_24h_c": 0.671,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 26.571,
+          "max_wind_speed_mps": 4.1,
+          "heating_degree_hours": 63.6
+        },
+        "interpretation": "일부 기상 요인이 있으나 이상 신호를 설명할 정도의 강한 운영 부하 맥락은 제한적입니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "unknown_review fault low current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.520; pre_event=0.117; fault_group=unknown_review baseline review: current best is high but M1 specialist is not aligned. near_anomaly_threshold|m1_specialist_gate_near_threshold|m1_priority_disagreement district heating substation heat exchanger operation maintenance inspection 지역난방 기계실 열교환기 점검 유지관리",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_id": "abf06e5876fb90d0",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "rag_role": "troubleshooting_manual",
+            "language": "en",
+            "page_start": 18,
+            "page_end": 18,
+            "section_title": "13. HEATING CIRCUIT, PUMP",
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 137.223,
+            "matched_terms": [],
+            "text": "13. HEATING CIRCUIT, PUMP\nGrundfos Pump UPM3\nGrundfos UPM3 Auto has 12 optional settings, which can be select-\ned with the push-botton. See fig. 1 - User interface.\nThe pump is set from factory to Proportional pressure AUTOadapt.\nFig. 1. User interface\nwith a push button and\nfive LEDs.\nThe user interface shows:\n* performance view (during operation)\n- operation status\n- alarm status\n* settings view (after pressing the button)\nDuring operation, the display shows the performance of the pump.\nBy pressing the button, the display changes status or you can\nchange settings.\nFig. 2. Performance view\nThe LEDs show the power consumption for the pump.\nWhen the pump is running, LED 1 is green. The four yellow Performance\nGreen Yellow Yellow Yellow Yellow\nLEDs indicate the current power consumption. % of P max.\n0% (standby)\nSee fig. 2 - Performance view.\n0 - 25%\n25 - 50%\n50 - 75%\n75 - 100 %\n18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx"
+          },
+          {
+            "chunk_id": "swedish_f101_operation_extract__p021__c01",
+            "document_id": "32faeeaafca59de4",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "rag_role": "international_substation_standard",
+            "language": "en",
+            "page_start": 21,
+            "page_end": 21,
+            "section_title": "6 substation equipment",
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 130.265,
+            "matched_terms": [],
+            "text": "6 substation equipment\n6.1 Equipment in the equipment room and in/on the substation\nKey: Calculate the required power as the rated power of\nK = must be included the radiator / ventilation heat exchanger. The extent\nR = inclusion recommended of equipment required can vary from one district\nT = supplied by the heat supplier heating supplier to another.\nLow-temperature High- / low-temperature\nsecondary system primary systems\n<100 kW <100 kW >100 kW\nIn the substation equipment room:\nLighting K K K\nPower supply K K K\nMeter position K K K\nAccess to floor drain K K K\nAbility to flush domestic hot water and cold water circuits K K K\nDistrict heating circuit (primary side)\nMain isolating valves T T T\nFilter K K K\nPressure gauge R R R\nPressure sensor connection 3 R R K\nTemperature display R R R\nRadiator / ventilation system heat exchanger R K K\nDomestic hot water heat exchanger K K K\nControl valve, radiators / ventilation K K K\nControl valve, domestic hot water K K K\nInstrumentation T T T\nDrain valve R R K\nAir bleed valve R R R\nSpace heating circuit (secondary side)\nCirculation pump 2 K K K\nExpansion vessel 2 K (if heat exchanger used) K K\nTemperature display R R R\nPressure gauge R K K\nSafe..."
+          },
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 5,
+            "page_end": 5,
+            "section_title": "Occurrence scale for district heating substations.",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "control_controller",
+            "risk_level": null,
+            "score": 117.306,
+            "matched_terms": [],
+            "text": "Table 1 Table 2\nRating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by\ncondition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component\ncomponent condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected\n(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.\nfault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault\npotential is given by rating 5.\nRepair 5 2\nDetection Before the fault After the fault No detection\nDeferment 3\nWith existing instrumentation 5 3 Replacement 4 1\nWith additional effort 4 2\nTable 3\nOccurrence scale for district heating substations.\n3.2.2. The monitoring & maintenance factor Occurrence\nThe third factor in the O&M-FMEA accounts for the handl..."
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "page_start": 18,
+            "page_end": 18,
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+          },
+          {
+            "chunk_id": "swedish_f101_operation_extract__p021__c01",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "page_start": 21,
+            "page_end": 21,
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 5,
+            "page_end": 5,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          }
+        ],
+        "regulations": []
+      }
+    },
+    {
+      "card_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+      "status": "configured",
+      "site": {
+        "status": "mapped",
+        "mapping_scope": "sejong_virtual_1_31",
+        "mapping_type": "virtual_by_substation_id",
+        "substation_id": 22,
+        "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+        "kapt_code": "A10028197",
+        "life_zone": "3",
+        "dong": "종촌동",
+        "village": "가재마을",
+        "road_address": "세종특별자치시 달빛로 80",
+        "jibun_address": "세종특별자치시 종촌동 652",
+        "latitude": 36.50582666,
+        "longitude": 127.25164517,
+        "heating_type": "지역난방",
+        "household_count": 1371,
+        "building_count": 21,
+        "gross_floor_area_m2": 221165.0,
+        "latest_private_usage_cost_krw": 205588000.0,
+        "latest_private_usage_unit_krw_per_m2": 1715.0,
+        "predist_configuration_type": "SH + DHW",
+        "predist_configuration_ko": "난방 + 급탕",
+        "predist_sensor_groups_ko": "외기온|난방 회로|급탕|급탕 저장탱크",
+        "predist_sensor_column_count": 12,
+        "predist_source_file": "substation_22.csv",
+        "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+      },
+      "weather": {
+        "source": "KMA APIHub ASOS hourly observations",
+        "api_endpoint": "kma_sfctm3.php",
+        "station_id": "239",
+        "station_name": "세종",
+        "region": "세종",
+        "window_start": "2020-03-16 00:00:00",
+        "window_end": "2020-03-16 06:00:00",
+        "record_count": 7,
+        "comparison_record_count_24h": 7,
+        "is_relevant": true,
+        "relevance_level": "high",
+        "relevance_score": 5,
+        "weather_factors": [
+          "외기온 낮음",
+          "영하권 시간대 포함",
+          "전일 동시간대 대비 기온 하락",
+          "난방도시 기준 난방 부하 증가 가능"
+        ],
+        "metrics": {
+          "avg_temperature_c": 0.129,
+          "min_temperature_c": -1.5,
+          "max_temperature_c": 1.4,
+          "temperature_delta_24h_c": -3.042,
+          "precipitation_mm": 0,
+          "snow_depth_cm": null,
+          "new_snow_3h_cm": null,
+          "avg_humidity_pct": 53.286,
+          "max_wind_speed_mps": 2.3,
+          "heating_degree_hours": 125.1
+        },
+        "interpretation": "기상 조건이 뚜렷하게 불리해 난방 부하 증가 가능성이 큽니다. 다만 이는 고장 원인 확정이 아니라 위험도 판단을 보완하는 운영 맥락입니다.",
+        "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+        "status": "available"
+      },
+      "retrieval": {
+        "status": "available",
+        "source": "rag_http_server",
+        "backend": "pgvector",
+        "query": "unknown_review normal low current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.344; pre_event=0.256; fault_group=unknown_review baseline review: current best is high but M1 specialist is not aligned. m1_priority_disagreement district heating substation heat exchanger operation maintenance inspection 지역난방 기계실 열교환기 점검 유지관리",
+        "top_k": 3,
+        "chunks": [
+          {
+            "chunk_id": "swedish_f101_operation_extract__p021__c01",
+            "document_id": "32faeeaafca59de4",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "rag_role": "international_substation_standard",
+            "language": "en",
+            "page_start": 21,
+            "page_end": 21,
+            "section_title": "6 substation equipment",
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 155.481,
+            "matched_terms": [],
+            "text": "6 substation equipment\n6.1 Equipment in the equipment room and in/on the substation\nKey: Calculate the required power as the rated power of\nK = must be included the radiator / ventilation heat exchanger. The extent\nR = inclusion recommended of equipment required can vary from one district\nT = supplied by the heat supplier heating supplier to another.\nLow-temperature High- / low-temperature\nsecondary system primary systems\n<100 kW <100 kW >100 kW\nIn the substation equipment room:\nLighting K K K\nPower supply K K K\nMeter position K K K\nAccess to floor drain K K K\nAbility to flush domestic hot water and cold water circuits K K K\nDistrict heating circuit (primary side)\nMain isolating valves T T T\nFilter K K K\nPressure gauge R R R\nPressure sensor connection 3 R R K\nTemperature display R R R\nRadiator / ventilation system heat exchanger R K K\nDomestic hot water heat exchanger K K K\nControl valve, radiators / ventilation K K K\nControl valve, domestic hot water K K K\nInstrumentation T T T\nDrain valve R R K\nAir bleed valve R R R\nSpace heating circuit (secondary side)\nCirculation pump 2 K K K\nExpansion vessel 2 K (if heat exchanger used) K K\nTemperature display R R R\nPressure gauge R K K\nSafe..."
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_id": "abf06e5876fb90d0",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "rag_role": "troubleshooting_manual",
+            "language": "en",
+            "page_start": 18,
+            "page_end": 18,
+            "section_title": "13. HEATING CIRCUIT, PUMP",
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+            "equipment_type": null,
+            "fault_type": "pump_failure",
+            "risk_level": null,
+            "score": 136.937,
+            "matched_terms": [],
+            "text": "13. HEATING CIRCUIT, PUMP\nGrundfos Pump UPM3\nGrundfos UPM3 Auto has 12 optional settings, which can be select-\ned with the push-botton. See fig. 1 - User interface.\nThe pump is set from factory to Proportional pressure AUTOadapt.\nFig. 1. User interface\nwith a push button and\nfive LEDs.\nThe user interface shows:\n* performance view (during operation)\n- operation status\n- alarm status\n* settings view (after pressing the button)\nDuring operation, the display shows the performance of the pump.\nBy pressing the button, the display changes status or you can\nchange settings.\nFig. 2. Performance view\nThe LEDs show the power consumption for the pump.\nWhen the pump is running, LED 1 is green. The four yellow Performance\nGreen Yellow Yellow Yellow Yellow\nLEDs indicate the current power consumption. % of P max.\n0% (standby)\nSee fig. 2 - Performance view.\n0 - 25%\n25 - 50%\n50 - 75%\n75 - 100 %\n18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_id": "fc9626fdd3f35215",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "rag_role": "fault_priority_research",
+            "language": "en",
+            "page_start": 5,
+            "page_end": 5,
+            "section_title": "Occurrence scale for district heating substations.",
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+            "equipment_type": null,
+            "fault_type": "control_controller",
+            "risk_level": null,
+            "score": 121.925,
+            "matched_terms": [],
+            "text": "Table 1 Table 2\nRating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by\ncondition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component\ncomponent condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected\n(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.\nfault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault\npotential is given by rating 5.\nRepair 5 2\nDetection Before the fault After the fault No detection\nDeferment 3\nWith existing instrumentation 5 3 Replacement 4 1\nWith additional effort 4 2\nTable 3\nOccurrence scale for district heating substations.\n3.2.2. The monitoring & maintenance factor Occurrence\nThe third factor in the O&M-FMEA accounts for the handl..."
+          }
+        ]
+      },
+      "references": {
+        "technical_standards": [
+          {
+            "chunk_id": "swedish_f101_operation_extract__p021__c01",
+            "document_title": "32faeeaafca59de4",
+            "source_file": "swedish_f101_substations.pdf",
+            "curated_file": "swedish_f101_operation_extract.md",
+            "page_start": 21,
+            "page_end": 21,
+            "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf"
+          },
+          {
+            "chunk_id": "danfoss_substation_operation_extract__p018__c01",
+            "document_title": "abf06e5876fb90d0",
+            "source_file": "danfoss_vxe_manual.pdf",
+            "curated_file": "danfoss_substation_operation_extract.md",
+            "page_start": 18,
+            "page_end": 18,
+            "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+          },
+          {
+            "chunk_id": "fault_priority_extract__p005__c01",
+            "document_title": "fc9626fdd3f35215",
+            "source_file": "prioritisation_faults_substations.pdf",
+            "curated_file": "fault_priority_extract.md",
+            "page_start": 5,
+            "page_end": 5,
+            "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+          }
+        ],
+        "regulations": []
+      }
+    }
+  ],
+  "rag_evidence": [
+    {
+      "ref_id": "rag-fault_priority_extract__p008__c01",
+      "source_type": "rag_document",
+      "title": "fc9626fdd3f35215",
+      "source_id": "fault_priority_extract__p008__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),\nmonitoring potential (grey) and maintenance capability (light orange).\nTable A.5\nList of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)\nratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.\nRank Component Fault description MPN Occ Sev Mon Main\n1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2\n2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1\n3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6\n4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8\n5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3\n6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2\n7 Piping system Air in the piping...",
+      "page_start": 8,
+      "page_end": 8,
+      "rag_role": "fault_priority_research",
+      "score": 204.006,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-danfoss_substation_operation_extract__p024__c01",
+      "source_type": "rag_document",
+      "title": "abf06e5876fb90d0",
+      "source_id": "danfoss_substation_operation_extract__p024__c01",
+      "uri": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+      "excerpt": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER\nFundamental\nIn the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check\nwhether:\n• the system is correctly connected • there is a power supply to the system - pump and automatics\n• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean\n• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)\nheating supplier if necessary\nProblem Possible cause Solution\nDHW*, no hot water Non-return valve in the circulation pipe\nReplace the non-return valve.\ndefective (leads to mixing - the circula-\ntion water pipes become cold during\ntapping).\nNon-return valve in thermostatic mixer Replace the mixer or perhaps only the\nTemperature too low / variations in in the bathroom defective - results in hot non-return valve.\ntemperature and cold water mixing. Please note that\nfluctuating temperatures may occur at\nother tapping points in the system!\nNB, Check all mixers in the house for\nfaults/defects!\nLack of hot water pressure Clogged strainer in the cold water meter...",
+      "page_start": 24,
+      "page_end": 24,
+      "rag_role": "troubleshooting_manual",
+      "score": 147.853,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-fault_priority_extract__p009__c01",
+      "source_type": "rag_document",
+      "title": "fc9626fdd3f35215",
+      "source_id": "fault_priority_extract__p009__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "Table A.5 (continued).\nRank Component Fault description MPN Occ Sev Mon Main\n36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6\n37 Temperature sensor (secondary side) Temperature sensor gives wrong signal 107 3.3 6.0 3.0 2.5\n38 Motorised control valve (primary side) Control valve jammed in open state (imminent danger if type-tested 106 2.2 9.0 3.6 2.0\nunit with safety function)\n39 Temperature sensor (primary side) Temperature sensor is defective and gives no signal 106 3.5 4.7 3.6 2.7\n40 Safety temperature monitor Safety temperature monitor defective 105 3.1 7.9 2.6 1.8\n41 Shut-off valve Leakage, external 104 3.0 7.2 2.1 2.8\n42 Motorised control valve (primary side) External leakage (e.g. stuffing box leaking, seal leaking) 103 3.5 6.9 1.5 3.0\n43 Control unit Incorrect control sequence (incorrect connection) 100 2.5 6.7 3.1 2.9\n44 Heat exchanger Leakage, external 100 3.0 7.5 2.0 2.5\n45 Motorised control valve (3-way valve, External leakage (e.g. stuffing box leaking, seal leaking) 99 3.5 6.7 1.6 2.8\nsecondary side)\n46 Pressure independent control valve Differential pressure regulator jams when closed 96 2...",
+      "page_start": 9,
+      "page_end": 9,
+      "rag_role": "fault_priority_research",
+      "score": 138.985,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-swedish_f101_operation_extract__p028__c01",
+      "source_type": "rag_document",
+      "title": "32faeeaafca59de4",
+      "source_id": "swedish_f101_operation_extract__p028__c01",
+      "uri": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+      "excerpt": "8 commissioning and maintenance\n8.1 Operating and care instructions 8.3 Function checking\nWritten operating and maintenance instructions When installation is concluded, and the system has\nmust be available before the substation is taken into been properly set up and balanced, a function\nuse. These instructions must include: inspection should be carried out, with measurement\nof temperatures, in order to confirm that the\n• A description of the equipment’s function, with\npromised performance has been achieved.\nassociated drawings, flow diagrams and\noperation cards with instructions.\nAppendix 4 describes the necessary function checks.\n• Data sheets and manufacturers’ instructions for\ncomponents.\n• A list of components that need periodic\ninspection or attention.\n• A description of inspection and maintenance\nprocedures that are regarded as necessary for\nproblem-free and uninterrupted operation.\n• Addresses and telephone numbers for calling for\nservice and/or corrective maintenance.\nOperating and maintenance instructions are\nintended to facilitate good performance of the\nsubstation and the building’s heating system. The\nAssociation’s report “Your district heating\nsubstation” (2004:1) des...",
+      "page_start": 28,
+      "page_end": 28,
+      "rag_role": "international_substation_standard",
+      "score": 121.432,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-swedish_f101_operation_extract__p050__c01",
+      "source_type": "rag_document",
+      "title": "32faeeaafca59de4",
+      "source_id": "swedish_f101_operation_extract__p050__c01",
+      "uri": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+      "excerpt": "technical regulations\nDistrict heating substations F:101\nUtförande och installation (Execution and installation)\nDistrict cooling substations F:102\nUtförande och installation (Execution and installation}\nCertification of district heating substations F:103-n\nProgram för provning och kontroll\n(Programme for testing and monitoring)\nHeat meters F:104\nTekniska branschkrav och råd om mätarhantering\n(Technical sector requirements and advice on meter management)\nTesting heat exchangers and water heaters F:109\nHeat meters F:111\nDynamisk funktionskontroll av värmemätare för småhus\n(Dynamic functional control of heat meters for detached houses)\nreports\nYour district heating substation 2004:1\nA handbook for building caretakers\nSafety of district heating installations 2004:2\nRegulations and advice for risk assessment\nDistrict heating substations 2009:3\nConnection principles\nKey performance indicator values 1998:12\nfor district heating substations\nThe Work Environment Handbook 2013\n_________________________________________________________________\npublikations\nPublications can be downloaded from the Association’s website:\nwww.svenskfjarrvarme.se",
+      "page_start": 50,
+      "page_end": 50,
+      "rag_role": "international_substation_standard",
+      "score": 116.68,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-fault_priority_extract__p001__c01",
+      "source_type": "rag_document",
+      "title": "fc9626fdd3f35215",
+      "source_id": "fault_priority_extract__p001__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "Contents lists available at ScienceDirect\nEnergy\njournal homepage: www.elsevier.com/locate/energy\nPrioritisation of faults in district heating substations: Towards predictive\nmaintenance and optimised operation\nEdison Guevara Bastidas a ,∗, Stefan Faulstich a , Holger Dittmer a, Martin Neumayer b,\nGowtham Sakthivel Mohan a , Kibriye Sercan-Calismaz c, Frank Hosenfelder d,\nThilo Glenewinkel d, Karsten Fischer-Florschütz e, Anna Cadenbach a\na Fraunhofer IEE, Joseph-Beuys-Straße 8, D-34117 Kassel, Germany\nb Institut für nachhaltige Energieversorgung GmbH - INEV, Anton-Kathrein-Str. 1, D-83022 Rosenheim, Germany\nc Der Energieeffizienzverband für Wärme, Kälte und KWK e. V. - AGFW, Stresemannallee 30, D-60596 Frankfurt am Main, Germany\nd Enercity Netz GmbH, Auf der Papenburg 18 D-30459 Hannover, Germany\ne YADOS GmbH, Yados-Straße 1 D-02977 Hoyerswerda, Germany\nA R T I C L E I N F O A B S T R A C T\nKeywords: Effectively detecting and handling faults in district heating substations is vital to ensure the security of heat\nDistrict heating substations supply and improve system efficiency. This is a challenging task due to the growing number of substations and\nPredictive maintenance limited...",
+      "page_start": 1,
+      "page_end": 1,
+      "rag_role": "fault_priority_research",
+      "score": 112.204,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-fault_priority_extract__p005__c01",
+      "source_type": "rag_document",
+      "title": "fc9626fdd3f35215",
+      "source_id": "fault_priority_extract__p005__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "Table 1 Table 2\nRating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by\ncondition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component\ncomponent condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected\n(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.\nfault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault\npotential is given by rating 5.\nRepair 5 2\nDetection Before the fault After the fault No detection\nDeferment 3\nWith existing instrumentation 5 3 Replacement 4 1\nWith additional effort 4 2\nTable 3\nOccurrence scale for district heating substations.\n3.2.2. The monitoring & maintenance factor Occurrence\nThe third factor in the O&M-FMEA accounts for the handl...",
+      "page_start": 5,
+      "page_end": 5,
+      "rag_role": "fault_priority_research",
+      "score": 135.839,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-iea_sh_dhw_substation_extract__p075__c01",
+      "source_type": "rag_document",
+      "title": "f95051b3330013d6",
+      "source_id": "iea_sh_dhw_substation_extract__p075__c01",
+      "uri": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+      "excerpt": "PRIMARY SECONDARY\nC\nPI TI\nTE PI TI\nPI TI\nPI TI\nPRIMARY SECONDARY\nPart II Figure 11.7: Schematic representation of an indirect connection\nWhen a building has a number of different heating requirements, the use of separate heat\nexchangers may be warranted. Typical examples of this are air conditioning, perimeter heating,\nand special requirements such as hospital theatre rooms. The use of individual heat exchangers\noffers a greater degree of flexibility, especially when maintenance is required.\nThe generation of hot water is always carried out using a separate heat exchanger. Systems with a\nlarge hot water demand would normally benefit from the use of a heat exchanger arrangement that\nuses the DH return water to pre-heat the cold water make-up. This is achieved through a separate\nheat exchanger after which the DHW mixes with the re-circulated hot water and is then heated\nthrough an after-heater to be raised to the required temperature. The result is that the DH return\nwater temperature is lowered further. This arrangement is illustrated in Figure 11.8.\nPI TI\nCHF\nPI TI TE C\nHWS F\nLPHW\nHEATING\nTI HEAT\nEXCHANGER\nHWS R\nPI\nCWS\nPI TI\nCHR\nPart II Figure 11.8: Schematic representation of DHW...",
+      "page_start": 75,
+      "page_end": 75,
+      "rag_role": "dhc_structure_handbook",
+      "score": 126.749,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-danfoss_substation_operation_extract__p018__c01",
+      "source_type": "rag_document",
+      "title": "abf06e5876fb90d0",
+      "source_id": "danfoss_substation_operation_extract__p018__c01",
+      "uri": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+      "excerpt": "13. HEATING CIRCUIT, PUMP\nGrundfos Pump UPM3\nGrundfos UPM3 Auto has 12 optional settings, which can be select-\ned with the push-botton. See fig. 1 - User interface.\nThe pump is set from factory to Proportional pressure AUTOadapt.\nFig. 1. User interface\nwith a push button and\nfive LEDs.\nThe user interface shows:\n* performance view (during operation)\n- operation status\n- alarm status\n* settings view (after pressing the button)\nDuring operation, the display shows the performance of the pump.\nBy pressing the button, the display changes status or you can\nchange settings.\nFig. 2. Performance view\nThe LEDs show the power consumption for the pump.\nWhen the pump is running, LED 1 is green. The four yellow Performance\nGreen Yellow Yellow Yellow Yellow\nLEDs indicate the current power consumption. % of P max.\n0% (standby)\nSee fig. 2 - Performance view.\n0 - 25%\n25 - 50%\n50 - 75%\n75 - 100 %\n18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx",
+      "page_start": 18,
+      "page_end": 18,
+      "rag_role": "troubleshooting_manual",
+      "score": 125.367,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-swedish_f101_operation_extract__p021__c01",
+      "source_type": "rag_document",
+      "title": "32faeeaafca59de4",
+      "source_id": "swedish_f101_operation_extract__p021__c01",
+      "uri": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+      "excerpt": "6 substation equipment\n6.1 Equipment in the equipment room and in/on the substation\nKey: Calculate the required power as the rated power of\nK = must be included the radiator / ventilation heat exchanger. The extent\nR = inclusion recommended of equipment required can vary from one district\nT = supplied by the heat supplier heating supplier to another.\nLow-temperature High- / low-temperature\nsecondary system primary systems\n<100 kW <100 kW >100 kW\nIn the substation equipment room:\nLighting K K K\nPower supply K K K\nMeter position K K K\nAccess to floor drain K K K\nAbility to flush domestic hot water and cold water circuits K K K\nDistrict heating circuit (primary side)\nMain isolating valves T T T\nFilter K K K\nPressure gauge R R R\nPressure sensor connection 3 R R K\nTemperature display R R R\nRadiator / ventilation system heat exchanger R K K\nDomestic hot water heat exchanger K K K\nControl valve, radiators / ventilation K K K\nControl valve, domestic hot water K K K\nInstrumentation T T T\nDrain valve R R K\nAir bleed valve R R R\nSpace heating circuit (secondary side)\nCirculation pump 2 K K K\nExpansion vessel 2 K (if heat exchanger used) K K\nTemperature display R R R\nPressure gauge R K K\nSafe...",
+      "page_start": 21,
+      "page_end": 21,
+      "rag_role": "international_substation_standard",
+      "score": 130.265,
+      "matched_terms": []
+    }
+  ],
+  "work_order_summaries": [
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-4d37728c-8228-567f-a327-9b19969cad65"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-0b99826d-17d6-58f0-a490-166e4686c53f"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ],
+      "evidence_refs": []
+    }
+  ],
+  "previous_operator_memo": null
+}

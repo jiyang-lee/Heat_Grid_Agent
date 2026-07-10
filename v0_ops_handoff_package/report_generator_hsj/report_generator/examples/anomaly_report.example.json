@@ -1,0 +1,191 @@
+{
+  "report_metadata": {
+    "report_id": "ANOM-20260709-0001",
+    "report_type": "anomaly_report",
+    "schema_version": "v0.1",
+    "generated_at": "2026-07-09T08:30:00+09:00",
+    "language": "ko",
+    "source_card_id": "card-sub31-20200111-0000",
+    "agent_run_id": "agent-run-20260709-083000"
+  },
+  "target_asset": {
+    "substation_id": 31,
+    "asset_label": "31번 열교환 설비",
+    "configuration_type": "SH + DHW",
+    "manufacturer_id": "manufacturer 1",
+    "window_start": "2020-01-11T00:00:00+09:00",
+    "window_end": "2020-01-11T06:00:00+09:00",
+    "location_label": "중부권역 공급 지점"
+  },
+  "priority_summary": {
+    "priority_level": "Urgent",
+    "priority_score": 89.73322568799986,
+    "operator_review": "Required",
+    "confidence": "medium",
+    "urgency": "immediate",
+    "priority_reason": "current-best 모델은 긴급 수준으로 판단했으며, M1 specialist는 누수성 수손실 가능성을 제시했습니다."
+  },
+  "situation_summary": {
+    "headline": "31번 설비에서 누수성 수손실 가능성이 높은 긴급 점검 대상이 확인되었습니다.",
+    "summary": "분석 구간에서 우선순위 점수가 높게 산정되었고, 모델 간 판단 차이가 있어 운영자 검토가 필요합니다. 현재 신호만으로 고장을 단정하지 않고 누수성 수손실 가능성을 우선 확인하는 것이 적절합니다.",
+    "current_status": "긴급도는 높지만 active anomaly가 확정된 상태는 아니므로 현장 확인 전 자동 조치는 권장하지 않습니다.",
+    "impact_summary": "점검이 지연될 경우 열공급 효율 저하 또는 보충수 사용량 증가로 이어질 수 있습니다."
+  },
+  "key_evidence": [
+    {
+      "label": "Priority score",
+      "value": 89.73322568799986,
+      "unit": "score",
+      "interpretation": "우선순위 점수가 높아 즉시 검토 대상에 해당합니다.",
+      "confidence": "high",
+      "evidence_ref_ids": ["ev-priority-card-001", "ev-model-output-001"]
+    },
+    {
+      "label": "current-best priority",
+      "value": "urgent",
+      "unit": null,
+      "interpretation": "current-best 모델은 해당 구간을 긴급 수준으로 평가했습니다.",
+      "confidence": "high",
+      "evidence_ref_ids": ["ev-ops-evidence-001"]
+    },
+    {
+      "label": "M1 specialist fault group",
+      "value": "leakage_water_loss",
+      "unit": null,
+      "interpretation": "M1 specialist는 누수성 수손실 가능성을 주요 신호로 제시했습니다.",
+      "confidence": "medium",
+      "evidence_ref_ids": ["ev-model-output-001"]
+    }
+  ],
+  "risk_analysis": {
+    "risk_level": "Urgent",
+    "risk_summary": "누수성 수손실 가능성과 높은 priority score가 함께 관찰되어 단기 점검 우선순위가 높습니다.",
+    "operational_impact": "수손실이 실제로 진행 중이면 공급 안정성과 에너지 효율에 영향을 줄 수 있습니다.",
+    "monitoring_points": [
+      "보충수 사용량 또는 유량 변화 추이",
+      "공급/환수 온도 차이의 비정상 변동",
+      "동일 설비의 다음 window priority score 변화"
+    ]
+  },
+  "suspected_causes": [
+    {
+      "cause": "배관 또는 열교환 설비 계통의 누수성 수손실 가능성",
+      "likelihood": "medium",
+      "rationale": "M1 specialist가 leakage_water_loss 그룹을 제시했고 priority score가 높게 산정되었습니다.",
+      "evidence_ref_ids": ["ev-model-output-001", "ev-priority-card-001"]
+    },
+    {
+      "cause": "센서 계측 이상 또는 일시적 데이터 품질 저하 가능성",
+      "likelihood": "low",
+      "rationale": "모델 간 우선순위 판단 차이가 있어 센서 품질과 최근 흐름을 함께 확인해야 합니다.",
+      "evidence_ref_ids": ["ev-ops-evidence-001"]
+    }
+  ],
+  "recommended_actions": [
+    {
+      "action": "31번 설비의 보충수 사용량과 유량 변화를 우선 확인합니다.",
+      "urgency": "immediate",
+      "owner_hint": "운영실",
+      "expected_outcome": "누수성 수손실 가능성이 실제 운전 데이터와 일치하는지 확인합니다."
+    },
+    {
+      "action": "현장관리자에게 관련 설비 외관 점검과 이상음 여부 확인을 요청합니다.",
+      "urgency": "today",
+      "owner_hint": "현장관리자",
+      "expected_outcome": "작업지시서 기반 현장 점검 결과를 확보합니다."
+    },
+    {
+      "action": "다음 분석 window에서 priority score와 M1 specialist 결과를 재확인합니다.",
+      "urgency": "next_shift",
+      "owner_hint": "다음 교대 근무자",
+      "expected_outcome": "일시적 신호인지 지속 위험인지 구분합니다."
+    }
+  ],
+  "work_order_summary": {
+    "work_order_issued": true,
+    "status": "sent",
+    "work_order_id": "WO-20260709-031-001",
+    "summary": "31번 열교환 설비의 누수성 수손실 가능성에 대한 현장 확인 요청이 발행되었습니다.",
+    "evidence_refs": ["ev-priority-card-001", "ev-model-output-001", "ev-work-order-001"]
+  },
+  "evidence_references": [
+    {
+      "ref_id": "ev-priority-card-001",
+      "source_type": "priority_card",
+      "title": "31번 설비 priority card",
+      "source_id": "card-sub31-20200111-0000",
+      "uri": null,
+      "excerpt": "priority_level=urgent, priority_score=89.73322568799986",
+      "created_at": "2026-07-09T08:20:00+09:00"
+    },
+    {
+      "ref_id": "ev-ops-evidence-001",
+      "source_type": "ops_evidence",
+      "title": "get_ops_evidence 반환 JSON",
+      "source_id": "card-sub31-20200111-0000",
+      "uri": null,
+      "excerpt": "review_required=true, review_reasons=risk_high_but_anomaly_not_confirmed, m1_priority_disagreement",
+      "created_at": "2026-07-09T08:21:00+09:00"
+    },
+    {
+      "ref_id": "ev-model-output-001",
+      "source_type": "model_output",
+      "title": "M1 specialist 모델 출력",
+      "source_id": "m1-output-sub31-20200111-0000",
+      "uri": null,
+      "excerpt": "m1_specialist_fault_group=leakage_water_loss",
+      "created_at": "2026-07-09T08:21:00+09:00"
+    },
+    {
+      "ref_id": "ev-rag-doc-001",
+      "source_type": "rag_document",
+      "title": "열교환 설비 누수 점검 기준 요약",
+      "source_id": "rag-doc-leakage-check-v1",
+      "uri": "rag://technical-standards/leakage-check-v1",
+      "excerpt": "누수 의심 시 보충수 사용량, 공급/환수 온도 차이, 현장 외관 점검을 함께 확인합니다.",
+      "created_at": "2026-07-09T08:22:00+09:00"
+    },
+    {
+      "ref_id": "ev-work-order-001",
+      "source_type": "work_order",
+      "title": "작업지시서 발행 요약",
+      "source_id": "WO-20260709-031-001",
+      "uri": null,
+      "excerpt": "현장 확인 요청 발행 완료",
+      "created_at": "2026-07-09T08:25:00+09:00"
+    }
+  ],
+  "operator_note": {
+    "note": "모델 판단이 완전히 일치하지 않으므로 현장 확인 결과가 들어오기 전까지는 자동 조치보다 모니터링을 병행합니다.",
+    "review_required": true,
+    "review_reasons": [
+      "risk_high_but_anomaly_not_confirmed",
+      "m1_priority_disagreement"
+    ]
+  },
+  "rendering_hints": {
+    "display_title": "이상징후 보고서 - 31번 열교환 설비",
+    "severity_badge": {
+      "label": "긴급",
+      "level": "Urgent",
+      "color_hint": "red"
+    },
+    "section_order": [
+      "report_metadata",
+      "target_asset",
+      "priority_summary",
+      "situation_summary",
+      "key_evidence",
+      "risk_analysis",
+      "suspected_causes",
+      "recommended_actions",
+      "work_order_summary",
+      "evidence_references",
+      "operator_note",
+      "rendering_hints"
+    ],
+    "page_break_before": [
+      "evidence_references"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "scope": "m1_specialist",
+  "manufacturer_filter": "manufacturer 1",
+  "rows": 1252,
+  "label_counts": {
+    "normal": 931,
+    "pre_fault": 321
+  },
+  "split_counts": {
+    "train": 900,
+    "holdout": 183,
+    "validation": 169
+  },
+  "fault_event_count": 32,
+  "m1_specialist_thresholds": {
+    "high": 75.0,
+    "urgent": 90.0
+  },
+  "m1_hybrid_thresholds": {
+    "high": 82.5,
+    "urgent": 95.0
+  },
+  "official_priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+  "current_best_priority_preserved_as": [
+    "current_best_priority_score",
+    "current_best_priority_level"
+  ],
+  "third_project_parallel_line": {
+    "compact13_features": "output/m1_specialist_compact13_features.csv",
+    "gate_scores": "output/m1_specialist_gate_scores.csv",
+    "agent_card": "output/agent/m1_specialist_parallel_agent_card.csv"
+  }
+}

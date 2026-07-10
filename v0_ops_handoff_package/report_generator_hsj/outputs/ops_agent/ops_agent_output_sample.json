@@ -1,0 +1,35 @@
+{
+  "decision": {
+    "priority": "urgent",
+    "operator_review": "Required",
+    "data_quality": "Medium"
+  },
+  "summary": "누수로 인한 수압 손실 위험이 높아 긴급 검토가 필요합니다. 이상 징후는 명확하지 않으나 전문가 의견도 중간 수준의 문제를 지적했습니다.",
+  "action_plan": [
+    "누수 가능성에 대한 현장 확인 실시",
+    "수압 모니터링 강화 및 추가 데이터 수집",
+    "긴급 수리 또는 점검 일정 조율",
+    "운영자에게 검토 요청 및 상황 공유"
+  ],
+  "caution": [
+    "데이터 신뢰도가 중간 수준임을 고려할 것",
+    "이상 징후가 명확하지 않아 재검토 필요",
+    "누수 관련 조치를 우선시할 것"
+  ],
+  "evidence": {
+    "priority_score": 89.73322568799986,
+    "current_best": "urgent",
+    "m1_specialist": "leakage_water_loss",
+    "main_signals": [
+      "review_reason: risk_high_but_anomaly_not_confirmed",
+      "review_reason: m1_priority_disagreement",
+      "m1_priority_agreement: current_only_high",
+      "current-best 우선순위 등급: urgent",
+      "M1 specialist 상태/고장군: fault, leakage_water_loss"
+    ],
+    "used_tools": [
+      "get_ops_evidence",
+      "get_external_context"
+    ]
+  }
+}

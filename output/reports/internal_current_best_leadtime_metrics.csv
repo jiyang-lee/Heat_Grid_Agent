@@ -1,0 +1,4 @@
+﻿split,row_count,macro_f1,weighted_f1,top2_accuracy
+train,229,1,1,1
+validation,26,0.566666666667,0.65641025641,1
+holdout,66,0.365949306552,0.518994826312,0.772727272727

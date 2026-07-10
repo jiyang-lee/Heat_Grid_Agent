@@ -1,0 +1,4 @@
+﻿lead_time_bucket,false_negative_count,mean_risk_probability,mean_estimated_lead_time_hours
+1-3d,28,0.27475758880325857,46.344047619047615
+6-24h,10,0.21657470138919535,16.57
+0-6h,4,0.20793530020239312,4.175000000000001

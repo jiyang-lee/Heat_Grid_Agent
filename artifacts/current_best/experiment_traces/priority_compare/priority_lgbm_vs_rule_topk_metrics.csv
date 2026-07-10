@@ -1,0 +1,61 @@
+﻿split,model_key,model,k,k_label,n,pre_fault_count,precision_pre_fault,recall_pre_fault,ndcg_graded
+all,rule_based,Rule-based v2_threshold48,10,10,2362,636,1.0,0.015723270440251572,1.0
+all,rule_based,Rule-based v2_threshold48,20,20,2362,636,1.0,0.031446540880503145,1.0
+all,rule_based,Rule-based v2_threshold48,50,50,2362,636,1.0,0.07861635220125786,0.9953292179146056
+all,rule_based,Rule-based v2_threshold48,100,100,2362,636,1.0,0.15723270440251572,0.9771555583690206
+all,rule_based,Rule-based v2_threshold48,636,R,2362,636,0.9040880503144654,0.9040880503144654,0.9088044122287153
+all,lgbm_priority_only,LGBM priority-only package,10,10,2362,636,1.0,0.015723270440251572,1.0
+all,lgbm_priority_only,LGBM priority-only package,20,20,2362,636,1.0,0.031446540880503145,0.9888259100070238
+all,lgbm_priority_only,LGBM priority-only package,50,50,2362,636,1.0,0.07861635220125786,0.9883565609540036
+all,lgbm_priority_only,LGBM priority-only package,100,100,2362,636,1.0,0.15723270440251572,0.984834789069597
+all,lgbm_priority_only,LGBM priority-only package,636,R,2362,636,0.8113207547169812,0.8113207547169812,0.8477894065388224
+all,lgbm_prediction_bundle,LGBM prediction+priority package,10,10,2362,636,1.0,0.015723270440251572,1.0
+all,lgbm_prediction_bundle,LGBM prediction+priority package,20,20,2362,636,1.0,0.031446540880503145,0.9888259100070238
+all,lgbm_prediction_bundle,LGBM prediction+priority package,50,50,2362,636,1.0,0.07861635220125786,0.9883565609540036
+all,lgbm_prediction_bundle,LGBM prediction+priority package,100,100,2362,636,1.0,0.15723270440251572,0.984834789069597
+all,lgbm_prediction_bundle,LGBM prediction+priority package,636,R,2362,636,0.8113207547169812,0.8113207547169812,0.8477894065388224
+train,rule_based,Rule-based v2_threshold48,10,10,1652,417,1.0,0.023980815347721823,1.0
+train,rule_based,Rule-based v2_threshold48,20,20,1652,417,1.0,0.047961630695443645,1.0
+train,rule_based,Rule-based v2_threshold48,50,50,1652,417,1.0,0.11990407673860912,0.9952799643005052
+train,rule_based,Rule-based v2_threshold48,100,100,1652,417,1.0,0.23980815347721823,0.9840455248500872
+train,rule_based,Rule-based v2_threshold48,417,R,1652,417,0.9664268585131894,0.9664268585131894,0.9659946456060479
+train,lgbm_priority_only,LGBM priority-only package,10,10,1652,417,1.0,0.023980815347721823,1.0
+train,lgbm_priority_only,LGBM priority-only package,20,20,1652,417,1.0,0.047961630695443645,1.0
+train,lgbm_priority_only,LGBM priority-only package,50,50,1652,417,1.0,0.11990407673860912,1.0
+train,lgbm_priority_only,LGBM priority-only package,100,100,1652,417,1.0,0.23980815347721823,0.9974088956432082
+train,lgbm_priority_only,LGBM priority-only package,417,R,1652,417,0.920863309352518,0.920863309352518,0.9469492257897304
+train,lgbm_prediction_bundle,LGBM prediction+priority package,10,10,1652,417,1.0,0.023980815347721823,1.0
+train,lgbm_prediction_bundle,LGBM prediction+priority package,20,20,1652,417,1.0,0.047961630695443645,1.0
+train,lgbm_prediction_bundle,LGBM prediction+priority package,50,50,1652,417,1.0,0.11990407673860912,1.0
+train,lgbm_prediction_bundle,LGBM prediction+priority package,100,100,1652,417,1.0,0.23980815347721823,0.9974088956432082
+train,lgbm_prediction_bundle,LGBM prediction+priority package,417,R,1652,417,0.920863309352518,0.920863309352518,0.9469492257897304
+validation,rule_based,Rule-based v2_threshold48,10,10,344,104,1.0,0.09615384615384616,0.9573740719067023
+validation,rule_based,Rule-based v2_threshold48,20,20,344,104,1.0,0.19230769230769232,0.9161305703450684
+validation,rule_based,Rule-based v2_threshold48,50,50,344,104,1.0,0.4807692307692308,0.873084554357208
+validation,rule_based,Rule-based v2_threshold48,100,100,344,104,0.82,0.7884615384615384,0.8199075321859963
+validation,rule_based,Rule-based v2_threshold48,104,R,344,104,0.7980769230769231,0.7980769230769231,0.8191443555047284
+validation,lgbm_priority_only,LGBM priority-only package,10,10,344,104,1.0,0.09615384615384616,0.8952421007425281
+validation,lgbm_priority_only,LGBM priority-only package,20,20,344,104,1.0,0.19230769230769232,0.8860581286235552
+validation,lgbm_priority_only,LGBM priority-only package,50,50,344,104,1.0,0.4807692307692308,0.8607894090474931
+validation,lgbm_priority_only,LGBM priority-only package,100,100,344,104,0.72,0.6923076923076923,0.7506094668479468
+validation,lgbm_priority_only,LGBM priority-only package,104,R,344,104,0.6923076923076923,0.6923076923076923,0.7417538619487847
+validation,lgbm_prediction_bundle,LGBM prediction+priority package,10,10,344,104,1.0,0.09615384615384616,0.8952421007425281
+validation,lgbm_prediction_bundle,LGBM prediction+priority package,20,20,344,104,1.0,0.19230769230769232,0.8860581286235552
+validation,lgbm_prediction_bundle,LGBM prediction+priority package,50,50,344,104,1.0,0.4807692307692308,0.8607894090474931
+validation,lgbm_prediction_bundle,LGBM prediction+priority package,100,100,344,104,0.72,0.6923076923076923,0.7506094668479468
+validation,lgbm_prediction_bundle,LGBM prediction+priority package,104,R,344,104,0.6923076923076923,0.6923076923076923,0.7417538619487847
+holdout,rule_based,Rule-based v2_threshold48,10,10,366,115,1.0,0.08695652173913043,1.0
+holdout,rule_based,Rule-based v2_threshold48,20,20,366,115,1.0,0.17391304347826086,0.9013873159889938
+holdout,rule_based,Rule-based v2_threshold48,50,50,366,115,1.0,0.43478260869565216,0.8446250133513243
+holdout,rule_based,Rule-based v2_threshold48,100,100,366,115,0.84,0.7304347826086957,0.8278525833176579
+holdout,rule_based,Rule-based v2_threshold48,115,R,366,115,0.7304347826086957,0.7304347826086957,0.780468062487248
+holdout,lgbm_priority_only,LGBM priority-only package,10,10,366,115,1.0,0.08695652173913043,0.9443959285490993
+holdout,lgbm_priority_only,LGBM priority-only package,20,20,366,115,0.9,0.1565217391304348,0.7983783511251918
+holdout,lgbm_priority_only,LGBM priority-only package,50,50,366,115,0.82,0.3565217391304348,0.7280357409352259
+holdout,lgbm_priority_only,LGBM priority-only package,100,100,366,115,0.57,0.4956521739130435,0.6200693112395829
+holdout,lgbm_priority_only,LGBM priority-only package,115,R,366,115,0.5130434782608696,0.5130434782608696,0.5976011093028456
+holdout,lgbm_prediction_bundle,LGBM prediction+priority package,10,10,366,115,1.0,0.08695652173913043,0.9443959285490993
+holdout,lgbm_prediction_bundle,LGBM prediction+priority package,20,20,366,115,0.9,0.1565217391304348,0.7983783511251918
+holdout,lgbm_prediction_bundle,LGBM prediction+priority package,50,50,366,115,0.82,0.3565217391304348,0.7280357409352259
+holdout,lgbm_prediction_bundle,LGBM prediction+priority package,100,100,366,115,0.57,0.4956521739130435,0.6200693112395829
+holdout,lgbm_prediction_bundle,LGBM prediction+priority package,115,R,366,115,0.5130434782608696,0.5130434782608696,0.5976011093028456

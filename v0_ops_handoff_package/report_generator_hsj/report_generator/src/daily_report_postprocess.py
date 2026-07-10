@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from report_utils import ReportJson
+
+REVIEW_REASON_LABELS = {
+    "current_only_high": "기준 위험도 결과와 보조 의심 유형 사이에 차이가 있어 확인이 필요합니다.",
+    "lead_time_1_3d": "1~3일 이내 위험 신호로 이어질 가능성이 있어 추세 확인이 필요합니다.",
+    "fault_group_leakage_water_loss": "누수 또는 수손실 의심 신호가 있어 유량과 압력 계통 확인이 필요합니다.",
+    "m1_specialist_gate_near_threshold": "보조 의심 유형이 기준값 근처에 있어 추가 확인이 필요합니다.",
+    "risk_high_but_anomaly_not_confirmed": "위험도는 높지만 확정 이상으로 단정하기 어려워 현장 확인이 필요합니다.",
+    "m1_priority_disagreement": "진단 근거 간 차이가 있어 운영자 검토가 필요합니다.",
+}
+
+INTERNAL_TERM_LABELS = {
+    "current_best": "기준 위험도 결과",
+    "current-best": "기준 위험도 결과",
+    "m1_specialist": "보조 의심 유형",
+    "M1 specialist": "보조 의심 유형",
+    "M1 Specialist": "보조 의심 유형",
+    "fault_group": "의심 유형",
+    "leakage_water_loss": "누수 또는 수손실 의심",
+    "unknown_review": "추가 확인 필요",
+}
+
+
+def sanitize_daily_report(report: ReportJson) -> ReportJson:
+    report = _sanitize_text(report)
+    report = _strip_number_prefixes(report)
+    return _round_user_visible_numbers(report)
+
+
+def enforce_daily_input_counts(report: ReportJson, inputs: ReportJson) -> ReportJson:
+    cards = inputs.get("priority_cards") if isinstance(inputs.get("priority_cards"), list) else []
+    work_orders = (
+        inputs.get("work_order_summaries") if isinstance(inputs.get("work_order_summaries"), list) else []
+    )
+    if not cards:
+        return report
+
+    level_counts = {"urgent": 0, "high": 0, "medium": 0, "low": 0}
+    review_required = 0
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        level = _normalize_level(card.get("priority_level"))
+        level_counts[level] = level_counts.get(level, 0) + 1
+        if bool(card.get("review_required")):
+            review_required += 1
+
+    priority_counts = report.get("priority_counts")
+    if not isinstance(priority_counts, dict):
+        priority_counts = {}
+    priority_counts.update(level_counts)
+    priority_counts["by_review_required"] = {
+        "required": review_required,
+        "not_required": max(0, len(cards) - review_required),
+    }
+    report["priority_counts"] = priority_counts
+
+    daily_summary = report.get("daily_summary")
+    if isinstance(daily_summary, dict):
+        daily_summary["total_priority_cards"] = len(cards)
+        daily_summary["operator_review_required_count"] = review_required
+        daily_summary.setdefault("overall_risk_level", _highest_schema_level(level_counts))
+
+    work_order_overview = report.get("work_order_overview")
+    if isinstance(work_order_overview, dict) and work_orders:
+        status_counts = {
+            "not_created": 0,
+            "drafted": 0,
+            "sent": 0,
+            "acknowledged": 0,
+            "in_progress": 0,
+            "completed": 0,
+            "cancelled": 0,
+        }
+        for item in work_orders:
+            if not isinstance(item, dict):
+                continue
+            status = str(item.get("status") or "not_created").strip()
+            if status not in status_counts:
+                status = "not_created"
+            status_counts[status] += 1
+        work_order_overview["total"] = len(work_orders)
+        work_order_overview["by_status"] = status_counts
+
+    return report
+
+
+def _sanitize_text(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _sanitize_text(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_text(child) for child in value]
+    if isinstance(value, str):
+        text = value
+        for code, label in REVIEW_REASON_LABELS.items():
+            text = text.replace(code, label)
+        for code, label in INTERNAL_TERM_LABELS.items():
+            text = text.replace(code, label)
+        return text
+    return value
+
+
+def _strip_number_prefixes(value: Any) -> Any:
+    if isinstance(value, dict):
+        cleaned = {key: _strip_number_prefixes(child) for key, child in value.items()}
+        for key in ("action", "summary", "reason"):
+            if isinstance(cleaned.get(key), str):
+                cleaned[key] = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", cleaned[key]).strip()
+        return cleaned
+    if isinstance(value, list):
+        return [_strip_number_prefixes(child) for child in value]
+    return value
+
+
+def _round_user_visible_numbers(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _round_user_visible_numbers(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_round_user_visible_numbers(child) for child in value]
+    if isinstance(value, float):
+        return round(value, 2)
+    return value
+
+
+def _normalize_level(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if text in {"urgent", "high", "medium", "low"}:
+        return text
+    if text == "긴급":
+        return "urgent"
+    if text == "높음":
+        return "high"
+    if text == "보통":
+        return "medium"
+    return "low"
+
+
+def _highest_schema_level(level_counts: dict[str, int]) -> str:
+    for level, schema_level in (
+        ("urgent", "Urgent"),
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ):
+        if level_counts.get(level, 0) > 0:
+            return schema_level
+    return "Low"

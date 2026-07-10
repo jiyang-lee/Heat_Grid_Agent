@@ -1,0 +1,6 @@
+{
+  "source": "../HeatGrid_Agent/best/data/raw_data/predist_v2",
+  "inventory_path": "data/interim/raw_inventory.csv",
+  "schema_path": "data/interim/raw_schema_summary.csv",
+  "operational_file_count": 35
+}

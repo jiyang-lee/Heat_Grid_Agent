@@ -1,0 +1,9 @@
+feature_family,selection_status,feature_count
+control_context,excluded,22
+cyclic_time,selected,6
+derived_one_hot,selected,44
+event_context,excluded,4
+event_context,selected,2
+sensor_numeric,excluded,38
+sensor_numeric,selected,137
+time_context,selected,6

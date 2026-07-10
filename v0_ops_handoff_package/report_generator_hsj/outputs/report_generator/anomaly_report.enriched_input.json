@@ -1,0 +1,966 @@
+{
+  "raw_context": {
+    "window": {
+      "window_id": "00000000-0000-0000-0000-000000000001",
+      "manufacturer_id": "manufacturer 1",
+      "substation_id": 31,
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-01-11T00:00:00Z",
+      "window_end": "2020-01-11T06:00:00Z"
+    },
+    "current_best_sensor_values": {
+      "model_id": "current-best",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/data_contract/trainable_windows.csv",
+      "selection_rule": "Top raw sensor aggregates selected from the current-best input features for operator-facing context. v0 uses top_n=10.",
+      "top_n": 10,
+      "values": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last",
+          "feature_value": 4.27,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Outdoor temperature at the end of the window"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__mean",
+          "feature_value": 4.471111111111111,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean outdoor temperature during the window"
+        },
+        {
+          "rank": 3,
+          "feature_name": "p_hc1_return_temperature__last",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last",
+          "feature_value": 34.77,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary-side heat circuit 1 return temperature at the end of the window"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__mean",
+          "feature_value": 35.585,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary-side heat circuit 1 return temperature during the window"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_net_meter_flow__last",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last",
+          "feature_value": 1.0,
+          "unit": "l/h",
+          "calculation": "last",
+          "meaning": "Primary network flow at the end of the window"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__mean",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__mean",
+          "feature_value": 194.36111111111111,
+          "unit": "l/h",
+          "calculation": "mean",
+          "meaning": "Mean primary network flow during the window"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_supply_temperature__last",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__last",
+          "feature_value": 92.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary supply temperature at the end of the window"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_net_supply_temperature__mean",
+          "source_sensor": "p_net_supply_temperature",
+          "source_column": "p_net_supply_temperature__mean",
+          "feature_value": 89.30555555555556,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary supply temperature during the window"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_net_return_temperature__last",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last",
+          "feature_value": 36.0,
+          "unit": "degC",
+          "calculation": "last",
+          "meaning": "Primary return temperature at the end of the window"
+        },
+        {
+          "rank": 10,
+          "feature_name": "p_net_return_temperature__mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__mean",
+          "feature_value": 34.083333333333336,
+          "unit": "degC",
+          "calculation": "mean",
+          "meaning": "Mean primary return temperature during the window"
+        }
+      ]
+    },
+    "m1_specialist_features": {
+      "model_id": "m1-specialist",
+      "model_version": null,
+      "source_artifact": "m1_specialist_handoff/scores/m1_specialist_compact13_features.csv",
+      "feature_count": 13,
+      "features": [
+        {
+          "rank": 1,
+          "feature_name": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.3873611111111126,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Outdoor temperature recent 12h mean minus previous 12h mean"
+        },
+        {
+          "rank": 2,
+          "feature_name": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+          "feature_value": -0.6669444444444448,
+          "unit": "degC",
+          "calculation": "last_6h_mean_minus_prev_6h_mean",
+          "meaning": "Outdoor temperature recent 6h mean minus previous 6h mean"
+        },
+        {
+          "rank": 3,
+          "feature_name": "outdoor_temperature__last_minus_first",
+          "source_sensor": "outdoor_temperature",
+          "source_column": "outdoor_temperature__last_minus_first",
+          "feature_value": -0.21000000000000085,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Outdoor temperature change across the window"
+        },
+        {
+          "rank": 4,
+          "feature_name": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+          "feature_value": -1.9208333333333272,
+          "unit": "degC",
+          "calculation": "last_12h_mean_minus_prev_12h_mean",
+          "meaning": "Primary-side heat circuit 1 return temperature recent 12h mean minus previous 12h mean"
+        },
+        {
+          "rank": 5,
+          "feature_name": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_hc1_return_temperature",
+          "source_column": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -2.749386574074073,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary-side heat circuit 1 return temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 6,
+          "feature_name": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "p_net_meter_flow",
+          "source_column": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+          "feature_value": -5.0265147897468125,
+          "unit": "l/h",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Primary network flow recent 1d standard deviation minus previous 6d standard deviation"
+        },
+        {
+          "rank": 7,
+          "feature_name": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_net_return_temperature",
+          "source_column": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": -3.099537037037038,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary return temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 8,
+          "feature_name": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.35015046296296287,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Primary flow-return gap recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 9,
+          "feature_name": "p_return_gap__last_minus_first",
+          "source_sensor": "p_return_gap",
+          "source_column": "p_return_gap__last_minus_first",
+          "feature_value": -3.6099999999999994,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Primary flow-return gap change across the window"
+        },
+        {
+          "rank": 10,
+          "feature_name": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.37098379629630074,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Secondary heat circuit 1 supply temperature recent 1d mean minus previous 6d mean"
+        },
+        {
+          "rank": 11,
+          "feature_name": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "source_sensor": "s_hc1_supply_temperature",
+          "source_column": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+          "feature_value": -0.06205405213932913,
+          "unit": "degC",
+          "calculation": "last_1d_std_minus_prev_6d_std",
+          "meaning": "Secondary heat circuit 1 supply temperature recent 1d standard deviation minus previous 6d standard deviation"
+        },
+        {
+          "rank": 12,
+          "feature_name": "s_hc1_supply_temperature_error__last_minus_first",
+          "source_sensor": "s_hc1_supply_temperature_error",
+          "source_column": "s_hc1_supply_temperature_error__last_minus_first",
+          "feature_value": 5.009999999999991,
+          "unit": "degC",
+          "calculation": "last_minus_first",
+          "meaning": "Secondary heat circuit 1 supply temperature error change across the window"
+        },
+        {
+          "rank": 13,
+          "feature_name": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "source_sensor": "s_hc1_supply_temperature_setpoint",
+          "source_column": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+          "feature_value": 0.4045601851852041,
+          "unit": "degC",
+          "calculation": "last_1d_mean_minus_prev_6d_mean",
+          "meaning": "Secondary heat circuit 1 supply setpoint recent 1d mean minus previous 6d mean"
+        }
+      ]
+    }
+  },
+  "priority_context": {
+    "card": {
+      "card_id": "10000000-0000-0000-0000-000000000001",
+      "operational_label": "urgent",
+      "primary_state": "predictive_fault_risk",
+      "trust_level": "medium"
+    },
+    "priority": {
+      "priority_decision_id": "20000000-0000-0000-0000-000000000001",
+      "priority_score": 89.73322568799986,
+      "priority_level": "urgent",
+      "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+      "m1_priority_agreement": "current_only_high",
+      "calculation": {
+        "current_best_weight": 0.65,
+        "m1_specialist_weight": 0.35,
+        "expression": "priority_score = current_best_weight * current_best_priority_score + m1_specialist_weight * m1_specialist_priority_score"
+      }
+    },
+    "model_signals": {
+      "current_best_priority_score": 100.0,
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_score": 70.66635910857104,
+      "m1_specialist_priority_level": "medium",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss"
+    },
+    "explanation": {
+      "why_reason": "Current-best is urgent at 100.0, while M1 specialist is medium at 70.66635910857104. The 0.65/0.35 hybrid calculation produces a final urgent priority.",
+      "recommended_action": "Treat this as an urgent review candidate and prioritize checking primary return and flow behavior before field escalation.",
+      "review_required": true,
+      "review_reasons": [
+        "current_only_high",
+        "lead_time_1_3d",
+        "fault_group_leakage_water_loss"
+      ]
+    }
+  },
+  "internal_context": {
+    "data_quality": {
+      "review_required": true,
+      "trust_level": "medium",
+      "feature_coverage": {
+        "current_best_sensor_values_count": 10,
+        "m1_specialist_feature_count": 13,
+        "expected_current_best_sensor_values_count": 10,
+        "expected_m1_specialist_feature_count": 13
+      },
+      "raw_sensor_coverage": {
+        "sensor_reading_count": null,
+        "source_sensor_count": null,
+        "window_has_sensor_readings": null
+      }
+    },
+    "model_provenance": {
+      "priority_policy": {
+        "policy_version": "v0_minimal_ops",
+        "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+        "decision_basis": "priority_score = 0.65 * current_best_priority_score + 0.35 * m1_specialist_priority_score",
+        "weights": {
+          "current_best_priority_score": 0.65,
+          "m1_specialist_priority_score": 0.35
+        }
+      }
+    },
+    "asset_context": {
+      "manufacturer_id": "manufacturer 1",
+      "substation_id": 31,
+      "configuration_type": "SH + DHW"
+    },
+    "ops_history": {
+      "previous_llm_notes": []
+    },
+    "window_context": {
+      "window_id": "00000000-0000-0000-0000-000000000001",
+      "window_start": "2020-01-11T00:00:00Z",
+      "window_end": "2020-01-11T06:00:00Z",
+      "season_bucket": "winter",
+      "source_file": "substation_31.csv"
+    }
+  },
+  "external_context": {
+    "card_id": "10000000-0000-0000-0000-000000000001",
+    "status": "configured",
+    "site": {
+      "status": "mapped",
+      "mapping_scope": "sejong_virtual_1_31",
+      "mapping_type": "virtual_by_substation_id",
+      "substation_id": 31,
+      "apartment_name": "범지기마을4단지세종한양수자인에듀시티아파트",
+      "kapt_code": "A33980014",
+      "life_zone": "2",
+      "dong": "아름동",
+      "village": "범지기마을",
+      "road_address": "세종특별자치시 달빛로 109",
+      "jibun_address": "세종특별자치시 아름동 1356",
+      "latitude": 36.50876198,
+      "longitude": 127.24851227,
+      "heating_type": "지역난방",
+      "household_count": 520,
+      "building_count": 8,
+      "gross_floor_area_m2": 58015.0,
+      "latest_private_usage_cost_krw": 77942000.0,
+      "latest_private_usage_unit_krw_per_m2": 1766.0,
+      "predist_configuration_type": "SH + DHW",
+      "predist_configuration_ko": "난방 + 급탕",
+      "predist_sensor_groups_ko": "난방 회로|급탕|급탕 저장탱크|1차측 열량계|1차측 공급/환수온도",
+      "predist_sensor_column_count": 14,
+      "predist_source_file": "substation_31.csv",
+      "caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+    },
+    "weather": {
+      "source": "KMA APIHub ASOS hourly observations",
+      "api_endpoint": "kma_sfctm3.php",
+      "station_id": "239",
+      "station_name": "세종",
+      "region": "세종",
+      "window_start": "2020-01-11 09:00:00",
+      "window_end": "2020-01-11 15:00:00",
+      "record_count": 7,
+      "comparison_record_count_24h": 7,
+      "is_relevant": true,
+      "relevance_level": "medium",
+      "relevance_score": 4,
+      "weather_factors": [
+        "외기온 낮음",
+        "영하권 시간대 포함",
+        "난방도시 기준 난방 부하 증가 가능"
+      ],
+      "metrics": {
+        "avg_temperature_c": 2.557,
+        "min_temperature_c": -1.7,
+        "max_temperature_c": 5.0,
+        "temperature_delta_24h_c": 1.328,
+        "precipitation_mm": 0,
+        "snow_depth_cm": null,
+        "new_snow_3h_cm": null,
+        "avg_humidity_pct": 66.143,
+        "max_wind_speed_mps": 2.2,
+        "heating_degree_hours": 108.1
+      },
+      "interpretation": "외기 조건상 난방 또는 급탕 부하가 증가했을 가능성이 있어 이상 신호 해석 시 운영 맥락으로 함께 확인할 필요가 있습니다.",
+      "caution": "기상 요인은 운영 부하 맥락 보조 근거이며 고장 원인을 단정하는 근거로 사용하지 않습니다.",
+      "status": "available"
+    },
+    "retrieval": {
+      "status": "available",
+      "source": "rag_http_server",
+      "backend": "pgvector",
+      "query": "leakage_water_loss fault urgent Current-best is urgent at 100.0, while M1 specialist is medium at 70.66635910857104. The 0.65/0.35 hybrid calculation produces a final urgent priority. Treat this as an urgent review candidate and prioritize checking primary return and flow behavior before field escalation. current_only_high lead_time_1_3d fault_group_leakage_water_loss leak leakage water loss pressure differential pressure flow valve strainer filter meter pipe 누수 압력 차압 유량 밸브",
+      "top_k": 5,
+      "chunks": [
+        {
+          "chunk_id": "swedish_f101_operation_extract__p018__c01",
+          "document_id": "32faeeaafca59de4",
+          "document_title": "32faeeaafca59de4",
+          "source_file": "swedish_f101_substations.pdf",
+          "curated_file": "swedish_f101_operation_extract.md",
+          "rag_role": "international_substation_standard",
+          "language": "en",
+          "page_start": 18,
+          "page_end": 18,
+          "section_title": "pressure across the substation should be dropped in source type, independent of manufacturer/supplier",
+          "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+          "equipment_type": null,
+          "fault_type": "pressure_regulator",
+          "risk_level": null,
+          "score": 280.044,
+          "matched_terms": [],
+          "text": "performance is that at least 50% of the differential The communication protocol must be of open-\npressure across the substation should be dropped in source type, independent of manufacturer/supplier\nthe valve when the valve is fully open (known as the and freely available. Information from the\nvalve authority), and that the valve should have a substation control system’s sensors and from the\ncontrol range of at least 1:100. The size of the valve heat meter can be used in order to ensure effective\nmust include allowance for the total differential operational and system supervision.\npressure, i.e. allowing for other components such as\nfilters and heat exchangers. 5.3 Domestic hot water systems\nThe National Board of Housing, Building and\nCheck the performance of the control equipment at\nPlanning's Building Regulations require a sub-\nthe design rating power and at the operating point\nstation to be able to supply domestic hot water at a\nwhere the primary supply temperature changes to\ntemperature of at least 50 °C at the taps. In order to\nconstant temperature, known as the ‘knee point’.\nensure compliance with this requirement, it is\nSequentially controlled valves should be used if\nrecom..."
+        },
+        {
+          "chunk_id": "fault_priority_extract__p008__c01",
+          "document_id": "fc9626fdd3f35215",
+          "document_title": "fc9626fdd3f35215",
+          "source_file": "prioritisation_faults_substations.pdf",
+          "curated_file": "fault_priority_extract.md",
+          "rag_role": "fault_priority_research",
+          "language": "en",
+          "page_start": 8,
+          "page_end": 8,
+          "section_title": "monitoring potential (grey) and maintenance capability (light orange).",
+          "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+          "equipment_type": null,
+          "fault_type": "pump_failure",
+          "risk_level": null,
+          "score": 267.007,
+          "matched_terms": [],
+          "text": "Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),\nmonitoring potential (grey) and maintenance capability (light orange).\nTable A.5\nList of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)\nratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.\nRank Component Fault description MPN Occ Sev Mon Main\n1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2\n2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1\n3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6\n4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8\n5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3\n6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2\n7 Piping system Air in the piping..."
+        },
+        {
+          "chunk_id": "iea_sh_dhw_substation_extract__p072__c01",
+          "document_id": "f95051b3330013d6",
+          "document_title": "f95051b3330013d6",
+          "source_file": "iea_dhc_connection_handbook.pdf",
+          "curated_file": "iea_sh_dhw_substation_extract.md",
+          "rag_role": "dhc_structure_handbook",
+          "language": "en",
+          "page_start": 72,
+          "page_end": 72,
+          "section_title": "11.1.7 Controls",
+          "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+          "equipment_type": null,
+          "fault_type": "pressure_regulator",
+          "risk_level": null,
+          "score": 266.2,
+          "matched_terms": [],
+          "text": "The two key factors in heat exchanger sizing are heat transfer area and pressure loss. Heat capacity\nis dependent on mass flow rate and the temperature profile. Clearly, a reduced temperature\ndifference will increase the mass flow and pressure loss. As pressure losses are aimed to be kept to\na minimum, this will have the effect of requiring the surface area to be increased with the\nsubsequent increase in the number of plates and cost. Permissible pressure losses across the heat\nexchanger can be summarized as shown in Table 11.4.\nPart II Table 11.4: Permissible pressure losses through a heat exchanger\nPrimary Secondary\nDHW <20kPa 10kPa/<50kPa*\nLPHW <20kPa 20kPa\n*when fed directly from MCW\nAdditional equipment such as strainers and control valves also presents a pressure loss and it is\nadvisable for these to be kept to a minimum. DH operators will seek to achieve a 50-60kPa\ndifference between primary supply and return pipes so it is important that there is careful choice of\nequipment.\nThe choice of heat exchanger material is essential. Carbon steel should at all times be avoided,\nAISI 316 stainless steel being the preference. AISI 304 is an acceptable alternative in many cases.\nHeat..."
+        },
+        {
+          "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+          "document_id": "abf06e5876fb90d0",
+          "document_title": "abf06e5876fb90d0",
+          "source_file": "danfoss_vxe_manual.pdf",
+          "curated_file": "danfoss_substation_operation_extract.md",
+          "rag_role": "troubleshooting_manual",
+          "language": "en",
+          "page_start": 24,
+          "page_end": 24,
+          "section_title": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER",
+          "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+          "equipment_type": null,
+          "fault_type": "pump_failure",
+          "risk_level": null,
+          "score": 266.171,
+          "matched_terms": [],
+          "text": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER\nFundamental\nIn the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check\nwhether:\n• the system is correctly connected • there is a power supply to the system - pump and automatics\n• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean\n• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)\nheating supplier if necessary\nProblem Possible cause Solution\nDHW*, no hot water Non-return valve in the circulation pipe\nReplace the non-return valve.\ndefective (leads to mixing - the circula-\ntion water pipes become cold during\ntapping).\nNon-return valve in thermostatic mixer Replace the mixer or perhaps only the\nTemperature too low / variations in in the bathroom defective - results in hot non-return valve.\ntemperature and cold water mixing. Please note that\nfluctuating temperatures may occur at\nother tapping points in the system!\nNB, Check all mixers in the house for\nfaults/defects!\nLack of hot water pressure Clogged strainer in the cold water meter..."
+        },
+        {
+          "chunk_id": "iea_sh_dhw_substation_extract__p080__c01",
+          "document_id": "f95051b3330013d6",
+          "document_title": "f95051b3330013d6",
+          "source_file": "iea_dhc_connection_handbook.pdf",
+          "curated_file": "iea_sh_dhw_substation_extract.md",
+          "rag_role": "dhc_structure_handbook",
+          "language": "en",
+          "page_start": 80,
+          "page_end": 80,
+          "section_title": "11.1.14 Heating & Ventilating Equipment",
+          "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+          "equipment_type": null,
+          "fault_type": "valve_actuator",
+          "risk_level": null,
+          "score": 250.575,
+          "matched_terms": [],
+          "text": "circuits and each heating element due to better controllability. By variation of the flow, according\nto consumption, the lowest return temperature is obtained at any time.\n11.1.14 Heating & Ventilating Equipment\nAs previously discussed, a low water return temperature is an important requirement of the DH\nsystem. Section 11.2.2 generally covered the differing approaches to ideal secondary design\ntemperatures. Based on the same example, Table 11.5 shows the design objectives for the different\ntypes of secondary heating circuits.\nPart II Table 11.5: Design temperature objectives for secondary heating circuits\nSupply Return\nRadiator circuit 85°C 60°C\nHeating coils 85°C 55°C\nUnder floor heating 45°C 30°C\nEmbedded panel 55°C 35°C\nDomestic hot water 55°C 10°C\nMany of these temperatures are quite common in several countries. There are many situations of\neven lower values in, for example, radiator systems, as low as supply/return = 70/30°C. Modern\nair handling units are equally designed for operation with very low temperatures and will be able\nto operate at, for example, supply/return 35/<20°C. This means they are able to operate with return\nDH water as the supply to the unit.\nThere are ot..."
+        }
+      ]
+    },
+    "references": {
+      "technical_standards": [
+        {
+          "chunk_id": "swedish_f101_operation_extract__p018__c01",
+          "document_title": "32faeeaafca59de4",
+          "source_file": "swedish_f101_substations.pdf",
+          "curated_file": "swedish_f101_operation_extract.md",
+          "page_start": 18,
+          "page_end": 18,
+          "download_url": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf"
+        },
+        {
+          "chunk_id": "fault_priority_extract__p008__c01",
+          "document_title": "fc9626fdd3f35215",
+          "source_file": "prioritisation_faults_substations.pdf",
+          "curated_file": "fault_priority_extract.md",
+          "page_start": 8,
+          "page_end": 8,
+          "download_url": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download"
+        },
+        {
+          "chunk_id": "iea_sh_dhw_substation_extract__p072__c01",
+          "document_title": "f95051b3330013d6",
+          "source_file": "iea_dhc_connection_handbook.pdf",
+          "curated_file": "iea_sh_dhw_substation_extract.md",
+          "page_start": 72,
+          "page_end": 72,
+          "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf"
+        },
+        {
+          "chunk_id": "danfoss_substation_operation_extract__p024__c01",
+          "document_title": "abf06e5876fb90d0",
+          "source_file": "danfoss_vxe_manual.pdf",
+          "curated_file": "danfoss_substation_operation_extract.md",
+          "page_start": 24,
+          "page_end": 24,
+          "download_url": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf"
+        },
+        {
+          "chunk_id": "iea_sh_dhw_substation_extract__p080__c01",
+          "document_title": "f95051b3330013d6",
+          "source_file": "iea_dhc_connection_handbook.pdf",
+          "curated_file": "iea_sh_dhw_substation_extract.md",
+          "page_start": 80,
+          "page_end": 80,
+          "download_url": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf"
+        }
+      ],
+      "regulations": []
+    }
+  },
+  "rag_evidence": [
+    {
+      "ref_id": "rag-swedish_f101_operation_extract__p018__c01",
+      "source_type": "rag_document",
+      "title": "32faeeaafca59de4",
+      "source_id": "swedish_f101_operation_extract__p018__c01",
+      "uri": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-substations-design-and-installation.pdf",
+      "excerpt": "performance is that at least 50% of the differential The communication protocol must be of open-\npressure across the substation should be dropped in source type, independent of manufacturer/supplier\nthe valve when the valve is fully open (known as the and freely available. Information from the\nvalve authority), and that the valve should have a substation control system’s sensors and from the\ncontrol range of at least 1:100. The size of the valve heat meter can be used in order to ensure effective\nmust include allowance for the total differential operational and system supervision.\npressure, i.e. allowing for other components such as\nfilters and heat exchangers. 5.3 Domestic hot water systems\nThe National Board of Housing, Building and\nCheck the performance of the control equipment at\nPlanning's Building Regulations require a sub-\nthe design rating power and at the operating point\nstation to be able to supply domestic hot water at a\nwhere the primary supply temperature changes to\ntemperature of at least 50 °C at the taps. In order to\nconstant temperature, known as the ‘knee point’.\nensure compliance with this requirement, it is\nSequentially controlled valves should be used if\nrecom...",
+      "page_start": 18,
+      "page_end": 18,
+      "rag_role": "international_substation_standard",
+      "score": 280.044,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-fault_priority_extract__p008__c01",
+      "source_type": "rag_document",
+      "title": "fc9626fdd3f35215",
+      "source_id": "fault_priority_extract__p008__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),\nmonitoring potential (grey) and maintenance capability (light orange).\nTable A.5\nList of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)\nratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.\nRank Component Fault description MPN Occ Sev Mon Main\n1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2\n2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1\n3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6\n4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8\n5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3\n6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2\n7 Piping system Air in the piping...",
+      "page_start": 8,
+      "page_end": 8,
+      "rag_role": "fault_priority_research",
+      "score": 267.007,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-iea_sh_dhw_substation_extract__p072__c01",
+      "source_type": "rag_document",
+      "title": "f95051b3330013d6",
+      "source_id": "iea_sh_dhw_substation_extract__p072__c01",
+      "uri": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+      "excerpt": "The two key factors in heat exchanger sizing are heat transfer area and pressure loss. Heat capacity\nis dependent on mass flow rate and the temperature profile. Clearly, a reduced temperature\ndifference will increase the mass flow and pressure loss. As pressure losses are aimed to be kept to\na minimum, this will have the effect of requiring the surface area to be increased with the\nsubsequent increase in the number of plates and cost. Permissible pressure losses across the heat\nexchanger can be summarized as shown in Table 11.4.\nPart II Table 11.4: Permissible pressure losses through a heat exchanger\nPrimary Secondary\nDHW <20kPa 10kPa/<50kPa*\nLPHW <20kPa 20kPa\n*when fed directly from MCW\nAdditional equipment such as strainers and control valves also presents a pressure loss and it is\nadvisable for these to be kept to a minimum. DH operators will seek to achieve a 50-60kPa\ndifference between primary supply and return pipes so it is important that there is careful choice of\nequipment.\nThe choice of heat exchanger material is essential. Carbon steel should at all times be avoided,\nAISI 316 stainless steel being the preference. AISI 304 is an acceptable alternative in many cases.\nHeat...",
+      "page_start": 72,
+      "page_end": 72,
+      "rag_role": "dhc_structure_handbook",
+      "score": 266.2,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-danfoss_substation_operation_extract__p024__c01",
+      "source_type": "rag_document",
+      "title": "abf06e5876fb90d0",
+      "source_id": "danfoss_substation_operation_extract__p024__c01",
+      "uri": "https://files.danfoss.com/download/Drives/VXe_Instruction_uk.pdf",
+      "excerpt": "16. TROUBLE SHOOTING - DOMESTIC HOT WATER\nFundamental\nIn the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check\nwhether:\n• the system is correctly connected • there is a power supply to the system - pump and automatics\n• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean\n• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)\nheating supplier if necessary\nProblem Possible cause Solution\nDHW*, no hot water Non-return valve in the circulation pipe\nReplace the non-return valve.\ndefective (leads to mixing - the circula-\ntion water pipes become cold during\ntapping).\nNon-return valve in thermostatic mixer Replace the mixer or perhaps only the\nTemperature too low / variations in in the bathroom defective - results in hot non-return valve.\ntemperature and cold water mixing. Please note that\nfluctuating temperatures may occur at\nother tapping points in the system!\nNB, Check all mixers in the house for\nfaults/defects!\nLack of hot water pressure Clogged strainer in the cold water meter...",
+      "page_start": 24,
+      "page_end": 24,
+      "rag_role": "troubleshooting_manual",
+      "score": 266.171,
+      "matched_terms": []
+    },
+    {
+      "ref_id": "rag-iea_sh_dhw_substation_extract__p080__c01",
+      "source_type": "rag_document",
+      "title": "f95051b3330013d6",
+      "source_id": "iea_sh_dhw_substation_extract__p080__c01",
+      "uri": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+      "excerpt": "circuits and each heating element due to better controllability. By variation of the flow, according\nto consumption, the lowest return temperature is obtained at any time.\n11.1.14 Heating & Ventilating Equipment\nAs previously discussed, a low water return temperature is an important requirement of the DH\nsystem. Section 11.2.2 generally covered the differing approaches to ideal secondary design\ntemperatures. Based on the same example, Table 11.5 shows the design objectives for the different\ntypes of secondary heating circuits.\nPart II Table 11.5: Design temperature objectives for secondary heating circuits\nSupply Return\nRadiator circuit 85°C 60°C\nHeating coils 85°C 55°C\nUnder floor heating 45°C 30°C\nEmbedded panel 55°C 35°C\nDomestic hot water 55°C 10°C\nMany of these temperatures are quite common in several countries. There are many situations of\neven lower values in, for example, radiator systems, as low as supply/return = 70/30°C. Modern\nair handling units are equally designed for operation with very low temperatures and will be able\nto operate at, for example, supply/return 35/<20°C. This means they are able to operate with return\nDH water as the supply to the unit.\nThere are ot...",
+      "page_start": 80,
+      "page_end": 80,
+      "rag_role": "dhc_structure_handbook",
+      "score": 250.575,
+      "matched_terms": []
+    }
+  ],
+  "ops_evidence": {
+    "raw_context": {
+      "window": {
+        "window_id": "00000000-0000-0000-0000-000000000001",
+        "manufacturer_id": "manufacturer 1",
+        "substation_id": 31,
+        "configuration_type": "SH + DHW",
+        "window_start": "2020-01-11T00:00:00Z",
+        "window_end": "2020-01-11T06:00:00Z"
+      },
+      "current_best_sensor_values": {
+        "model_id": "current-best",
+        "model_version": null,
+        "source_artifact": "m1_specialist_handoff/data_contract/trainable_windows.csv",
+        "selection_rule": "Top raw sensor aggregates selected from the current-best input features for operator-facing context. v0 uses top_n=10.",
+        "top_n": 10,
+        "values": [
+          {
+            "rank": 1,
+            "feature_name": "outdoor_temperature__last",
+            "source_sensor": "outdoor_temperature",
+            "source_column": "outdoor_temperature__last",
+            "feature_value": 4.27,
+            "unit": "degC",
+            "calculation": "last",
+            "meaning": "Outdoor temperature at the end of the window"
+          },
+          {
+            "rank": 2,
+            "feature_name": "outdoor_temperature__mean",
+            "source_sensor": "outdoor_temperature",
+            "source_column": "outdoor_temperature__mean",
+            "feature_value": 4.471111111111111,
+            "unit": "degC",
+            "calculation": "mean",
+            "meaning": "Mean outdoor temperature during the window"
+          },
+          {
+            "rank": 3,
+            "feature_name": "p_hc1_return_temperature__last",
+            "source_sensor": "p_hc1_return_temperature",
+            "source_column": "p_hc1_return_temperature__last",
+            "feature_value": 34.77,
+            "unit": "degC",
+            "calculation": "last",
+            "meaning": "Primary-side heat circuit 1 return temperature at the end of the window"
+          },
+          {
+            "rank": 4,
+            "feature_name": "p_hc1_return_temperature__mean",
+            "source_sensor": "p_hc1_return_temperature",
+            "source_column": "p_hc1_return_temperature__mean",
+            "feature_value": 35.585,
+            "unit": "degC",
+            "calculation": "mean",
+            "meaning": "Mean primary-side heat circuit 1 return temperature during the window"
+          },
+          {
+            "rank": 5,
+            "feature_name": "p_net_meter_flow__last",
+            "source_sensor": "p_net_meter_flow",
+            "source_column": "p_net_meter_flow__last",
+            "feature_value": 1.0,
+            "unit": "l/h",
+            "calculation": "last",
+            "meaning": "Primary network flow at the end of the window"
+          },
+          {
+            "rank": 6,
+            "feature_name": "p_net_meter_flow__mean",
+            "source_sensor": "p_net_meter_flow",
+            "source_column": "p_net_meter_flow__mean",
+            "feature_value": 194.36111111111111,
+            "unit": "l/h",
+            "calculation": "mean",
+            "meaning": "Mean primary network flow during the window"
+          },
+          {
+            "rank": 7,
+            "feature_name": "p_net_supply_temperature__last",
+            "source_sensor": "p_net_supply_temperature",
+            "source_column": "p_net_supply_temperature__last",
+            "feature_value": 92.0,
+            "unit": "degC",
+            "calculation": "last",
+            "meaning": "Primary supply temperature at the end of the window"
+          },
+          {
+            "rank": 8,
+            "feature_name": "p_net_supply_temperature__mean",
+            "source_sensor": "p_net_supply_temperature",
+            "source_column": "p_net_supply_temperature__mean",
+            "feature_value": 89.30555555555556,
+            "unit": "degC",
+            "calculation": "mean",
+            "meaning": "Mean primary supply temperature during the window"
+          },
+          {
+            "rank": 9,
+            "feature_name": "p_net_return_temperature__last",
+            "source_sensor": "p_net_return_temperature",
+            "source_column": "p_net_return_temperature__last",
+            "feature_value": 36.0,
+            "unit": "degC",
+            "calculation": "last",
+            "meaning": "Primary return temperature at the end of the window"
+          },
+          {
+            "rank": 10,
+            "feature_name": "p_net_return_temperature__mean",
+            "source_sensor": "p_net_return_temperature",
+            "source_column": "p_net_return_temperature__mean",
+            "feature_value": 34.083333333333336,
+            "unit": "degC",
+            "calculation": "mean",
+            "meaning": "Mean primary return temperature during the window"
+          }
+        ]
+      },
+      "m1_specialist_features": {
+        "model_id": "m1-specialist",
+        "model_version": null,
+        "source_artifact": "m1_specialist_handoff/scores/m1_specialist_compact13_features.csv",
+        "feature_count": 13,
+        "features": [
+          {
+            "rank": 1,
+            "feature_name": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+            "source_sensor": "outdoor_temperature",
+            "source_column": "outdoor_temperature__last_12h_mean_minus_prev_12h_mean",
+            "feature_value": -1.3873611111111126,
+            "unit": "degC",
+            "calculation": "last_12h_mean_minus_prev_12h_mean",
+            "meaning": "Outdoor temperature recent 12h mean minus previous 12h mean"
+          },
+          {
+            "rank": 2,
+            "feature_name": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+            "source_sensor": "outdoor_temperature",
+            "source_column": "outdoor_temperature__last_6h_mean_minus_prev_6h_mean",
+            "feature_value": -0.6669444444444448,
+            "unit": "degC",
+            "calculation": "last_6h_mean_minus_prev_6h_mean",
+            "meaning": "Outdoor temperature recent 6h mean minus previous 6h mean"
+          },
+          {
+            "rank": 3,
+            "feature_name": "outdoor_temperature__last_minus_first",
+            "source_sensor": "outdoor_temperature",
+            "source_column": "outdoor_temperature__last_minus_first",
+            "feature_value": -0.21000000000000085,
+            "unit": "degC",
+            "calculation": "last_minus_first",
+            "meaning": "Outdoor temperature change across the window"
+          },
+          {
+            "rank": 4,
+            "feature_name": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+            "source_sensor": "p_hc1_return_temperature",
+            "source_column": "p_hc1_return_temperature__last_12h_mean_minus_prev_12h_mean",
+            "feature_value": -1.9208333333333272,
+            "unit": "degC",
+            "calculation": "last_12h_mean_minus_prev_12h_mean",
+            "meaning": "Primary-side heat circuit 1 return temperature recent 12h mean minus previous 12h mean"
+          },
+          {
+            "rank": 5,
+            "feature_name": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+            "source_sensor": "p_hc1_return_temperature",
+            "source_column": "p_hc1_return_temperature__last_1d_mean_minus_prev_6d_mean",
+            "feature_value": -2.749386574074073,
+            "unit": "degC",
+            "calculation": "last_1d_mean_minus_prev_6d_mean",
+            "meaning": "Primary-side heat circuit 1 return temperature recent 1d mean minus previous 6d mean"
+          },
+          {
+            "rank": 6,
+            "feature_name": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+            "source_sensor": "p_net_meter_flow",
+            "source_column": "p_net_meter_flow__last_1d_std_minus_prev_6d_std",
+            "feature_value": -5.0265147897468125,
+            "unit": "l/h",
+            "calculation": "last_1d_std_minus_prev_6d_std",
+            "meaning": "Primary network flow recent 1d standard deviation minus previous 6d standard deviation"
+          },
+          {
+            "rank": 7,
+            "feature_name": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+            "source_sensor": "p_net_return_temperature",
+            "source_column": "p_net_return_temperature__last_1d_mean_minus_prev_6d_mean",
+            "feature_value": -3.099537037037038,
+            "unit": "degC",
+            "calculation": "last_1d_mean_minus_prev_6d_mean",
+            "meaning": "Primary return temperature recent 1d mean minus previous 6d mean"
+          },
+          {
+            "rank": 8,
+            "feature_name": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+            "source_sensor": "p_return_gap",
+            "source_column": "p_return_gap__last_1d_mean_minus_prev_6d_mean",
+            "feature_value": 0.35015046296296287,
+            "unit": "degC",
+            "calculation": "last_1d_mean_minus_prev_6d_mean",
+            "meaning": "Primary flow-return gap recent 1d mean minus previous 6d mean"
+          },
+          {
+            "rank": 9,
+            "feature_name": "p_return_gap__last_minus_first",
+            "source_sensor": "p_return_gap",
+            "source_column": "p_return_gap__last_minus_first",
+            "feature_value": -3.6099999999999994,
+            "unit": "degC",
+            "calculation": "last_minus_first",
+            "meaning": "Primary flow-return gap change across the window"
+          },
+          {
+            "rank": 10,
+            "feature_name": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+            "source_sensor": "s_hc1_supply_temperature",
+            "source_column": "s_hc1_supply_temperature__last_1d_mean_minus_prev_6d_mean",
+            "feature_value": 0.37098379629630074,
+            "unit": "degC",
+            "calculation": "last_1d_mean_minus_prev_6d_mean",
+            "meaning": "Secondary heat circuit 1 supply temperature recent 1d mean minus previous 6d mean"
+          },
+          {
+            "rank": 11,
+            "feature_name": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+            "source_sensor": "s_hc1_supply_temperature",
+            "source_column": "s_hc1_supply_temperature__last_1d_std_minus_prev_6d_std",
+            "feature_value": -0.06205405213932913,
+            "unit": "degC",
+            "calculation": "last_1d_std_minus_prev_6d_std",
+            "meaning": "Secondary heat circuit 1 supply temperature recent 1d standard deviation minus previous 6d standard deviation"
+          },
+          {
+            "rank": 12,
+            "feature_name": "s_hc1_supply_temperature_error__last_minus_first",
+            "source_sensor": "s_hc1_supply_temperature_error",
+            "source_column": "s_hc1_supply_temperature_error__last_minus_first",
+            "feature_value": 5.009999999999991,
+            "unit": "degC",
+            "calculation": "last_minus_first",
+            "meaning": "Secondary heat circuit 1 supply temperature error change across the window"
+          },
+          {
+            "rank": 13,
+            "feature_name": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+            "source_sensor": "s_hc1_supply_temperature_setpoint",
+            "source_column": "s_hc1_supply_temperature_setpoint__last_1d_mean_minus_prev_6d_mean",
+            "feature_value": 0.4045601851852041,
+            "unit": "degC",
+            "calculation": "last_1d_mean_minus_prev_6d_mean",
+            "meaning": "Secondary heat circuit 1 supply setpoint recent 1d mean minus previous 6d mean"
+          }
+        ]
+      }
+    },
+    "priority_context": {
+      "card": {
+        "card_id": "10000000-0000-0000-0000-000000000001",
+        "operational_label": "urgent",
+        "primary_state": "predictive_fault_risk",
+        "trust_level": "medium"
+      },
+      "priority": {
+        "priority_decision_id": "20000000-0000-0000-0000-000000000001",
+        "priority_score": 89.73322568799986,
+        "priority_level": "urgent",
+        "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+        "m1_priority_agreement": "current_only_high",
+        "calculation": {
+          "current_best_weight": 0.65,
+          "m1_specialist_weight": 0.35,
+          "expression": "priority_score = current_best_weight * current_best_priority_score + m1_specialist_weight * m1_specialist_priority_score"
+        }
+      },
+      "model_signals": {
+        "current_best_priority_score": 100.0,
+        "current_best_priority_level": "urgent",
+        "m1_specialist_priority_score": 70.66635910857104,
+        "m1_specialist_priority_level": "medium",
+        "m1_specialist_primary_state": "fault",
+        "m1_specialist_fault_group": "leakage_water_loss"
+      },
+      "explanation": {
+        "why_reason": "Current-best is urgent at 100.0, while M1 specialist is medium at 70.66635910857104. The 0.65/0.35 hybrid calculation produces a final urgent priority.",
+        "recommended_action": "Treat this as an urgent review candidate and prioritize checking primary return and flow behavior before field escalation.",
+        "review_required": true,
+        "review_reasons": [
+          "current_only_high",
+          "lead_time_1_3d",
+          "fault_group_leakage_water_loss"
+        ]
+      }
+    },
+    "internal_context": {
+      "data_quality": {
+        "review_required": true,
+        "trust_level": "medium",
+        "feature_coverage": {
+          "current_best_sensor_values_count": 10,
+          "m1_specialist_feature_count": 13,
+          "expected_current_best_sensor_values_count": 10,
+          "expected_m1_specialist_feature_count": 13
+        },
+        "raw_sensor_coverage": {
+          "sensor_reading_count": null,
+          "source_sensor_count": null,
+          "window_has_sensor_readings": null
+        }
+      },
+      "model_provenance": {
+        "priority_policy": {
+          "policy_version": "v0_minimal_ops",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "decision_basis": "priority_score = 0.65 * current_best_priority_score + 0.35 * m1_specialist_priority_score",
+          "weights": {
+            "current_best_priority_score": 0.65,
+            "m1_specialist_priority_score": 0.35
+          }
+        }
+      },
+      "asset_context": {
+        "manufacturer_id": "manufacturer 1",
+        "substation_id": 31,
+        "configuration_type": "SH + DHW"
+      },
+      "ops_history": {
+        "previous_llm_notes": []
+      },
+      "window_context": {
+        "window_id": "00000000-0000-0000-0000-000000000001",
+        "window_start": "2020-01-11T00:00:00Z",
+        "window_end": "2020-01-11T06:00:00Z",
+        "season_bucket": "winter",
+        "source_file": "substation_31.csv"
+      }
+    }
+  }
+}

@@ -1,0 +1,737 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heatgrid.local/schemas/daily_report.schema.json",
+  "title": "HeatGrid Daily Operations Report",
+  "description": "하루 동안 발생한 Priority Card를 종합해 교대 근무 인수인계와 프론트/PDF 렌더링에 사용하는 일간 운영 보고서 JSON 계약입니다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_metadata",
+    "daily_summary",
+    "priority_counts",
+    "major_patterns",
+    "top_risk_cards",
+    "work_order_overview",
+    "unresolved_items",
+    "next_shift_handover",
+    "recommended_daily_actions",
+    "operator_memo",
+    "evidence_references",
+    "rendering_hints"
+  ],
+  "properties": {
+    "report_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "report_type",
+        "schema_version",
+        "generated_at",
+        "language",
+        "report_date",
+        "coverage_start",
+        "coverage_end"
+      ],
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "일간 보고서 고유 ID입니다."
+        },
+        "report_type": {
+          "type": "string",
+          "const": "daily_ops_report",
+          "description": "보고서 종류입니다."
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "보고서 schema 버전입니다."
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "보고서 생성 시각입니다."
+        },
+        "language": {
+          "type": "string",
+          "const": "ko",
+          "description": "보고서 표시 언어입니다."
+        },
+        "report_date": {
+          "type": "string",
+          "format": "date",
+          "description": "보고 대상 일자입니다."
+        },
+        "coverage_start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "보고 집계 시작 시각입니다."
+        },
+        "coverage_end": {
+          "type": "string",
+          "format": "date-time",
+          "description": "보고 집계 종료 시각입니다."
+        },
+        "generated_by": {
+          "type": ["string", "null"],
+          "description": "보고서를 생성한 시스템 또는 사용자입니다."
+        }
+      }
+    },
+    "daily_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "summary",
+        "overall_risk_level",
+        "total_priority_cards",
+        "operator_review_required_count"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "description": "일간 보고서 상단에 표시할 한 줄 제목입니다."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "하루 운영 상황의 종합 요약입니다."
+        },
+        "overall_risk_level": {
+          "type": "string",
+          "enum": ["Urgent", "High", "Medium", "Low"],
+          "description": "일간 전체 운영 위험 수준입니다."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "일간 요약 판단의 신뢰 수준입니다."
+        },
+        "total_priority_cards": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "보고 기간 중 집계된 Priority Card 총수입니다."
+        },
+        "operator_review_required_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "운영자 검토가 필요한 card 수입니다."
+        },
+        "key_takeaway": {
+          "type": ["string", "null"],
+          "description": "다음 근무자가 가장 먼저 이해해야 할 핵심 메시지입니다."
+        }
+      }
+    },
+    "priority_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urgent", "high", "medium", "low", "by_review_required"],
+      "properties": {
+        "urgent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_review_required": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "not_required"],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not_required": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "by_confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "high": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "medium": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "low": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "신뢰 수준별 card 수입니다."
+        }
+      }
+    },
+    "major_patterns": {
+      "type": "array",
+      "description": "하루 동안 반복 또는 군집 형태로 관찰된 주요 이상 패턴입니다.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pattern_id",
+          "pattern_name",
+          "summary",
+          "priority_level",
+          "affected_assets",
+          "card_count",
+          "confidence"
+        ],
+        "properties": {
+          "pattern_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "패턴 고유 ID입니다."
+          },
+          "pattern_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "운영자에게 표시할 패턴 이름입니다."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "반복 발생한 이상 패턴 요약입니다."
+          },
+          "priority_level": {
+            "type": "string",
+            "enum": ["Urgent", "High", "Medium", "Low"],
+            "description": "패턴의 대표 우선순위입니다."
+          },
+          "affected_assets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["substation_id", "asset_label"],
+              "properties": {
+                "substation_id": {
+                  "type": ["integer", "string"],
+                  "description": "영향을 받은 설비 또는 지점 ID입니다."
+                },
+                "asset_label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "프론트 표시용 설비명입니다."
+                },
+                "card_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "해당 설비와 연결된 card ID 목록입니다."
+                }
+              }
+            }
+          },
+          "card_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "해당 패턴에 포함된 card 수입니다."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "패턴 판단 신뢰 수준입니다."
+          },
+          "evidence_ref_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "관련 evidence ref ID 목록입니다."
+          }
+        }
+      }
+    },
+    "top_risk_cards": {
+      "type": "array",
+      "description": "일간 보고서에서 우선 확인해야 하는 상위 위험 card 목록입니다.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "card_id",
+          "substation_id",
+          "priority_level",
+          "summary",
+          "work_order_id"
+        ],
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Priority Card ID입니다."
+          },
+          "substation_id": {
+            "type": ["integer", "string"],
+            "description": "대상 설비 또는 지점 ID입니다."
+          },
+          "asset_label": {
+            "type": ["string", "null"],
+            "description": "프론트 표시용 설비명입니다."
+          },
+          "priority_level": {
+            "type": "string",
+            "enum": ["Urgent", "High", "Medium", "Low"],
+            "description": "card 우선순위입니다."
+          },
+          "priority_score": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "card 우선순위 점수입니다."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "card 상황 요약입니다."
+          },
+          "work_order_id": {
+            "type": ["string", "null"],
+            "description": "연결된 작업지시서 ID입니다. 없으면 null입니다."
+          },
+          "work_order_status": {
+            "type": "string",
+            "enum": [
+              "not_created",
+              "drafted",
+              "sent",
+              "acknowledged",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ],
+            "description": "연결된 작업지시서 상태입니다."
+          },
+          "evidence_ref_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "관련 evidence ref ID 목록입니다."
+          }
+        }
+      }
+    },
+    "work_order_overview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "by_status", "items"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "보고 기간 중 연결된 작업지시서 총수입니다."
+        },
+        "by_status": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "not_created",
+            "drafted",
+            "sent",
+            "acknowledged",
+            "in_progress",
+            "completed",
+            "cancelled"
+          ],
+          "properties": {
+            "not_created": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "drafted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "acknowledged": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "in_progress": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cancelled": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "work_order_issued",
+              "status",
+              "work_order_id",
+              "summary",
+              "related_card_ids",
+              "evidence_refs"
+            ],
+            "properties": {
+              "work_order_issued": {
+                "type": "boolean",
+                "description": "작업지시서 발행 여부입니다."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_created",
+                  "drafted",
+                  "sent",
+                  "acknowledged",
+                  "in_progress",
+                  "completed",
+                  "cancelled"
+                ],
+                "description": "작업지시서 상태입니다."
+              },
+              "work_order_id": {
+                "type": ["string", "null"],
+                "description": "작업지시서 ID입니다. 미발행이면 null입니다."
+              },
+              "summary": {
+                "type": ["string", "null"],
+                "description": "작업지시서 전문이 아닌 짧은 요약입니다."
+              },
+              "related_card_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "연결된 Priority Card ID 목록입니다."
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "작업지시서와 연결된 evidence ref ID 목록입니다."
+              }
+            }
+          }
+        }
+      }
+    },
+    "unresolved_items": {
+      "type": "array",
+      "description": "다음 근무자가 확인해야 할 미완료 또는 추적 항목입니다.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id",
+          "summary",
+          "priority_level",
+          "owner_hint",
+          "due_hint",
+          "related_card_ids"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "미완료 항목 ID입니다."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "미완료 또는 추적 필요 내용 요약입니다."
+          },
+          "priority_level": {
+            "type": "string",
+            "enum": ["Urgent", "High", "Medium", "Low"],
+            "description": "해당 항목의 확인 우선순위입니다."
+          },
+          "owner_hint": {
+            "type": ["string", "null"],
+            "description": "다음 확인 담당자 또는 담당 조직 힌트입니다."
+          },
+          "due_hint": {
+            "type": ["string", "null"],
+            "description": "확인해야 할 시점에 대한 힌트입니다."
+          },
+          "related_card_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "관련 Priority Card ID 목록입니다."
+          },
+          "work_order_id": {
+            "type": ["string", "null"],
+            "description": "연결된 작업지시서 ID입니다."
+          },
+          "evidence_ref_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "관련 evidence ref ID 목록입니다."
+          }
+        }
+      }
+    },
+    "next_shift_handover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handover_summary", "priority_watchlist", "cautions"],
+      "properties": {
+        "handover_summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "다음 교대 근무자를 위한 핵심 인수인계 요약입니다."
+        },
+        "priority_watchlist": {
+          "type": "array",
+          "description": "다음 근무자가 우선 확인해야 할 대상 목록입니다.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "reason", "priority_level"],
+            "properties": {
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "확인 대상 설비, 지점, card, work order 등입니다."
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "description": "우선 확인해야 하는 이유입니다."
+              },
+              "priority_level": {
+                "type": "string",
+                "enum": ["Urgent", "High", "Medium", "Low"],
+                "description": "확인 우선순위입니다."
+              },
+              "related_card_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "관련 Priority Card ID 목록입니다."
+              }
+            }
+          }
+        },
+        "cautions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "다음 근무자가 주의해야 할 사항입니다."
+        }
+      }
+    },
+    "recommended_daily_actions": {
+      "type": "array",
+      "description": "일간 단위 권장 운영 조치입니다.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "priority_level", "owner_hint"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "description": "권장 조치 내용입니다."
+          },
+          "priority_level": {
+            "type": "string",
+            "enum": ["Urgent", "High", "Medium", "Low"],
+            "description": "조치 우선순위입니다."
+          },
+          "owner_hint": {
+            "type": ["string", "null"],
+            "description": "조치 담당자 또는 담당 조직 힌트입니다."
+          },
+          "related_card_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "관련 Priority Card ID 목록입니다."
+          }
+        }
+      }
+    },
+    "operator_memo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memo", "author", "created_at"],
+      "properties": {
+        "memo": {
+          "type": ["string", "null"],
+          "description": "운영자가 남긴 메모 또는 시스템 생성 메모입니다."
+        },
+        "author": {
+          "type": ["string", "null"],
+          "description": "메모 작성자입니다."
+        },
+        "created_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "메모 생성 시각입니다."
+        }
+      }
+    },
+    "evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "source_type", "title"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "보고서 내부에서 참조하는 근거 ID입니다."
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "priority_card",
+              "ops_evidence",
+              "rag_document",
+              "external_context",
+              "model_output",
+              "work_order"
+            ],
+            "description": "근거 출처 유형입니다."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "근거 표시 제목입니다."
+          },
+          "source_id": {
+            "type": ["string", "null"],
+            "description": "원천 시스템의 ID입니다."
+          },
+          "uri": {
+            "type": ["string", "null"],
+            "description": "원문 또는 문서 위치입니다."
+          },
+          "excerpt": {
+            "type": ["string", "null"],
+            "description": "짧은 근거 발췌 또는 요약입니다."
+          },
+          "created_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "근거 생성 또는 수집 시각입니다."
+          }
+        }
+      }
+    },
+    "rendering_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_title", "severity_badge", "section_order"],
+      "properties": {
+        "display_title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "HTML/PDF 제목으로 표시할 문구입니다."
+        },
+        "severity_badge": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "level"],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "description": "프론트 배지 표시 문구입니다."
+            },
+            "level": {
+              "type": "string",
+              "enum": ["Urgent", "High", "Medium", "Low"],
+              "description": "배지 색상 결정에 사용할 심각도입니다."
+            },
+            "color_hint": {
+              "type": ["string", "null"],
+              "description": "선택적 색상 힌트입니다."
+            }
+          }
+        },
+        "section_order": {
+          "type": "array",
+          "minItems": 12,
+          "items": {
+            "type": "string",
+            "enum": [
+              "report_metadata",
+              "daily_summary",
+              "priority_counts",
+              "major_patterns",
+              "top_risk_cards",
+              "work_order_overview",
+              "unresolved_items",
+              "next_shift_handover",
+              "recommended_daily_actions",
+              "operator_memo",
+              "evidence_references",
+              "rendering_hints"
+            ]
+          },
+          "description": "프론트와 HTML/PDF 렌더러가 사용할 섹션 표시 순서입니다."
+        },
+        "page_break_before": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "PDF 렌더링 시 페이지 나눔을 적용할 섹션 목록입니다."
+        }
+      }
+    }
+  }
+}

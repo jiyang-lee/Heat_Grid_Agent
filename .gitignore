@@ -1,0 +1,34 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.venv_legacy
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Runtime weather cache
+data/weather/cache/
+
+# Local scrape/source cache
+data/external/source/
+
+# Local server logs and ad-hoc agent checks
+output/rag_server/
+output/ops_agent/token_check/
+output/ops_agent/style_check/
+output/ops_agent/reports/
+output/ops_agent/tmp_*.json
+output/ops_agent/ops_agent_output_*.json
+
+# Local manufacturer datasets (not tracked in repo)
+data/manufacturer 1/
+data/manufacturer 2/

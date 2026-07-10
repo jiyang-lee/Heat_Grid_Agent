@@ -1,0 +1,102 @@
+{
+  "package_id": "heatgrid_ops_v0_handoff",
+  "generated_at": "2026-07-07T00:00:00+09:00",
+  "purpose": "Define and verify the v0 ops input/output JSON contracts with local curated RAG context, without embedding or vector DB.",
+  "entrypoints": [
+    "RAG_HANDBOOK.md",
+    "README.md",
+    "AGENT_BRIEF.md",
+    "input.json",
+    "examples/ops_agent_input.example.json",
+    "examples/ops_agent_output.example.json",
+    "contracts/ops_agent_input.schema.json",
+    "contracts/ops_agent_output.schema.json",
+    "scripts/verify.ps1",
+    "scripts/verify.sh",
+    "scripts/verify_ops_agent_e2e.mjs",
+    "scripts/verify_ops_agent_e2e.ps1"
+  ],
+  "expected": {
+    "input_top_level_fields": [
+      "raw_context",
+      "priority_context",
+      "internal_context"
+    ],
+    "required_input_top_level_fields": [
+      "raw_context",
+      "priority_context"
+    ],
+    "optional_input_top_level_fields": [
+      "internal_context"
+    ],
+    "internal_context_groups": [
+      "data_quality",
+      "model_provenance",
+      "asset_context",
+      "ops_history",
+      "window_context"
+    ],
+    "current_best_sensor_values_count": 10,
+    "m1_specialist_feature_count": 13,
+    "priority_score": 89.73322568799986,
+    "priority_level": "urgent",
+    "current_best_weight": 0.65,
+    "m1_specialist_weight": 0.35,
+    "calculation_path": "priority_context.priority.calculation",
+    "review_required_path": "priority_context.explanation.review_required",
+    "review_reasons_path": "priority_context.explanation.review_reasons",
+    "excluded_operational_fields": [
+      "validation_labels",
+      "label",
+      "fault_label",
+      "fault_event_id",
+      "estimated_lead_time_hours",
+      "lead_time_bucket"
+    ],
+    "output_top_level_fields": [
+      "decision",
+      "summary",
+      "action_plan",
+      "caution",
+      "evidence"
+    ],
+    "output_mapping": {
+      "decision.priority": "priority_context.priority.priority_level",
+      "decision.operator_review": "priority_context.explanation.review_required -> Required or Not Required",
+      "decision.data_quality": "internal_context.data_quality -> Good, Medium, Low, or Unknown",
+      "evidence.priority_score": "priority_context.priority.priority_score",
+      "evidence.current_best": "priority_context.model_signals.current_best_priority_level",
+      "evidence.m1_specialist": "priority_context.model_signals.m1_specialist_fault_group or m1_specialist_priority_level"
+    },
+    "external_context": {
+      "tool": "get_external_context",
+      "status": "configured",
+      "source": "data/rag_sources/metadata/rag_chunks.jsonl"
+    },
+    "ui_display_order": [
+      "Decision",
+      "Summary",
+      "Action Plan",
+      "Caution",
+      "Evidence"
+    ],
+    "agent_e2e_verification": [
+      "OPENAI_API_KEY is read from .env or environment only",
+      "official ML CSV is output/agent_priority_card.csv",
+      "successful output is saved to output/ops_agent/ops_agent_output_sample.json"
+    ],
+    "rag_handoff": [
+      "RAG developers should read RAG_HANDBOOK.md first",
+      "RAG work should focus on get_external_context and external_context JSON",
+      "Do not change ML, Priority Engine, input contract, output schema, or get_ops_evidence"
+    ]
+  },
+  "database": {
+    "image": "postgres:16-alpine",
+    "host": "127.0.0.1",
+    "default_port": 55432,
+    "database": "heatgrid_ops",
+    "user": "heatgrid",
+    "password": "heatgrid"
+  }
+}

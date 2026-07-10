@@ -1,0 +1,314 @@
+{
+  "report_metadata": {
+    "report_id": "10000000-0000-0000-0000-000000000001",
+    "report_type": "anomaly_report",
+    "schema_version": "1.0",
+    "generated_at": "2026-07-09T00:00:00Z",
+    "language": "ko",
+    "source_card_id": "10000000-0000-0000-0000-000000000001",
+    "agent_run_id": null
+  },
+  "target_asset": {
+    "substation_id": 31,
+    "asset_label": "범지기마을4단지세종한양수자인에듀시티아파트 열수급 지점 31",
+    "configuration_type": "SH + DHW",
+    "manufacturer_id": "manufacturer 1",
+    "window_start": "2020-01-11T00:00:00Z",
+    "window_end": "2020-01-11T06:00:00Z",
+    "location_label": "세종특별자치시 아름동 범지기마을"
+  },
+  "priority_summary": {
+    "priority_level": "Urgent",
+    "priority_score": 89.73,
+    "operator_review": "Required",
+    "confidence": "high",
+    "urgency": "immediate",
+    "priority_reason": "위험도 점수가 89.73으로 매우 높고, 공식 위험도 산정 결과도 긴급으로 유지되고 있습니다. 보조 의심 유형은 보통 수준이지만, 현재만 높게 잡히는 불일치가 있어 운영자 확인이 필요합니다. 분석 구간에서 1차측 환수온도와 유량 변화가 함께 나타나고 있어, 현장 확인 전이라도 우선 점검이 필요합니다."
+  },
+  "situation_summary": {
+    "headline": "세종 31번 열수급 지점에서 1차측 환수와 유량 이상 징후가 동반된 긴급 검토 건",
+    "summary": "세종특별자치시 아름동 범지기마을의 31번 열수급 지점에서 난방과 급탕 설비를 대상으로 긴급 수준의 이상 징후가 감지되었습니다. 분석 구간은 2020년 1월 11일 00시부터 06시까지이며, 1차측 환수온도와 유량이 함께 흔들린 정황이 보입니다. 외기온은 낮고 영하권 시간대가 포함되어 난방 부하가 커질 수 있는 조건이어서, 운전 변동과 이상 신호를 함께 봐야 합니다. 현재 근거는 원인 확정이 아니라 운영 검토용이며, 현장 상태와 계장값 일치 여부는 아직 확인되지 않았습니다. 가상 매핑 기반 위치 정보가 포함되어 있어, 아파트 현장과 설비 연결 관계는 추가 확인이 필요합니다.",
+    "current_status": "현재까지는 1차측 공급온도는 비교적 유지되는데 환수온도와 유량이 안정적이지 않은 상태로 보입니다. 다만 계장 이상인지, 제어 동작 변화인지, 또는 실제 열교환 조건 변화인지는 아직 확인되지 않았습니다. 현장 점검이 이뤄지기 전에는 밸브, 스트레이너, 차압, 펌프 운전 상태를 먼저 확인해야 합니다.",
+    "impact_summary": "이 상태가 지속되면 난방과 급탕 공급 안정성이 떨어지고 사용자 체감 저하로 이어질 수 있습니다. 또한 환수 조건이 나빠지면 에너지 효율 저하와 운영 감시 부담이 커질 수 있으며, 이상이 확대되면 추가 점검 범위가 넓어질 가능성이 있습니다."
+  },
+  "key_evidence": [
+    {
+      "label": "위험도 점수",
+      "value": 89.73,
+      "unit": "점",
+      "interpretation": "공식 위험도 점수가 매우 높아 운영자 우선 확인 대상입니다.",
+      "confidence": "high",
+      "evidence_ref_ids": [
+        "ref_priority_card_01"
+      ]
+    },
+    {
+      "label": "위험도 결과",
+      "value": "긴급",
+      "unit": null,
+      "interpretation": "공식 산정 결과가 긴급으로 유지되어 즉시 검토가 필요합니다.",
+      "confidence": "high",
+      "evidence_ref_ids": [
+        "ref_priority_card_01"
+      ]
+    },
+    {
+      "label": "1차측 환수온도",
+      "value": 34.77,
+      "unit": "℃",
+      "interpretation": "분석 구간 말단 환수온도가 낮은 편으로, 열회수 상태 변화나 제어 변동 가능성을 함께 봐야 합니다.",
+      "confidence": "high",
+      "evidence_ref_ids": [
+        "ref_ops_return_01"
+      ]
+    },
+    {
+      "label": "1차측 유량",
+      "value": 1.0,
+      "unit": "l/h",
+      "interpretation": "구간 말단 유량이 매우 낮게 보여 유량 유지 또는 계측 상태 점검이 필요합니다.",
+      "confidence": "high",
+      "evidence_ref_ids": [
+        "ref_ops_flow_01"
+      ]
+    },
+    {
+      "label": "외기 조건",
+      "value": "평균 2.56℃, 최저 -1.70℃",
+      "unit": "℃",
+      "interpretation": "난방 부하가 커질 수 있는 외기 조건으로, 운전 변동 해석 시 배경 맥락으로 참고해야 합니다.",
+      "confidence": "medium",
+      "evidence_ref_ids": [
+        "ref_weather_01"
+      ]
+    },
+    {
+      "label": "운영자 검토 필요 사유",
+      "value": "현재만 높게 잡히는 결과 불일치와 1~3일 선행 점검 필요 신호가 함께 있습니다.",
+      "unit": null,
+      "interpretation": "기준 위험도 결과와 보조 의심 유형이 달라 현장 확인으로 원인 후보를 좁혀야 합니다.",
+      "confidence": "medium",
+      "evidence_ref_ids": [
+        "ref_priority_card_01",
+        "ref_agent_output_01"
+      ]
+    }
+  ],
+  "risk_analysis": {
+    "risk_level": "Urgent",
+    "risk_summary": "이번 이상 징후는 1차측 환수온도와 유량의 변동이 함께 나타난 점이 핵심입니다. 공급온도는 비교적 높게 유지되는데 환수 조건이 흔들리면, 실제 열교환량이 불안정해지거나 제어 밸브 동작이 비정상적으로 보일 수 있습니다. 외기온이 낮은 시점이라 난방 수요가 늘어나는 환경이므로, 정상 부하 변화와 이상 징후를 구분하는 확인이 필요합니다. 현재는 원인 확정이 아니라 위험 신호 단계이며, 현장 계장값과 운전 상태를 먼저 맞춰봐야 합니다.",
+    "operational_impact": "영향이 이어지면 난방과 급탕의 공급 안정성이 저하될 수 있고, 일부 세대에서는 체감 온도 저하나 온수 변동으로 이어질 가능성이 있습니다. 환수 조건 악화는 열원 운전 효율에도 부담을 줄 수 있어 에너지 손실과 감시 부담이 함께 커질 수 있습니다. 밸브, 스트레이너, 차압 또는 펌프 계통 중 하나라도 영향이 있으면 증상이 확대될 수 있으므로, 다음 교대까지 관찰만 하기에는 위험도가 높습니다. 아직 현장 검증이 끝나지 않았기 때문에, 운영 판단은 점검 결과와 함께 보수적으로 해야 합니다.",
+    "monitoring_points": [
+      "1차측 공급온도와 환수온도의 차이가 회복되는지 확인",
+      "1차측 유량이 짧은 시간에 급변하는지 확인",
+      "차압이 정상 범위에서 벗어나는지 확인",
+      "난방 회로와 급탕 회로의 동시 변동 여부 확인",
+      "밸브 개도 또는 제어 출력이 불안정하게 흔들리는지 확인",
+      "스트레이너 막힘이나 펌프 이상 징후가 동반되는지 확인"
+    ]
+  },
+  "suspected_causes": [
+    {
+      "cause": "1차측 스트레이너 막힘 또는 유량 저하",
+      "likelihood": "high",
+      "rationale": "유량이 매우 낮게 보이고, 환수 조건도 함께 흔들려 막힘에 따른 유량 저하 가능성이 있습니다. 이를 확인하려면 전후 차압과 스트레이너 전후 온도 및 압력 변화를 봐야 합니다. 차압이 정상이고 유량 계측도 안정적이면 이 후보는 약해집니다.",
+      "evidence_ref_ids": [
+        "ref_ops_flow_01",
+        "ref_rag_02",
+        "ref_rag_03"
+      ]
+    },
+    {
+      "cause": "제어 밸브 또는 차압 제어의 동작 불안정",
+      "likelihood": "medium",
+      "rationale": "공급온도는 유지되는데 환수와 유량이 함께 흔들리는 패턴은 제어 동작 이상과도 맞을 수 있습니다. 밸브 개도 기록과 차압 변동을 확인하면 맞는지 판단할 수 있습니다. 제어 출력이 안정적이고 실제 유량도 정상이라면 이 후보는 배제할 수 있습니다.",
+      "evidence_ref_ids": [
+        "ref_ops_return_01",
+        "ref_ops_flow_01",
+        "ref_rag_01"
+      ]
+    },
+    {
+      "cause": "열교환기 오염 또는 열전달 저하",
+      "likelihood": "medium",
+      "rationale": "난방과 급탕이 함께 있는 구성에서 열교환 성능이 떨어지면 환수 온도와 유량 패턴이 동시에 비정상적으로 보일 수 있습니다. 1차와 2차 측 온도차, 접근 온도, 차압을 확인하면 판단에 도움이 됩니다. 온도차가 정상이고 압력 손실이 크지 않다면 가능성은 낮아집니다.",
+      "evidence_ref_ids": [
+        "ref_ops_return_01",
+        "ref_rag_03",
+        "ref_rag_05"
+      ]
+    },
+    {
+      "cause": "계측값 일시 이상 또는 데이터 품질 저하",
+      "likelihood": "low",
+      "rationale": "유량 마지막 값이 지나치게 낮고, 일부 신호가 짧은 구간에서만 크게 변해 계측 불안정 가능성도 있습니다. 원시 계장값과 같은 시점의 추세를 다시 확인하면 맞는지 알 수 있습니다. 현장 계기와 원격 값이 일치하면 이 후보는 약해집니다.",
+      "evidence_ref_ids": [
+        "ref_priority_card_01",
+        "ref_agent_output_01"
+      ]
+    }
+  ],
+  "recommended_actions": [
+    {
+      "action": "1차측 공급온도, 환수온도, 유량, 차압의 현재값과 최근 6시간 추세를 즉시 대조해 계측 이상 여부를 먼저 확인하세요.",
+      "urgency": "immediate",
+      "owner_hint": "운영실 계장 담당",
+      "expected_outcome": "계측 이상인지 실제 운전 이상인지 1차 판별이 가능해집니다."
+    },
+    {
+      "action": "스트레이너 전후 차압과 막힘 징후를 확인하고, 필요 시 세척 가능 여부를 바로 판단하세요.",
+      "urgency": "immediate",
+      "owner_hint": "현장 점검반",
+      "expected_outcome": "유량 저하가 막힘 때문인지, 다른 원인인지 확인할 수 있습니다."
+    },
+    {
+      "action": "제어 밸브 개도와 차압 제어 동작 기록을 확인해 불안정한 개폐가 있는지 점검하세요.",
+      "urgency": "today",
+      "owner_hint": "제어 담당자",
+      "expected_outcome": "밸브 제어 이상 또는 차압 흔들림 여부를 좁힐 수 있습니다."
+    },
+    {
+      "action": "난방 회로와 급탕 회로를 분리해 어느 회로에서 환수 변동이 더 큰지 비교하세요.",
+      "urgency": "today",
+      "owner_hint": "운영실 교대 근무자",
+      "expected_outcome": "영향 회로를 특정해 후속 점검 대상을 줄일 수 있습니다."
+    },
+    {
+      "action": "열교환기 입출구 온도차와 압력 손실을 확인해 오염 또는 열전달 저하 가능성을 검토하세요.",
+      "urgency": "next_shift",
+      "owner_hint": "설비 기술팀",
+      "expected_outcome": "열교환기 성능 저하 여부를 보조적으로 확인할 수 있습니다."
+    },
+    {
+      "action": "외기온 하락에 따른 부하 증가를 감안해 같은 시간대의 평상 운전 패턴과 비교 모니터링을 유지하세요.",
+      "urgency": "monitor",
+      "owner_hint": "운영실 당직자",
+      "expected_outcome": "정상 부하 변동과 이상 신호를 구분하는 기준을 확보할 수 있습니다."
+    }
+  ],
+  "work_order_summary": {
+    "work_order_issued": false,
+    "status": "not_created",
+    "work_order_id": null,
+    "summary": "작업지시서는 아직 발행되지 않았습니다. 다만 위험도가 높고 운영자 즉시 확인이 필요한 수준이므로, 현장 점검이 필요하다고 판단되면 지시서 발행을 검토해야 합니다.",
+    "evidence_refs": []
+  },
+  "evidence_references": [
+    {
+      "ref_id": "ref_priority_card_01",
+      "source_type": "priority_card",
+      "title": "공식 위험도 산정 결과",
+      "source_id": "10000000-0000-0000-0000-000000000001",
+      "uri": null,
+      "excerpt": "위험도 점수 89.73, 위험도 긴급, 운영자 검토 필요",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_ops_return_01",
+      "source_type": "ops_evidence",
+      "title": "1차측 환수온도 변동 근거",
+      "source_id": "00000000-0000-0000-0000-000000000001",
+      "uri": null,
+      "excerpt": "1차측 환수온도 말단 34.77℃, 평균 35.59℃",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_ops_flow_01",
+      "source_type": "ops_evidence",
+      "title": "1차측 유량 변동 근거",
+      "source_id": "00000000-0000-0000-0000-000000000001",
+      "uri": null,
+      "excerpt": "1차측 유량 말단 1.00l/h, 평균 194.36l/h",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_weather_01",
+      "source_type": "external_context",
+      "title": "세종 외기 부하 참고 정보",
+      "source_id": "239",
+      "uri": null,
+      "excerpt": "평균 2.56℃, 최저 -1.70℃, 영하권 시간대 포함",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_agent_output_01",
+      "source_type": "model_output",
+      "title": "보조 판단 결과 요약",
+      "source_id": null,
+      "uri": null,
+      "excerpt": "현재만 높게 잡히는 결과 불일치와 1~3일 선행 점검 필요 신호가 함께 관찰됨",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_rag_01",
+      "source_type": "rag_document",
+      "title": "열수급 지점 차압과 밸브 운전 기준",
+      "source_id": "swedish_f101_operation_extract__p018__c01",
+      "uri": "https://www.energiforetagen.se/4a4e6b/globalassets/energiforetagen/det-erbjuder-vi/publikationer/f101-district-heating-열수급 지점s-design-and-installation.pdf",
+      "excerpt": "차압과 밸브 성능, 열량계 기반 감시의 중요성에 대한 운영 기준",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_rag_02",
+      "source_type": "rag_document",
+      "title": "열수급 지점 스트레이너와 유량 저하 사례",
+      "source_id": "fault_priority_extract__p008__c01",
+      "uri": "https://publica.fraunhofer.de/bitstreams/07b656d0-fcae-4493-b84b-70a26a650c90/download",
+      "excerpt": "1차측 스트레이너 막힘은 유량 저하와 높은 점검 우선순위와 연관됨",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_rag_03",
+      "source_type": "rag_document",
+      "title": "열교환기 압력손실과 설비 손실 기준",
+      "source_id": "iea_sh_dhw_열수급 지점_extract__p072__c01",
+      "uri": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+      "excerpt": "열교환기와 부속기기의 압력손실은 최소화되어야 하며, 공급과 환수 사이 적정 차압이 필요함",
+      "created_at": null
+    },
+    {
+      "ref_id": "ref_rag_05",
+      "source_type": "rag_document",
+      "title": "난방과 급탕 회로의 저환수 운전 참고 기준",
+      "source_id": "iea_sh_dhw_열수급 지점_extract__p080__c01",
+      "uri": "https://www.iea-dhc.org/fileadmin/documents/Annex_VI/DHC_Connection_Handbook.pdf",
+      "excerpt": "저환수 운전과 회로별 설계 온도 차의 중요성에 대한 참고 기준",
+      "created_at": null
+    }
+  ],
+  "operator_note": {
+    "note": "이번 건은 위험도 점수가 높고 공식 결과도 긴급으로 유지되어, 다음 교대까지 넘기기보다 당일 확인이 우선입니다. 다만 원인은 아직 확정되지 않았으므로, 스트레이너, 밸브, 차압, 펌프, 계측값 일치 여부를 순서대로 확인해야 합니다. 현장 확인 전에는 단정하지 말고, 실제 유량과 환수 변화가 재현되는지 인수인계 때 꼭 함께 전달하세요.",
+    "review_required": true,
+    "review_reasons": [
+      "현재만 높게 잡히는 결과가 있어 현장 확인이 필요합니다.",
+      "선행 점검 필요 신호가 있어 1~3일 범위의 상태 변화를 함께 봐야 합니다.",
+      "누수 또는 수손실 의심 유형이 포함되어 있으나 현장 확인 전 단정은 금지됩니다."
+    ]
+  },
+  "rendering_hints": {
+    "display_title": "세종 31번 열수급 지점 긴급 이상 징후 보고서",
+    "severity_badge": {
+      "label": "긴급",
+      "level": "Urgent",
+      "color_hint": "red"
+    },
+    "section_order": [
+      "report_metadata",
+      "target_asset",
+      "priority_summary",
+      "situation_summary",
+      "key_evidence",
+      "risk_analysis",
+      "suspected_causes",
+      "recommended_actions",
+      "work_order_summary",
+      "evidence_references",
+      "operator_note",
+      "rendering_hints"
+    ],
+    "page_break_before": [
+      "risk_analysis",
+      "recommended_actions"
+    ]
+  }
+}

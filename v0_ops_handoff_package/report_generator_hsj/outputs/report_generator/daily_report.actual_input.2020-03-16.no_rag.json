@@ -1,0 +1,773 @@
+{
+  "report_context": {
+    "report_id": "DAILY-20200316",
+    "schema_version": "1.0",
+    "generated_at": "2026-07-09T16:08:32+09:00",
+    "report_date": "2020-03-16",
+    "coverage_start": "2020-03-16T00:00:00+09:00",
+    "coverage_end": "2020-03-17T00:00:00+09:00",
+    "generated_by": "heatgrid-report-generator",
+    "source": {
+      "priority_csv": "output\\agent_priority_card.csv",
+      "site_context_csv": "data\\external\\substation_buildings_sejong_lifezone1_31_district_heating_context_with_predist.csv",
+      "row_count": 6,
+      "priority_counts": {
+        "urgent": 0,
+        "high": 3,
+        "medium": 1,
+        "low": 2
+      },
+      "input_note": "output/agent_priority_card.csv를 하루 단위로 집계한 실제 모델 산출물 기반 입력입니다."
+    }
+  },
+  "priority_cards": [
+    {
+      "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "location_label": "아름동 범지기마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T06:00:00+09:00",
+      "window_end": "2020-03-16T12:00:00+09:00",
+      "priority_score": 93.58,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss",
+      "review_required": false,
+      "review_reasons": [],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.894; pre_event=1.000; fault_group=leakage_water_loss",
+      "risk_probability": 1.0,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": "Leakage",
+        "fault_event_id": "10",
+        "trust_level": "high"
+      }
+    },
+    {
+      "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+      "substation_id": 30,
+      "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+      "location_label": "아름동 범지기마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T00:00:00+09:00",
+      "window_end": "2020-03-16T06:00:00+09:00",
+      "priority_score": 93.54,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "leakage_water_loss",
+      "review_required": true,
+      "review_reasons": [
+        "m1_specialist_gate_near_threshold"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.534; pre_event=0.999; fault_group=leakage_water_loss",
+      "risk_probability": 1.0,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": "Leakage",
+        "fault_event_id": "10",
+        "trust_level": "high"
+      }
+    },
+    {
+      "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T06:00:00+09:00",
+      "window_end": "2020-03-16T12:00:00+09:00",
+      "priority_score": 88.51,
+      "priority_level": "high",
+      "priority_level_ko": "높음",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "high",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.643; pre_event=1.000; fault_group=unknown_review",
+      "risk_probability": 0.96,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "medium"
+      }
+    },
+    {
+      "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T18:00:00+09:00",
+      "window_end": "2020-03-17T00:00:00+09:00",
+      "priority_score": 74.2,
+      "priority_level": "medium",
+      "priority_level_ko": "보통",
+      "current_best_priority_level": "urgent",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "normal",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review|m1_priority_disagreement"
+      ],
+      "operational_label": "predictive_fault_risk",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=urgent; m1_specialist_priority=low; m1_hybrid_priority=medium; agreement=current_only_high; fault_gate=0.211; pre_event=0.003; fault_group=unknown_review",
+      "risk_probability": 0.93,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "medium"
+      }
+    },
+    {
+      "card_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T12:00:00+09:00",
+      "window_end": "2020-03-16T18:00:00+09:00",
+      "priority_score": 49.44,
+      "priority_level": "low",
+      "priority_level_ko": "낮음",
+      "current_best_priority_level": "high",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "fault",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "near_anomaly_threshold|m1_specialist_gate_near_threshold|m1_priority_disagreement"
+      ],
+      "operational_label": "normal_monitor",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.520; pre_event=0.117; fault_group=unknown_review",
+      "risk_probability": 0.86,
+      "predicted_lead_time_bucket": "0-24h",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "low_review"
+      }
+    },
+    {
+      "card_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+      "substation_id": 22,
+      "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+      "location_label": "종촌동 가재마을",
+      "manufacturer_id": "manufacturer 1",
+      "configuration_type": "SH + DHW",
+      "window_start": "2020-03-16T00:00:00+09:00",
+      "window_end": "2020-03-16T06:00:00+09:00",
+      "priority_score": 44.52,
+      "priority_level": "low",
+      "priority_level_ko": "낮음",
+      "current_best_priority_level": "high",
+      "m1_specialist_priority_level": "low",
+      "m1_specialist_primary_state": "normal",
+      "m1_specialist_fault_group": "unknown_review",
+      "review_required": true,
+      "review_reasons": [
+        "m1_priority_disagreement"
+      ],
+      "operational_label": "normal_monitor",
+      "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+      "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.344; pre_event=0.256; fault_group=unknown_review",
+      "risk_probability": 0.65,
+      "predicted_lead_time_bucket": "1-3d",
+      "source_row": {
+        "fault_label": null,
+        "fault_event_id": null,
+        "trust_level": "low"
+      }
+    }
+  ],
+  "agent_outputs": [],
+  "ops_evidence_list": [
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-d083bbb5-1bb2-5ef0-b942-cfcfe61de1b5",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T06:00:00+09:00",
+          "window_end": "2020-03-16T12:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+          "location_label": "아름동 범지기마을",
+          "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+          "road_address": "세종특별자치시 달빛1로 206",
+          "heating_type": "지역난방",
+          "household_count": 687,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크",
+            "1차측 열량계",
+            "1차측 공급",
+            "환수온도"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 40.29,
+          "risk_probability": 1.0,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 15
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "high"
+        },
+        "priority": {
+          "priority_decision_id": "priority-eac2d93d-0d77-5b69-82ae-b9a3a6f7e9b6",
+          "priority_score": 93.58,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 81.66,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "leakage_water_loss",
+          "m1_specialist_fault_probability": 0.89
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.894; pre_event=1.000; fault_group=leakage_water_loss",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": false,
+          "review_reasons": []
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": false,
+          "trust_level": "high"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_30.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-1da8856c-a8cc-58e0-956f-5f06fc0fed79",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T00:00:00+09:00",
+          "window_end": "2020-03-16T06:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30",
+          "location_label": "아름동 범지기마을",
+          "apartment_name": "범지기마을9단지한신휴플러스리버파크아파트",
+          "road_address": "세종특별자치시 달빛1로 206",
+          "heating_type": "지역난방",
+          "household_count": 687,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크",
+            "1차측 열량계",
+            "1차측 공급",
+            "환수온도"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 39.05,
+          "risk_probability": 1.0,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 14
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "high"
+        },
+        "priority": {
+          "priority_decision_id": "priority-b13d56c7-ed10-5261-b04d-e2c4704cf203",
+          "priority_score": 93.54,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 81.54,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "leakage_water_loss",
+          "m1_specialist_fault_probability": 0.53
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.534; pre_event=0.999; fault_group=leakage_water_loss",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": true,
+          "review_reasons": [
+            "m1_specialist_gate_near_threshold"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "high"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 30,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_30.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-41ae6a10-ac1b-512a-b4f4-6c151667c967",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T06:00:00+09:00",
+          "window_end": "2020-03-16T12:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.33,
+          "risk_probability": 0.96,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 1,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-4d37728c-8228-567f-a327-9b19969cad65",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "medium"
+        },
+        "priority": {
+          "priority_decision_id": "priority-f06bdd15-9c6e-5e03-94c4-3267f68605f7",
+          "priority_score": 88.51,
+          "priority_level": "high",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "both_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 91.34,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 83.26,
+          "m1_specialist_priority_level": "high",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.64
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=high; m1_hybrid_priority=high; agreement=both_high; fault_gate=0.643; pre_event=1.000; fault_group=unknown_review",
+          "recommended_action": "urgent review: current best and M1 specialist both support high priority.",
+          "review_required": true,
+          "review_reasons": [
+            "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "medium"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-09805eaa-23de-53b2-9a9c-ada2870b3c73",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T18:00:00+09:00",
+          "window_end": "2020-03-17T00:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.85,
+          "risk_probability": 0.93,
+          "risk_level_calibrated": "critical",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 2,
+          "anomaly_criticality": 1
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-0b99826d-17d6-58f0-a490-166e4686c53f",
+          "operational_label": "predictive_fault_risk",
+          "primary_state": "predictive_fault_risk",
+          "trust_level": "medium"
+        },
+        "priority": {
+          "priority_decision_id": "priority-b6fb1296-82cf-5c50-b191-356ff8f36285",
+          "priority_score": 74.2,
+          "priority_level": "medium",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 100.0,
+          "current_best_priority_level": "urgent",
+          "m1_specialist_priority_score": 26.28,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "normal",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.21
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=urgent; m1_specialist_priority=low; m1_hybrid_priority=medium; agreement=current_only_high; fault_gate=0.211; pre_event=0.003; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "near_risk_high_threshold|near_anomaly_threshold|risk_high_but_anomaly_not_confirmed|hard_normal_review|m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "medium"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-5b694e3b-fb7b-5c6e-9f04-fdd5abe0bbc5",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T12:00:00+09:00",
+          "window_end": "2020-03-16T18:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 1.11,
+          "risk_probability": 0.86,
+          "risk_level_calibrated": "medium",
+          "predicted_lead_time_bucket": "0-24h",
+          "anomaly_consensus_count": 1,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0",
+          "operational_label": "normal_monitor",
+          "primary_state": "normal_monitor",
+          "trust_level": "low_review"
+        },
+        "priority": {
+          "priority_decision_id": "priority-d6c8a167-2ec5-521e-bba7-95efd56e4429",
+          "priority_score": 49.44,
+          "priority_level": "low",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 58.52,
+          "current_best_priority_level": "high",
+          "m1_specialist_priority_score": 32.57,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "fault",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.52
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.520; pre_event=0.117; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "near_anomaly_threshold|m1_specialist_gate_near_threshold|m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "low_review"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    },
+    {
+      "raw_context": {
+        "window": {
+          "window_id": "window-bb22ae33-343c-5bad-abd7-7ed54ad7ce11",
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW",
+          "window_start": "2020-03-16T00:00:00+09:00",
+          "window_end": "2020-03-16T06:00:00+09:00"
+        },
+        "asset_context": {
+          "asset_label": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22",
+          "location_label": "종촌동 가재마을",
+          "apartment_name": "가재마을12단지중흥S클래스센텀파크2차아파트",
+          "road_address": "세종특별자치시 달빛로 80",
+          "heating_type": "지역난방",
+          "household_count": 1371,
+          "sensor_groups_ko": [
+            "외기온",
+            "난방 회로",
+            "급탕",
+            "급탕 저장탱크"
+          ],
+          "mapping_caution": "가상 매핑: 세종 아파트와 PreDist 설비의 실제 물리 연결은 검증되지 않음."
+        },
+        "model_row_summary": {
+          "anomaly_ensemble_score": 0.66,
+          "risk_probability": 0.65,
+          "risk_level_calibrated": "medium",
+          "predicted_lead_time_bucket": "1-3d",
+          "anomaly_consensus_count": 0,
+          "anomaly_criticality": 0
+        }
+      },
+      "priority_context": {
+        "card": {
+          "card_id": "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d",
+          "operational_label": "normal_monitor",
+          "primary_state": "normal_monitor",
+          "trust_level": "low"
+        },
+        "priority": {
+          "priority_decision_id": "priority-6e5d0f12-ccb2-5e33-8466-4d5a4e6730bf",
+          "priority_score": 44.52,
+          "priority_level": "low",
+          "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+          "m1_priority_agreement": "current_only_high"
+        },
+        "model_signals": {
+          "current_best_priority_score": 49.0,
+          "current_best_priority_level": "high",
+          "m1_specialist_priority_score": 36.19,
+          "m1_specialist_priority_level": "low",
+          "m1_specialist_primary_state": "normal",
+          "m1_specialist_fault_group": "unknown_review",
+          "m1_specialist_fault_probability": 0.34
+        },
+        "explanation": {
+          "why_reason": "current_best_priority=high; m1_specialist_priority=low; m1_hybrid_priority=low; agreement=current_only_high; fault_gate=0.344; pre_event=0.256; fault_group=unknown_review",
+          "recommended_action": "baseline review: current best is high but M1 specialist is not aligned.",
+          "review_required": true,
+          "review_reasons": [
+            "m1_priority_disagreement"
+          ]
+        }
+      },
+      "internal_context": {
+        "data_quality": {
+          "review_required": true,
+          "trust_level": "low"
+        },
+        "asset_context": {
+          "manufacturer_id": "manufacturer 1",
+          "substation_id": 22,
+          "configuration_type": "SH + DHW"
+        },
+        "window_context": {
+          "source_file": "substation_22.csv",
+          "season_bucket": "spring"
+        }
+      }
+    }
+  ],
+  "external_context_list": [],
+  "rag_evidence": [],
+  "work_order_summaries": [
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-603ed02c-980a-58fb-a925-4c1d5ee4ee0f"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "범지기마을9단지한신휴플러스리버파크아파트 열수급 지점 30 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-52a192ca-7a6b-5a70-be44-fbcb735cdb78"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-4d37728c-8228-567f-a327-9b19969cad65"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-0b99826d-17d6-58f0-a490-166e4686c53f"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-f80ef0a4-5a74-5dcb-8e1a-9a6f918e73a0"
+      ],
+      "evidence_refs": []
+    },
+    {
+      "work_order_issued": false,
+      "status": "not_created",
+      "work_order_id": null,
+      "summary": "가재마을12단지중흥S클래스센텀파크2차아파트 열수급 지점 22 건은 아직 작업지시서가 생성되지 않았으며 운영 검토 후 발행 여부를 결정해야 합니다.",
+      "related_card_ids": [
+        "card-53d56a47-f5bb-508c-b0f8-1e35aac4e33d"
+      ],
+      "evidence_refs": []
+    }
+  ],
+  "previous_operator_memo": null
+}
