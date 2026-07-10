@@ -112,6 +112,7 @@ async def generate_operational_answer(
             state["source_input"],
             state["external_context"],
             state["card_id"],
+            usage,
         )
     except (MissingApiKeyError, OpenAIError, ValidationError):
         return {"token_usage": usage, "agent_mode": "fallback"}

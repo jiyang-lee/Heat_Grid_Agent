@@ -16,6 +16,7 @@ from heatgrid_ops.agent.helpers import (
     fallback_note,
     to_json,
     token_call_from_event,
+    token_calls_from_messages,
     unavailable_external_context,
 )
 from heatgrid_ops.agent.tools import make_operational_tools
@@ -67,6 +68,7 @@ class AgentRuntime:
         source_input: dict[str, JsonValue],
         external_context: dict[str, JsonValue],
         card_id: str,
+        usage: TokenUsage | None = None,
     ) -> OpsAgentOutput:
         key = self.settings.openai_api_key
         if key is None:
@@ -85,6 +87,9 @@ class AgentRuntime:
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": f"card_id={card_id}"}]}
         )
+        # 비스트리밍 경로에서도 실제 LLM 호출 토큰 사용량을 기록한다.
+        if usage is not None:
+            usage.calls.extend(token_calls_from_messages(result.get("messages")))
         return OpsAgentOutput.model_validate(result.get("structured_response"))
 
     async def stream_events(
@@ -145,7 +150,9 @@ async def generate_note(
     external_context = runtime.external_context_for(card_id, source_input)
     usage = runtime.token_usage_for(source_input, external_context, card_id)
     try:
-        output = await runtime.generate_llm_output(source_input, external_context, card_id)
+        output = await runtime.generate_llm_output(
+            source_input, external_context, card_id, usage
+        )
     except (MissingApiKeyError, OpenAIError, ValidationError):
         return fallback_note(source_input, external_context), "fallback", usage
     return output, "llm", usage

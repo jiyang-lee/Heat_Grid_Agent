@@ -66,13 +66,8 @@ def fallback_note(
     )
 
 
-def token_call_from_event(event: dict[str, JsonValue]) -> TokenCall:
-    data = event.get("data")
-    if not isinstance(data, dict):
-        return TokenCall()
-    output = data.get("output")
-    usage_metadata = getattr(output, "usage_metadata", {}) or {}
-    if not isinstance(usage_metadata, dict):
+def _token_call_from_usage_metadata(usage_metadata: object) -> TokenCall:
+    if not isinstance(usage_metadata, dict) or not usage_metadata:
         return TokenCall()
     input_token_details = usage_metadata.get("input_token_details", {})
     cached_input_tokens = 0
@@ -88,6 +83,29 @@ def token_call_from_event(event: dict[str, JsonValue]) -> TokenCall:
         output_tokens=int(usage_metadata.get("output_tokens", 0)),
         total_tokens=int(usage_metadata.get("total_tokens", 0)),
     )
+
+
+def token_call_from_event(event: dict[str, JsonValue]) -> TokenCall:
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return TokenCall()
+    output = data.get("output")
+    return _token_call_from_usage_metadata(getattr(output, "usage_metadata", None))
+
+
+def token_calls_from_messages(messages: object) -> list[TokenCall]:
+    """비스트리밍 ainvoke 결과 메시지들에서 LLM 호출 토큰 사용량을 추출한다.
+
+    (스트리밍 경로의 token_call_from_event와 동일한 usage_metadata 해석을 공유한다.)
+    """
+    if not isinstance(messages, list):
+        return []
+    calls: list[TokenCall] = []
+    for message in messages:
+        usage_metadata = getattr(message, "usage_metadata", None)
+        if isinstance(usage_metadata, dict) and usage_metadata:
+            calls.append(_token_call_from_usage_metadata(usage_metadata))
+    return calls
 
 
 def to_json(payload: JsonValue) -> str:
