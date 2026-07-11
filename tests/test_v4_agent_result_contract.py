@@ -31,9 +31,14 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
-        await connection.execute(
-            text("TRUNCATE TABLE agent_runs, ops_alert_queue CASCADE")
-        )
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
 
 
 async def wait_for_agent_run(client: AsyncClient, run_id: str) -> None:

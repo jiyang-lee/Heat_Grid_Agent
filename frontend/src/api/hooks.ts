@@ -2,32 +2,22 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  agentReportsApi,
-  agentRunEvaluationsApi,
   agentRunsApi,
   alertsApi,
   automationPolicyApi,
   evidenceCandidatesApi,
   healthApi,
   modelCandidatesApi,
-  operationsMetricsApi,
-  operatorReviewsApi,
-  policyCandidatesApi,
   priorityEvaluationsApi,
   retrainJobsApi,
   reviewTasksApi,
   trainingFeedbackApi,
-  workOrdersApi,
 } from './backend'
 import type {
-  ActivityProjectionQuery,
-  AgentRunListQuery,
   AlertListQuery,
   AutomationPolicyUpdateRequest,
   EvidenceCandidateReviewRequest,
   ModelPromotionRequest,
-  OperatorReviewSubmitRequest,
-  PolicyCandidateDecisionRequest,
   RetrainJobActionRequest,
   RetrainJobCreateRequest,
   ReviewTaskSubmitRequest,
@@ -36,9 +26,7 @@ import type {
 export const qk = {
   alerts: (q?: AlertListQuery) => ['alerts', q?.status ?? 'open', q?.priority_level ?? 'all'] as const,
   artifacts: (id: string) => ['artifacts', id] as const,
-  runs: ['agent-runs'] as const,
   run: (id: string) => ['agent-run', id] as const,
-  reviewSnapshot: (id: string) => ['agent-run-review-snapshot', id] as const,
   result: (id: string) => ['agent-run-result', id] as const,
   iterations: (id: string) => ['agent-run-iterations', id] as const,
   reviews: (status: string) => ['review-tasks', status] as const,
@@ -50,13 +38,6 @@ export const qk = {
   activeModel: ['active-model-deployment'] as const,
   health: ['health'] as const,
   prioritySnapshot: ['priority-evaluation-latest'] as const,
-  runEvaluation: (id: string) => ['agent-run-evaluation', id] as const,
-  operatorReviews: (id: string) => ['operator-reviews', id] as const,
-  policyCandidates: ['agent-policy-candidates'] as const,
-  operationsMetrics: ['agent-operations-metrics'] as const,
-  runStages: (id: string) => ['agent-run-stages', id] as const,
-  workOrders: (q?: ActivityProjectionQuery) => ['work-orders', q ?? {}] as const,
-  agentReports: (q?: ActivityProjectionQuery) => ['agent-reports', q ?? {}] as const,
 }
 
 export function useAlerts(query?: AlertListQuery) {
@@ -107,40 +88,6 @@ export function useCreateAgentRun() {
   })
 }
 
-export function useAgentRuns(query?: AgentRunListQuery) {
-  return useQuery({
-    // 필터가 key에 포함돼야 탭/필터 전환 시 이전 결과가 섞이지 않는다.
-    queryKey: [...qk.runs, query ?? {}],
-    queryFn: () => agentRunsApi.list(query),
-    refetchInterval: 5000,
-  })
-}
-
-/** 커밋 402482a 신설 stage projection — 실행 상세 stepper의 정본 */
-export function useRunStages(runId: string | null) {
-  return useQuery({
-    queryKey: qk.runStages(runId ?? ''),
-    queryFn: () => agentRunsApi.stages(runId as string),
-    enabled: runId != null,
-  })
-}
-
-export function useWorkOrders(query?: ActivityProjectionQuery) {
-  return useQuery({
-    queryKey: qk.workOrders(query),
-    queryFn: () => workOrdersApi.list(query),
-    refetchInterval: 15000,
-  })
-}
-
-export function useAgentReports(query?: ActivityProjectionQuery) {
-  return useQuery({
-    queryKey: qk.agentReports(query),
-    queryFn: () => agentReportsApi.list(query),
-    refetchInterval: 15000,
-  })
-}
-
 export function useGenerateDailyReport() {
   const qc = useQueryClient()
   return useMutation({
@@ -168,17 +115,6 @@ export function useAgentRun(runId: string | null) {
       const status = query.state.data?.status
       return status === 'queued' || status === 'running' ? 1000 : false
     },
-  })
-}
-
-export function useAgentRunReviewSnapshot(runId: string | null) {
-  return useQuery({
-    queryKey: qk.reviewSnapshot(runId ?? ''),
-    queryFn: () => {
-      if (runId == null) throw new Error('run_id가 없습니다.')
-      return agentRunsApi.review(runId)
-    },
-    enabled: runId != null,
   })
 }
 
@@ -316,77 +252,4 @@ export function usePromoteModelCandidate() {
 
 export function useActiveModelDeployment() {
   return useQuery({ queryKey: qk.activeModel, queryFn: () => modelCandidatesApi.active() })
-}
-
-/* ===== v3-02 운영자 검토·평가·정책 후보·운영 지표 훅 ===== */
-
-/** 선택 실행의 parent/worker 결정적 평가 projection (1건) */
-export function useAgentRunEvaluation(runId: string | null) {
-  return useQuery({
-    queryKey: qk.runEvaluation(runId ?? ''),
-    queryFn: async () => {
-      const page = await agentRunEvaluationsApi.list({ run_id: runId as string, limit: 1 })
-      return page.items[0] ?? null
-    },
-    enabled: runId != null,
-  })
-}
-
-export function useOperatorReviews(runId: string | null) {
-  return useQuery({
-    queryKey: qk.operatorReviews(runId ?? ''),
-    queryFn: () => operatorReviewsApi.history(runId as string),
-    enabled: runId != null,
-  })
-}
-
-export function useSubmitOperatorReview() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (value: { runId: string; body: OperatorReviewSubmitRequest }) =>
-      operatorReviewsApi.submit(value.runId, value.body),
-    onSuccess: (_record, value) => {
-      qc.invalidateQueries({ queryKey: qk.operatorReviews(value.runId) })
-      qc.invalidateQueries({ queryKey: qk.runEvaluation(value.runId) })
-      qc.invalidateQueries({ queryKey: qk.runs })
-      qc.invalidateQueries({ queryKey: qk.run(value.runId) })
-      qc.invalidateQueries({ queryKey: qk.reviewSnapshot(value.runId) })
-      // 검토 상태는 작업지시서/보고서 projection 상태 열에도 반영된다.
-      qc.invalidateQueries({ queryKey: ['work-orders'] })
-      qc.invalidateQueries({ queryKey: ['agent-reports'] })
-      // correct 검토는 정책 후보를 만들 수 있다 → 후보/지표 갱신.
-      qc.invalidateQueries({ queryKey: qk.policyCandidates })
-      qc.invalidateQueries({ queryKey: qk.operationsMetrics })
-    },
-  })
-}
-
-export function usePolicyCandidates() {
-  return useQuery({
-    queryKey: qk.policyCandidates,
-    queryFn: () => policyCandidatesApi.list(),
-    refetchInterval: 10000,
-  })
-}
-
-export function useDecidePolicyCandidate() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (value: { candidateId: string; approve: boolean; body: PolicyCandidateDecisionRequest }) =>
-      value.approve
-        ? policyCandidatesApi.approve(value.candidateId, value.body)
-        : policyCandidatesApi.reject(value.candidateId, value.body),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.policyCandidates })
-      qc.invalidateQueries({ queryKey: qk.operationsMetrics })
-    },
-  })
-}
-
-export function useOperationsMetrics() {
-  return useQuery({
-    queryKey: qk.operationsMetrics,
-    queryFn: () => operationsMetricsApi.get(),
-    refetchInterval: 15000,
-  })
 }

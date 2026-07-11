@@ -59,6 +59,78 @@ import { buildMockOpsOutput } from './workOrder'
 import { complexes } from '../data/complexes'
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+const mockReviewTasks: HumanReviewTask[] = []
+const mockEvidenceCandidates: EvidenceCandidate[] = []
+const mockTrainingFeedback: TrainingFeedback[] = []
+const mockRetrainJobs: RetrainJob[] = []
+const mockModelCandidates: ModelCandidate[] = []
+let mockActiveDeployment: ModelDeployment | null = null
+const mockAsOfTime = '2026-07-09T00:00:00.000Z'
+const mockEvaluationRunId = 'evaluation-mock-latest'
+const mockPriorityResults: PriorityEvaluationResult[] = complexes.map((complex) => {
+  const score = Number((100 - complex.id * 1.5).toFixed(3))
+  const level = complex.id <= 6 ? 'urgent' : complex.id <= 15 ? 'high' : complex.id <= 23 ? 'medium' : 'low'
+  return {
+    evaluation_result_id: `evaluation-result-${complex.id}`,
+    evaluation_run_id: mockEvaluationRunId,
+    manufacturer_id: 'manufacturer 1',
+    substation_id: complex.id,
+    source_window_id: `window-${complex.id}`,
+    source_window_start: '2026-07-08T18:00:00.000Z',
+    source_window_end: mockAsOfTime,
+    source_card_id: `card-${String(complex.id).padStart(3, '0')}`,
+    source_priority_decision_id: `decision-${complex.id}`,
+    priority_score: score,
+    priority_rank: complex.id,
+    rank_included: true,
+    priority_level: level,
+    risk_score: Number(Math.max(0.05, 1 - complex.id * 0.025).toFixed(3)),
+    anomaly_score: Number(Math.max(0.05, 1 - complex.id * 0.03).toFixed(3)),
+    anomaly_label: complex.id <= 8,
+    leadtime_bucket: complex.id <= 6 ? '1-3d' : '7d+',
+    leadtime_urgency_score: Number(Math.max(0.05, 1 - complex.id * 0.02).toFixed(3)),
+    leadtime_hours: complex.id <= 6 ? 72 : null,
+    freshness_status: 'fresh',
+    data_age_seconds: 0,
+    model_components: { priority_source: 'mock-m1-hybrid' },
+    created_at: mockAsOfTime,
+  }
+})
+const mockPrioritySnapshot: PriorityEvaluationSnapshot = {
+  evaluation: {
+    evaluation_run_id: mockEvaluationRunId,
+    as_of_time: mockAsOfTime,
+    stale_after_seconds: 2592000,
+    model_version: 'mock-active-priority-contract-v1',
+    status: 'completed',
+    is_active: true,
+    target_count: 31,
+    success_count: 31,
+    stale_count: 0,
+    missing_count: 0,
+    ranked_count: 31,
+    error: null,
+    created_at: mockAsOfTime,
+    completed_at: mockAsOfTime,
+  },
+  results: mockPriorityResults,
+}
+let mockPolicy: AutomationPolicy = {
+  policy_id: 'default',
+  mode: 'human_only',
+  auto_transition_enabled: false,
+  minimum_review_count: 100,
+  minimum_approval_rate: 0.95,
+  minimum_confidence: 0.9,
+  minimum_source_trust: 0.85,
+  maximum_drift_score: 0.1,
+  final_review_required: true,
+  reviewed_count: 0,
+  approval_rate: 0,
+  eligible_for_guarded_auto: false,
+  updated_by: 'system',
+  updated_at: new Date().toISOString(),
+}
 
 /** mock 결정적 기준 시각(mockData BASE_MS와 동일 값) */
 const BASE_TIME_MS = Date.parse('2026-07-09T09:00:00+09:00')
@@ -246,6 +318,30 @@ export const priorityEvaluationsApi = {
   },
 }
 
+export const priorityEvaluationsApi = {
+  async latest(): Promise<PriorityEvaluationSnapshot> {
+    await delay(100)
+    return mockPrioritySnapshot
+  },
+  async get(evaluationRunId: string): Promise<PriorityEvaluationSnapshot> {
+    if (evaluationRunId !== mockEvaluationRunId) {
+      throw new ApiError(404, `/priority-evaluations/${evaluationRunId}`, '평가 실행을 찾을 수 없습니다.')
+    }
+    return mockPrioritySnapshot
+  },
+  async create(_body: PriorityEvaluationCreateRequest = {}): Promise<PriorityEvaluationSnapshot> {
+    return mockPrioritySnapshot
+  },
+  async alerts(): Promise<PriorityEvaluationResult[]> {
+    return mockPriorityResults.filter((row) => row.priority_level === 'urgent' || row.priority_level === 'high')
+  },
+  async substation(substationId: number): Promise<PrioritySubstationSnapshot> {
+    const result = mockPriorityResults.find((row) => row.substation_id === substationId)
+    if (!result) throw new ApiError(404, `/priority-evaluations/latest/substations/${substationId}`, 'Substation을 찾을 수 없습니다.')
+    return { evaluation: mockPrioritySnapshot.evaluation, result }
+  },
+}
+
 /** 백엔드 목록 projection과 동일 규칙: reject는 ELSE 분기라 pending으로 투영된다. */
 function latestOperatorStatus(runId: string): OperatorReviewStatus {
   const latest = mockOperatorReviews.get(runId)?.at(-1)
@@ -343,8 +439,6 @@ export const agentRunsApi = {
       evaluation_run_id: alert.evaluation_run_id,
       manufacturer_id: alert.manufacturer_id,
       substation_id: alert.substation_id,
-      substation_uid: null,
-      created_at: new Date().toISOString(),
       parent_run_id: existing?.run_id ?? null,
       trigger_type: body.force_new ? 'manual_rerun' : 'alert',
       requested_by: body.requested_by ?? null,
@@ -600,7 +694,6 @@ export const agentRunsApi = {
       kind: 'daily_report',
       name: 'daily_report.json',
       uri: `output/ops_agent/reports/${runId}/daily_report.json`,
-      created_at: new Date().toISOString(),
     }
     store.artifacts.set(runId, [...artifacts, artifact])
     return artifact
@@ -624,108 +717,6 @@ export const agentRunsApi = {
         created_at: new Date().toISOString(),
       },
     ]
-  },
-}
-
-/* ===== v3-02 mock (계약 shape 동일, 데모 최소 구현) ===== */
-
-const mockOperatorReviews = new Map<string, OperatorReviewRecord[]>()
-
-export const agentRunEvaluationsApi = {
-  async list(query?: { run_id?: string; limit?: number }): Promise<AgentRunEvaluationPage> {
-    await delay(90)
-    const items = [...store.runs.values()]
-      .filter((run) => !query?.run_id || run.run_id === query.run_id)
-      .slice(0, query?.limit ?? 20)
-      .map((run): AgentRunEvaluationItem => ({
-        run_id: run.run_id,
-        status: run.status,
-        alert_id: run.alert_id,
-        card_id: run.card_id,
-        operator_review_status: (mockOperatorReviews.get(run.run_id)?.at(-1)?.decision === 'approve' ? 'approved' : mockOperatorReviews.get(run.run_id)?.at(-1)?.decision === 'correct' ? 'corrected' : mockOperatorReviews.get(run.run_id)?.length ? 'keep_human_review' : 'pending'),
-        worker_status: run.status === 'completed' ? 'completed' : 'not_triggered',
-        citation_coverage: 'partial',
-        input_validity: 'valid',
-        parent_handling: 'used_as_support',
-        evidence_completeness: 'partial',
-        review_snapshot_status: run.status === 'completed' ? 'available' : 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }))
-    return { items, next_cursor: null }
-  },
-}
-
-export const operatorReviewsApi = {
-  async history(runId: string): Promise<OperatorReviewHistory> {
-    await delay(80)
-    return { run_id: runId, items: mockOperatorReviews.get(runId) ?? [] }
-  },
-  async submit(runId: string, body: OperatorReviewSubmitRequest): Promise<OperatorReviewRecord> {
-    await delay(200)
-    const items = mockOperatorReviews.get(runId) ?? []
-    const latest = items.at(-1)?.review_version ?? 0
-    if (body.expected_review_version !== latest) {
-      throw new ApiError(409, `/agent-runs/${runId}/reviews`, 'review version is stale')
-    }
-    const record: OperatorReviewRecord = {
-      review_id: `mock-review-${latest + 1}`,
-      run_id: runId,
-      review_version: latest + 1,
-      idempotency_key: body.idempotency_key,
-      request_hash: 'mock'.padEnd(64, '0'),
-      decision: body.decision,
-      reviewer: body.reviewer,
-      reason: body.reason,
-      disposition: body.disposition,
-      correction: body.correction ?? null,
-      evidence_annotations: body.evidence_annotations ?? [],
-      operator_labels: body.operator_labels ?? [],
-      created_at: new Date().toISOString(),
-    }
-    mockOperatorReviews.set(runId, [...items, record])
-    return record
-  },
-}
-
-export const policyCandidatesApi = {
-  async list(): Promise<PolicyCandidatePage> {
-    await delay(80)
-    return { items: [] }
-  },
-  async approve(candidateId: string, _body: PolicyCandidateDecisionRequest): Promise<PolicyCandidate> {
-    await delay(100)
-    throw new ApiError(404, `/agent-policy-candidates/${candidateId}/approve`, 'mock에는 정책 후보가 없습니다.')
-  },
-  async reject(candidateId: string, _body: PolicyCandidateDecisionRequest): Promise<PolicyCandidate> {
-    await delay(100)
-    throw new ApiError(404, `/agent-policy-candidates/${candidateId}/reject`, 'mock에는 정책 후보가 없습니다.')
-  },
-}
-
-export const operationsMetricsApi = {
-  async get(): Promise<AgentOperationsMetrics> {
-    await delay(80)
-    const reviews = [...mockOperatorReviews.values()].flat()
-    const approved = reviews.filter((item) => item.decision === 'approve').length
-    const corrected = reviews.filter((item) => item.decision === 'correct').length
-    const runCount = store.runs.size
-    return {
-      run_count: runCount,
-      pending_review_count: Math.max(0, runCount - approved - corrected),
-      approved_review_count: approved,
-      corrected_review_count: corrected,
-      keep_human_review_count: reviews.filter((item) => item.decision === 'keep_human_review').length,
-      diagnostic_completed_count: runCount,
-      diagnostic_timeout_count: 0,
-      diagnostic_invalid_count: 0,
-      diagnostic_budget_exceeded_count: 0,
-      policy_candidate_pending_count: 0,
-      policy_candidate_approved_count: 0,
-      policy_candidate_rejected_count: 0,
-      approval_rate: runCount === 0 ? 0 : approved / runCount,
-      correction_rate: runCount === 0 ? 0 : corrected / runCount,
-    }
   },
 }
 

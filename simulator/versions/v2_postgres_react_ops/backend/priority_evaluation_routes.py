@@ -4,7 +4,6 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from heatgrid_ops.priority.evaluation import (
-    AmbiguousSubstationError,
     create_priority_evaluation,
     ensure_latest_priority_evaluation,
     get_latest_substation_result,
@@ -70,14 +69,11 @@ def make_priority_evaluation_router(
         manufacturer_id: str | None = Query(default=None),
     ) -> PrioritySubstationSnapshot:
         await _latest_or_create(engine, settings)
-        try:
-            snapshot = await get_latest_substation_result(
-                engine,
-                substation_id,
-                manufacturer_id=manufacturer_id,
-            )
-        except AmbiguousSubstationError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        snapshot = await get_latest_substation_result(
+            engine,
+            substation_id,
+            manufacturer_id=manufacturer_id,
+        )
         if snapshot is None:
             raise HTTPException(
                 status_code=404,

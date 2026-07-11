@@ -1,26 +1,30 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+import asyncio
+from collections.abc import AsyncIterator
 from pathlib import Path
 from uuid import uuid4
 
 import orjson
-from anyio import sleep
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
+from openai import OpenAIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_result_contract import build_ops_agent_result_v4
-from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
-from agent_input_snapshot_repository import get_agent_input_lineage
 from agent_loop_repository import list_agent_loop_iterations
+from agent_runner import (
+    AgentRunRequest,
+    SimulateCard,
+    is_agent_run_scheduled,
+    schedule_reserved_agent_graph,
+)
 from agent_run_artifact_repository import (
     claim_agent_run_action,
     complete_agent_run_action,
     fail_agent_run_action,
     get_agent_run_artifact,
     get_agent_run_artifact_by_id,
-    get_effective_output_review_id,
     insert_agent_run_artifact,
     list_agent_run_artifacts,
 )
@@ -35,15 +39,15 @@ from agent_run_repository import (
     reserve_agent_run,
 )
 from alert_repository import get_alert
-from heatgrid_ops.agent.contracts import ReportWriteRequest
-from heatgrid_ops.agent.errors import AgentDependencyError
-from heatgrid_ops.agent.lineage import source_output_hash
-from heatgrid_ops.agent.models import OpsAgentOutput as CoreOpsAgentOutput
-from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
+from heatgrid_ops.agent.helpers import to_json
+from heatgrid_ops.agent.services import AgentRuntime
+from heatgrid_ops.agent.tools import ReportToolPayloadError, make_daily_report_tool
 from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
     decide_action_execution,
 )
+from heatgrid_rag.search import RagSearcher
+from repository import fetch_ops_input
 from review_repository import get_automation_policy
 from schemas import (
     AgentReportCreateRequest,
@@ -54,6 +58,11 @@ from schemas import (
     OpsAgentResultV4,
     JsonValue,
 )
+from settings import Settings
+
+
+ROOT = Path(__file__).resolve().parents[4]
+REPORT_ROOT = (ROOT / "output" / "ops_agent" / "reports").resolve()
 
 from typing import TYPE_CHECKING
 
@@ -69,21 +78,11 @@ REPORT_ROOT = (ROOT / "output" / "ops_agent" / "reports").resolve()
 
 def make_agent_run_router(
     engine: AsyncEngine,
-    simulate_card: "SimulateCard | None" = None,
-    runtime: "AgentRuntime | None" = None,
-    graph_provider: Callable[[], "AgentGraphInvoker | None"] | None = None,
+    simulate_card: SimulateCard | None = None,
+    runtime: AgentRuntime | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
-    active_runtime = runtime
-
-    def _runtime() -> "AgentRuntime":
-        nonlocal active_runtime
-        if active_runtime is None:
-            from agent_runtime_factory import create_agent_runtime
-            from settings import Settings
-
-            active_runtime = create_agent_runtime(Settings(), engine)
-        return active_runtime
+    runtime = runtime or AgentRuntime(settings=Settings(), rag_searcher=RagSearcher())
 
     @router.post("/agent-runs", response_model=AgentRunResponse)
     async def create_agent_run(payload: AgentRunCreateRequest) -> AgentRunResponse:
@@ -95,11 +94,36 @@ def make_agent_run_router(
                 status_code=422,
                 detail="requested_by and reason are required for a manual rerun.",
             )
-        from agent_runner import (
-            AgentRunRequest,
-            is_agent_run_scheduled,
-            schedule_reserved_agent_graph,
+        request = AgentRunRequest(
+            run_id=str(uuid4()),
+            alert_id=payload.alert_id,
+            card_id=str(alert["card_id"]),
         )
+        queued, created = await reserve_agent_run(
+            engine,
+            run_id=request.run_id,
+            alert_id=request.alert_id,
+            card_id=request.card_id,
+            force_new=payload.force_new,
+            requested_by=payload.requested_by,
+            reason=payload.reason,
+        )
+        if created or (
+            queued.status == "queued"
+            and not is_agent_run_scheduled(queued.run_id)
+        ):
+            schedule_reserved_agent_graph(
+                engine,
+                AgentRunRequest(
+                    run_id=queued.run_id,
+                    alert_id=queued.alert_id,
+                    card_id=queued.card_id,
+                    approved_action_task_id=queued.approved_action_task_id,
+                ),
+                simulate_card,
+                runtime,
+            )
+        return queued
 
         request = AgentRunRequest(
             run_id=str(uuid4()),
@@ -195,7 +219,7 @@ def make_agent_run_router(
             raise HTTPException(status_code=409, detail="완료된 실행만 보고서를 생성할 수 있습니다.")
         return await _create_daily_report_artifact(
             engine,
-            _runtime(),
+            runtime,
             run,
             payload,
         )
@@ -240,22 +264,12 @@ async def _create_daily_report_artifact(
     run: AgentRunResponse,
     payload: AgentReportCreateRequest,
 ) -> AgentRunArtifact:
-    if run.ops_output is None:
-        raise HTTPException(status_code=409, detail="agent run result is not ready.")
-    effective_output = CoreOpsAgentOutput.model_validate(
-        run.ops_output.model_dump(mode="json")
-    )
-    output_hash = source_output_hash(effective_output)
-    source_review_id = await get_effective_output_review_id(engine, run.run_id)
     existing = await get_agent_run_artifact(
         engine,
         run_id=run.run_id,
         name="daily_report.json",
-        source_output_hash=output_hash,
     )
-    policy = AutomationPolicySnapshot.model_validate(
-        (await get_automation_policy(engine)).model_dump(mode="json")
-    )
+    policy = await get_automation_policy(engine)
     execution = decide_action_execution(
         policy,
         ActionExecutionContext(
@@ -287,19 +301,18 @@ async def _create_daily_report_artifact(
         return existing
     if execution.action != "execute":
         raise HTTPException(status_code=409, detail=execution.reason)
-    lineage = await get_agent_input_lineage(engine, run.run_id)
-    if lineage is None or lineage.status != "available" or lineage.source_input is None:
-        raise HTTPException(
-            status_code=409,
-            detail="legacy agent input snapshot is unavailable",
-        )
-    source_input = lineage.source_input
-    external_context = await runtime.external_context_for(run.card_id, source_input)
-    action_name = f"daily_report:{output_hash}"
+
+    key = runtime.settings.openai_api_key
+    if key is None:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY가 필요합니다.")
+    source_input = await fetch_ops_input(engine, run.card_id)
+    if source_input is None:
+        raise HTTPException(status_code=404, detail="card_id를 찾을 수 없습니다.")
+    external_context = runtime.external_context_for(run.card_id, source_input)
     claimed = await claim_agent_run_action(
         engine,
         run_id=run.run_id,
-        action_name=action_name,
+        action_name="daily_report",
         requested_by=payload.requested_by,
     )
     if not claimed:
@@ -308,44 +321,50 @@ async def _create_daily_report_artifact(
                 engine,
                 run_id=run.run_id,
                 name="daily_report.json",
-                source_output_hash=output_hash,
             )
             if existing is not None:
                 return existing
-            await sleep(0.05)
+            await asyncio.sleep(0.05)
         raise HTTPException(status_code=409, detail="daily report generation is already running")
 
+    report_tool = make_daily_report_tool(
+        openai_api_key=key.get_secret_value(),
+        openai_model=runtime.settings.openai_model,
+    )
     try:
-        draft = await runtime.write_daily(
-            ReportWriteRequest(
-                run_id=run.run_id,
-                card_id=run.card_id,
-                source_input=source_input,
-                evidence_context=external_context,
-                ops_output=effective_output,
-                source_output_hash=output_hash,
-            )
+        tool_result = await asyncio.to_thread(
+            report_tool.invoke,
+            {
+                "payload_json": to_json(
+                    {
+                        "run_id": run.run_id,
+                        "card_id": run.card_id,
+                        "source_input": source_input,
+                        "external_context": external_context,
+                        "ops_output": run.ops_output.model_dump(mode="json"),
+                    }
+                )
+            },
         )
+        artifact_payload = _json_object(tool_result)
         artifact = await insert_agent_run_artifact(
             engine,
             run_id=run.run_id,
-            kind=draft.kind,
-            name=draft.name,
-            uri=draft.uri,
-            source_output_hash=output_hash,
-            source_review_id=source_review_id,
-            contract_version="artifact.output-v2",
+            kind=_required_text(artifact_payload, "kind"),
+            name=_required_text(artifact_payload, "name"),
+            uri=_required_text(artifact_payload, "uri"),
         )
     except (
-        AgentDependencyError,
         OSError,
         RuntimeError,
         ValueError,
+        OpenAIError,
+        ReportToolPayloadError,
     ) as exc:
         await fail_agent_run_action(
             engine,
             run_id=run.run_id,
-            action_name=action_name,
+            action_name="daily_report",
             error=str(exc),
         )
         await record_agent_run_event(
@@ -362,7 +381,7 @@ async def _create_daily_report_artifact(
     await complete_agent_run_action(
         engine,
         run_id=run.run_id,
-        action_name=action_name,
+        action_name="daily_report",
         artifact_id=artifact.artifact_id,
     )
 
@@ -377,8 +396,6 @@ async def _create_daily_report_artifact(
                 "name": artifact.name,
                 "uri": artifact.uri,
                 "requested_by": payload.requested_by,
-                "source_output_hash": output_hash,
-                "source_review_id": source_review_id,
             },
         ),
     )
@@ -412,7 +429,7 @@ async def stream_agent_run_events(
         run = await get_agent_run(engine, run_id)
         if run is None or (run.status in {"completed", "failed"} and not events):
             break
-        await sleep(poll_interval_seconds)
+        await asyncio.sleep(poll_interval_seconds)
         idle_seconds += poll_interval_seconds
         if idle_seconds >= 15.0:
             idle_seconds = 0.0
@@ -429,3 +446,17 @@ def sse(
     event = {"type": kind, "message": message, "payload": payload}
     prefix = "" if event_id is None else f"id: {event_id}\n"
     return f"{prefix}data: {orjson.dumps(event).decode('utf-8')}\n\n"
+
+
+def _json_object(payload: str) -> dict[str, JsonValue]:
+    value = orjson.loads(payload)
+    if not isinstance(value, dict):
+        raise ReportToolPayloadError("tool result must be a JSON object")
+    return value
+
+
+def _required_text(payload: dict[str, JsonValue], field_name: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str) or not value:
+        raise ReportToolPayloadError(f"{field_name} must be a non-empty string")
+    return value

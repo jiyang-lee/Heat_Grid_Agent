@@ -10,11 +10,9 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Checkpointer, Durability
 from pydantic import TypeAdapter
 
-from heatgrid_ops.agent.contracts import (
-    AgentInputSnapshot,
-    AgentRunRequest,
-    SimulateCard,
-    validate_agent_input,
+from agent_run_repository import (
+    fail_agent_run,
+    reserve_agent_run,
 )
 from heatgrid_ops.agent.nodes import (
     assess_collected_evidence,
@@ -29,20 +27,12 @@ from heatgrid_ops.agent.nodes import (
     mark_running,
     prepare_output_retry,
     rerun_model_verification,
-    run_diagnostic_worker,
     route_after_assessment,
     route_after_llm,
     route_after_output_validation,
+    search_external_evidence,
     validate_output,
     verify_model_output,
-)
-from heatgrid_ops.agent.ports import (
-    AgentBudgetPort,
-    ArtifactPort,
-    AgentInputPort,
-    ReviewPort,
-    RunAuditPort,
-    RunLifecyclePort,
 )
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
 from heatgrid_ops.agent.run_models import AgentRunResult
@@ -77,49 +67,51 @@ class AgentGraphContext:
     budget: AgentBudgetPort | None = None
 
 
-class AgentGraphInvoker(Protocol):
-    @property
-    def checkpointer_enabled(self) -> bool: ...
+async def run_persistent_agent_graph(
+    context: AgentGraphContext,
+    request: AgentRunRequest,
+) -> AgentRunResponse:
+    existing_or_queued, created = await reserve_agent_run(
+        context.engine,
+        run_id=request.run_id,
+        alert_id=request.alert_id,
+        card_id=request.card_id,
+    )
+    if not created:
+        return existing_or_queued
+    return await execute_reserved_agent_graph(context, request)
 
-    @property
-    def max_iterations(self) -> int: ...
 
-    async def ainvoke(
-        self,
-        input: AgentGraphInput | None,
-        config: RunnableConfig,
-        *,
-        durability: Durability | None,
-    ) -> AgentGraphOutput: ...
-
-
-@dataclass(frozen=True, slots=True)
-class CompiledAgentGraph:
-    compiled: CompiledStateGraph[
-        AgentState,
-        None,
-        AgentGraphInput,
-        AgentGraphOutput,
-    ]
-    max_iterations: int
-
-    @property
-    def checkpointer_enabled(self) -> bool:
-        return self.compiled.checkpointer is not None
-
-    async def ainvoke(
-        self,
-        input: AgentGraphInput | None,
-        config: RunnableConfig,
-        *,
-        durability: Durability | None,
-    ) -> AgentGraphOutput:
-        output = await self.compiled.ainvoke(
-            input,
-            config,
-            durability=durability,
+async def execute_reserved_agent_graph(
+    context: AgentGraphContext,
+    request: AgentRunRequest,
+) -> AgentRunResponse:
+    try:
+        graph = build_agent_graph(context)
+        state = await graph.ainvoke(
+            {
+                "run_id": request.run_id,
+                "alert_id": request.alert_id,
+                "card_id": request.card_id,
+                "approved_action_task_id": request.approved_action_task_id,
+                "used_tools": [],
+                "external_candidates": [],
+                "external_candidate_ids": [],
+                "external_search_attempted": False,
+                "external_search_calls": 0,
+                "action_decisions": [],
+                "loop_iteration": 1,
+                "max_iterations": context.runtime.settings.agent_max_iterations,
+                "model_attempts": 0,
+                "revision_count": 0,
+            },
+            config={"recursion_limit": 64},
         )
-        return TypeAdapter(AgentGraphOutput).validate_python(output)
+    except HTTPException as exc:
+        return await fail_agent_run(context.engine, request.run_id, str(exc.detail))
+    except Exception as exc:  # graph execution boundary
+        return await fail_agent_run(context.engine, request.run_id, str(exc))
+    return state["result"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -279,22 +271,12 @@ def build_agent_graph(
     graph.add_node("get_ops_evidence", partial(get_ops_evidence, context))
     graph.add_node("get_external_context", partial(get_external_context, context))
     graph.add_node("verify_model_output", partial(verify_model_output, context))
-    graph.add_node(
-        "assess_collected_evidence", partial(assess_collected_evidence, context)
-    )
-    graph.add_node(
-        "expand_internal_evidence", partial(expand_internal_evidence, context)
-    )
-    graph.add_node(
-        "rerun_model_verification", partial(rerun_model_verification, context)
-    )
-    graph.add_node("run_diagnostic_worker", partial(run_diagnostic_worker, context))
-    graph.add_node(
-        "generate_operational_answer", partial(generate_operational_answer, context)
-    )
-    graph.add_node(
-        "generate_fallback_output", partial(generate_fallback_output, context)
-    )
+    graph.add_node("assess_collected_evidence", partial(assess_collected_evidence, context))
+    graph.add_node("expand_internal_evidence", partial(expand_internal_evidence, context))
+    graph.add_node("search_external_evidence", partial(search_external_evidence, context))
+    graph.add_node("rerun_model_verification", partial(rerun_model_verification, context))
+    graph.add_node("generate_operational_answer", partial(generate_operational_answer, context))
+    graph.add_node("generate_fallback_output", partial(generate_fallback_output, context))
     graph.add_node("validate_output", partial(validate_output, context))
     graph.add_node("prepare_output_retry", partial(prepare_output_retry, context))
     graph.add_node("create_final_review", partial(create_final_review, context))
@@ -311,14 +293,14 @@ def build_agent_graph(
         route_after_assessment,
         {
             "expand_internal_evidence": "expand_internal_evidence",
+            "search_external_evidence": "search_external_evidence",
             "rerun_model_verification": "rerun_model_verification",
-            "run_diagnostic_worker": "run_diagnostic_worker",
             "generate_operational_answer": "generate_operational_answer",
         },
     )
     graph.add_edge("expand_internal_evidence", "assess_collected_evidence")
+    graph.add_edge("search_external_evidence", "assess_collected_evidence")
     graph.add_edge("rerun_model_verification", "assess_collected_evidence")
-    graph.add_edge("run_diagnostic_worker", "assess_collected_evidence")
     graph.add_conditional_edges(
         "generate_operational_answer",
         route_after_llm,
@@ -340,7 +322,4 @@ def build_agent_graph(
     graph.add_edge("create_final_review", "write_anomaly_report")
     graph.add_edge("write_anomaly_report", "complete_run")
     graph.add_edge("complete_run", END)
-    return CompiledAgentGraph(
-        compiled=graph.compile(checkpointer=checkpointer),
-        max_iterations=context.runtime.config.agent_max_iterations,
-    )
+    return graph.compile()

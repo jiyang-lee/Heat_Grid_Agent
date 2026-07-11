@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Final
+
 import orjson
 from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
@@ -7,8 +9,31 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from schemas import AgentLoopIteration, ModelVerificationResult
 
+AGENT_LOOP_ITERATIONS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS agent_loop_iterations (
+    iteration_id bigserial PRIMARY KEY,
+    run_id uuid NOT NULL,
+    iteration integer NOT NULL,
+    phase text NOT NULL,
+    decision text NOT NULL,
+    confidence double precision NOT NULL,
+    evidence_score double precision NOT NULL,
+    missing_evidence jsonb NOT NULL DEFAULT '[]'::jsonb,
+    model_verification jsonb,
+    created_at timestamptz NOT NULL DEFAULT now()
+)
+"""
+
+AGENT_LOOP_ITERATIONS_INDEX_DDL: Final = """
+CREATE INDEX IF NOT EXISTS agent_loop_iterations_run_idx
+ON agent_loop_iterations(run_id, iteration_id)
+"""
+
+
 async def ensure_agent_loop_iteration_table(engine: AsyncEngine) -> None:
-    del engine
+    async with engine.begin() as connection:
+        await connection.execute(text(AGENT_LOOP_ITERATIONS_DDL))
+        await connection.execute(text(AGENT_LOOP_ITERATIONS_INDEX_DDL))
 
 
 async def insert_agent_loop_iteration(
@@ -31,12 +56,7 @@ async def insert_agent_loop_iteration(
         ") VALUES ("
         ":run_id, :iteration, :phase, :decision, :confidence, :evidence_score, "
         "CAST(:missing_evidence AS jsonb), CAST(:model_verification AS jsonb)"
-        ") ON CONFLICT (run_id, iteration, phase) DO UPDATE SET "
-        "decision = EXCLUDED.decision, confidence = EXCLUDED.confidence, "
-        "evidence_score = EXCLUDED.evidence_score, "
-        "missing_evidence = EXCLUDED.missing_evidence, "
-        "model_verification = EXCLUDED.model_verification "
-        "RETURNING iteration_id, run_id, iteration, phase, decision, confidence, "
+        ") RETURNING iteration_id, run_id, iteration, phase, decision, confidence, "
         "evidence_score, CAST(missing_evidence AS text) AS missing_evidence, "
         "CAST(model_verification AS text) AS model_verification, created_at"
     )

@@ -14,7 +14,7 @@ from retrain_repository import (
     review_retrain_job,
 )
 from retrain_service import activate_model_candidate, execute_retrain_job
-from review_repository import create_review_task
+from review_repository import create_review_task, resolve_linked_review_tasks
 from schemas import (
     ModelCandidate,
     ModelDeployment,
@@ -70,6 +70,13 @@ def make_retrain_router(engine: AsyncEngine) -> APIRouter:
                 status_code=404,
                 detail="승인 대기 중인 job_id를 찾을 수 없습니다.",
             )
+        await resolve_linked_review_tasks(
+            engine,
+            retrain_job_id=job_id,
+            status="approved",
+            reviewer=payload.reviewer,
+            resolution=payload.model_dump(mode="json"),
+        )
         background_tasks.add_task(execute_retrain_job, engine, job_id)
         return job
 
@@ -84,6 +91,13 @@ def make_retrain_router(engine: AsyncEngine) -> APIRouter:
                 status_code=404,
                 detail="승인 대기 중인 job_id를 찾을 수 없습니다.",
             )
+        await resolve_linked_review_tasks(
+            engine,
+            retrain_job_id=job_id,
+            status="rejected",
+            reviewer=payload.reviewer,
+            resolution=payload.model_dump(mode="json"),
+        )
         return job
 
     @router.get("/model-candidates", response_model=list[ModelCandidate])
@@ -123,6 +137,13 @@ def make_retrain_router(engine: AsyncEngine) -> APIRouter:
                 )
             except (OSError, ValueError) as exc:
                 raise HTTPException(status_code=500, detail=str(exc)) from exc
+        await resolve_linked_review_tasks(
+            engine,
+            model_candidate_id=candidate_id,
+            status="approved" if deployment is not None else "rejected",
+            reviewer=payload.reviewer,
+            resolution=payload.model_dump(mode="json"),
+        )
         return candidate
 
     @router.get("/model-deployments/active", response_model=ModelDeployment | None)

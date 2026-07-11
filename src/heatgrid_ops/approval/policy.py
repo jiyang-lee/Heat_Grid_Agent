@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
+from schemas import AutomationPolicy
 
 
 class ApprovalPolicyContext(BaseModel):
@@ -37,7 +37,7 @@ class ActionExecutionDecision(BaseModel):
 
 
 def decide_approval(
-    policy: AutomationPolicySnapshot,
+    policy: AutomationPolicy,
     context: ApprovalPolicyContext,
 ) -> ApprovalDecision:
     eligible = _eligible(policy, context)
@@ -73,15 +73,9 @@ def decide_approval(
 
 
 def decide_action_execution(
-    policy: AutomationPolicySnapshot,
+    policy: AutomationPolicy,
     context: ActionExecutionContext,
 ) -> ActionExecutionDecision:
-    if context.task_type == "external_search":
-        return ActionExecutionDecision(
-            action="deny",
-            reason="외부 웹 검색 실행 capability는 폐기되었습니다.",
-            policy_eligible=False,
-        )
     if context.already_executed:
         return ActionExecutionDecision(
             action="reuse",
@@ -124,10 +118,7 @@ def decide_action_execution(
     )
 
 
-def _eligible(
-    policy: AutomationPolicySnapshot,
-    context: ApprovalPolicyContext,
-) -> bool:
+def _eligible(policy: AutomationPolicy, context: ApprovalPolicyContext) -> bool:
     return bool(
         policy.reviewed_count >= policy.minimum_review_count
         and policy.approval_rate >= policy.minimum_approval_rate

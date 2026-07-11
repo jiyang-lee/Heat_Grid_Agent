@@ -38,11 +38,14 @@ class Settings(BaseSettings):
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     model_score_tolerance: float = Field(default=0.12, ge=0.0, le=1.0)
-    rag_quality_enabled: bool = False
+    external_search_enabled: bool = False
+    external_search_model: str = "gpt-5.4-mini"
+    external_search_max_results: int = Field(default=5, ge=1, le=10)
+    external_search_allowed_domains: str = ""
+    external_search_max_calls_per_run: int = Field(default=1, ge=1, le=4)
+    external_search_estimated_cost_usd: float = Field(default=0.01, ge=0.0)
+    external_search_budget_per_run_usd: float = Field(default=0.02, ge=0.0)
     retrain_auto_execute_enabled: bool = False
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)
     priority_model_version: str = "active-priority-contract-v1"
-    replay_storage_root: str = "C:/var/lib/heatgrid/replay"
-    replay_enabled: bool = False
-    replay_import_enabled: bool = False

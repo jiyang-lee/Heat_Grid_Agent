@@ -14,9 +14,10 @@ import type {
   PriorityLevel,
   TokenUsage,
 } from './contracts'
-import type { Complex } from '../data/complexes'
+import { complexes, type Complex } from '../data/complexes'
 import { complexById } from '../domain/model'
 
+const priorityComplexes = complexes.filter((c) => c.id <= 15)
 const MOCK_EVALUATION_RUN_ID = 'evaluation-mock-latest'
 const BASE_MS = Date.parse('2026-07-09T09:00:00+09:00')
 
@@ -47,26 +48,32 @@ interface Store {
 function makeStore(): Store {
   const alerts = new Map<string, AlertSummary>()
   const alertComplex = new Map<string, number>()
-  ALERT_SEEDS.forEach((seed, i) => {
-    const alertId = `alert-${String(seed.id).padStart(3, '0')}`
-    const cardId = `card-${String(seed.id).padStart(3, '0')}`
-    const score = Number((100 - seed.id * 1.5).toFixed(3))
-    alerts.set(alertId, {
-      alert_id: alertId,
-      card_id: cardId,
-      evaluation_run_id: MOCK_EVALUATION_RUN_ID,
-      as_of_time: new Date(BASE_MS).toISOString(),
-      manufacturer_id: 'manufacturer 1',
-      substation_id: seed.id,
-      priority_rank: seed.id,
-      freshness_status: 'fresh',
-      priority_level: seed.level,
-      priority_score: score,
-      status: 'open',
-      enqueue_reason: seed.reason,
-      created_at: iso(i * 13),
-      acked_at: null,
-      acked_by: null,
+  priorityComplexes
+    .slice()
+    .sort((a, b) => a.id - b.id)
+    .forEach((c, i) => {
+      const alertId = `alert-${String(c.id).padStart(3, '0')}`
+      const cardId = `card-${String(c.id).padStart(3, '0')}`
+      const level: PriorityLevel = c.id <= 6 ? 'urgent' : 'high'
+      const score = Number((100 - c.id * 1.5).toFixed(3))
+      alerts.set(alertId, {
+        alert_id: alertId,
+        card_id: cardId,
+        evaluation_run_id: MOCK_EVALUATION_RUN_ID,
+        as_of_time: new Date(BASE_MS).toISOString(),
+        manufacturer_id: 'manufacturer 1',
+        substation_id: c.id,
+        priority_rank: c.id,
+        freshness_status: 'fresh',
+        priority_level: level,
+        priority_score: score,
+        status: 'open',
+        enqueue_reason: `${c.name} (substation ${c.id}) ${level} priority card`,
+        created_at: iso(i * 13),
+        acked_at: null,
+        acked_by: null,
+      })
+      alertComplex.set(alertId, c.id)
     })
     alertComplex.set(alertId, seed.id)
   })

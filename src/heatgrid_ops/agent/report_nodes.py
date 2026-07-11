@@ -62,6 +62,55 @@ async def write_anomaly_report(
     }
 
 
+async def _record_decision(
+    context: AgentReportNodeContext,
+    state: AgentState,
+    next_step: str,
+) -> None:
+    await record_agent_run_event(
+        context.engine,
+        AgentRunEventRecord(
+            run_id=state["run_id"],
+            event_type="graph_transition",
+            message=f"graph entered {next_step}",
+            payload={"next": next_step, "decision_source": "graph"},
+        ),
+    )
+
+
+async def _record_tool_started(
+    context: AgentReportNodeContext,
+    state: AgentState,
+    tool_name: str,
+) -> None:
+    await record_agent_run_event(
+        context.engine,
+        AgentRunEventRecord(
+            run_id=state["run_id"],
+            event_type="tool_started",
+            message=f"{tool_name} started",
+            payload={"tool": tool_name},
+        ),
+    )
+
+
+async def _record_tool_completed(
+    context: AgentReportNodeContext,
+    state: AgentState,
+    tool_name: str,
+    payload: dict[str, str | int],
+) -> None:
+    await record_agent_run_event(
+        context.engine,
+        AgentRunEventRecord(
+            run_id=state["run_id"],
+            event_type="tool_completed",
+            message=f"{tool_name} completed",
+            payload={"tool": tool_name, **payload},
+        ),
+    )
+
+
 async def _record_report_failed(
     context: AgentNodeContext,
     state: AgentState,

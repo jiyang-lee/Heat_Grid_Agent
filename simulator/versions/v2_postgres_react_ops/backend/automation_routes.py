@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
+from agent_run_repository import get_agent_run, reserve_agent_run
+from agent_runner import schedule_reserved_agent_graph
+from heatgrid_ops.agent.contracts import AgentRunRequest
 from heatgrid_ops.approval.policy import ApprovalPolicyContext, decide_approval
 from retrain_repository import (
     create_retrain_job,
@@ -34,6 +37,7 @@ from schemas import (
     EvidenceCandidateCreateRequest,
     EvidenceCandidateReviewRequest,
     HumanReviewTask,
+    AgentRunResponse,
     RetrainJob,
     RetrainJobActionRequest,
     RetrainJobCreateRequest,
@@ -93,6 +97,11 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         if result is None:
             raise HTTPException(status_code=404, detail="task_id를 찾을 수 없습니다.")
+        resumed_run = await _maybe_resume_approved_agent_action(
+            engine,
+            result,
+            payload,
+        )
         try:
             retrain_job = await _maybe_start_automatic_retrain(
                 engine,
@@ -105,12 +114,15 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             retrain_job = None
         updates: dict[str, object] = {}
         if retrain_job is not None:
-            updates.update(
-                {
-                    "automatic_retrain_job_id": retrain_job.job_id,
-                    "automatic_retrain_status": retrain_job.status,
-                }
-            )
+            updates.update({
+                "automatic_retrain_job_id": retrain_job.job_id,
+                "automatic_retrain_status": retrain_job.status,
+            })
+        if resumed_run is not None:
+            updates.update({
+                "resumed_agent_run_id": resumed_run.run_id,
+                "resumed_agent_run_status": resumed_run.status,
+            })
         return result if not updates else result.model_copy(update=updates)
 
     @router.get("/evidence-candidates", response_model=list[EvidenceCandidate])
@@ -127,9 +139,7 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
     async def evidence_candidate(candidate_id: str) -> EvidenceCandidate:
         candidate = await get_evidence_candidate(engine, candidate_id)
         if candidate is None:
-            raise HTTPException(
-                status_code=404, detail="candidate_id를 찾을 수 없습니다."
-            )
+            raise HTTPException(status_code=404, detail="candidate_id를 찾을 수 없습니다.")
         return candidate
 
     @router.post("/evidence-candidates", response_model=EvidenceCandidate)
@@ -138,7 +148,7 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
     ) -> EvidenceCandidate:
         policy = await get_automation_policy(engine)
         approval = decide_approval(
-            AutomationPolicySnapshot.model_validate(policy.model_dump(mode="json")),
+            policy,
             ApprovalPolicyContext(
                 task_type="evidence_candidate",
                 risk_level=payload.risk_level,
@@ -158,7 +168,7 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             engine,
             task_type="evidence_candidate",
             risk_level=payload.risk_level,
-            title=f"운영자 수동 근거 검수: {payload.title}",
+            title=f"외부 근거 후보 검수: {payload.title}",
             run_id=payload.run_id,
             candidate_id=candidate.candidate_id,
             payload=candidate.model_dump(mode="json"),
@@ -175,14 +185,9 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
         candidate_id: str,
         payload: EvidenceCandidateReviewRequest,
     ) -> EvidenceCandidate:
-        try:
-            candidate = await review_evidence_candidate(engine, candidate_id, payload)
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        candidate = await review_evidence_candidate(engine, candidate_id, payload)
         if candidate is None:
-            raise HTTPException(
-                status_code=404, detail="candidate_id를 찾을 수 없습니다."
-            )
+            raise HTTPException(status_code=404, detail="candidate_id를 찾을 수 없습니다.")
         return candidate
 
     @router.get("/training-feedback", response_model=list[TrainingFeedback])
@@ -204,6 +209,43 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
     return router
 
 
+async def _maybe_resume_approved_agent_action(
+    engine: AsyncEngine,
+    result: ReviewSubmitResponse,
+    payload: ReviewTaskSubmitRequest,
+) -> AgentRunResponse | None:
+    task = result.task
+    if (
+        payload.decision != "approve"
+        or task.task_type != "external_search"
+        or task.run_id is None
+    ):
+        return None
+    original = await get_agent_run(engine, task.run_id)
+    if original is None:
+        return None
+    request = AgentRunRequest(
+        run_id=str(uuid4()),
+        alert_id=original.alert_id,
+        card_id=original.card_id,
+        approved_action_task_id=task.task_id,
+    )
+    queued, created = await reserve_agent_run(
+        engine,
+        run_id=request.run_id,
+        alert_id=request.alert_id,
+        card_id=request.card_id,
+        force_new=True,
+        requested_by=payload.reviewer,
+        reason=f"approved external search task {task.task_id}",
+        trigger_type="approved_action_resume",
+        approved_action_task_id=task.task_id,
+    )
+    if created:
+        schedule_reserved_agent_graph(engine, request)
+    return queued
+
+
 async def _maybe_start_automatic_retrain(
     engine: AsyncEngine,
     settings: Settings,
@@ -220,7 +262,7 @@ async def _maybe_start_automatic_retrain(
 
     policy = await get_automation_policy(engine)
     approval = decide_approval(
-        AutomationPolicySnapshot.model_validate(policy.model_dump(mode="json")),
+        policy,
         ApprovalPolicyContext(
             task_type="retrain_approval",
             risk_level="low",

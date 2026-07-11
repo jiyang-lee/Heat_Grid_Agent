@@ -1,36 +1,58 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from math import isfinite
-from typing import Literal
+from pathlib import Path
+from typing import Any
 
-from heatgrid_ops.agent.models import JsonObject, JsonValue, ModelVerificationResult
-from heatgrid_ops.agent.run_models import ModelInferenceSnapshot
+import numpy as np
+
+from heatgrid_ops.priority.inference import (
+    PriorityInferenceError,
+    PriorityInferenceRuntime,
+)
+from schemas import JsonValue, ModelVerificationResult
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def verify_models(
-    snapshot: ModelInferenceSnapshot,
     feature_values: dict[str, float],
-    source_input: JsonObject,
+    source_input: dict[str, JsonValue],
     *,
     tolerance: float,
     attempt: int = 1,
+    active_artifact_uri: str | None = None,
 ) -> ModelVerificationResult:
-    if snapshot.error is not None:
+    try:
+        runtime = PriorityInferenceRuntime(
+            model_root=_model_root(active_artifact_uri),
+            deployment_version=_deployment_version(active_artifact_uri),
+        )
+        inference = runtime.infer_batch(
+            [
+                {
+                    **_source_identity(source_input),
+                    "feature_values": feature_values,
+                }
+            ]
+        )[0]
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        PriorityInferenceError,
+    ) as exc:
         return ModelVerificationResult(
             status="error",
             attempt=attempt,
             feature_count=len(feature_values),
-            reasons=[snapshot.error],
+            reasons=[str(exc)],
         )
-    inference = snapshot.payload
+
     coverage_values = [
-        value
-        for value in (
-            _optional_float(item)
-            for item in _mapping(inference.get("feature_coverage")).values()
-        )
-        if value is not None
+        float(value)
+        for value in inference.get("feature_coverage", {}).values()
     ]
     coverage = min(coverage_values) if coverage_values else 0.0
     risk_score = _optional_float(inference.get("risk_score"))
@@ -52,24 +74,37 @@ def verify_models(
 
     checks: dict[str, bool] = {}
     reasons: list[str] = []
-    _check_delta(checks, reasons, "risk", risk_delta, tolerance)
-    _check_equal(checks, reasons, "anomaly", anomaly_label, stored_anomaly)
-    _check_equal(checks, reasons, "leadtime", leadtime_bucket, stored_leadtime)
-    _check_delta(
-        checks,
-        reasons,
-        "priority",
-        priority_delta,
-        max(1.0, tolerance * 100.0),
-    )
-    if not snapshot.usable:
+    if risk_delta is not None:
+        checks["risk"] = risk_delta <= tolerance
+        if not checks["risk"]:
+            reasons.append("stored and active risk scores exceed tolerance")
+    if anomaly_label is not None and stored_anomaly is not None:
+        checks["anomaly"] = anomaly_label == stored_anomaly
+        if not checks["anomaly"]:
+            reasons.append("stored and active anomaly labels disagree")
+    if leadtime_bucket is not None and stored_leadtime is not None:
+        checks["leadtime"] = leadtime_bucket == stored_leadtime
+        if not checks["leadtime"]:
+            reasons.append("stored and active lead-time buckets disagree")
+    if priority_delta is not None:
+        priority_tolerance = max(1.0, tolerance * 100.0)
+        checks["priority"] = priority_delta <= priority_tolerance
+        if not checks["priority"]:
+            reasons.append("stored and active priority scores exceed tolerance")
+    if not inference.get("usable"):
         reasons.append(
-            _optional_text(inference.get("inference_error"))
-            or "model input is incomplete"
+            str(inference.get("inference_error") or "model input is incomplete")
         )
 
+    if inference.get("usable") and len(checks) >= 3:
+        status = "verified"
+    elif inference.get("usable"):
+        status = "partial"
+    else:
+        status = "unavailable"
+
     return ModelVerificationResult(
-        status=_verification_status(snapshot.usable, checks),
+        status=status,
         attempt=attempt,
         feature_count=len(feature_values),
         feature_coverage=round(coverage, 4),
@@ -96,91 +131,61 @@ def verify_models(
     )
 
 
-def _verification_status(
-    usable: bool,
-    checks: dict[str, bool],
-) -> Literal["verified", "partial", "unavailable", "error"]:
-    if usable and len(checks) >= 3:
-        return "verified"
-    if usable:
-        return "partial"
-    return "unavailable"
-
-
-def _check_delta(
-    checks: dict[str, bool],
-    reasons: list[str],
-    name: str,
-    delta: float | None,
-    tolerance: float,
-) -> None:
-    if delta is None:
-        return
-    checks[name] = delta <= tolerance
-    if not checks[name]:
-        reasons.append(f"stored and active {name} scores exceed tolerance")
-
-
-def _check_equal(
-    checks: dict[str, bool],
-    reasons: list[str],
-    name: str,
-    active: JsonValue,
-    stored: JsonValue,
-) -> None:
-    if active is None or stored is None:
-        return
-    checks[name] = active == stored
-    if not checks[name]:
-        reasons.append(f"stored and active {name} labels disagree")
+def _source_identity(source_input: dict[str, JsonValue]) -> dict[str, Any]:
+    evaluation_context = _mapping(source_input.get("evaluation_context"))
+    evaluation_result = _mapping(evaluation_context.get("result"))
+    raw_context = _mapping(source_input.get("raw_context"))
+    window = _mapping(raw_context.get("window"))
+    substation = _mapping(raw_context.get("substation"))
+    return {
+        "manufacturer_id": evaluation_result.get("manufacturer_id")
+        or window.get("manufacturer_id")
+        or window.get("manufacturer"),
+        "substation_id": evaluation_result.get("substation_id")
+        or window.get("substation_id")
+        or substation.get("substation_id"),
+        "configuration_type": substation.get("configuration_type")
+        or window.get("configuration_type"),
+    }
 
 
 def _stored_float(
-    source_input: JsonObject,
+    source_input: dict[str, JsonValue],
     names: tuple[str, ...],
 ) -> float | None:
-    return next(
-        (
-            converted
-            for value in _stored_values(source_input, names)
-            if (converted := _optional_float(value)) is not None
-        ),
-        None,
-    )
+    for value in _stored_values(source_input, names):
+        converted = _optional_float(value)
+        if converted is not None:
+            return converted
+    return None
 
 
 def _stored_text(
-    source_input: JsonObject,
+    source_input: dict[str, JsonValue],
     names: tuple[str, ...],
 ) -> str | None:
-    return next(
-        (
-            converted
-            for value in _stored_values(source_input, names)
-            if (converted := _optional_text(value)) is not None
-        ),
-        None,
-    )
+    for value in _stored_values(source_input, names):
+        converted = _optional_text(value)
+        if converted is not None:
+            return converted
+    return None
 
 
 def _stored_bool(
-    source_input: JsonObject,
+    source_input: dict[str, JsonValue],
     names: tuple[str, ...],
 ) -> bool | None:
-    return next(
-        (
-            converted
-            for value in _stored_values(source_input, names)
-            if (converted := _optional_bool(value)) is not None
-        ),
-        None,
-    )
+    for value in _stored_values(source_input, names):
+        converted = _optional_bool(value)
+        if converted is not None:
+            return converted
+    return None
 
 
 def _stored_values(
-    source_input: JsonObject,
+    source_input: dict[str, JsonValue],
     names: tuple[str, ...],
-) -> Iterator[JsonValue]:
+):
     evaluation_context = _mapping(source_input.get("evaluation_context"))
     containers = [_mapping(evaluation_context.get("result"))]
     priority_context = _mapping(source_input.get("priority_context"))
@@ -196,19 +201,34 @@ def _stored_values(
     if isinstance(outputs, list):
         for name in names:
             for item in outputs:
-                mapping = _mapping(item)
-                if mapping.get("score_name") == name:
-                    yield mapping.get("score_value")
-    summaries = _mapping(source_input.get("raw_context")).get("sensor_summaries")
+                if isinstance(item, dict) and item.get("score_name") == name:
+                    yield item.get("score_value")
+    raw_context = _mapping(source_input.get("raw_context"))
+    summaries = raw_context.get("sensor_summaries")
     if isinstance(summaries, list):
         for name in names:
             for item in summaries:
-                mapping = _mapping(item)
-                if mapping.get("feature_name") == name:
-                    yield mapping.get("feature_value")
+                if isinstance(item, dict) and item.get("feature_name") == name:
+                    yield item.get("feature_value")
 
 
-def _mapping(value: JsonValue | None) -> JsonObject:
+def _model_root(active_artifact_uri: str | None) -> Path:
+    if active_artifact_uri:
+        candidate = Path(active_artifact_uri)
+        if not candidate.is_absolute():
+            candidate = ROOT / candidate
+        nested = candidate / "models"
+        return nested if nested.exists() else candidate
+    return ROOT / "models"
+
+
+def _deployment_version(active_artifact_uri: str | None) -> str:
+    if not active_artifact_uri:
+        return "active-local-model"
+    return f"active-deployment-{Path(active_artifact_uri).name}"
+
+
+def _mapping(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
@@ -216,22 +236,22 @@ def _delta(left: float | None, right: float | None) -> float | None:
     return None if left is None or right is None else abs(left - right)
 
 
-def _optional_float(value: JsonValue | None) -> float | None:
+def _optional_float(value: Any) -> float | None:
     try:
-        numeric = float(value)  # type: ignore[arg-type]
+        numeric = float(value)
     except (TypeError, ValueError):
         return None
-    return numeric if isfinite(numeric) else None
+    return numeric if np.isfinite(numeric) else None
 
 
-def _optional_text(value: JsonValue | None) -> str | None:
+def _optional_text(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text or None
 
 
-def _optional_bool(value: JsonValue | None) -> bool | None:
+def _optional_bool(value: Any) -> bool | None:
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):

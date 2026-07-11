@@ -11,9 +11,7 @@ import pytest
 from sqlalchemy import text
 
 ROOT: Final = Path(__file__).resolve().parents[1]
-BACKEND_DIR: Final = (
-    ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
-)
+BACKEND_DIR: Final = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
 
 
@@ -21,9 +19,7 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.chdir(BACKEND_DIR)
     monkeypatch.syspath_prepend(str(BACKEND_DIR))
-    spec = importlib.util.spec_from_file_location(
-        "agent_automation_server", SERVER_PATH
-    )
+    spec = importlib.util.spec_from_file_location("agent_automation_server", SERVER_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("서버 모듈을 불러올 수 없습니다.")
     module = importlib.util.module_from_spec(spec)
@@ -33,16 +29,8 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_automation_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
-        await connection.execute(
-            text(
-                "TRUNCATE TABLE training_feedback, human_review_tasks, evidence_candidates CASCADE"
-            )
-        )
-        await connection.execute(
-            text(
-                "TRUNCATE TABLE model_deployments, model_candidates, retrain_jobs CASCADE"
-            )
-        )
+        await connection.execute(text("TRUNCATE TABLE training_feedback, human_review_tasks, evidence_candidates CASCADE"))
+        await connection.execute(text("TRUNCATE TABLE model_deployments, model_candidates, retrain_jobs CASCADE"))
         await connection.execute(text("TRUNCATE TABLE automation_policy"))
         await connection.execute(
             text(
@@ -51,8 +39,14 @@ async def reset_automation_tables(module: ModuleType) -> None:
             )
         )
         await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
-        await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
-        await connection.execute(text("TRUNCATE TABLE ops_alert_queue CASCADE"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
 
 
 async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
@@ -70,22 +64,19 @@ async def test_review_feedback_evidence_and_policy_api_flow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_review_tables(module.engine)
+    await module.ensure_retrain_tables(module.engine)
     await reset_automation_tables(module)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=module.app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=module.app), base_url="http://test") as client:
         await client.post("/api/alerts/enqueue")
         alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
-        run = (
-            await client.post("/api/agent-runs", json={"alert_id": alert["alert_id"]})
-        ).json()
+        run = (await client.post("/api/agent-runs", json={"alert_id": alert["alert_id"]})).json()
         run = await wait_for_agent_run(client, str(run["run_id"]))
 
         tasks = await client.get("/api/review-tasks", params={"status": "pending"})
-        final_task = next(
-            item for item in tasks.json() if item["task_type"] == "final_output"
-        )
+        final_task = next(item for item in tasks.json() if item["task_type"] == "final_output")
         reviewed = await client.post(
             f"/api/review-tasks/{final_task['task_id']}/submit",
             json={
@@ -122,35 +113,7 @@ async def test_review_feedback_evidence_and_policy_api_flow(
 
         policy = await client.patch(
             "/api/automation-policy",
-            json={
-                "mode": "assisted",
-                "auto_transition_enabled": True,
-                "updated_by": "pytest",
-            },
-        )
-
-    async with module.engine.connect() as connection:
-        lineage = (
-            await connection.execute(
-                text(
-                    "SELECT run.ops_output ->> 'summary' AS original_summary, "
-                    "review.correction ->> 'summary' AS corrected_summary, "
-                    "feedback.source_review_id = review.review_id AS feedback_linked "
-                    "FROM agent_runs run "
-                    "JOIN agent_run_reviews review ON review.run_id = run.run_id "
-                    "JOIN training_feedback feedback "
-                    "ON feedback.source_review_id = review.review_id "
-                    "WHERE run.run_id = :run_id"
-                ),
-                {"run_id": run["run_id"]},
-            )
-        ).mappings().one()
-        evidence_review_count = await connection.scalar(
-            text(
-                "SELECT count(*) FROM agent_run_reviews "
-                "WHERE subject_type = 'evidence_candidate' AND subject_key = :subject_key"
-            ),
-            {"subject_key": candidate_id},
+            json={"mode": "assisted", "auto_transition_enabled": True, "updated_by": "pytest"},
         )
 
     assert reviewed.status_code == 200
@@ -159,10 +122,6 @@ async def test_review_feedback_evidence_and_policy_api_flow(
     assert feedback.json()[0]["task_id"] == final_task["task_id"]
     assert updated_run.json()["review_status"] == "corrected"
     assert updated_run.json()["ops_output"]["summary"] == "사람이 교정한 상황 요약"
-    assert lineage["original_summary"] != "사람이 교정한 상황 요약"
-    assert lineage["corrected_summary"] == "사람이 교정한 상황 요약"
-    assert lineage["feedback_linked"] is True
-    assert evidence_review_count == 1
     assert candidate.status_code == 200
     assert candidate_review.status_code == 200
     assert candidate_review.json()["status"] in {"approved", "ingest_failed"}
@@ -176,10 +135,11 @@ async def test_retrain_job_requires_explicit_approval_or_rejection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_review_tables(module.engine)
+    await module.ensure_retrain_tables(module.engine)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=module.app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=module.app), base_url="http://test") as client:
         created = await client.post(
             "/api/retrain-jobs",
             json={
@@ -207,18 +167,19 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
 ) -> None:
     monkeypatch.setenv("HEATGRID_RETRAIN_AUTO_EXECUTE_ENABLED", "1")
     module = load_server(monkeypatch)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_review_tables(module.engine)
+    await module.ensure_retrain_tables(module.engine)
     await reset_automation_tables(module)
 
-    automation_routes = importlib.import_module("automation_routes")
+    import automation_routes
 
     async def skip_training(_engine, _job_id: str) -> None:
         return None
 
     monkeypatch.setattr(automation_routes, "execute_retrain_job", skip_training)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=module.app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=module.app), base_url="http://test") as client:
         policy = await client.patch(
             "/api/automation-policy",
             json={
@@ -236,13 +197,12 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
             await connection.execute(
                 text(
                     "INSERT INTO ops_alert_queue ("
-                    "alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+                    "alert_id, card_id, evaluation_run_id, manufacturer_id, "
                     "substation_id, priority_rank, freshness_status, priority_level, "
                     "priority_score, enqueue_reason"
                     ") "
                     "SELECT md5('pytest-retrain|' || result.evaluation_result_id::text)::uuid, "
-                    "result.source_card_id, result.evaluation_run_id, result.substation_uid, "
-                    "result.manufacturer_id, "
+                    "result.source_card_id, result.evaluation_run_id, result.manufacturer_id, "
                     "result.substation_id, result.priority_rank, result.freshness_status, "
                     "'high', result.priority_score, 'pytest guarded-auto retrain' "
                     "FROM priority_evaluation_results result "
@@ -313,79 +273,3 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
     assert len(jobs.json()) == 1
     assert jobs.json()[0]["status"] == "approved"
     assert restored_policy.json()["mode"] == "human_only"
-
-
-@pytest.mark.anyio
-async def test_legacy_review_submission_records_v3_reject_state_once(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    module = load_server(monkeypatch)
-    async with module.engine.begin() as connection:
-        await connection.execute(
-            text(
-                "TRUNCATE TABLE human_review_tasks, evidence_candidates CASCADE"
-            )
-        )
-        await connection.execute(text("TRUNCATE TABLE automation_policy"))
-        await connection.execute(
-            text(
-                "INSERT INTO automation_policy (policy_id, mode) "
-                "VALUES ('default', 'human_only')"
-            )
-        )
-        await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
-        await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
-        await connection.execute(text("TRUNCATE TABLE ops_alert_queue CASCADE"))
-
-    async with AsyncClient(
-        transport=ASGITransport(app=module.app), base_url="http://test"
-    ) as client:
-        await client.post("/api/alerts/enqueue")
-        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
-        created = await client.post(
-            "/api/agent-runs",
-            json={"alert_id": alert["alert_id"]},
-        )
-        run = await wait_for_agent_run(client, str(created.json()["run_id"]))
-        tasks = await client.get(
-            "/api/review-tasks",
-            params={"status": "pending", "task_type": "final_output"},
-        )
-        task = next(item for item in tasks.json() if item["run_id"] == run["run_id"])
-        payload = {
-            "decision": "reject",
-            "reviewer": "pytest",
-            "reason": "legacy reject mapping",
-        }
-        submitted = await client.post(
-            f"/api/review-tasks/{task['task_id']}/submit",
-            json=payload,
-        )
-        duplicate = await client.post(
-            f"/api/review-tasks/{task['task_id']}/submit",
-            json=payload,
-        )
-        detail = await client.get(f"/api/agent-runs/{run['run_id']}")
-        listed = await client.get(
-            "/api/agent-runs",
-            params={"limit": 100, "status": "completed"},
-        )
-
-    async with module.engine.connect() as connection:
-        review_count = await connection.scalar(
-            text(
-                "SELECT count(*) FROM agent_run_reviews "
-                "WHERE run_id = :run_id"
-            ),
-            {"run_id": run["run_id"]},
-        )
-
-    listed_run = next(
-        item for item in listed.json()["items"] if item["run_id"] == run["run_id"]
-    )
-    assert submitted.status_code == 200
-    assert submitted.json()["task"]["resolution"]["decision"] == "keep_human_review"
-    assert duplicate.status_code == 409
-    assert detail.json()["review_status"] == "rejected"
-    assert listed_run["operator_review_status"] == "keep_human_review"
-    assert review_count == 1

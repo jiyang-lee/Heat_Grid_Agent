@@ -21,6 +21,50 @@ from schemas import (
 
 ACTIVE_AGENT_RUN_STALE_AFTER_SECONDS: Final = 600
 
+AGENT_RUNS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS agent_runs (
+    run_id uuid PRIMARY KEY,
+    alert_id uuid NOT NULL REFERENCES ops_alert_queue(alert_id) ON DELETE CASCADE,
+    card_id uuid NOT NULL REFERENCES priority_cards(card_id) ON DELETE CASCADE,
+    evaluation_run_id uuid,
+    manufacturer_id text,
+    substation_id integer,
+    parent_run_id uuid REFERENCES agent_runs(run_id),
+    trigger_type text NOT NULL DEFAULT 'alert',
+    requested_by text,
+    trigger_reason text,
+    approved_action_task_id uuid,
+    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed')),
+    agent_mode text CHECK (agent_mode IN ('llm', 'fallback')),
+    ops_output jsonb,
+    token_usage jsonb,
+    loop_summary jsonb,
+    review_status text NOT NULL DEFAULT 'pending'
+        CHECK (review_status IN ('pending', 'approved', 'rejected', 'corrected')),
+    review_task_id uuid,
+    error text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+)
+"""
+
+AGENT_RUNS_COMPATIBILITY_DDL: Final = (
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS loop_summary jsonb",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS review_status text NOT NULL DEFAULT 'pending'",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS review_task_id uuid",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS evaluation_run_id uuid",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS manufacturer_id text",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS substation_id integer",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS parent_run_id uuid REFERENCES agent_runs(run_id)",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS trigger_type text NOT NULL DEFAULT 'alert'",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS requested_by text",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS trigger_reason text",
+    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS approved_action_task_id uuid",
+)
+
+DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
+ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_status_check
+"""
 
 class AgentRunLineageLimitError(RuntimeError):
     def __str__(self) -> str:
@@ -28,23 +72,27 @@ class AgentRunLineageLimitError(RuntimeError):
 
 
 AGENT_RUN_SELECT: Final = (
-    "SELECT run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
-    "substation_id, parent_run_id, root_run_id, lineage_depth, "
-    "trigger_type, requested_by, trigger_reason, "
-    "NULL::uuid AS approved_action_task_id, "
+    "SELECT run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+    "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+    "approved_action_task_id, "
     "status, agent_mode, "
-    "CAST(COALESCE((SELECT correction FROM agent_run_reviews review "
-    "WHERE review.run_id = agent_runs.run_id AND correction IS NOT NULL "
-    "ORDER BY review.review_version DESC LIMIT 1), ops_output) AS text) AS ops_output, "
+    "CAST(ops_output AS text) AS ops_output, "
     "CAST(token_usage AS text) AS token_usage, "
     "CAST(loop_summary AS text) AS loop_summary, "
-    "review_status, review_task_id, error, created_at "
+    "review_status, review_task_id, error "
     "FROM agent_runs "
 )
 
 
 async def ensure_agent_run_tables(engine: AsyncEngine) -> None:
-    del engine
+    async with engine.begin() as connection:
+        await connection.execute(text(AGENT_RUNS_DDL))
+        for statement in AGENT_RUNS_COMPATIBILITY_DDL:
+            await connection.execute(text(statement))
+        await connection.execute(text(DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL))
+        await connection.execute(text(ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL))
+    await ensure_agent_run_artifact_table(engine)
+    await ensure_agent_run_event_table(engine)
 
 
 async def create_queued_agent_run(
@@ -105,8 +153,6 @@ async def reserve_agent_run(
                 ),
             )
             return _run_from_row(existing_row), False
-        if existing_row is not None and int(existing_row["lineage_depth"]) >= 2:
-            raise AgentRunLineageLimitError()
         run_row = await _insert_queued_agent_run(
             connection,
             run_id=run_id,
@@ -138,24 +184,20 @@ async def _insert_queued_agent_run(
 ) -> RowMapping:
     query = text(
         "INSERT INTO agent_runs ("
-        "run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
-        "substation_id, parent_run_id, root_run_id, lineage_depth, "
-        "trigger_type, requested_by, trigger_reason, "
-        "status"
+        "run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+        "approved_action_task_id, status"
         ") VALUES ("
         ":run_id, :alert_id, :card_id, "
         "(SELECT evaluation_run_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
-        "(SELECT substation_uid FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT manufacturer_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT substation_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
-        ":parent_run_id, "
-        "COALESCE((SELECT root_run_id FROM agent_runs WHERE run_id = :parent_run_id), :run_id), "
-        "COALESCE((SELECT lineage_depth + 1 FROM agent_runs WHERE run_id = :parent_run_id), 0), "
-        ":trigger_type, :requested_by, :trigger_reason, 'queued'"
+        ":parent_run_id, :trigger_type, :requested_by, :trigger_reason, "
+        ":approved_action_task_id, 'queued'"
         ") "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "NULL::uuid AS approved_action_task_id, "
+        "approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -172,6 +214,7 @@ async def _insert_queued_agent_run(
             "trigger_type": trigger_type,
             "requested_by": requested_by,
             "trigger_reason": trigger_reason,
+            "approved_action_task_id": approved_action_task_id,
         },
     )
     run_row = result.mappings().one()
@@ -228,12 +271,6 @@ async def _expire_stale_agent_runs(
             f"WHERE {identity_sql} AND status IN ('queued', 'running') "
             "AND updated_at < now() - "
             "(:stale_after_seconds * interval '1 second') "
-            "AND NOT EXISTS ("
-            "SELECT 1 FROM agent_run_tasks task "
-            "WHERE task.run_id = agent_runs.run_id "
-            "AND task.status IN ('queued', 'running') "
-            "AND task.attempt_count < task.max_attempts"
-            ") "
             "RETURNING run_id"
         ),
         params,
@@ -299,9 +336,9 @@ async def complete_agent_run(
         "review_status = 'pending', review_task_id = :review_task_id, "
         "error = NULL, updated_at = now() "
         "WHERE run_id = :run_id AND status IN ('queued', 'running') "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "NULL::uuid AS approved_action_task_id, "
+        "approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -359,9 +396,9 @@ async def fail_agent_run(
         "UPDATE agent_runs SET "
         "status = 'failed', error = :error, updated_at = now() "
         "WHERE run_id = :run_id "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "NULL::uuid AS approved_action_task_id, "
+        "approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -419,9 +456,9 @@ async def _set_agent_run_status(
     query = text(
         "UPDATE agent_runs SET status = :status, updated_at = now() "
         "WHERE run_id = :run_id "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "NULL::uuid AS approved_action_task_id, "
+        "approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -450,9 +487,6 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         evaluation_run_id=None
         if row["evaluation_run_id"] is None
         else str(row["evaluation_run_id"]),
-        substation_uid=None
-        if row["substation_uid"] is None
-        else str(row["substation_uid"]),
         manufacturer_id=row["manufacturer_id"],
         substation_id=row["substation_id"],
         parent_run_id=None
@@ -474,7 +508,7 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         loop_summary=None
         if loop_summary is None
         else AgentLoopSummary.model_validate(orjson.loads(loop_summary)),
-        review_status=row["review_status"] or "pending",
+        review_status=str(row["review_status"] or "pending"),
         review_task_id=None
         if row["review_task_id"] is None
         else str(row["review_task_id"]),

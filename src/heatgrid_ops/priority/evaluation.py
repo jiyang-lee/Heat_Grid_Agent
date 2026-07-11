@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from collections.abc import Sequence
 from typing import Any, Final
 from uuid import uuid4
 import asyncio
@@ -17,9 +16,69 @@ from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
 logger = logging.getLogger(__name__)
 
+PRIORITY_EVALUATION_RUNS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS priority_evaluation_runs (
+    evaluation_run_id uuid PRIMARY KEY,
+    as_of_time timestamptz NOT NULL,
+    stale_after_seconds integer NOT NULL CHECK (stale_after_seconds > 0),
+    model_version text NOT NULL,
+    status text NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+    is_active boolean NOT NULL DEFAULT false,
+    target_count integer NOT NULL DEFAULT 0,
+    success_count integer NOT NULL DEFAULT 0,
+    stale_count integer NOT NULL DEFAULT 0,
+    missing_count integer NOT NULL DEFAULT 0,
+    ranked_count integer NOT NULL DEFAULT 0,
+    error text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    completed_at timestamptz
+)
+"""
+
+PRIORITY_EVALUATION_RESULTS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS priority_evaluation_results (
+    evaluation_result_id uuid PRIMARY KEY,
+    evaluation_run_id uuid NOT NULL
+        REFERENCES priority_evaluation_runs(evaluation_run_id) ON DELETE CASCADE,
+    manufacturer_id text NOT NULL,
+    substation_id integer NOT NULL,
+    source_window_id uuid,
+    source_window_start timestamptz,
+    source_window_end timestamptz,
+    source_card_id uuid,
+    source_priority_decision_id uuid,
+    priority_score double precision,
+    priority_rank integer,
+    rank_included boolean NOT NULL DEFAULT false,
+    priority_level text,
+    risk_score double precision,
+    anomaly_score double precision,
+    anomaly_label boolean,
+    leadtime_bucket text,
+    leadtime_urgency_score double precision,
+    leadtime_hours double precision,
+    freshness_status text NOT NULL
+        CHECK (freshness_status IN ('fresh', 'stale', 'missing')),
+    data_age_seconds double precision,
+    model_components jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (evaluation_run_id, manufacturer_id, substation_id)
+)
+"""
+
+PRIORITY_EVALUATION_INDEX_DDL: Final = (
+    "CREATE UNIQUE INDEX IF NOT EXISTS priority_evaluation_one_active_idx "
+    "ON priority_evaluation_runs(is_active) WHERE is_active",
+    "CREATE INDEX IF NOT EXISTS priority_evaluation_completed_idx "
+    "ON priority_evaluation_runs(status, as_of_time DESC, completed_at DESC)",
+    "CREATE INDEX IF NOT EXISTS priority_evaluation_result_rank_idx "
+    "ON priority_evaluation_results(evaluation_run_id, rank_included, priority_rank)",
+    "CREATE INDEX IF NOT EXISTS priority_evaluation_result_substation_idx "
+    "ON priority_evaluation_results(manufacturer_id, substation_id, evaluation_run_id)",
+)
+
 LATEST_WINDOW_CANDIDATES_SQL: Final = """
 SELECT
-    s.substation_uid,
     s.manufacturer_id,
     s.substation_id,
     s.configuration_type,
@@ -55,7 +114,8 @@ FROM substations s
 LEFT JOIN LATERAL (
     SELECT selected.*
     FROM windows selected
-    WHERE selected.substation_uid = s.substation_uid
+    WHERE selected.manufacturer_id = s.manufacturer_id
+      AND selected.substation_id = s.substation_id
       AND selected.window_end <= :as_of_time
     ORDER BY selected.window_end DESC, selected.window_start DESC, selected.window_id DESC
     LIMIT 1
@@ -80,14 +140,14 @@ ORDER BY s.manufacturer_id, s.substation_id
 
 INSERT_RESULT_SQL: Final = """
 INSERT INTO priority_evaluation_results (
-    evaluation_result_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,
+    evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id,
     source_window_id, source_window_start, source_window_end, source_card_id,
     source_priority_decision_id, priority_score, priority_rank, rank_included,
     priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket,
     leadtime_urgency_score, leadtime_hours, freshness_status, data_age_seconds,
     model_components
 ) VALUES (
-    :evaluation_result_id, :evaluation_run_id, :substation_uid, :manufacturer_id, :substation_id,
+    :evaluation_result_id, :evaluation_run_id, :manufacturer_id, :substation_id,
     :source_window_id, :source_window_start, :source_window_end, :source_card_id,
     :source_priority_decision_id, :priority_score, :priority_rank, :rank_included,
     :priority_level, :risk_score, :anomaly_score, :anomaly_label, :leadtime_bucket,
@@ -98,7 +158,11 @@ INSERT INTO priority_evaluation_results (
 
 
 async def ensure_priority_evaluation_tables(engine: AsyncEngine) -> None:
-    del engine
+    async with engine.begin() as connection:
+        await connection.execute(text(PRIORITY_EVALUATION_RUNS_DDL))
+        await connection.execute(text(PRIORITY_EVALUATION_RESULTS_DDL))
+        for statement in PRIORITY_EVALUATION_INDEX_DDL:
+            await connection.execute(text(statement))
 
 
 async def create_priority_evaluation(
@@ -150,10 +214,10 @@ async def create_priority_evaluation(
                 text(
                     "INSERT INTO priority_evaluation_runs ("
                     "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
-                    "status, target_count, stream_key, source_kind"
+                    "status, target_count"
                     ") VALUES ("
                     ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
-                    ":model_version, 'running', :target_count, 'default', 'batch'"
+                    ":model_version, 'running', :target_count"
                     ")"
                 ),
                 {
@@ -190,7 +254,7 @@ async def create_priority_evaluation(
             active_result = await connection.execute(
                 text(
                     "SELECT as_of_time FROM priority_evaluation_runs "
-                    "WHERE stream_key = 'default' AND is_active FOR UPDATE"
+                    "WHERE is_active FOR UPDATE"
                 )
             )
             active_row = active_result.mappings().one_or_none()
@@ -199,7 +263,7 @@ async def create_priority_evaluation(
                 await connection.execute(
                     text(
                         "UPDATE priority_evaluation_runs SET is_active = false "
-                        "WHERE stream_key = 'default' AND is_active"
+                        "WHERE is_active"
                     )
                 )
             await connection.execute(
@@ -257,10 +321,10 @@ async def _record_failed_priority_evaluation(
             text(
                 "INSERT INTO priority_evaluation_runs ("
                 "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
-                "status, is_active, target_count, error, completed_at, stream_key, source_kind"
+                "status, is_active, target_count, error, completed_at"
                 ") VALUES ("
                 ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
-                ":model_version, 'failed', false, :target_count, :error, now(), 'default', 'batch'"
+                ":model_version, 'failed', false, :target_count, :error, now()"
                 ") ON CONFLICT (evaluation_run_id) DO UPDATE SET "
                 "status = 'failed', is_active = false, target_count = :target_count, "
                 "error = :error, completed_at = now()"
@@ -344,7 +408,7 @@ async def model_inputs_changed_after(
 
 
 def build_evaluation_results(
-    candidates: Sequence[RowMapping | dict[str, Any]],
+    candidates: list[RowMapping] | list[dict[str, Any]],
     *,
     inferences: list[dict[str, Any]],
     evaluation_run_id: str,
@@ -357,6 +421,7 @@ def build_evaluation_results(
     rows: list[dict[str, Any]] = []
     for candidate, inference in zip(candidates, inferences, strict=True):
         source_window_end = candidate.get("source_window_end")
+        raw_card = _json_object(candidate.get("raw_card"))
         priority_score = _float(inference.get("priority_score"))
         source_card_id = candidate.get("source_card_id")
         has_model_result = (
@@ -433,7 +498,6 @@ def build_evaluation_results(
             {
                 "evaluation_result_id": str(uuid4()),
                 "evaluation_run_id": evaluation_run_id,
-                "substation_uid": str(candidate["substation_uid"]),
                 "manufacturer_id": str(candidate["manufacturer_id"]),
                 "substation_id": int(candidate["substation_id"]),
                 "source_window_id": _optional_str(candidate.get("source_window_id")),
@@ -492,7 +556,7 @@ async def get_latest_priority_evaluation(engine: AsyncEngine) -> dict[str, Any] 
     await ensure_priority_evaluation_tables(engine)
     query = text(
         f"SELECT {_run_columns()} FROM priority_evaluation_runs "
-        "WHERE stream_key = 'default' AND status = 'completed' AND success_count > 0 "
+        "WHERE status = 'completed' "
         "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC, evaluation_run_id "
         "LIMIT 1"
     )
@@ -513,7 +577,7 @@ async def get_priority_evaluation(
         run_result = await connection.execute(
             text(
                 f"SELECT {_run_columns()} FROM priority_evaluation_runs "
-                "WHERE stream_key = 'default' AND evaluation_run_id = :evaluation_run_id"
+                "WHERE evaluation_run_id = :evaluation_run_id"
             ),
             {"evaluation_run_id": evaluation_run_id},
         )
@@ -544,69 +608,32 @@ async def get_latest_substation_result(
     latest = await get_latest_priority_evaluation(engine)
     if latest is None:
         return None
-    result = _resolve_substation_result(
-        latest["results"],
-        substation_id=substation_id,
-        manufacturer_id=manufacturer_id,
-    )
-    return None if result is None else {"evaluation": latest["evaluation"], "result": result}
+    for result in latest["results"]:
+        if int(result["substation_id"]) != substation_id:
+            continue
+        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
+            continue
+        return {"evaluation": latest["evaluation"], "result": result}
+    return None
 
 
 async def get_priority_evaluation_result(
     engine: AsyncEngine,
     evaluation_run_id: str,
-    substation_id: int | None = None,
+    substation_id: int,
     *,
     manufacturer_id: str | None = None,
-    substation_uid: str | None = None,
 ) -> dict[str, Any] | None:
     snapshot = await get_priority_evaluation(engine, evaluation_run_id)
     if snapshot is None:
         return None
-    if substation_uid is not None:
-        result = next(
-            (
-                item
-                for item in snapshot["results"]
-                if str(item.get("substation_uid")) == substation_uid
-            ),
-            None,
-        )
-    elif substation_id is not None:
-        result = _resolve_substation_result(
-            snapshot["results"],
-            substation_id=substation_id,
-            manufacturer_id=manufacturer_id,
-        )
-    else:
-        raise ValueError("substation_uid or substation_id is required")
-    return None if result is None else {"evaluation": snapshot["evaluation"], "result": result}
-
-
-class AmbiguousSubstationError(ValueError):
-    pass
-
-
-def _resolve_substation_result(
-    results: list[dict[str, Any]],
-    *,
-    substation_id: int,
-    manufacturer_id: str | None,
-) -> dict[str, Any] | None:
-    matches = [
-        result
-        for result in results
-        if int(result["substation_id"]) == substation_id
-        and (
-            manufacturer_id is None
-            or result["manufacturer_id"] == manufacturer_id
-        )
-    ]
-    if manufacturer_id is None and len(matches) > 1:
-        raise AmbiguousSubstationError(
-            "manufacturer_id is required because substation_id is ambiguous"
-        )
-    return matches[0] if matches else None
+    for result in snapshot["results"]:
+        if int(result["substation_id"]) != substation_id:
+            continue
+        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
+            continue
+        return {"evaluation": snapshot["evaluation"], "result": result}
+    return None
 
 
 def latest_alert_results(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
@@ -629,7 +656,7 @@ def _run_columns() -> str:
 
 def _result_columns() -> str:
     return (
-        "evaluation_result_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id, "
+        "evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id, "
         "source_window_id, source_window_start, source_window_end, source_card_id, "
         "source_priority_decision_id, priority_score, priority_rank, rank_included, "
         "priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket, "
@@ -661,7 +688,6 @@ def _result_from_row(row: RowMapping) -> dict[str, Any]:
     return {
         "evaluation_result_id": str(row["evaluation_result_id"]),
         "evaluation_run_id": str(row["evaluation_run_id"]),
-        "substation_uid": str(row["substation_uid"]),
         "manufacturer_id": str(row["manufacturer_id"]),
         "substation_id": int(row["substation_id"]),
         "source_window_id": _optional_str(row["source_window_id"]),

@@ -3,8 +3,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-from pydantic import ValidationError
+ROOT = Path(__file__).resolve().parents[1]
+BACKEND = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
+sys.path.insert(0, str(BACKEND))
 
 from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
@@ -12,17 +13,11 @@ from heatgrid_ops.approval.policy import (
     decide_action_execution,
     decide_approval,
 )
-from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from simulator.versions.v2_postgres_react_ops.backend.schemas import (  # noqa: E402
-    EvidenceCandidateCreateRequest,
-)
+from schemas import AutomationPolicy
 
 
-def policy() -> AutomationPolicySnapshot:
-    return AutomationPolicySnapshot(
+def policy() -> AutomationPolicy:
+    return AutomationPolicy(
         mode="guarded_auto",
         auto_transition_enabled=True,
         minimum_review_count=100,
@@ -33,6 +28,7 @@ def policy() -> AutomationPolicySnapshot:
         reviewed_count=150,
         approval_rate=0.98,
         eligible_for_guarded_auto=True,
+        updated_at="2026-07-10T00:00:00+00:00",
     )
 
 
@@ -143,7 +139,7 @@ def test_action_execution_enforces_call_count_and_cost_budget() -> None:
     assert over_budget.action == "deny"
 
 
-def test_external_search_execution_is_always_denied() -> None:
+def test_guarded_auto_policy_can_execute_qualified_low_risk_action() -> None:
     decision = decide_action_execution(
         policy(),
         ActionExecutionContext(
@@ -155,26 +151,4 @@ def test_external_search_execution_is_always_denied() -> None:
         ),
     )
 
-    assert decision.action == "deny"
-
-
-def test_new_evidence_candidate_rejects_web_search_inputs() -> None:
-    with pytest.raises(ValidationError):
-        EvidenceCandidateCreateRequest.model_validate(
-            {
-                "source_type": "web",
-                "title": "search result",
-                "content": "untrusted result",
-                "query": "heat exchanger fault",
-            }
-        )
-
-
-def test_new_manual_evidence_candidate_has_no_search_query_field() -> None:
-    candidate = EvidenceCandidateCreateRequest(
-        title="operator evidence",
-        content="verified operating note",
-    )
-
-    assert candidate.source_type == "manual"
-    assert "query" not in candidate.model_dump()
+    assert decision.action == "execute"

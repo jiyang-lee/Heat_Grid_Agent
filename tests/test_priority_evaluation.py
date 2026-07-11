@@ -94,7 +94,6 @@ def test_snapshot_result_uses_same_run_inference_not_persisted_priority() -> Non
     rows = build_evaluation_results(
         [
             {
-                "substation_uid": "00000000-0000-0000-0000-000000000001",
                 "manufacturer_id": "manufacturer 1",
                 "substation_id": 1,
                 "source_window_id": "00000000-0000-0000-0000-000000000001",
@@ -252,9 +251,11 @@ async def test_map_snapshot_and_alert_api_share_latest_evaluation(
 ) -> None:
     module = load_server(monkeypatch)
     async with module.engine.begin() as connection:
-        await connection.execute(
-            text("TRUNCATE TABLE agent_runs, ops_alert_queue CASCADE")
-        )
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
+        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
 
     async with AsyncClient(transport=ASGITransport(app=module.app), base_url="http://test") as client:
         first_enqueue = await client.post("/api/alerts/enqueue")

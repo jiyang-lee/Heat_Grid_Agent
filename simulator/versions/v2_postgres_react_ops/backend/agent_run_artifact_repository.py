@@ -6,8 +6,50 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from schemas import AgentRunArtifact
 
+AGENT_RUN_ARTIFACTS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS agent_run_artifacts (
+    artifact_id uuid PRIMARY KEY,
+    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
+    kind text NOT NULL,
+    name text NOT NULL,
+    uri text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+)
+"""
+
+AGENT_RUN_ACTIONS_DDL: Final = """
+CREATE TABLE IF NOT EXISTS agent_run_actions (
+    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
+    action_name text NOT NULL,
+    status text NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+    requested_by text,
+    artifact_id uuid REFERENCES agent_run_artifacts(artifact_id) ON DELETE SET NULL,
+    error text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (run_id, action_name)
+)
+"""
+
+
 async def ensure_agent_run_artifact_table(engine: AsyncEngine) -> None:
-    del engine
+    async with engine.begin() as connection:
+        await connection.execute(text(AGENT_RUN_ARTIFACTS_DDL))
+        await connection.execute(
+            text(
+                "DELETE FROM agent_run_artifacts duplicate USING agent_run_artifacts kept "
+                "WHERE duplicate.run_id = kept.run_id AND duplicate.name = kept.name "
+                "AND (duplicate.created_at, duplicate.artifact_id) > "
+                "(kept.created_at, kept.artifact_id)"
+            )
+        )
+        await connection.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS agent_run_artifact_run_name_idx "
+                "ON agent_run_artifacts(run_id, name)"
+            )
+        )
+        await connection.execute(text(AGENT_RUN_ACTIONS_DDL))
 
 
 async def list_agent_run_artifacts(
@@ -30,23 +72,14 @@ async def get_agent_run_artifact(
     *,
     run_id: str,
     name: str,
-    source_output_hash: str | None = None,
 ) -> AgentRunArtifact | None:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri, created_at "
+        "SELECT artifact_id, run_id, kind, name, uri "
         "FROM agent_run_artifacts WHERE run_id = :run_id AND name = :name "
-        "AND source_output_hash IS NOT DISTINCT FROM :source_output_hash "
         "ORDER BY created_at LIMIT 1"
     )
     async with engine.connect() as connection:
-        result = await connection.execute(
-            query,
-            {
-                "run_id": run_id,
-                "name": name,
-                "source_output_hash": source_output_hash,
-            },
-        )
+        result = await connection.execute(query, {"run_id": run_id, "name": name})
     row = result.mappings().one_or_none()
     return None if row is None else _artifact_from_row(row)
 
@@ -58,7 +91,7 @@ async def get_agent_run_artifact_by_id(
     artifact_id: str,
 ) -> AgentRunArtifact | None:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri, created_at "
+        "SELECT artifact_id, run_id, kind, name, uri "
         "FROM agent_run_artifacts "
         "WHERE run_id = :run_id AND artifact_id = :artifact_id"
     )
@@ -69,23 +102,6 @@ async def get_agent_run_artifact_by_id(
         )
     row = result.mappings().one_or_none()
     return None if row is None else _artifact_from_row(row)
-
-
-async def get_effective_output_review_id(
-    engine: AsyncEngine,
-    run_id: str,
-) -> str | None:
-    async with engine.connect() as connection:
-        result = await connection.execute(
-            text(
-                "SELECT review_id FROM agent_run_reviews "
-                "WHERE run_id = :run_id AND correction IS NOT NULL "
-                "ORDER BY review_version DESC LIMIT 1"
-            ),
-            {"run_id": run_id},
-        )
-    review_id = result.scalar_one_or_none()
-    return None if review_id is None else str(review_id)
 
 
 async def claim_agent_run_action(
@@ -169,14 +185,11 @@ async def insert_agent_run_artifact(
 ) -> AgentRunArtifact:
     artifact_id = artifact_id or str(uuid4())
     query = text(
-        "INSERT INTO agent_run_artifacts ("
-        "artifact_id, run_id, kind, name, uri, source_output_hash, source_review_id, "
-        "contract_version) VALUES ("
-        ":artifact_id, :run_id, :kind, :name, :uri, :source_output_hash, "
-        ":source_review_id, :contract_version) "
-        "ON CONFLICT (run_id, name, source_output_hash) DO UPDATE SET "
+        "INSERT INTO agent_run_artifacts (artifact_id, run_id, kind, name, uri) "
+        "VALUES (:artifact_id, :run_id, :kind, :name, :uri) "
+        "ON CONFLICT (run_id, name) DO UPDATE SET "
         "kind = EXCLUDED.kind, uri = EXCLUDED.uri "
-        "RETURNING artifact_id, run_id, kind, name, uri, created_at"
+        "RETURNING artifact_id, run_id, kind, name, uri"
     )
     async with engine.begin() as connection:
         result = await connection.execute(

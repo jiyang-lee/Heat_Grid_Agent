@@ -31,14 +31,16 @@ from heatgrid_ops.agent.models import (
 from heatgrid_ops.agent.usage import usage_with_totals as core_usage_with_totals
 from heatgrid_ops.db.migrations import verify_database_contract
 from heatgrid_rag.search import RagSearcher
-from heatgrid_ops.priority.evaluation import ensure_latest_priority_evaluation
+from heatgrid_ops.priority.evaluation import (
+    ensure_latest_priority_evaluation,
+    ensure_priority_evaluation_tables,
+)
 
-from agent_review_routes import make_agent_review_router
-from review_chat_routes import make_review_chat_router
-from agent_quality_routes import make_agent_quality_router
+from agent_run_repository import ensure_agent_run_tables
+from agent_loop_repository import ensure_agent_loop_iteration_table
 from agent_run_routes import make_agent_run_router
 from automation_routes import make_automation_router
-from alert_repository import get_alert
+from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
 from repository import (
     check_database,
@@ -49,7 +51,8 @@ from repository import (
 )
 from priority_evaluation_routes import make_priority_evaluation_router
 from retrain_routes import make_retrain_router
-from replay_routes import make_replay_router
+from retrain_repository import ensure_retrain_tables
+from review_repository import ensure_review_tables
 from schemas import (
     ApiMetadata,
     CardSummary,
@@ -86,60 +89,22 @@ def _psycopg_database_url(database_url: str) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await verify_database_contract(settings.database_url)
+    await ensure_priority_evaluation_tables(engine)
     await ensure_latest_priority_evaluation(
         engine,
         stale_after_hours=settings.priority_stale_after_hours,
         model_version=settings.priority_model_version,
         expected_substations=settings.priority_expected_substations,
     )
-    checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] = AsyncConnectionPool(
-        conninfo=_psycopg_database_url(settings.database_url),
-        min_size=1,
-        max_size=10,
-        open=False,
-        kwargs={
-            "autocommit": True,
-            "prepare_threshold": 0,
-            "row_factory": dict_row,
-        },
-    )
-    await checkpoint_pool.open()
-    try:
-        checkpointer = AsyncPostgresSaver(checkpoint_pool)
-        graph_v1 = build_agent_graph(
-            create_agent_graph_context(engine, agent_runtime),
-            checkpointer=checkpointer,
-        )
-        graph_v2 = build_agent_graph_v2(
-            graph_v1,
-            engine,
-            openai_model=settings.openai_model,
-            rag_quality_enabled=settings.rag_quality_enabled,
-            evidence_threshold=settings.agent_evidence_threshold,
-            model_score_tolerance=settings.model_score_tolerance,
-            checkpointer=checkpointer,
-            runtime=agent_runtime,
-        )
-        agent_resources.graph_v1 = graph_v1
-        agent_resources.graph_v2 = graph_v2
-        agent_resources.checkpoint_pool = checkpoint_pool
-        await resume_reclaimable_agent_runs(
-            engine,
-            runtime=agent_runtime,
-            graph=graph_v1,
-            v2_graph=graph_v2,
-        )
-        yield
-    finally:
-        agent_resources.graph_v1 = None
-        agent_resources.graph_v2 = None
-        agent_resources.checkpoint_pool = None
-        await checkpoint_pool.close()
+    await ensure_alert_queue(engine)
+    await ensure_agent_run_tables(engine)
+    await ensure_agent_loop_iteration_table(engine)
+    await ensure_review_tables(engine)
+    await ensure_retrain_tables(engine)
+    yield
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
-install_agent_error_handlers(app)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))
@@ -159,8 +124,6 @@ async def index() -> ApiMetadata:
             "/api/evidence-candidates",
             "/api/retrain-jobs",
             "/api/model-candidates",
-            "/api/replay-datasets",
-            "/api/replay-runs",
         ],
     )
 
@@ -291,46 +254,10 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
     return f"data: {to_json({'type': kind, 'message': message, 'payload': payload})}\n\n"
 
 
-app.include_router(
-    make_agent_run_router(
-        engine,
-        runtime=agent_runtime,
-        graph_provider=_agent_graph,
-    )
-)
-app.include_router(
-    make_agent_review_router(
-        engine,
-        settings,
-        agent_runtime,
-        _agent_graph,
-    )
-)
-app.include_router(
-    make_review_chat_router(
-        engine,
-        settings,
-        agent_runtime,
-        _agent_graph,
-    )
-)
-app.include_router(make_agent_quality_router(engine))
+app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
-app.include_router(
-    make_replay_router(
-        engine,
-        storage_root=settings.replay_storage_root,
-        replay_enabled=settings.replay_enabled,
-        replay_import_enabled=settings.replay_import_enabled,
-    )
-)
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app,
-        host=settings.api_host,
-        port=settings.api_port,
-        loop="selector_loop:selector_event_loop_factory",
-    )
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port)
