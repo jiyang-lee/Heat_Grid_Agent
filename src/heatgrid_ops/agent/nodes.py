@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal, Protocol
 
 import orjson
@@ -53,6 +54,9 @@ from schemas import (
     SimulationResponse,
 )
 from usage import usage_with_totals
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AgentNodeContext(Protocol):
@@ -588,7 +592,13 @@ async def generate_operational_answer(
             revision_feedback=state.get("revision_feedback"),
             usage=usage,
         )
-    except (MissingApiKeyError, OpenAIError, ValidationError):
+    except (MissingApiKeyError, OpenAIError, ValidationError) as exc:
+        LOGGER.warning(
+            "Operational LLM fallback for card_id=%s: %s: %s",
+            state["card_id"],
+            type(exc).__name__,
+            exc,
+        )
         return {"token_usage": usage, "agent_mode": "fallback"}
     return {"ops_output": output, "token_usage": usage, "agent_mode": "llm"}
 

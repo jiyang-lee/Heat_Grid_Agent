@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+import logging
 from typing import Literal
 
 from langchain.agents import create_agent
@@ -32,6 +33,9 @@ from heatgrid_ops.agent.tools import make_operational_tools
 from heatgrid_rag.search import RagSearcher
 from schemas import JsonValue, ModelVerificationResult, OpsAgentOutput, TokenUsage
 from settings import SYSTEM_PROMPT, Settings
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,7 +263,19 @@ class AgentRuntime:
                         if isinstance(graph_output, dict):
                             result = graph_output.get("structured_response")
                             output = OpsAgentOutput.model_validate(result)
-        except (OpenAIError, ValidationError, KeyError, AttributeError, NotImplementedError):
+        except (
+            OpenAIError,
+            ValidationError,
+            KeyError,
+            AttributeError,
+            NotImplementedError,
+        ) as exc:
+            LOGGER.warning(
+                "Streaming LLM fallback for card_id=%s: %s: %s",
+                card_id,
+                type(exc).__name__,
+                exc,
+            )
             yield "fallback", "LLM 실행 실패, 로컬 fallback 답변 생성", None, usage, output
 
 
@@ -281,6 +297,12 @@ async def generate_note(
             card_id,
             usage=usage,
         )
-    except (MissingApiKeyError, OpenAIError, ValidationError):
+    except (MissingApiKeyError, OpenAIError, ValidationError) as exc:
+        LOGGER.warning(
+            "LLM fallback for card_id=%s: %s: %s",
+            card_id,
+            type(exc).__name__,
+            exc,
+        )
         return fallback_note(source_input, external_context), "fallback", usage
     return output, "llm", usage

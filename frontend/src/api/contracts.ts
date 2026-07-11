@@ -258,6 +258,15 @@ export interface AgentLoopIteration {
   created_at: string
 }
 
+/** POST /simulate/{card_id} 응답 */
+export interface SimulationResponse {
+  card_id: string
+  input_source: 'postgresql'
+  agent_mode: AgentMode
+  ops_output: OpsAgentOutput
+  token_usage: TokenUsage
+}
+
 export interface OpsAgentEvidenceItem {
   label: string
   content: string

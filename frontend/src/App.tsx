@@ -91,7 +91,6 @@ function App() {
           <div className={`stage ${city ? '' : 'room'}`.trim()}>
             {city ? (
               <MapView
-                selectedId={selBld}
                 onSelectComplex={selectBuilding}
                 theme={theme}
                 results={priorityResults}

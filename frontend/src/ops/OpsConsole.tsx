@@ -6,19 +6,12 @@ import { useAgentRun, useAgentRunResult, useAlerts, useCreateAgentRun, useGenera
 import AlertFeed from './AlertFeed'
 import AlertDetail from './AlertDetail'
 import AgentStats from './AgentStats'
-import AutomationPolicyPanel from './AutomationPolicyPanel'
-import EvidenceReview from './EvidenceReview'
-import ModelLifecycle from './ModelLifecycle'
-import ReviewQueue from './ReviewQueue'
-
-type Workspace = 'alerts' | 'reviews' | 'evidence' | 'models' | 'policy'
 
 interface Props {
   initialAlertId?: string | null
 }
 
 export default function OpsConsole({ initialAlertId = null }: Props) {
-  const [workspace, setWorkspace] = useState<Workspace>('alerts')
   const [status, setStatus] = useState<AlertStatus | 'all'>('open')
   const [priority, setPriority] = useState<PriorityLevel | 'all'>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -29,7 +22,6 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
 
   useEffect(() => {
     if (!initialAlertId) return
-    setWorkspace('alerts')
     setStatus('all')
     setPriority('all')
     setSelectedId(initialAlertId)
@@ -101,18 +93,7 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
 
   return (
     <div className="ops-console">
-      <nav className="ops-workspaces" aria-label="운영 자동화 작업면">
-        {([
-          ['alerts', '알림 실행'],
-          ['reviews', '검수함'],
-          ['evidence', '근거 승인'],
-          ['models', '재학습·모델'],
-          ['policy', '자동화 정책'],
-        ] as const).map(([value, label]) => (
-          <button key={value} type="button" className={`workspace-b ${workspace === value ? 'on' : ''}`} onClick={() => setWorkspace(value)}>{label}</button>
-        ))}
-      </nav>
-      {workspace === 'alerts' && <div className="wrap">
+      <div className="wrap">
       <section className="panel">
         <div className="panel-head">
           <span>알림 큐 · ALERT QUEUE</span>
@@ -180,11 +161,7 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
           />
         </aside>
       </div>
-      </div>}
-      {workspace === 'reviews' && <ReviewQueue />}
-      {workspace === 'evidence' && <EvidenceReview />}
-      {workspace === 'models' && <ModelLifecycle />}
-      {workspace === 'policy' && <AutomationPolicyPanel />}
+      </div>
     </div>
   )
 }

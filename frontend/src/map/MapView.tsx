@@ -1,7 +1,7 @@
 /**
  * MapLibre GL JS 지도: 다크/라이트 타일 + "내 단지만" 3D 돌출.
  *
- * - 배경: CARTO 또는 VITE_MAP_STYLE_URL 기반 스타일. 테마에 따라 전환.
+ * - 배경: VITE_MAP_STYLE_URL 기반 MapTiler 스타일. 테마에 따라 전환.
  * - 내 31개 단지: complexFootprints를 fill-extrusion으로 3D 돌출
  * - 최신 Priority 평가 상태 → fill-extrusion-color 데이터 바인딩
  * - 단지 클릭 → onSelectComplex(id), 선택 단지는 시안 외곽선 강조
@@ -12,10 +12,9 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { PriorityEvaluationResult } from '../api/contracts'
 import { mapStyleFor } from './mapConfig'
-import { buildComplexFootprints, buildComplexMarkers, SEJONG_CENTER } from './footprints'
+import { buildComplexFootprints, SEJONG_CENTER } from './footprints'
 
 interface Props {
-  selectedId: number | null
   onSelectComplex: (id: number) => void
   theme: 'dark' | 'light'
   results: PriorityEvaluationResult[]
@@ -36,7 +35,6 @@ function whenStyleReady(map: maplibregl.Map, cb: () => void) {
 function addComplexLayers(
   map: maplibregl.Map,
   results: PriorityEvaluationResult[],
-  selectedId: number | null,
 ) {
   // 베이스맵 자체 3D 건물(예: Streets 'Building 3D') 제거.
   // MapLibre는 모든 fill-extrusion을 첫 돌출 레이어 위치에서 한 패스로 그려서,
@@ -48,13 +46,9 @@ function addComplexLayers(
   }
 
   const footprints = buildComplexFootprints(results)
-  const markers = buildComplexMarkers(results)
   const footprintSource = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
-  const markerSource = map.getSource('complex-markers') as maplibregl.GeoJSONSource | undefined
   if (footprintSource) footprintSource.setData(footprints)
   else map.addSource('complexes', { type: 'geojson', data: footprints })
-  if (markerSource) markerSource.setData(markers)
-  else map.addSource('complex-markers', { type: 'geojson', data: markers })
 
   if (!map.getLayer('complexes-3d')) {
     map.addLayer({
@@ -78,43 +72,9 @@ function addComplexLayers(
       },
     })
   }
-  if (!map.getLayer('complexes-sel')) {
-    map.addLayer({
-      id: 'complexes-sel',
-      type: 'line',
-      source: 'complexes',
-      filter: ['==', ['get', 'id'], selectedId ?? -1],
-      paint: { 'line-color': '#00e5ff', 'line-width': 3, 'line-blur': 1 },
-    })
-  } else {
-    map.setFilter('complexes-sel', ['==', ['get', 'id'], selectedId ?? -1])
-  }
-
-  if (!map.getLayer('complex-markers')) {
-    map.addLayer({
-      id: 'complex-markers',
-      type: 'circle',
-      source: 'complex-markers',
-      paint: {
-        'circle-radius': 7,
-        'circle-color': [
-          'match', ['get', 'status'],
-          'urgent', '#ff1744',
-          'high', '#ff8f00',
-          'medium', '#ffd740',
-          'low', '#00c853',
-          'stale', '#64748b',
-          '#334155',
-        ],
-        'circle-stroke-color': '#e2e8f0',
-        'circle-stroke-width': 1.5,
-        'circle-opacity': 0.95,
-      },
-    })
-  }
 }
 
-export default function MapView({ selectedId, onSelectComplex, theme, results, loading, error }: Props) {
+export default function MapView({ onSelectComplex, theme, results, loading, error }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   // 최신 콜백을 ref로 유지(맵 초기화는 1회라 클로저 고정 방지)
@@ -122,8 +82,6 @@ export default function MapView({ selectedId, onSelectComplex, theme, results, l
   onSelectRef.current = onSelectComplex
   const resultsRef = useRef(results)
   resultsRef.current = results
-  const selIdRef = useRef(selectedId)
-  selIdRef.current = selectedId
   const themeRef = useRef(theme) // 실제 테마 변경 감지용
 
   useEffect(() => {
@@ -144,7 +102,7 @@ export default function MapView({ selectedId, onSelectComplex, theme, results, l
     map.keyboard.enable()
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), 'top-right')
 
-    map.on('load', () => addComplexLayers(map, resultsRef.current, selIdRef.current))
+    map.on('load', () => addComplexLayers(map, resultsRef.current))
 
     const selectFeature = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0]
@@ -153,17 +111,10 @@ export default function MapView({ selectedId, onSelectComplex, theme, results, l
       if (Number.isInteger(id)) onSelectRef.current(id)
     }
     map.on('click', 'complexes-3d', selectFeature)
-    map.on('click', 'complex-markers', selectFeature)
     map.on('mouseenter', 'complexes-3d', () => {
       map.getCanvas().style.cursor = 'pointer'
     })
     map.on('mouseleave', 'complexes-3d', () => {
-      map.getCanvas().style.cursor = ''
-    })
-    map.on('mouseenter', 'complex-markers', () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', 'complex-markers', () => {
       map.getCanvas().style.cursor = ''
     })
 
@@ -180,29 +131,14 @@ export default function MapView({ selectedId, onSelectComplex, theme, results, l
     if (themeRef.current === theme) return // 초기 마운트/동일 테마는 무시
     themeRef.current = theme
     map.setStyle(mapStyleFor(theme))
-    whenStyleReady(map, () => addComplexLayers(map, resultsRef.current, selIdRef.current))
+    whenStyleReady(map, () => addComplexLayers(map, resultsRef.current))
   }, [theme])
-
-  // 선택 변경 시 외곽선 갱신
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    const apply = () => {
-      if (map.getLayer('complexes-sel')) {
-        map.setFilter('complexes-sel', ['==', ['get', 'id'], selectedId ?? -1])
-      }
-    }
-    if (map.isStyleLoaded()) apply()
-    else map.once('load', apply)
-  }, [selectedId])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
     const footprintSource = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
-    const markerSource = map.getSource('complex-markers') as maplibregl.GeoJSONSource | undefined
     footprintSource?.setData(buildComplexFootprints(results))
-    markerSource?.setData(buildComplexMarkers(results))
   }, [results])
 
   return <div className="map-runtime">

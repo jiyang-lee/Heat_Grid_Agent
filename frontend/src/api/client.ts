@@ -16,6 +16,7 @@ import type {
   AgentRunCreateRequest,
   AgentRunResponse,
   OpsAgentResultV4,
+  SimulationResponse,
   AlertAckRequest,
   AlertAckResponse,
   AlertEnqueueResponse,
@@ -120,6 +121,21 @@ export const healthApi = {
   get: () => rawFetch<HealthStatus>('/health'),
 }
 
+/**
+ * GET /cards — 계약(/api) 밖의 읽기 전용 편의 엔드포인트.
+ * 알림(AlertSummary)에는 건물명이 없어서, card_id → substation_id 매핑을 얻어
+ * 프론트 로컬 단지 데이터(complexes.ts)로 건물명을 붙이는 enrichment 용도로만 쓴다.
+ * 계약·백엔드는 무변경이며, 이 엔드포인트가 없거나 실패하면 이름 없이 degrade한다.
+ */
+export interface CardRef {
+  card_id: string
+  substation_id: number | null
+}
+
+export const cardsApi = {
+  list: () => rawFetch<CardRef[]>('/cards'),
+}
+
 export const priorityEvaluationsApi = {
   latest: () => apiFetch<PriorityEvaluationSnapshot>('/priority-evaluations/latest'),
   get: (evaluationRunId: string) =>
@@ -135,6 +151,13 @@ export const priorityEvaluationsApi = {
     apiFetch<PrioritySubstationSnapshot>(
       `/priority-evaluations/latest/substations/${substationId}${toQueryString({ manufacturer_id: manufacturerId })}`,
     ),
+}
+
+export const simulationsApi = {
+  run: (cardId: string) =>
+    rawFetch<SimulationResponse>(`/simulate/${encodeURIComponent(cardId)}`, {
+      method: 'POST',
+    }),
 }
 
 export const agentRunsApi = {

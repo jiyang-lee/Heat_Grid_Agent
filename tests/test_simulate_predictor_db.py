@@ -90,7 +90,7 @@ def test_simulate_predictor_db_inserts_model_run_and_outputs() -> None:
     asyncio.run(_check())
 
 
-def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
+def test_simulate_predictor_db_enqueues_current_snapshot_alerts_once() -> None:
     model_run_id = uuid.uuid4()
 
     async def _reset_queue() -> None:
@@ -173,6 +173,8 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
                 "AND column_name = 'priority_score'"
             )
             assert actual == expected
+            assert first_summary["alerts"]["open_count"] == expected
+            assert first_summary["alerts"]["total_count"] == expected
             assert non_priority == 0
             assert duplicate_cards == 0
             assert score_type == "double precision"

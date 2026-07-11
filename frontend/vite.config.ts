@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
         },
         // 서버 루트 엔드포인트(/api prefix 없음)
         '/health': { target: backendTarget, changeOrigin: true },
+        // 계약 밖 읽기전용. 알림에 건물명을 붙이기 위한 card_id→substation_id 매핑용.
+        '/cards': { target: backendTarget, changeOrigin: true },
+        // 알림이 없는 정상 단지도 작업 지시서를 생성할 수 있도록 카드 시뮬레이션을 전달한다.
+        '/simulate': { target: backendTarget, changeOrigin: true },
       },
     },
   }
