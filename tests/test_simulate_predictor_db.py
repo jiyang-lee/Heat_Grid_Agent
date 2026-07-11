@@ -90,12 +90,13 @@ def test_simulate_predictor_db_inserts_model_run_and_outputs() -> None:
     asyncio.run(_check())
 
 
-def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
+def test_simulate_predictor_db_enqueues_current_snapshot_alerts_once() -> None:
     model_run_id = uuid.uuid4()
 
     async def _reset_queue() -> None:
         conn = await asyncpg.connect(_db_url())
         try:
+            await conn.execute("DROP TABLE IF EXISTS agent_run_actions")
             await conn.execute("DROP TABLE IF EXISTS agent_run_artifacts")
             await conn.execute("DROP TABLE IF EXISTS agent_run_events")
             await conn.execute("DROP TABLE IF EXISTS agent_runs")
@@ -140,10 +141,17 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
         try:
             expected = await conn.fetchval(
                 "SELECT count(*) "
-                "FROM priority_decisions "
-                "WHERE lower(priority_level) IN ('urgent', 'high')"
+                "FROM priority_evaluation_results result "
+                "JOIN priority_evaluation_runs evaluation USING (evaluation_run_id) "
+                "WHERE evaluation.is_active AND result.freshness_status = 'fresh' "
+                "AND result.rank_included "
+                "AND lower(result.priority_level) IN ('urgent', 'high')"
             )
-            actual = await conn.fetchval("SELECT count(*) FROM ops_alert_queue")
+            actual = await conn.fetchval(
+                "SELECT count(*) FROM ops_alert_queue queue "
+                "JOIN priority_evaluation_runs evaluation USING (evaluation_run_id) "
+                "WHERE evaluation.is_active"
+            )
             non_priority = await conn.fetchval(
                 "SELECT count(*) "
                 "FROM ops_alert_queue "
@@ -152,7 +160,9 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
             duplicate_cards = await conn.fetchval(
                 "SELECT count(*) "
                 "FROM ("
-                "SELECT card_id FROM ops_alert_queue GROUP BY card_id HAVING count(*) > 1"
+                "SELECT evaluation_run_id, manufacturer_id, substation_id "
+                "FROM ops_alert_queue GROUP BY evaluation_run_id, manufacturer_id, substation_id "
+                "HAVING count(*) > 1"
                 ") duplicated"
             )
             score_type = await conn.fetchval(
@@ -163,10 +173,13 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
                 "AND column_name = 'priority_score'"
             )
             assert actual == expected
+            assert first_summary["alerts"]["open_count"] == expected
+            assert first_summary["alerts"]["total_count"] == expected
             assert non_priority == 0
             assert duplicate_cards == 0
             assert score_type == "double precision"
             assert first_summary["alerts"]["queued_count"] == expected
+            assert first_summary["alerts"]["evaluation_run_id"]
             assert first_summary["alerts"]["existing_count"] == 0
             assert second_summary["alerts"]["queued_count"] == 0
             assert second_summary["alerts"]["existing_count"] == expected

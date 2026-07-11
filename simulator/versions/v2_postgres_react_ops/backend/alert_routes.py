@@ -23,9 +23,14 @@ from schemas import (
     AlertSummary,
     JsonValue,
 )
+from settings import Settings
 
 
-def make_alert_router(engine: AsyncEngine, prefix: str = "") -> APIRouter:
+def make_alert_router(
+    engine: AsyncEngine,
+    settings: Settings,
+    prefix: str = "",
+) -> APIRouter:
     include_in_schema = prefix == "/api"
     router = APIRouter(prefix=prefix)
 
@@ -35,7 +40,12 @@ def make_alert_router(engine: AsyncEngine, prefix: str = "") -> APIRouter:
         include_in_schema=include_in_schema,
     )
     async def alerts_enqueue() -> AlertEnqueueResponse:
-        result = await enqueue_priority_alerts(engine)
+        result = await enqueue_priority_alerts(
+            engine,
+            stale_after_hours=settings.priority_stale_after_hours,
+            model_version=settings.priority_model_version,
+            expected_substations=settings.priority_expected_substations,
+        )
         return AlertEnqueueResponse.model_validate(result)
 
     @router.get(

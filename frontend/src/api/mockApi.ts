@@ -5,6 +5,8 @@
 
 import type {
   AgentRunArtifact,
+  AgentReportCreateRequest,
+  AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunResponse,
   AlertAckRequest,
@@ -13,12 +15,103 @@ import type {
   AlertSummary,
   HealthStatus,
   OpsAgentResultV4,
+  AutomationPolicy,
+  AutomationPolicyUpdateRequest,
+  EvidenceCandidate,
+  EvidenceCandidateReviewRequest,
+  HumanReviewTask,
+  ModelCandidate,
+  ModelDeployment,
+  ModelPromotionRequest,
+  RetrainJob,
+  RetrainJobActionRequest,
+  RetrainJobCreateRequest,
+  ReviewSubmitResponse,
+  ReviewTaskSubmitRequest,
+  TrainingFeedback,
+  PriorityEvaluationCreateRequest,
+  PriorityEvaluationResult,
+  PriorityEvaluationSnapshot,
+  PrioritySubstationSnapshot,
 } from './contracts'
 import { ApiError } from './client'
 import { buildTokenUsage, complexForAlert, store } from './mockData'
 import { buildMockOpsOutput } from './workOrder'
+import { complexes } from '../data/complexes'
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+const mockReviewTasks: HumanReviewTask[] = []
+const mockEvidenceCandidates: EvidenceCandidate[] = []
+const mockTrainingFeedback: TrainingFeedback[] = []
+const mockRetrainJobs: RetrainJob[] = []
+const mockModelCandidates: ModelCandidate[] = []
+let mockActiveDeployment: ModelDeployment | null = null
+const mockAsOfTime = '2026-07-09T00:00:00.000Z'
+const mockEvaluationRunId = 'evaluation-mock-latest'
+const mockPriorityResults: PriorityEvaluationResult[] = complexes.map((complex) => {
+  const score = Number((100 - complex.id * 1.5).toFixed(3))
+  const level = complex.id <= 6 ? 'urgent' : complex.id <= 15 ? 'high' : complex.id <= 23 ? 'medium' : 'low'
+  return {
+    evaluation_result_id: `evaluation-result-${complex.id}`,
+    evaluation_run_id: mockEvaluationRunId,
+    manufacturer_id: 'manufacturer 1',
+    substation_id: complex.id,
+    source_window_id: `window-${complex.id}`,
+    source_window_start: '2026-07-08T18:00:00.000Z',
+    source_window_end: mockAsOfTime,
+    source_card_id: `card-${String(complex.id).padStart(3, '0')}`,
+    source_priority_decision_id: `decision-${complex.id}`,
+    priority_score: score,
+    priority_rank: complex.id,
+    rank_included: true,
+    priority_level: level,
+    risk_score: Number(Math.max(0.05, 1 - complex.id * 0.025).toFixed(3)),
+    anomaly_score: Number(Math.max(0.05, 1 - complex.id * 0.03).toFixed(3)),
+    anomaly_label: complex.id <= 8,
+    leadtime_bucket: complex.id <= 6 ? '1-3d' : '7d+',
+    leadtime_urgency_score: Number(Math.max(0.05, 1 - complex.id * 0.02).toFixed(3)),
+    leadtime_hours: complex.id <= 6 ? 72 : null,
+    freshness_status: 'fresh',
+    data_age_seconds: 0,
+    model_components: { priority_source: 'mock-m1-hybrid' },
+    created_at: mockAsOfTime,
+  }
+})
+const mockPrioritySnapshot: PriorityEvaluationSnapshot = {
+  evaluation: {
+    evaluation_run_id: mockEvaluationRunId,
+    as_of_time: mockAsOfTime,
+    stale_after_seconds: 2592000,
+    model_version: 'mock-active-priority-contract-v1',
+    status: 'completed',
+    is_active: true,
+    target_count: 31,
+    success_count: 31,
+    stale_count: 0,
+    missing_count: 0,
+    ranked_count: 31,
+    error: null,
+    created_at: mockAsOfTime,
+    completed_at: mockAsOfTime,
+  },
+  results: mockPriorityResults,
+}
+let mockPolicy: AutomationPolicy = {
+  policy_id: 'default',
+  mode: 'human_only',
+  auto_transition_enabled: false,
+  minimum_review_count: 100,
+  minimum_approval_rate: 0.95,
+  minimum_confidence: 0.9,
+  minimum_source_trust: 0.85,
+  maximum_drift_score: 0.1,
+  final_review_required: true,
+  reviewed_count: 0,
+  approval_rate: 0,
+  eligible_for_guarded_auto: false,
+  updated_by: 'system',
+  updated_at: new Date().toISOString(),
+}
 
 function transition(alertId: string, status: 'acked' | 'resolved', ackedBy: string): AlertSummary {
   const a = store.alerts.get(alertId)
@@ -56,12 +149,47 @@ export const alertsApi = {
   async enqueue(): Promise<AlertEnqueueResponse> {
     await delay(150)
     const open = [...store.alerts.values()].filter((a) => a.status === 'open').length
-    return { queued_count: 0, existing_count: store.alerts.size, open_count: open, total_count: store.alerts.size }
+    return {
+      queued_count: 0,
+      existing_count: store.alerts.size,
+      open_count: open,
+      total_count: store.alerts.size,
+      evaluation_run_id: mockEvaluationRunId,
+      as_of_time: mockAsOfTime,
+    }
+  },
+}
+
+export const priorityEvaluationsApi = {
+  async latest(): Promise<PriorityEvaluationSnapshot> {
+    await delay(100)
+    return mockPrioritySnapshot
+  },
+  async get(evaluationRunId: string): Promise<PriorityEvaluationSnapshot> {
+    if (evaluationRunId !== mockEvaluationRunId) {
+      throw new ApiError(404, `/priority-evaluations/${evaluationRunId}`, '평가 실행을 찾을 수 없습니다.')
+    }
+    return mockPrioritySnapshot
+  },
+  async create(_body: PriorityEvaluationCreateRequest = {}): Promise<PriorityEvaluationSnapshot> {
+    return mockPrioritySnapshot
+  },
+  async alerts(): Promise<PriorityEvaluationResult[]> {
+    return mockPriorityResults.filter((row) => row.priority_level === 'urgent' || row.priority_level === 'high')
+  },
+  async substation(substationId: number): Promise<PrioritySubstationSnapshot> {
+    const result = mockPriorityResults.find((row) => row.substation_id === substationId)
+    if (!result) throw new ApiError(404, `/priority-evaluations/latest/substations/${substationId}`, 'Substation을 찾을 수 없습니다.')
+    return { evaluation: mockPrioritySnapshot.evaluation, result }
   },
 }
 
 export const agentRunsApi = {
   async create(body: AgentRunCreateRequest): Promise<AgentRunResponse> {
+    const existing = [...store.runs.values()].find(
+      (run) => run.alert_id === body.alert_id && run.status !== 'failed',
+    )
+    if (existing && !body.force_new) return existing
     await delay(1100)
     const alert = store.alerts.get(body.alert_id)
     if (!alert) throw new ApiError(404, '/agent-runs', 'alert_id를 찾을 수 없습니다.')
@@ -77,9 +205,57 @@ export const agentRunsApi = {
       input_source: 'alert',
       alert_id: body.alert_id,
       card_id: alert.card_id,
+      evaluation_run_id: alert.evaluation_run_id,
+      manufacturer_id: alert.manufacturer_id,
+      substation_id: alert.substation_id,
+      parent_run_id: existing?.run_id ?? null,
+      trigger_type: body.force_new ? 'manual_rerun' : 'alert',
+      requested_by: body.requested_by ?? null,
+      trigger_reason: body.reason ?? null,
+      approved_action_task_id: null,
       agent_mode: 'llm',
       ops_output: opsOutput,
       token_usage: tokenUsage,
+      loop_summary: {
+        iterations: 2,
+        max_iterations: 4,
+        decision: 'request_human',
+        confidence: 0.82,
+        evidence_score: 0.78,
+        missing_evidence: [],
+        external_candidate_ids: [],
+        used_tools: ['get_ops_evidence', 'get_external_context'],
+        action_decisions: [],
+        model_verification: {
+          status: 'verified',
+          attempt: 1,
+          feature_count: 313,
+          feature_coverage: 1,
+          risk_score: alert.priority_score,
+          stored_risk_score: alert.priority_score,
+          risk_score_delta: 0,
+          anomaly_score: 0.7,
+          anomaly_label: false,
+          leadtime_bucket: '1-3d',
+          stored_leadtime_bucket: '1-3d',
+          priority_score: alert.priority_score,
+          stored_priority_score: alert.priority_score,
+          priority_score_delta: 0,
+          priority_level: alert.priority_level,
+          m1_specialist_priority_score: alert.priority_score,
+          component_agreement: { risk: true, anomaly: true, leadtime: true, priority: true },
+          agreement: true,
+          active_model_version: 'mock-v1',
+          evaluation_run_id: alert.evaluation_run_id,
+          manufacturer_id: alert.manufacturer_id,
+          substation_id: alert.substation_id,
+          reasons: [],
+        },
+        review_required: true,
+        review_task_id: `${runId}-review`,
+      },
+      review_status: 'pending',
+      review_task_id: `${runId}-review`,
       error: null,
     }
     store.runs.set(runId, run)
@@ -87,6 +263,23 @@ export const agentRunsApi = {
       { artifact_id: `${runId}-ev`, run_id: runId, kind: 'evidence', name: `evidence_${alert.card_id}.json`, uri: `/artifacts/${runId}/evidence.json` },
       { artifact_id: `${runId}-rp`, run_id: runId, kind: 'report', name: 'ops_action_report.md', uri: `/artifacts/${runId}/report.md` },
     ])
+    mockReviewTasks.unshift({
+      task_id: `${runId}-review`,
+      task_type: 'final_output',
+      status: 'pending',
+      risk_level: alert.priority_level === 'urgent' ? 'critical' : 'high',
+      title: `에이전트 최종 운영 결과 검수: ${alert.card_id}`,
+      run_id: runId,
+      candidate_id: null,
+      retrain_job_id: null,
+      model_candidate_id: null,
+      payload: { ops_output: opsOutput },
+      resolution: {},
+      assigned_to: null,
+      reviewed_by: null,
+      created_at: new Date().toISOString(),
+      reviewed_at: null,
+    })
     return run
   },
   async get(runId: string): Promise<AgentRunResponse> {
@@ -105,6 +298,9 @@ export const agentRunsApi = {
       schema_version: 'ops_agent_result.v4',
       run_id: r.run_id,
       card_id: r.card_id,
+      evaluation_run_id: r.evaluation_run_id,
+      manufacturer_id: r.manufacturer_id,
+      substation_id: r.substation_id,
       headline: output.summary,
       situation: output.summary,
       evidence: [
@@ -123,6 +319,199 @@ export const agentRunsApi = {
     await delay(150)
     if (!store.runs.has(runId)) throw new ApiError(404, `/agent-runs/${runId}/artifacts`, 'run_id를 찾을 수 없습니다.')
     return store.artifacts.get(runId) ?? []
+  },
+  async dailyReport(runId: string, _body: AgentReportCreateRequest): Promise<AgentRunArtifact> {
+    await delay(400)
+    if (!store.runs.has(runId)) throw new ApiError(404, `/agent-runs/${runId}`, 'run_id를 찾을 수 없습니다.')
+    const artifacts = store.artifacts.get(runId) ?? []
+    const existing = artifacts.find((item) => item.name === 'daily_report.json')
+    if (existing) return existing
+    const artifact: AgentRunArtifact = {
+      artifact_id: `${runId}-daily`,
+      run_id: runId,
+      kind: 'daily_report',
+      name: 'daily_report.json',
+      uri: `output/ops_agent/reports/${runId}/daily_report.json`,
+    }
+    store.artifacts.set(runId, [...artifacts, artifact])
+    return artifact
+  },
+  async iterations(runId: string): Promise<AgentLoopIteration[]> {
+    await delay(80)
+    const r = store.runs.get(runId)
+    if (!r) throw new ApiError(404, `/agent-runs/${runId}/iterations`, 'run_id를 찾을 수 없습니다.')
+    const summary = r.loop_summary
+    return [
+      {
+        iteration_id: 1,
+        run_id: runId,
+        iteration: 1,
+        phase: 'evidence_assessment',
+        decision: summary?.decision ?? 'finalize',
+        confidence: summary?.confidence ?? 0,
+        evidence_score: summary?.evidence_score ?? 0,
+        missing_evidence: summary?.missing_evidence ?? [],
+        model_verification: summary?.model_verification ?? null,
+        created_at: new Date().toISOString(),
+      },
+    ]
+  },
+}
+
+export const reviewTasksApi = {
+  async list(query?: { status?: string; task_type?: string }): Promise<HumanReviewTask[]> {
+    await delay(80)
+    return mockReviewTasks.filter(
+      (task) => (!query?.status || task.status === query.status) && (!query?.task_type || task.task_type === query.task_type),
+    )
+  },
+  async get(taskId: string): Promise<HumanReviewTask> {
+    const task = mockReviewTasks.find((item) => item.task_id === taskId)
+    if (!task) throw new ApiError(404, `/review-tasks/${taskId}`, 'task_id를 찾을 수 없습니다.')
+    return task
+  },
+  async submit(taskId: string, body: ReviewTaskSubmitRequest): Promise<ReviewSubmitResponse> {
+    await delay(100)
+    const task = mockReviewTasks.find((item) => item.task_id === taskId)
+    if (!task) throw new ApiError(404, `/review-tasks/${taskId}`, 'task_id를 찾을 수 없습니다.')
+    task.status = body.decision === 'approve' ? 'approved' : body.decision === 'reject' ? 'rejected' : 'corrected'
+    task.reviewed_by = body.reviewer
+    task.reviewed_at = new Date().toISOString()
+    task.resolution = body as unknown as Record<string, unknown>
+    const feedback: TrainingFeedback | null = task.task_type === 'final_output'
+      ? {
+          feedback_id: `feedback-${taskId}`,
+          task_id: taskId,
+          run_id: task.run_id,
+          card_id: null,
+          reviewer: body.reviewer,
+          decision: body.decision,
+          original_output: task.payload,
+          corrected_output: (body.corrected_output ?? {}) as Record<string, unknown>,
+          corrected_label: body.corrected_label ?? null,
+          metadata: body.metadata ?? {},
+          created_at: new Date().toISOString(),
+        }
+      : null
+    if (feedback) mockTrainingFeedback.unshift(feedback)
+    if (task.run_id) {
+      const run = store.runs.get(task.run_id)
+      if (run) {
+        run.review_status = task.status
+        if (body.corrected_output) run.ops_output = body.corrected_output
+      }
+    }
+    return {
+      task,
+      feedback,
+      automatic_retrain_job_id: null,
+      automatic_retrain_status: null,
+      resumed_agent_run_id: null,
+      resumed_agent_run_status: null,
+    }
+  },
+}
+
+export const evidenceCandidatesApi = {
+  async list(query?: { status?: string }): Promise<EvidenceCandidate[]> {
+    await delay(80)
+    return mockEvidenceCandidates.filter((item) => !query?.status || item.status === query.status)
+  },
+  async review(candidateId: string, body: EvidenceCandidateReviewRequest): Promise<EvidenceCandidate> {
+    const item = mockEvidenceCandidates.find((candidate) => candidate.candidate_id === candidateId)
+    if (!item) throw new ApiError(404, `/evidence-candidates/${candidateId}`, 'candidate_id를 찾을 수 없습니다.')
+    item.status = body.decision === 'approve' ? 'approved' : 'rejected'
+    item.reviewed_by = body.reviewer
+    item.review_reason = body.reason
+    item.reviewed_at = new Date().toISOString()
+    return item
+  },
+}
+
+export const trainingFeedbackApi = {
+  async list(): Promise<TrainingFeedback[]> {
+    return mockTrainingFeedback
+  },
+}
+
+export const automationPolicyApi = {
+  async get(): Promise<AutomationPolicy> {
+    return mockPolicy
+  },
+  async update(body: AutomationPolicyUpdateRequest): Promise<AutomationPolicy> {
+    mockPolicy = { ...mockPolicy, ...body, updated_at: new Date().toISOString() }
+    return mockPolicy
+  },
+}
+
+export const retrainJobsApi = {
+  async list(query?: { status?: string }): Promise<RetrainJob[]> {
+    return mockRetrainJobs.filter((item) => !query?.status || item.status === query.status)
+  },
+  async create(body: RetrainJobCreateRequest): Promise<RetrainJob> {
+    const now = new Date().toISOString()
+    const job: RetrainJob = {
+      job_id: `retrain-${mockRetrainJobs.length + 1}`,
+      status: 'pending_approval',
+      requested_by: body.requested_by,
+      reason: body.reason,
+      feedback_ids: body.feedback_ids,
+      dataset_snapshot: { feedback_count: mockTrainingFeedback.length },
+      execution_metadata: {},
+      approved_by: null,
+      error: null,
+      model_candidate_id: null,
+      created_at: now,
+      approved_at: null,
+      started_at: null,
+      completed_at: null,
+    }
+    mockRetrainJobs.unshift(job)
+    return job
+  },
+  async approve(jobId: string, body: RetrainJobActionRequest): Promise<RetrainJob> {
+    const job = mockRetrainJobs.find((item) => item.job_id === jobId)
+    if (!job) throw new ApiError(404, `/retrain-jobs/${jobId}`, 'job_id를 찾을 수 없습니다.')
+    job.status = 'approved'
+    job.approved_by = body.reviewer
+    job.approved_at = new Date().toISOString()
+    return job
+  },
+  async reject(jobId: string, body: RetrainJobActionRequest): Promise<RetrainJob> {
+    const job = mockRetrainJobs.find((item) => item.job_id === jobId)
+    if (!job) throw new ApiError(404, `/retrain-jobs/${jobId}`, 'job_id를 찾을 수 없습니다.')
+    job.status = 'rejected'
+    job.approved_by = body.reviewer
+    return job
+  },
+}
+
+export const modelCandidatesApi = {
+  async list(query?: { status?: string }): Promise<ModelCandidate[]> {
+    return mockModelCandidates.filter((item) => !query?.status || item.status === query.status)
+  },
+  async promote(candidateId: string, body: ModelPromotionRequest): Promise<ModelCandidate> {
+    const candidate = mockModelCandidates.find((item) => item.candidate_id === candidateId)
+    if (!candidate) throw new ApiError(404, `/model-candidates/${candidateId}`, 'candidate_id를 찾을 수 없습니다.')
+    candidate.status = body.decision === 'promote' ? 'promoted' : 'rejected'
+    candidate.promoted_by = body.reviewer
+    candidate.promotion_reason = body.reason
+    candidate.promoted_at = new Date().toISOString()
+    if (body.decision === 'promote') {
+      mockActiveDeployment = {
+        deployment_id: `deploy-${candidateId}`,
+        candidate_id: candidateId,
+        version: candidate.version,
+        artifact_uri: candidate.artifact_uri,
+        active: true,
+        promoted_by: body.reviewer,
+        created_at: new Date().toISOString(),
+      }
+    }
+    return candidate
+  },
+  async active(): Promise<ModelDeployment | null> {
+    return mockActiveDeployment
   },
 }
 

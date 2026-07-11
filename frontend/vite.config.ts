@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_BACKEND_URL || 'http://127.0.0.1:8002'
+  const backendTarget = env.VITE_BACKEND_URL || 'http://127.0.0.1:8003'
 
   return {
     plugins: [react()],
@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
         '/health': { target: backendTarget, changeOrigin: true },
         // 계약 밖 읽기전용. 알림에 건물명을 붙이기 위한 card_id→substation_id 매핑용.
         '/cards': { target: backendTarget, changeOrigin: true },
+        // 알림이 없는 정상 단지도 작업 지시서를 생성할 수 있도록 카드 시뮬레이션을 전달한다.
+        '/simulate': { target: backendTarget, changeOrigin: true },
       },
     },
   }

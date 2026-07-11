@@ -14,9 +14,15 @@ from heatgrid_ops.agent.services import (
     to_json,
 )
 from heatgrid_rag.search import RagSearcher
+from heatgrid_ops.priority.evaluation import (
+    ensure_latest_priority_evaluation,
+    ensure_priority_evaluation_tables,
+)
 
 from agent_run_repository import ensure_agent_run_tables
+from agent_loop_repository import ensure_agent_loop_iteration_table
 from agent_run_routes import make_agent_run_router
+from automation_routes import make_automation_router
 from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
 from repository import (
@@ -26,6 +32,10 @@ from repository import (
     list_cards,
     make_engine,
 )
+from priority_evaluation_routes import make_priority_evaluation_router
+from retrain_routes import make_retrain_router
+from retrain_repository import ensure_retrain_tables
+from review_repository import ensure_review_tables
 from schemas import (
     ApiMetadata,
     CardSummary,
@@ -45,14 +55,25 @@ agent_runtime = AgentRuntime(settings=settings, rag_searcher=rag_searcher)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await ensure_priority_evaluation_tables(engine)
+    await ensure_latest_priority_evaluation(
+        engine,
+        stale_after_hours=settings.priority_stale_after_hours,
+        model_version=settings.priority_model_version,
+        expected_substations=settings.priority_expected_substations,
+    )
     await ensure_alert_queue(engine)
     await ensure_agent_run_tables(engine)
+    await ensure_agent_loop_iteration_table(engine)
+    await ensure_review_tables(engine)
+    await ensure_retrain_tables(engine)
     yield
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
-app.include_router(make_alert_router(engine))
-app.include_router(make_alert_router(engine, prefix="/api"))
+app.include_router(make_alert_router(engine, settings))
+app.include_router(make_alert_router(engine, settings, prefix="/api"))
+app.include_router(make_priority_evaluation_router(engine, settings))
 
 
 @app.get("/", include_in_schema=False)
@@ -61,7 +82,15 @@ async def index() -> ApiMetadata:
         service="HeatGrid V2 API",
         health="/health",
         docs="/docs",
-        apis=["/api/alerts", "/api/agent-runs"],
+        apis=[
+            "/api/alerts",
+            "/api/priority-evaluations/latest",
+            "/api/agent-runs",
+            "/api/review-tasks",
+            "/api/evidence-candidates",
+            "/api/retrain-jobs",
+            "/api/model-candidates",
+        ],
     )
 
 
@@ -191,8 +220,10 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
     return f"data: {to_json({'type': kind, 'message': message, 'payload': payload})}\n\n"
 
 
-app.include_router(make_agent_run_router(engine))
+app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
+app.include_router(make_automation_router(engine, settings))
+app.include_router(make_retrain_router(engine))
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port)

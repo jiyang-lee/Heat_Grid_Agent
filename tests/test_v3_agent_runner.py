@@ -1,3 +1,4 @@
+import asyncio
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -30,10 +31,24 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
         await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
+
+
+async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
+    for _ in range(200):
+        response = await client.get(f"/api/agent-runs/{run_id}")
+        payload = response.json()
+        if payload.get("status") in {"completed", "failed"}:
+            return payload
+        await asyncio.sleep(0.025)
+    raise AssertionError(f"agent run {run_id} did not finish")
 
 
 @pytest.mark.anyio
@@ -100,6 +115,7 @@ async def test_agent_runner_keeps_completed_run_when_report_generation_fails(
             json={"alert_id": alert["alert_id"]},
         )
         run_id = created.json()["run_id"]
+        completed = await wait_for_agent_run(client, run_id)
         artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
 
     async with module.engine.connect() as connection:
@@ -113,9 +129,11 @@ async def test_agent_runner_keeps_completed_run_when_report_generation_fails(
     event_types = [str(row["event_type"]) for row in result.mappings().all()]
 
     assert created.status_code == 200
-    assert created.json()["status"] == "completed"
-    assert created.json()["agent_mode"] == "fallback"
+    assert created.json()["status"] == "queued"
+    assert completed["status"] == "completed"
+    assert completed["agent_mode"] == "fallback"
     assert artifacts.status_code == 200
     assert artifacts.json() == []
     assert "run_completed" in event_types
-    assert event_types[-1] == "report_failed"
+    assert "report_failed" in event_types
+    assert event_types[-1] == "run_completed"

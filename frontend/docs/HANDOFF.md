@@ -2,6 +2,8 @@
 
 대상: 다음 작업자. 브랜치 `example/HG_f_b_1` → `develop2` PR과 함께 전달.
 
+> **develop2-loop 통합 메모:** 아래 내용은 프론트 브랜치가 병합되기 전 작성된 기록이다. 현재 통합본은 Priority 평가 스냅샷을 지도·목록·알림·에이전트의 정본으로 유지한다. 충돌 15개는 루프 구현을 기준으로 해결했고, 비스트리밍 LLM 토큰 기록, 기계실 배치, LAN 바인딩과 Vercel SPA 설정을 선별 반영했다. 알림 단지명은 `AlertSummary.substation_id`로 해석하므로 `/cards`, 알림 기반 `ModelProvider`, 관리비 fallback은 사용하지 않는다. 로컬 백엔드 기본 포트는 `8003`이다.
+
 ---
 
 ## 0. 병합 상태 (먼저 읽기)

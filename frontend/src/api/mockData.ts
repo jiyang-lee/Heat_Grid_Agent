@@ -15,11 +15,10 @@ import type {
   TokenUsage,
 } from './contracts'
 import { complexes, type Complex } from '../data/complexes'
-import { complexById, overall } from '../domain/model'
+import { complexById } from '../domain/model'
 
-const priced = complexes.filter((c) => overall(c.id) !== 'normal')
-const unitMax = Math.max(...complexes.map((c) => c.unit))
-const unitMin = Math.min(...complexes.map((c) => c.unit))
+const priorityComplexes = complexes.filter((c) => c.id <= 15)
+const MOCK_EVALUATION_RUN_ID = 'evaluation-mock-latest'
 const BASE_MS = Date.parse('2026-07-09T09:00:00+09:00')
 
 const iso = (offsetMin: number): string => new Date(BASE_MS - offsetMin * 60000).toISOString()
@@ -35,17 +34,23 @@ interface Store {
 function makeStore(): Store {
   const alerts = new Map<string, AlertSummary>()
   const alertComplex = new Map<string, number>()
-  priced
+  priorityComplexes
     .slice()
-    .sort((a, b) => b.unit - a.unit)
+    .sort((a, b) => a.id - b.id)
     .forEach((c, i) => {
       const alertId = `alert-${String(c.id).padStart(3, '0')}`
       const cardId = `card-${String(c.id).padStart(3, '0')}`
-      const level: PriorityLevel = overall(c.id) === 'urgent' ? 'urgent' : 'high'
-      const score = Number(((c.unit - unitMin) / (unitMax - unitMin || 1)).toFixed(3))
+      const level: PriorityLevel = c.id <= 6 ? 'urgent' : 'high'
+      const score = Number((100 - c.id * 1.5).toFixed(3))
       alerts.set(alertId, {
         alert_id: alertId,
         card_id: cardId,
+        evaluation_run_id: MOCK_EVALUATION_RUN_ID,
+        as_of_time: new Date(BASE_MS).toISOString(),
+        manufacturer_id: 'manufacturer 1',
+        substation_id: c.id,
+        priority_rank: c.id,
+        freshness_status: 'fresh',
         priority_level: level,
         priority_score: score,
         status: 'open',

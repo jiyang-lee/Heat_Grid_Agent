@@ -19,6 +19,7 @@ SUPPORTED_EVIDENCE_SECTIONS: Final = frozenset(
         "sensor_summaries",
         "model_outputs",
         "review_reasons",
+        "evaluation",
     }
 )
 

@@ -16,6 +16,7 @@ import { MACHINES, machineMonitored } from '../domain/machines'
 import { machineStatus, overall } from '../domain/model'
 import { STATUS } from '../domain/status'
 import { USE_MOCK } from './config'
+import { agentRunsApi, alertsApi, cardsApi, simulationsApi } from './client'
 
 export type WorkOrderMode = 'mock' | 'llm' | 'fallback'
 
@@ -31,9 +32,33 @@ export async function generateWorkOrder(complex: Complex): Promise<WorkOrderResu
     await delay(900) // 생성 체감용
     return { output: buildMockOpsOutput(complex), mode: 'mock' }
   }
-  // TODO(실백엔드): /cards?search=substation_id 로 card_id 조회 후
-  //   POST /simulate/{card_id} 또는 POST /api/agent-runs 로 교체.
-  throw new Error('실백엔드 작업지시서 경로가 아직 배선되지 않았습니다. VITE_USE_MOCK=true로 두세요.')
+
+  const [cards, alerts] = await Promise.all([
+    cardsApi.list(),
+    alertsApi.list({ status: 'open' }),
+  ])
+  const matchingCards = cards.filter(
+    (card) => String(card.substation_id) === String(complex.id),
+  )
+  if (matchingCards.length === 0) {
+    throw new Error(`${complex.name}에 연결된 실백엔드 카드가 없습니다.`)
+  }
+
+  const cardIds = new Set(matchingCards.map((card) => card.card_id))
+  const alert = alerts
+    .filter((item) => cardIds.has(item.card_id))
+    .sort((a, b) => (b.priority_score ?? 0) - (a.priority_score ?? 0))[0]
+
+  if (alert) {
+    const run = await agentRunsApi.create({ alert_id: alert.alert_id })
+    if (run.status === 'failed' || !run.ops_output) {
+      throw new Error(run.error || '작업 지시서 생성 결과를 받지 못했습니다.')
+    }
+    return { output: run.ops_output, mode: run.agent_mode ?? 'fallback' }
+  }
+
+  const simulation = await simulationsApi.run(matchingCards[0].card_id)
+  return { output: simulation.ops_output, mode: simulation.agent_mode }
 }
 
 const MACHINE_ACTION: Record<string, string> = {

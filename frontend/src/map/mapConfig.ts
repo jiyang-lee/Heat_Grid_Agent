@@ -1,19 +1,36 @@
-/**
- * 지도 스타일 소스 해석.
- *
- * .env 의 VITE_MAP_STYLE_URL 에는 다음 중 하나가 들어올 수 있다:
- *   - MapTiler 키 문자열만 (예: YOUR_MAPTILER_KEY) → 다크 스타일 URL을 조립
- *   - 전체 style JSON URL (https://...) → 그대로 사용
- */
+import type { StyleSpecification } from 'maplibre-gl'
 
-const MAPTILER_DARK_STYLE = 'dataviz-dark'
+const configured = (import.meta.env.VITE_MAP_STYLE_URL ?? '').trim()
+const configuredStyleUrl = configured.startsWith('http') ? configured : null
+const mapTilerKey = configuredStyleUrl == null ? configured : ''
 
-const raw = (import.meta.env.VITE_MAP_STYLE_URL ?? '').trim()
+function emptyStyle(theme: 'dark' | 'light'): StyleSpecification {
+  return {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: {
+          'background-color': theme === 'light' ? '#eef2f6' : '#07111f',
+        },
+      },
+    ],
+  }
+}
 
-export const mapStyleUrl: string = raw.startsWith('http')
-  ? raw
-  : raw
-    ? `https://api.maptiler.com/maps/${MAPTILER_DARK_STYLE}/style.json?key=${raw}`
-    : ''
+export function mapStyleFor(
+  theme: 'dark' | 'light',
+): string | StyleSpecification {
+  if (configuredStyleUrl != null) return configuredStyleUrl
+  if (mapTilerKey.length === 0) return emptyStyle(theme)
 
-export const hasMapStyle = mapStyleUrl.length > 0
+  const styleId = theme === 'light' ? 'streets-v2' : 'dataviz-dark'
+  return (
+    'https://api.maptiler.com/maps/' +
+    styleId +
+    '/style.json?key=' +
+    encodeURIComponent(mapTilerKey)
+  )
+}

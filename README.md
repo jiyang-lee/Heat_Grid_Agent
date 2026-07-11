@@ -22,12 +22,17 @@
 ```mermaid
 flowchart LR
     Sensor["센서 데이터와 M1 window"] --> Pipeline["모델 파이프라인"]
-    Pipeline --> Card["priority card<br/>점검 우선순위와 근거"]
-    Card --> DB[("PostgreSQL")]
+    Pipeline --> Snapshot["동일 기준 시점<br/>31개 Priority 평가"]
+    Snapshot --> DB[("PostgreSQL")]
     RAG["운영 참고자료<br/>RAG 문서"] --> Vector[("pgvector")]
-    Vector --> Agent["FastAPI + LangGraph<br/>agent run"]
-    DB --> Agent
-    Agent --> UI["React 운영 대시보드"]
+    Vector --> Loop["근거 평가·모델 재검증<br/>재귀 루프"]
+    DB --> Agent["FastAPI + LangGraph<br/>agent run"]
+    Agent --> Loop
+    Loop --> Output["LLM 또는 fallback<br/>작업 지시"]
+    Output --> Review["사람 최종 검수<br/>학습 피드백"]
+    Review -. 승인 데이터 .-> Retrain["재학습·모델 후보·승격"]
+    Retrain -. 활성 모델 .-> Loop
+    Review --> UI["React 운영 대시보드"]
     UI --> Operator["운영자 검토와 조치"]
 ```
 
@@ -118,7 +123,7 @@ npm ci
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-지도 스타일은 `frontend/.env`의 `VITE_MAP_STYLE_URL`에 MapTiler 키 또는 style URL을 설정한다. 데모 mock이 필요하면 `VITE_USE_MOCK=true`를 설정한다.
+지도 스타일은 기본 CARTO 다크/라이트 지도를 사용한다. 사용자 지정 지도가 필요할 때만 `frontend/.env`의 `VITE_MAP_STYLE_URL`에 전체 MapLibre style JSON URL을 설정한다. 데모 mock이 필요하면 `VITE_USE_MOCK=true`를 설정한다.
 
 ### 4. 연결 확인
 
@@ -142,14 +147,21 @@ curl http://127.0.0.1:5173/health
 
 ## 주요 기능과 API
 
+`frontend/`는 Vite + React + TypeScript 앱이다.
+프론트는 검수함, 근거 승인, 재학습, 모델 승격, 자동화 정책 API를 사용한다. 반복 이력 계약은 백엔드에 유지하되 현재 운영 화면에는 노출하지 않는다.
+
 | 기능 | 주요 경로 |
 |---|---|
+| 최신 Priority 평가 | `GET /api/priority-evaluations/latest`, `GET /api/priority-evaluations/latest/alerts` |
 | 알림 조회·상태 변경 | `GET /api/alerts`, `POST /api/alerts/{alert_id}/ack`, `POST /api/alerts/{alert_id}/resolve` |
 | Agent 실행과 결과 | `POST /api/agent-runs`, `GET /api/agent-runs/{run_id}/result` |
-| 실행 이력 | `GET /api/agent-runs/{run_id}/events`, `GET /api/agent-runs/{run_id}/artifacts` |
+| 실행 이력·산출물 | `GET /api/agent-runs/{run_id}/events`, `GET /api/agent-runs/{run_id}/iterations`, `GET /api/agent-runs/{run_id}/artifacts` |
+| 최종 검수·근거 승인 | `GET /api/review-tasks`, `GET /api/evidence-candidates` |
+| 자동화 정책 | `GET/PATCH /api/automation-policy` |
+| 재학습·모델 승격 | `GET/POST /api/retrain-jobs`, `GET /api/model-candidates`, `GET /api/model-deployments/active` |
 | 서비스 상태 | `GET /health` |
 
-운영 화면은 세종 1생활권 31개 단지의 지도 관제와 기계실 상세, 알림 큐, agent run 타임라인, 토큰·비용, v4 작업 지시 결과를 제공한다.
+운영 화면은 세종 1생활권 31개 단지의 지도 관제와 기계실 상세, 알림 큐, agent run 상태, 토큰·비용, v4 작업 지시 결과를 제공한다.
 
 ## 저장소 안내
 
@@ -171,13 +183,15 @@ curl http://127.0.0.1:5173/health
 - [최종 검증 보고서](output/reports/final_validation_report.md): card 정합성, threshold, ablation
 - [Agent v4 결과 계약](docs/contracts/ops_agent_result_v4.md): 프론트·백엔드 공유 계약
 - [프론트/백엔드 계약 현황](docs/report/01_frontend_backend_contract_status_ko.md): 통합 상태와 작업 기준
+- [재귀 자동화 구조](docs/14_AGENT_RECURSIVE_AUTOMATION.md): 근거 보강, 모델 재검증, 사람 검수, 재학습과 승격
+- [Priority 평가 스냅샷](docs/15_PRIORITY_EVALUATION_SNAPSHOT.md): 동일 기준 시점의 31개 Substation 평가와 지도·알림 연결
 
 ## 알파 버전의 제한
 
 - 현재 검증 범위는 M1이며 M2나 전체 제조사 성능으로 일반화하지 않는다.
 - priority는 점검 대상을 정렬하는 신호다. 자동 제어·자동 정비·고장 시각 확정에 사용하지 않는다.
 - 세종 단지 매핑은 데모용 가상 매핑이다. 실서비스 전환 전 실제 설비·단지·기계실 매핑 DB로 교체해야 한다.
-- OpenAI·기상청·MapTiler 키는 각각 실 LLM, 기상 맥락, 지도 스타일 통합을 확인할 때 필요하다. OpenAI 키가 없으면 Agent는 로컬 fallback 답변을 사용하고, 기상 키가 없으면 기상 맥락을 제외한다.
+- OpenAI·기상청 키는 각각 실 LLM과 기상 맥락을 확인할 때 필요하다. OpenAI 키가 없으면 Agent는 로컬 fallback 답변을 사용하고, 기상 키가 없으면 기상 맥락을 제외한다. 지도는 키 없이 CARTO fallback으로 동작한다.
 - 실백엔드 Agent 흐름은 운영 콘솔의 알림 → agent run 경로에 연결되어 있다. 기계실 상세의 작업 지시서 버튼은 현재 mock 전용이다.
 
 PR 검토 시에는 이 제한을 전제로, M1 card 정합성·v4 계약·로컬 데모 실행 경로를 함께 확인한다.
