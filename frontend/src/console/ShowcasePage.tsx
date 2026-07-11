@@ -1,0 +1,6 @@
+import { Icon } from './icons'
+import { Button, MetricCard, Sparkline, StatusBadge, SurfaceCard } from './ui'
+
+export function ShowcasePage() {
+  return <main className="showcase-page"><header><a href="/">← 운영 화면으로</a><h1>HeatGrid UI 프리미티브</h1><p>반응형 확인용 컴포넌트 쇼케이스입니다.</p></header><section><h2>상태와 버튼</h2><div className="showcase-row"><StatusBadge tone="critical">심각</StatusBadge><StatusBadge tone="warning">경고</StatusBadge><StatusBadge tone="notice">주의</StatusBadge><StatusBadge tone="success">정상</StatusBadge><StatusBadge tone="neutral">미확인</StatusBadge><Button tone="primary">저장</Button><Button>취소</Button><Button disabled>비활성</Button><Button tone="danger">종결</Button></div></section><section><h2>지표 카드</h2><div className="metric-grid metric-grid-five"><MetricCard hint="최근 24시간" icon="alert" label="긴급 알림" tone="critical" value="12" /><MetricCard hint="전일 대비 +3" icon="building" label="관리 건물" value="31" /><MetricCard hint="최근 6시간" icon="activity" label="센서 추이" tone="warning" value="0.12" /><MetricCard hint="정상 상태" icon="check" label="연결 상태" tone="success" value="정상" /><MetricCard hint="운영 정책" icon="settings" label="자동화" value="보조" /></div></section><SurfaceCard title="센서 그래프"><div className="showcase-chart"><Icon name="activity" /><Sparkline tone="critical" values={[0.42, 0.39, 0.4, 0.34, 0.31, 0.22, 0.18, 0.1]} /></div></SurfaceCard></main>
+}
