@@ -4,11 +4,17 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Final
 from uuid import uuid4
+import asyncio
+import logging
 
 import orjson
 from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+from heatgrid_ops.priority.inference import PriorityInferenceRuntime
+
+logger = logging.getLogger(__name__)
 
 PRIORITY_EVALUATION_RUNS_DDL: Final = """
 CREATE TABLE IF NOT EXISTS priority_evaluation_runs (
@@ -75,6 +81,7 @@ LATEST_WINDOW_CANDIDATES_SQL: Final = """
 SELECT
     s.manufacturer_id,
     s.substation_id,
+    s.configuration_type,
     w.window_id AS source_window_id,
     w.window_start AS source_window_start,
     w.window_end AS source_window_end,
@@ -101,7 +108,8 @@ SELECT
     pc.recommended_action,
     pc.stable_crossing_lead_hours,
     CAST(pc.raw_card AS text) AS raw_card,
-    CAST(COALESCE(features.feature_values, '{}'::jsonb) AS text) AS feature_values
+    CAST(COALESCE(mfs.features, '{}'::jsonb) AS text) AS feature_values,
+    mfs.feature_set_version
 FROM substations s
 LEFT JOIN LATERAL (
     SELECT selected.*
@@ -126,12 +134,7 @@ LEFT JOIN LATERAL (
     ORDER BY card.created_at DESC, card.card_id DESC
     LIMIT 1
 ) pc ON true
-LEFT JOIN LATERAL (
-    SELECT jsonb_object_agg(summary.feature_name, summary.feature_value) AS feature_values
-    FROM sensor_summaries summary
-    WHERE summary.card_id = pc.card_id
-      AND summary.feature_value IS NOT NULL
-) features ON true
+LEFT JOIN model_feature_snapshots mfs ON mfs.window_id = w.window_id
 ORDER BY s.manufacturer_id, s.substation_id
 """
 
@@ -168,6 +171,7 @@ async def create_priority_evaluation(
     as_of_time: datetime | None = None,
     stale_after_hours: int = 720,
     model_version: str = "active-priority-contract-v1",
+    model_root: str | None = None,
     expected_substations: int | None = 31,
 ) -> dict[str, Any]:
     if stale_after_hours <= 0:
@@ -179,86 +183,161 @@ async def create_priority_evaluation(
 
     evaluation_run_id = str(uuid4())
     stale_after_seconds = int(stale_after_hours * 3600)
-    async with engine.begin() as connection:
-        await connection.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext('heatgrid_priority_evaluation'))")
+    target_count = 0
+    runtime_version = model_version
+    try:
+        runtime = PriorityInferenceRuntime(
+            model_root=model_root,
+            deployment_version=model_version,
         )
-        candidate_result = await connection.execute(
-            text(LATEST_WINDOW_CANDIDATES_SQL),
-            {"as_of_time": as_of},
-        )
-        candidates = candidate_result.mappings().all()
-        if expected_substations is not None and len(candidates) != expected_substations:
-            raise ValueError(
-                f"평가 대상 Substation 수가 {len(candidates)}개입니다. "
-                f"기대값은 {expected_substations}개입니다."
-            )
-
-        await connection.execute(
-            text(
-                "INSERT INTO priority_evaluation_runs ("
-                "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
-                "status, target_count"
-                ") VALUES ("
-                ":evaluation_run_id, :as_of_time, :stale_after_seconds, :model_version, "
-                "'running', :target_count"
-                ")"
-            ),
-            {
-                "evaluation_run_id": evaluation_run_id,
-                "as_of_time": as_of,
-                "stale_after_seconds": stale_after_seconds,
-                "model_version": model_version,
-                "target_count": len(candidates),
-            },
-        )
-
-        rows = build_evaluation_results(
-            candidates,
-            evaluation_run_id=evaluation_run_id,
-            as_of_time=as_of,
-            stale_after_seconds=stale_after_seconds,
-        )
-        if rows:
-            await connection.execute(text(INSERT_RESULT_SQL), rows)
-
-        fresh_count = sum(row["freshness_status"] == "fresh" for row in rows)
-        stale_count = sum(row["freshness_status"] == "stale" for row in rows)
-        missing_count = sum(row["freshness_status"] == "missing" for row in rows)
-        ranked_count = sum(bool(row["rank_included"]) for row in rows)
-        active_result = await connection.execute(
-            text(
-                "SELECT as_of_time FROM priority_evaluation_runs "
-                "WHERE is_active FOR UPDATE"
-            )
-        )
-        active_row = active_result.mappings().one_or_none()
-        make_active = active_row is None or as_of >= active_row["as_of_time"]
-        if make_active:
+        runtime_version = runtime.model_version
+        async with engine.begin() as connection:
             await connection.execute(
-                text("UPDATE priority_evaluation_runs SET is_active = false WHERE is_active")
+                text(
+                    "SELECT pg_advisory_xact_lock("
+                    "hashtext('heatgrid_priority_evaluation'))"
+                )
             )
-        await connection.execute(
-            text(
-                "UPDATE priority_evaluation_runs SET status = 'completed', "
-                "is_active = :is_active, success_count = :success_count, "
-                "stale_count = :stale_count, missing_count = :missing_count, "
-                "ranked_count = :ranked_count, completed_at = now() "
-                "WHERE evaluation_run_id = :evaluation_run_id"
-            ),
-            {
-                "evaluation_run_id": evaluation_run_id,
-                "is_active": make_active,
-                "success_count": fresh_count,
-                "stale_count": stale_count,
-                "missing_count": missing_count,
-                "ranked_count": ranked_count,
-            },
-        )
+            candidate_result = await connection.execute(
+                text(LATEST_WINDOW_CANDIDATES_SQL),
+                {"as_of_time": as_of},
+            )
+            candidates = candidate_result.mappings().all()
+            target_count = len(candidates)
+            if expected_substations is not None and target_count != expected_substations:
+                raise ValueError(
+                    f"평가 대상 Substation 수가 {target_count}개입니다. "
+                    f"기대값은 {expected_substations}개입니다."
+                )
+
+            await connection.execute(
+                text(
+                    "INSERT INTO priority_evaluation_runs ("
+                    "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
+                    "status, target_count"
+                    ") VALUES ("
+                    ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
+                    ":model_version, 'running', :target_count"
+                    ")"
+                ),
+                {
+                    "evaluation_run_id": evaluation_run_id,
+                    "as_of_time": as_of,
+                    "stale_after_seconds": stale_after_seconds,
+                    "model_version": runtime_version,
+                    "target_count": target_count,
+                },
+            )
+
+            inference_inputs = [
+                {
+                    **dict(candidate),
+                    "feature_values": _json_object(candidate.get("feature_values")),
+                }
+                for candidate in candidates
+            ]
+            inferences = await asyncio.to_thread(runtime.infer_batch, inference_inputs)
+            rows = build_evaluation_results(
+                candidates,
+                inferences=inferences,
+                evaluation_run_id=evaluation_run_id,
+                as_of_time=as_of,
+                stale_after_seconds=stale_after_seconds,
+            )
+            if rows:
+                await connection.execute(text(INSERT_RESULT_SQL), rows)
+
+            fresh_count = sum(row["freshness_status"] == "fresh" for row in rows)
+            stale_count = sum(row["freshness_status"] == "stale" for row in rows)
+            missing_count = sum(row["freshness_status"] == "missing" for row in rows)
+            ranked_count = sum(bool(row["rank_included"]) for row in rows)
+            active_result = await connection.execute(
+                text(
+                    "SELECT as_of_time FROM priority_evaluation_runs "
+                    "WHERE is_active FOR UPDATE"
+                )
+            )
+            active_row = active_result.mappings().one_or_none()
+            make_active = active_row is None or as_of >= active_row["as_of_time"]
+            if make_active:
+                await connection.execute(
+                    text(
+                        "UPDATE priority_evaluation_runs SET is_active = false "
+                        "WHERE is_active"
+                    )
+                )
+            await connection.execute(
+                text(
+                    "UPDATE priority_evaluation_runs SET status = 'completed', "
+                    "is_active = :is_active, success_count = :success_count, "
+                    "stale_count = :stale_count, missing_count = :missing_count, "
+                    "ranked_count = :ranked_count, completed_at = now() "
+                    "WHERE evaluation_run_id = :evaluation_run_id"
+                ),
+                {
+                    "evaluation_run_id": evaluation_run_id,
+                    "is_active": make_active,
+                    "success_count": fresh_count,
+                    "stale_count": stale_count,
+                    "missing_count": missing_count,
+                    "ranked_count": ranked_count,
+                },
+            )
+    except Exception as exc:
+        try:
+            await _record_failed_priority_evaluation(
+                engine,
+                evaluation_run_id=evaluation_run_id,
+                as_of_time=as_of,
+                stale_after_seconds=stale_after_seconds,
+                model_version=runtime_version,
+                target_count=target_count,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+        except Exception:
+            logger.exception(
+                "failed to persist priority evaluation failure: %s",
+                evaluation_run_id,
+            )
+        raise
     snapshot = await get_priority_evaluation(engine, evaluation_run_id)
     if snapshot is None:
         raise RuntimeError("생성된 Priority 평가를 다시 읽을 수 없습니다.")
     return snapshot
+
+
+async def _record_failed_priority_evaluation(
+    engine: AsyncEngine,
+    *,
+    evaluation_run_id: str,
+    as_of_time: datetime,
+    stale_after_seconds: int,
+    model_version: str,
+    target_count: int,
+    error: str,
+) -> None:
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO priority_evaluation_runs ("
+                "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
+                "status, is_active, target_count, error, completed_at"
+                ") VALUES ("
+                ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
+                ":model_version, 'failed', false, :target_count, :error, now()"
+                ") ON CONFLICT (evaluation_run_id) DO UPDATE SET "
+                "status = 'failed', is_active = false, target_count = :target_count, "
+                "error = :error, completed_at = now()"
+            ),
+            {
+                "evaluation_run_id": evaluation_run_id,
+                "as_of_time": as_of_time,
+                "stale_after_seconds": stale_after_seconds,
+                "model_version": model_version,
+                "target_count": target_count,
+                "error": error,
+            },
+        )
 
 
 async def ensure_latest_priority_evaluation(
@@ -266,6 +345,7 @@ async def ensure_latest_priority_evaluation(
     *,
     stale_after_hours: int = 720,
     model_version: str = "active-priority-contract-v1",
+    model_root: str | None = None,
     expected_substations: int | None = 31,
 ) -> dict[str, Any]:
     await ensure_priority_evaluation_tables(engine)
@@ -273,12 +353,21 @@ async def ensure_latest_priority_evaluation(
     if source_time is None:
         raise ValueError("평가할 완료 시간 창이 없습니다.")
     latest = await get_latest_priority_evaluation(engine)
+    runtime_version = PriorityInferenceRuntime(
+        model_root=model_root,
+        deployment_version=model_version,
+    ).model_version
     if latest is not None:
         run = latest["evaluation"]
+        inputs_changed = await model_inputs_changed_after(
+            engine,
+            _utc(run["completed_at"]),
+        )
         if (
             _utc(run["as_of_time"]) >= source_time
             and int(run["stale_after_seconds"]) == stale_after_hours * 3600
-            and str(run["model_version"]) == model_version
+            and str(run["model_version"]) == runtime_version
+            and not inputs_changed
             and (
                 expected_substations is None
                 or int(run["target_count"]) == expected_substations
@@ -290,6 +379,7 @@ async def ensure_latest_priority_evaluation(
         as_of_time=source_time,
         stale_after_hours=stale_after_hours,
         model_version=model_version,
+        model_root=model_root,
         expected_substations=expected_substations,
     )
 
@@ -301,24 +391,42 @@ async def latest_source_time(engine: AsyncEngine) -> datetime | None:
     return None if value is None else _utc(value)
 
 
+async def model_inputs_changed_after(
+    engine: AsyncEngine,
+    completed_at: datetime,
+) -> bool:
+    async with engine.connect() as connection:
+        result = await connection.execute(
+            text(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM model_feature_snapshots WHERE updated_at > :completed_at"
+                ")"
+            ),
+            {"completed_at": completed_at},
+        )
+    return bool(result.scalar_one())
+
+
 def build_evaluation_results(
     candidates: list[RowMapping] | list[dict[str, Any]],
     *,
+    inferences: list[dict[str, Any]],
     evaluation_run_id: str,
     as_of_time: datetime,
     stale_after_seconds: int,
 ) -> list[dict[str, Any]]:
+    if len(candidates) != len(inferences):
+        raise ValueError("candidate and inference counts must match")
     as_of = _utc(as_of_time)
     rows: list[dict[str, Any]] = []
-    for candidate in candidates:
+    for candidate, inference in zip(candidates, inferences, strict=True):
         source_window_end = candidate.get("source_window_end")
         raw_card = _json_object(candidate.get("raw_card"))
-        features = _json_object(candidate.get("feature_values"))
-        priority_score = _float(candidate.get("priority_score"))
+        priority_score = _float(inference.get("priority_score"))
         source_card_id = candidate.get("source_card_id")
         has_model_result = (
             candidate.get("source_window_id") is not None
-            and source_card_id is not None
+            and bool(inference.get("usable"))
             and priority_score is not None
         )
         age_seconds = None
@@ -331,54 +439,51 @@ def build_evaluation_results(
         else:
             freshness = "fresh"
 
-        risk_score = _first_float(
-            features.get("risk_score"),
-            features.get("risk_probability"),
-            raw_card.get("risk_score"),
-            raw_card.get("risk_probability"),
-        )
-        anomaly_score = _first_float(
-            features.get("anomaly_policy_score"),
-            features.get("anomaly_ensemble_score"),
-            raw_card.get("anomaly_policy_score"),
-            raw_card.get("anomaly_ensemble_score"),
-        )
-        leadtime_urgency = _first_float(
-            features.get("leadtime_urgency_score"),
-            raw_card.get("leadtime_urgency_score"),
-        )
-        anomaly_label = _bool(raw_card.get("anomaly_event_label"))
+        risk_score = _float(inference.get("risk_score"))
+        anomaly_score = _float(inference.get("anomaly_score"))
+        leadtime_urgency = _float(inference.get("leadtime_urgency_score"))
+        anomaly_label = _bool(inference.get("anomaly_label"))
         components = {
-            "evaluation_source": "persisted_window_model_inference",
-            "priority_source": candidate.get("priority_source"),
-            "policy_version": candidate.get("policy_version"),
+            "evaluation_source": "same_run_batch_model_inference",
+            "model_version": inference.get("model_version"),
+            "model_versions": inference.get("model_versions", {}),
+            "inference_status": inference.get("inference_status"),
+            "inference_error": inference.get("inference_error"),
+            "feature_set_version": candidate.get("feature_set_version"),
+            "feature_coverage": inference.get("feature_coverage", {}),
+            "priority_source": inference.get("priority_source"),
             "current_best": {
-                "score": _float(candidate.get("current_best_priority_score")),
-                "level": candidate.get("current_best_priority_level"),
-                "weight": _float(candidate.get("current_best_weight")),
+                "score": _float(inference.get("current_best_priority_score")),
+                "level": inference.get("current_best_priority_level"),
+                "weight": 0.65,
             },
             "m1_specialist": {
-                "score": _float(candidate.get("m1_specialist_priority_score")),
-                "level": candidate.get("m1_specialist_priority_level"),
-                "weight": _float(candidate.get("m1_specialist_weight")),
-                "agreement": candidate.get("m1_priority_agreement"),
-                "primary_state": candidate.get("m1_specialist_primary_state"),
-                "fault_group": candidate.get("m1_specialist_fault_group"),
+                "score": _float(inference.get("m1_specialist_priority_score")),
+                "level": inference.get("m1_specialist_priority_level"),
+                "weight": 0.35,
+                "agreement": inference.get("m1_priority_agreement"),
+                **dict(inference.get("components", {}).get("m1_specialist", {})),
             },
             "risk": {
                 "score": risk_score,
-                "level": raw_card.get("risk_level_calibrated"),
+                "probability": _float(inference.get("risk_probability")),
+                "level": inference.get("risk_level"),
             },
             "anomaly": {
                 "score": anomaly_score,
                 "label": anomaly_label,
             },
             "leadtime": {
-                "bucket": raw_card.get("predicted_lead_time_bucket"),
+                "bucket": inference.get("leadtime_bucket"),
                 "urgency_score": leadtime_urgency,
-                "stable_crossing_lead_hours": _float(
-                    candidate.get("stable_crossing_lead_hours")
+                "expected_hours": _float(inference.get("leadtime_hours")),
+            },
+            "score_components": inference.get("components", {}).get("current_best", {}),
+            "source_trace": {
+                "persisted_priority_decision_id": _optional_str(
+                    candidate.get("source_priority_decision_id")
                 ),
+                "persisted_priority_score_not_used": _float(candidate.get("priority_score")),
             },
             "operational": {
                 "label": candidate.get("operational_label"),
@@ -402,18 +507,24 @@ def build_evaluation_results(
                 "source_priority_decision_id": _optional_str(
                     candidate.get("source_priority_decision_id")
                 ),
-                "priority_score": priority_score,
+                "priority_score": priority_score if has_model_result else None,
                 "priority_rank": None,
                 "rank_included": freshness == "fresh" and priority_score is not None,
-                "priority_level": candidate.get("priority_level")
+                "priority_level": inference.get("priority_level")
                 if has_model_result
                 else None,
-                "risk_score": risk_score,
-                "anomaly_score": anomaly_score,
-                "anomaly_label": anomaly_label,
-                "leadtime_bucket": raw_card.get("predicted_lead_time_bucket"),
-                "leadtime_urgency_score": leadtime_urgency,
-                "leadtime_hours": _float(candidate.get("stable_crossing_lead_hours")),
+                "risk_score": risk_score if has_model_result else None,
+                "anomaly_score": anomaly_score if has_model_result else None,
+                "anomaly_label": anomaly_label if has_model_result else None,
+                "leadtime_bucket": inference.get("leadtime_bucket")
+                if has_model_result
+                else None,
+                "leadtime_urgency_score": leadtime_urgency
+                if has_model_result
+                else None,
+                "leadtime_hours": _float(inference.get("leadtime_hours"))
+                if has_model_result
+                else None,
                 "freshness_status": freshness,
                 "data_age_seconds": age_seconds,
                 "model_components": _json(components),

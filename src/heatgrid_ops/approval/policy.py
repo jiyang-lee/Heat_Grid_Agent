@@ -21,6 +21,21 @@ class ApprovalDecision(BaseModel):
     policy_eligible: bool
 
 
+class ActionExecutionContext(ApprovalPolicyContext):
+    explicit_user_command: bool = False
+    already_executed: bool = False
+    used_count: int = Field(default=0, ge=0)
+    max_count: int = Field(default=1, ge=1)
+    estimated_cost_usd: float = Field(default=0.0, ge=0.0)
+    remaining_cost_usd: float | None = Field(default=None, ge=0.0)
+
+
+class ActionExecutionDecision(BaseModel):
+    action: Literal["execute", "reuse", "human_review", "deny"]
+    reason: str
+    policy_eligible: bool
+
+
 def decide_approval(
     policy: AutomationPolicy,
     context: ApprovalPolicyContext,
@@ -54,6 +69,52 @@ def decide_approval(
         action="auto_approve",
         reason="저위험 항목이며 누적 검수 이력과 신뢰도 기준을 충족했습니다.",
         policy_eligible=True,
+    )
+
+
+def decide_action_execution(
+    policy: AutomationPolicy,
+    context: ActionExecutionContext,
+) -> ActionExecutionDecision:
+    if context.already_executed:
+        return ActionExecutionDecision(
+            action="reuse",
+            reason="동일한 실행 키의 완료 결과가 있어 기존 결과를 재사용합니다.",
+            policy_eligible=True,
+        )
+    if context.used_count >= context.max_count:
+        return ActionExecutionDecision(
+            action="deny",
+            reason="실행당 허용된 호출 횟수를 모두 사용했습니다.",
+            policy_eligible=False,
+        )
+    if (
+        context.remaining_cost_usd is not None
+        and context.estimated_cost_usd > context.remaining_cost_usd
+    ):
+        return ActionExecutionDecision(
+            action="deny",
+            reason="남은 실행 예산보다 예상 비용이 큽니다.",
+            policy_eligible=False,
+        )
+    if context.explicit_user_command:
+        return ActionExecutionDecision(
+            action="execute",
+            reason="운영자가 명시적으로 실행을 요청했습니다.",
+            policy_eligible=True,
+        )
+
+    approval = decide_approval(policy, context)
+    if approval.action == "auto_approve":
+        return ActionExecutionDecision(
+            action="execute",
+            reason=approval.reason,
+            policy_eligible=approval.policy_eligible,
+        )
+    return ActionExecutionDecision(
+        action="human_review",
+        reason=approval.reason,
+        policy_eligible=approval.policy_eligible,
     )
 
 

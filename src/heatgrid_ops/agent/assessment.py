@@ -21,6 +21,7 @@ class EvidenceAssessment(BaseModel):
     evidence_score: float = Field(ge=0.0, le=1.0)
     missing_evidence: list[str] = Field(default_factory=list)
     rationale: str
+    decision_source: Literal["deterministic", "llm_guarded"] = "deterministic"
 
 
 class OutputValidation(BaseModel):
@@ -39,6 +40,7 @@ def assess_evidence(
     threshold: float,
     external_search_enabled: bool,
     external_candidate_count: int = 0,
+    external_search_attempted: bool = False,
 ) -> EvidenceAssessment:
     priority_context = _mapping(source_input.get("priority_context"))
     card = _mapping(priority_context.get("card"))
@@ -115,6 +117,7 @@ def assess_evidence(
         score < threshold
         and external_search_enabled
         and external_candidate_count == 0
+        and not external_search_attempted
         and iteration < max_iterations
     ):
         return _assessment(
@@ -154,6 +157,11 @@ def guard_llm_assessment(
     }:
         return deterministic.model_copy(update={"decision": "request_human"})
     if candidate.decision == "search_external" and not external_search_enabled:
+        return deterministic
+    if (
+        candidate.decision in {"search_external", "rerun_model", "finalize"}
+        and candidate.decision != deterministic.decision
+    ):
         return deterministic
     if (
         model_verification is not None

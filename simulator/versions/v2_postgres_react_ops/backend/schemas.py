@@ -26,6 +26,7 @@ ReviewTaskType: TypeAlias = Literal[
     "label_correction",
     "retrain_approval",
     "model_promotion",
+    "external_search",
 ]
 EvidenceCandidateStatus: TypeAlias = Literal[
     "pending",
@@ -146,6 +147,13 @@ class ApiMetadata(BaseModel):
 
 class AgentRunCreateRequest(BaseModel):
     alert_id: str
+    force_new: bool = False
+    requested_by: str | None = Field(default=None, min_length=1, max_length=120)
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+class AgentReportCreateRequest(BaseModel):
+    requested_by: str = Field(min_length=1, max_length=120)
 
 
 class ModelVerificationResult(BaseModel):
@@ -158,6 +166,14 @@ class ModelVerificationResult(BaseModel):
     risk_score_delta: float | None = None
     anomaly_score: float | None = None
     anomaly_label: bool | None = None
+    leadtime_bucket: str | None = None
+    stored_leadtime_bucket: str | None = None
+    priority_score: float | None = None
+    stored_priority_score: float | None = None
+    priority_score_delta: float | None = None
+    priority_level: str | None = None
+    m1_specialist_priority_score: float | None = None
+    component_agreement: dict[str, bool] = Field(default_factory=dict)
     agreement: bool | None = None
     active_model_version: str | None = None
     evaluation_run_id: str | None = None
@@ -174,6 +190,8 @@ class AgentLoopSummary(BaseModel):
     evidence_score: float = 0.0
     missing_evidence: list[str] = Field(default_factory=list)
     external_candidate_ids: list[str] = Field(default_factory=list)
+    used_tools: list[str] = Field(default_factory=list)
+    action_decisions: list[JsonObject] = Field(default_factory=list)
     model_verification: ModelVerificationResult | None = None
     review_required: bool = True
     review_task_id: str | None = None
@@ -188,6 +206,11 @@ class AgentRunResponse(BaseModel):
     evaluation_run_id: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
+    parent_run_id: str | None = None
+    trigger_type: str = "alert"
+    requested_by: str | None = None
+    trigger_reason: str | None = None
+    approved_action_task_id: str | None = None
     agent_mode: Literal["llm", "fallback"] | None = None
     ops_output: OpsAgentOutput | None = None
     token_usage: TokenUsage | None = None
@@ -313,6 +336,8 @@ class ReviewSubmitResponse(BaseModel):
     feedback: TrainingFeedback | None = None
     automatic_retrain_job_id: str | None = None
     automatic_retrain_status: RetrainJobStatus | None = None
+    resumed_agent_run_id: str | None = None
+    resumed_agent_run_status: AgentRunStatus | None = None
 
 
 class AutomationPolicy(BaseModel):

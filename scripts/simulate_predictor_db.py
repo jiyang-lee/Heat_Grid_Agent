@@ -30,10 +30,12 @@ MODEL_NAME = "offline_priority_simulator"
 MODEL_RUN_TYPE = "offline_simulation"
 MODEL_SOURCE_ARTIFACT = "output/agent_priority_card.csv"
 DEFAULT_MODEL_FEATURES = Path("output/merged_model_scores.csv")
+DEFAULT_M1_MODEL_FEATURES = Path("output/m1_specialist_compact13_features.csv")
 MODEL_METADATA_PATHS = (
     Path("models/risk/risk_model_best_metadata.json"),
     Path("models/leadtime/leadtime_model_best_metadata.json"),
     Path("models/anomaly/anomaly_metadata.json"),
+    Path("models/m1_specialist/m1_specialist_gate_metadata.json"),
 )
 
 CURRENT_BEST_FEATURES = (
@@ -63,6 +65,7 @@ class LoadPaths:
     agent_card: Path
     windows_csv: Path
     model_features_csv: Path
+    m1_model_features_csv: Path
     database_url: str
     append: bool
     model_run_id: str | None
@@ -85,6 +88,11 @@ def parse_args() -> LoadPaths:
         "--model-features-csv",
         default=str(DEFAULT_MODEL_FEATURES),
         help="Path to merged model outputs used to complete model input snapshots.",
+    )
+    parser.add_argument(
+        "--m1-model-features-csv",
+        default=str(DEFAULT_M1_MODEL_FEATURES),
+        help="Path to M1 compact13 model inputs.",
     )
     parser.add_argument(
         "--database-url",
@@ -111,6 +119,7 @@ def parse_args() -> LoadPaths:
         agent_card=Path(args.agent_card),
         windows_csv=Path(args.windows_csv),
         model_features_csv=Path(args.model_features_csv),
+        m1_model_features_csv=Path(args.m1_model_features_csv),
         database_url=args.database_url,
         append=args.append,
         model_run_id=args.model_run_id,
@@ -240,7 +249,12 @@ def load_model_feature_names() -> list[str]:
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
-        columns = payload.get("model_feature_columns") or payload.get("feature_columns") or []
+        columns = (
+            payload.get("model_feature_columns")
+            or payload.get("feature_columns")
+            or payload.get("features")
+            or []
+        )
         names.extend(str(column) for column in columns)
     return list(dict.fromkeys(names))
 
@@ -248,6 +262,7 @@ def load_model_feature_names() -> list[str]:
 def build_model_feature_snapshots(
     windows: pd.DataFrame,
     model_features: pd.DataFrame,
+    m1_model_features: pd.DataFrame | None = None,
 ) -> dict[tuple[str, str, str, str], dict[str, float]]:
     required = ("manufacturer", "substation_id", "window_start", "window_end")
     for source_name, frame in (("windows", windows), ("model_features", model_features)):
@@ -267,13 +282,22 @@ def build_model_feature_snapshots(
         feature_key(row): row
         for row in model_features.to_dict(orient="records")
     }
+    m1_by_key = {
+        feature_key(row): row
+        for row in (
+            m1_model_features.to_dict(orient="records")
+            if m1_model_features is not None and not m1_model_features.empty
+            else []
+        )
+    }
     snapshots: dict[tuple[str, str, str, str], dict[str, float]] = {}
     for window_row in enriched_windows.to_dict(orient="records"):
         key = feature_key(window_row)
         model_row = model_by_key.get(key, {})
+        m1_row = m1_by_key.get(key, {})
         values: dict[str, float] = {}
         for name in feature_names:
-            raw = model_row.get(name, window_row.get(name))
+            raw = m1_row.get(name, model_row.get(name, window_row.get(name)))
             numeric = to_optional_float(raw)
             if numeric is not None:
                 values[name] = numeric
@@ -370,8 +394,17 @@ async def load(paths: LoadPaths) -> dict[str, object]:
     agent = read_csv(paths.agent_card)
     windows = read_csv(paths.windows_csv)
     model_features = read_csv(paths.model_features_csv)
+    m1_model_features = (
+        read_csv(paths.m1_model_features_csv)
+        if paths.m1_model_features_csv.exists()
+        else pd.DataFrame()
+    )
     merged = validate_and_merge(agent, windows)
-    feature_snapshots = build_model_feature_snapshots(windows, model_features)
+    feature_snapshots = build_model_feature_snapshots(
+        windows,
+        model_features,
+        m1_model_features,
+    )
 
     key_cols = ["manufacturer", "substation_id", "window_start", "window_end"]
     if len(agent) != len(windows) or len(agent) != len(merged):
@@ -526,7 +559,11 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             " ON CONFLICT (window_id) DO UPDATE SET "
             "feature_set_version = EXCLUDED.feature_set_version,"
             " features = EXCLUDED.features, source_artifacts = EXCLUDED.source_artifacts,"
-            " updated_at = now()"
+            " updated_at = now() "
+            "WHERE model_feature_snapshots.feature_set_version IS DISTINCT FROM "
+            "EXCLUDED.feature_set_version OR model_feature_snapshots.features IS DISTINCT FROM "
+            "EXCLUDED.features OR model_feature_snapshots.source_artifacts IS DISTINCT FROM "
+            "EXCLUDED.source_artifacts"
         )
 
         counters = {
@@ -593,10 +630,14 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             await conn.execute(
                 upsert_model_feature_snapshot,
                 window_id,
-                "active-model-input-v1",
+                "active-model-input-v2",
                 json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
                 json.dumps(
-                    [str(paths.windows_csv), str(paths.model_features_csv)],
+                    [
+                        str(paths.windows_csv),
+                        str(paths.model_features_csv),
+                        str(paths.m1_model_features_csv),
+                    ],
                     ensure_ascii=False,
                 ),
             )

@@ -8,8 +8,8 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_run_repository import (
-    create_queued_agent_run,
     fail_agent_run,
+    reserve_agent_run,
 )
 from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
 from heatgrid_ops.agent.nodes import (
@@ -49,22 +49,35 @@ async def run_persistent_agent_graph(
     context: AgentGraphContext,
     request: AgentRunRequest,
 ) -> AgentRunResponse:
-    await create_queued_agent_run(
+    existing_or_queued, created = await reserve_agent_run(
         context.engine,
         run_id=request.run_id,
         alert_id=request.alert_id,
         card_id=request.card_id,
     )
-    graph = build_agent_graph(context)
+    if not created:
+        return existing_or_queued
+    return await execute_reserved_agent_graph(context, request)
+
+
+async def execute_reserved_agent_graph(
+    context: AgentGraphContext,
+    request: AgentRunRequest,
+) -> AgentRunResponse:
     try:
+        graph = build_agent_graph(context)
         state = await graph.ainvoke(
             {
                 "run_id": request.run_id,
                 "alert_id": request.alert_id,
                 "card_id": request.card_id,
+                "approved_action_task_id": request.approved_action_task_id,
                 "used_tools": [],
                 "external_candidates": [],
                 "external_candidate_ids": [],
+                "external_search_attempted": False,
+                "external_search_calls": 0,
+                "action_decisions": [],
                 "loop_iteration": 1,
                 "max_iterations": context.runtime.settings.agent_max_iterations,
                 "model_attempts": 0,
@@ -134,7 +147,7 @@ def build_agent_graph(context: AgentGraphContext):
         },
     )
     graph.add_edge("prepare_output_retry", "generate_operational_answer")
-    graph.add_edge("create_final_review", "complete_run")
-    graph.add_edge("complete_run", "write_anomaly_report")
-    graph.add_edge("write_anomaly_report", END)
+    graph.add_edge("create_final_review", "write_anomaly_report")
+    graph.add_edge("write_anomaly_report", "complete_run")
+    graph.add_edge("complete_run", END)
     return graph.compile()

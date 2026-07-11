@@ -94,9 +94,9 @@ async def _record_decision(
         context.engine,
         AgentRunEventRecord(
             run_id=state["run_id"],
-            event_type="llm_decision",
-            message=f"LLM selected {next_step}",
-            payload={"next": next_step},
+            event_type="graph_transition",
+            message=f"graph entered {next_step}",
+            payload={"next": next_step, "decision_source": "graph"},
         ),
     )
 

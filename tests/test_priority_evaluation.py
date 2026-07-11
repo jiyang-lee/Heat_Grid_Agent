@@ -12,8 +12,10 @@ from sqlalchemy import text
 
 from heatgrid_ops.priority.evaluation import (
     assign_priority_ranks,
+    build_evaluation_results,
     create_priority_evaluation,
 )
+from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
@@ -87,6 +89,45 @@ def test_priority_rank_is_deterministic_and_does_not_change_level() -> None:
     assert ordered[0]["priority_level"] == "low"
 
 
+def test_snapshot_result_uses_same_run_inference_not_persisted_priority() -> None:
+    as_of = datetime(2026, 7, 10, tzinfo=timezone.utc)
+    rows = build_evaluation_results(
+        [
+            {
+                "manufacturer_id": "manufacturer 1",
+                "substation_id": 1,
+                "source_window_id": "00000000-0000-0000-0000-000000000001",
+                "source_window_start": as_of,
+                "source_window_end": as_of,
+                "priority_score": 99.0,
+                "feature_set_version": "test-v1",
+            }
+        ],
+        inferences=[
+            {
+                "usable": True,
+                "priority_score": 42.0,
+                "priority_level": "medium",
+                "risk_score": 0.5,
+                "anomaly_score": 0.4,
+                "anomaly_label": False,
+                "leadtime_bucket": "1-3d",
+                "leadtime_urgency_score": 0.5,
+                "leadtime_hours": 48.0,
+                "model_version": "test-model",
+                "inference_status": "completed",
+            }
+        ],
+        evaluation_run_id="00000000-0000-0000-0000-000000000002",
+        as_of_time=as_of,
+        stale_after_seconds=3600,
+    )
+
+    assert rows[0]["priority_score"] == 42.0
+    assert rows[0]["priority_level"] == "medium"
+    assert rows[0]["model_components"]
+
+
 @pytest.mark.anyio
 async def test_snapshot_has_31_unique_latest_windows_and_freshness(
     monkeypatch: pytest.MonkeyPatch,
@@ -119,12 +160,66 @@ async def test_snapshot_has_31_unique_latest_windows_and_freshness(
     assert len(results) == 31
     assert len({(row["manufacturer_id"], row["substation_id"]) for row in results}) == 31
     assert evaluation["success_count"] + evaluation["stale_count"] + evaluation["missing_count"] == 31
+    assert evaluation["model_version"].startswith("pytest-priority-snapshot:")
+    assert all(
+        row["model_components"]["evaluation_source"]
+        == "same_run_batch_model_inference"
+        for row in results
+    )
+    assert min(
+        row["model_components"]["feature_coverage"]["m1_specialist"]
+        for row in results
+    ) == 1.0
+    assert min(
+        row["model_components"]["feature_coverage"]["leadtime"]
+        for row in results
+    ) >= 0.75
     for row in results:
         expected_end = latest_by_substation.get((row["manufacturer_id"], row["substation_id"]))
         assert row["source_window_end"] == expected_end
         if row["freshness_status"] != "fresh":
             assert row["rank_included"] is False
             assert row["priority_rank"] is None
+
+
+@pytest.mark.anyio
+async def test_failed_model_inference_persists_failed_evaluation_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+
+    def fail_inference(
+        _runtime: PriorityInferenceRuntime,
+        _inputs: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
+        raise RuntimeError("forced inference failure")
+
+    monkeypatch.setattr(PriorityInferenceRuntime, "infer_batch", fail_inference)
+
+    with pytest.raises(RuntimeError, match="forced inference failure"):
+        await create_priority_evaluation(
+            module.engine,
+            stale_after_hours=720,
+            model_version="pytest-failed-snapshot",
+            expected_substations=31,
+        )
+
+    async with module.engine.connect() as connection:
+        result = await connection.execute(
+            text(
+                "SELECT status, is_active, target_count, error, completed_at "
+                "FROM priority_evaluation_runs "
+                "WHERE model_version LIKE 'pytest-failed-snapshot:%' "
+                "ORDER BY created_at DESC LIMIT 1"
+            )
+        )
+    failed = result.mappings().one()
+
+    assert failed["status"] == "failed"
+    assert failed["is_active"] is False
+    assert failed["target_count"] == 31
+    assert "forced inference failure" in failed["error"]
+    assert failed["completed_at"] is not None
 
 
 @pytest.mark.anyio
@@ -156,6 +251,7 @@ async def test_map_snapshot_and_alert_api_share_latest_evaluation(
 ) -> None:
     module = load_server(monkeypatch)
     async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))

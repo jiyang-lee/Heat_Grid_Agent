@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_run_repository import get_agent_run, reserve_agent_run
+from agent_runner import schedule_reserved_agent_graph
+from heatgrid_ops.agent.contracts import AgentRunRequest
 from heatgrid_ops.approval.policy import ApprovalPolicyContext, decide_approval
 from retrain_repository import (
     create_retrain_job,
@@ -33,6 +37,7 @@ from schemas import (
     EvidenceCandidateCreateRequest,
     EvidenceCandidateReviewRequest,
     HumanReviewTask,
+    AgentRunResponse,
     RetrainJob,
     RetrainJobActionRequest,
     RetrainJobCreateRequest,
@@ -92,6 +97,11 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         if result is None:
             raise HTTPException(status_code=404, detail="task_id를 찾을 수 없습니다.")
+        resumed_run = await _maybe_resume_approved_agent_action(
+            engine,
+            result,
+            payload,
+        )
         try:
             retrain_job = await _maybe_start_automatic_retrain(
                 engine,
@@ -102,14 +112,18 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
         except Exception:  # 검수 저장 성공을 후속 자동화 장애로 되돌리지 않는다.
             LOGGER.exception("자동 재학습 예약에 실패했습니다.")
             retrain_job = None
-        if retrain_job is None:
-            return result
-        return result.model_copy(
-            update={
+        updates: dict[str, object] = {}
+        if retrain_job is not None:
+            updates.update({
                 "automatic_retrain_job_id": retrain_job.job_id,
                 "automatic_retrain_status": retrain_job.status,
-            }
-        )
+            })
+        if resumed_run is not None:
+            updates.update({
+                "resumed_agent_run_id": resumed_run.run_id,
+                "resumed_agent_run_status": resumed_run.status,
+            })
+        return result if not updates else result.model_copy(update=updates)
 
     @router.get("/evidence-candidates", response_model=list[EvidenceCandidate])
     async def evidence_candidates(
@@ -193,6 +207,43 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
         return await update_automation_policy(engine, payload)
 
     return router
+
+
+async def _maybe_resume_approved_agent_action(
+    engine: AsyncEngine,
+    result: ReviewSubmitResponse,
+    payload: ReviewTaskSubmitRequest,
+) -> AgentRunResponse | None:
+    task = result.task
+    if (
+        payload.decision != "approve"
+        or task.task_type != "external_search"
+        or task.run_id is None
+    ):
+        return None
+    original = await get_agent_run(engine, task.run_id)
+    if original is None:
+        return None
+    request = AgentRunRequest(
+        run_id=str(uuid4()),
+        alert_id=original.alert_id,
+        card_id=original.card_id,
+        approved_action_task_id=task.task_id,
+    )
+    queued, created = await reserve_agent_run(
+        engine,
+        run_id=request.run_id,
+        alert_id=request.alert_id,
+        card_id=request.card_id,
+        force_new=True,
+        requested_by=payload.reviewer,
+        reason=f"approved external search task {task.task_id}",
+        trigger_type="approved_action_resume",
+        approved_action_task_id=task.task_id,
+    )
+    if created:
+        schedule_reserved_agent_graph(engine, request)
+    return queued
 
 
 async def _maybe_start_automatic_retrain(

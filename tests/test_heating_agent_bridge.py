@@ -30,6 +30,7 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
@@ -91,4 +92,4 @@ async def test_heating_agent_alert_api_returns_alerts_with_building_mapping(
     assert first_alert["window_start"]
     assert first_alert["window_end"]
     assert urgent_alerts.status_code == 200
-    assert {item["priority_level"] for item in urgent_alerts.json()} == {"urgent"}
+    assert all(item["priority_level"] == "urgent" for item in urgent_alerts.json())

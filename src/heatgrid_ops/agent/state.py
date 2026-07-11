@@ -16,11 +16,15 @@ class AgentState(TypedDict, total=False):
     run_id: str
     alert_id: str
     card_id: str
+    approved_action_task_id: str | None
     source_input: dict[str, JsonValue]
     ops_evidence: dict[str, JsonValue]
     external_context: dict[str, JsonValue]
     external_candidates: list[dict[str, JsonValue]]
     external_candidate_ids: list[str]
+    external_search_attempted: bool
+    external_search_calls: int
+    action_decisions: list[dict[str, JsonValue]]
     model_verification: ModelVerificationResult
     model_attempts: int
     active_model_artifact_uri: str

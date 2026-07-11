@@ -5,6 +5,7 @@ import sys
 from typing import Final
 
 import orjson
+import pytest
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = (
@@ -13,10 +14,18 @@ BACKEND_DIR: Final = (
 sys.path.insert(0, str(BACKEND_DIR))
 
 from heatgrid_ops.agent.tools import (
+    ALL_AGENT_TOOL_NAMES,
+    GRAPH_CONTROLLED_TOOL_NAMES,
+    LLM_SELECTABLE_TOOL_NAMES,
     make_anomaly_report_tool,
+    make_daily_report_tool,
     make_external_context_tool,
+    make_external_search_tool,
+    make_operational_tools,
     make_ops_evidence_tool,
+    make_stage_evidence_candidate_tool,
 )
+from heatgrid_ops.agent.external_search import ExternalEvidenceSearchResult
 from schemas import JsonValue
 
 
@@ -62,6 +71,78 @@ def test_write_anomaly_report_tool_writes_json_artifact(tmp_path: Path) -> None:
     assert result["uri"] == "output/ops_agent/reports/run-test/anomaly_report.json"
     assert artifact_path.exists()
     assert orjson.loads(artifact_path.read_bytes())["report_metadata"]["report_type"] == "anomaly_report"
+
+
+def test_tool_registry_has_eight_llm_tools_and_four_graph_tools() -> None:
+    source_input = fake_source_input()
+    external_context: dict[str, JsonValue] = {
+        "status": "available",
+        "site": {"status": "mapped"},
+        "weather": {"status": "available"},
+        "retrieval": {"status": "available", "chunks": []},
+    }
+    tools = make_operational_tools(source_input, external_context)
+
+    assert tuple(item.name for item in tools) == LLM_SELECTABLE_TOOL_NAMES
+    assert len(LLM_SELECTABLE_TOOL_NAMES) == 8
+    assert len(GRAPH_CONTROLLED_TOOL_NAMES) == 4
+    assert len(ALL_AGENT_TOOL_NAMES) == 12
+    assert set(LLM_SELECTABLE_TOOL_NAMES).isdisjoint(GRAPH_CONTROLLED_TOOL_NAMES)
+
+    for item in tools:
+        payload = orjson.loads(item.invoke({"card_id": "card-test"}))
+        assert isinstance(payload, dict)
+        assert "error" not in payload
+
+
+@pytest.mark.anyio
+async def test_graph_controlled_tools_expose_search_and_staging_boundaries() -> None:
+    async def search(query: str) -> ExternalEvidenceSearchResult:
+        return ExternalEvidenceSearchResult(status="no_match", query=query)
+
+    async def stage(payload: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return {"candidate_id": "candidate-1", "payload": payload}
+
+    search_tool = make_external_search_tool(search)
+    stage_tool = make_stage_evidence_candidate_tool(stage)
+    graph_tools = (
+        search_tool,
+        stage_tool,
+        make_anomaly_report_tool(mock=True),
+        make_daily_report_tool(mock=True),
+    )
+
+    assert tuple(item.name for item in graph_tools) == GRAPH_CONTROLLED_TOOL_NAMES
+    search_result = orjson.loads(await search_tool.ainvoke({"query": "heat grid"}))
+    stage_result = orjson.loads(
+        await stage_tool.ainvoke({"payload_json": to_json({"title": "candidate"})})
+    )
+    assert search_result["status"] == "no_match"
+    assert stage_result["candidate_id"] == "candidate-1"
+
+
+def test_write_daily_report_tool_writes_json_artifact(tmp_path: Path) -> None:
+    report_tool = make_daily_report_tool(output_root=tmp_path, mock=True)
+    payload = {
+        "run_id": "run-daily",
+        "card_id": "card-test",
+        "source_input": fake_source_input(),
+        "external_context": {"status": "unavailable"},
+        "ops_output": {
+            "summary": "summary",
+            "action_plan": "action",
+            "caution": "caution",
+        },
+    }
+
+    result = orjson.loads(report_tool.invoke({"payload_json": to_json(payload)}))
+    artifact_path = (
+        tmp_path / "ops_agent" / "reports" / "run-daily" / "daily_report.json"
+    )
+
+    assert result["kind"] == "daily_report"
+    assert result["name"] == "daily_report.json"
+    assert artifact_path.exists()
 
 
 def fake_source_input() -> dict[str, JsonValue]:

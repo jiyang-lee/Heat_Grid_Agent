@@ -31,13 +31,18 @@ class AgentRunEventRecord:
 async def ensure_agent_run_event_table(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(text(AGENT_RUN_EVENTS_DDL))
+        await connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS agent_run_events_run_idx "
+                "ON agent_run_events(run_id, event_id)"
+            )
+        )
 
 
 async def record_agent_run_event(
     engine: AsyncEngine,
     event: AgentRunEventRecord,
 ) -> None:
-    await ensure_agent_run_event_table(engine)
     async with engine.begin() as connection:
         await insert_agent_run_event(connection, event)
 
@@ -64,15 +69,31 @@ async def list_agent_run_events(
     engine: AsyncEngine,
     run_id: str,
 ) -> list[AgentRunEvent]:
-    await ensure_agent_run_event_table(engine)
+    return await list_agent_run_events_after(engine, run_id)
+
+
+async def list_agent_run_events_after(
+    engine: AsyncEngine,
+    run_id: str,
+    *,
+    after_event_id: int = 0,
+    limit: int = 200,
+) -> list[AgentRunEvent]:
     query = text(
         "SELECT event_id, run_id, event_type, message, CAST(payload AS text) AS payload "
         "FROM agent_run_events "
-        "WHERE run_id = :run_id "
-        "ORDER BY event_id"
+        "WHERE run_id = :run_id AND event_id > :after_event_id "
+        "ORDER BY event_id LIMIT :limit"
     )
     async with engine.connect() as connection:
-        result = await connection.execute(query, {"run_id": run_id})
+        result = await connection.execute(
+            query,
+            {
+                "run_id": run_id,
+                "after_event_id": after_event_id,
+                "limit": limit,
+            },
+        )
     return [_event_from_row(row) for row in result.mappings().all()]
 
 

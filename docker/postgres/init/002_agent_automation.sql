@@ -1,162 +1,64 @@
-create table if not exists model_feature_snapshots (
-    window_id uuid primary key,
-    feature_set_version text not null,
-    features jsonb not null,
-    source_artifacts jsonb not null default '[]'::jsonb,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
-);
-
-create table if not exists agent_loop_iterations (
-    iteration_id bigserial primary key,
-    run_id uuid not null,
-    iteration integer not null,
-    phase text not null,
-    decision text not null,
-    confidence double precision not null,
-    evidence_score double precision not null,
-    missing_evidence jsonb not null default '[]'::jsonb,
-    model_verification jsonb,
-    created_at timestamptz not null default now()
-);
-
-create index if not exists agent_loop_iterations_run_idx
-    on agent_loop_iterations(run_id, iteration_id);
-
-create table if not exists evidence_candidates (
-    candidate_id uuid primary key,
-    run_id uuid,
-    source_type text not null,
-    source_uri text,
-    title text not null,
-    content text not null,
-    query text,
-    risk_level text not null check (risk_level in ('low', 'medium', 'high', 'critical')),
-    trust_score double precision not null check (trust_score >= 0 and trust_score <= 1),
-    status text not null check (
-        status in ('pending', 'auto_approved', 'approved', 'rejected', 'ingest_failed')
-    ),
-    metadata jsonb not null default '{}'::jsonb,
-    requested_by text not null,
-    reviewed_by text,
-    review_reason text,
-    rag_document_id text,
-    rag_chunk_id text,
-    created_at timestamptz not null default now(),
-    reviewed_at timestamptz
-);
-
-create table if not exists human_review_tasks (
-    task_id uuid primary key,
-    task_type text not null,
-    status text not null check (
-        status in ('pending', 'auto_approved', 'approved', 'rejected', 'corrected', 'cancelled')
-    ),
-    risk_level text not null check (risk_level in ('low', 'medium', 'high', 'critical')),
-    title text not null,
-    run_id uuid,
-    candidate_id uuid references evidence_candidates(candidate_id) on delete set null,
-    retrain_job_id uuid,
-    model_candidate_id uuid,
-    payload jsonb not null default '{}'::jsonb,
-    resolution jsonb not null default '{}'::jsonb,
-    assigned_to text,
-    reviewed_by text,
-    created_at timestamptz not null default now(),
-    reviewed_at timestamptz
-);
-
-create table if not exists training_feedback (
-    feedback_id uuid primary key,
-    task_id uuid not null references human_review_tasks(task_id) on delete cascade,
-    run_id uuid,
-    card_id uuid,
-    reviewer text not null,
-    decision text not null,
-    original_output jsonb not null default '{}'::jsonb,
-    corrected_output jsonb not null default '{}'::jsonb,
-    corrected_label text,
-    metadata jsonb not null default '{}'::jsonb,
-    created_at timestamptz not null default now(),
-    unique (task_id)
-);
-
-create table if not exists automation_policy (
-    policy_id text primary key,
-    mode text not null check (mode in ('human_only', 'assisted', 'guarded_auto')),
-    auto_transition_enabled boolean not null default false,
-    minimum_review_count integer not null default 100,
-    minimum_approval_rate double precision not null default 0.95,
-    minimum_confidence double precision not null default 0.90,
-    minimum_source_trust double precision not null default 0.85,
-    maximum_drift_score double precision not null default 0.10,
-    final_review_required boolean not null default true,
-    updated_by text not null default 'system',
-    updated_at timestamptz not null default now()
-);
-
-insert into automation_policy (policy_id, mode)
-values ('default', 'human_only')
-on conflict (policy_id) do nothing;
-
-create table if not exists retrain_jobs (
-    job_id uuid primary key,
-    status text not null check (
-        status in ('pending_approval', 'approved', 'running', 'completed', 'failed',
-                   'rejected', 'cancelled')
-    ),
-    requested_by text not null,
-    reason text not null,
-    feedback_ids jsonb not null default '[]'::jsonb,
-    dataset_snapshot jsonb not null default '{}'::jsonb,
-    execution_metadata jsonb not null default '{}'::jsonb,
-    approved_by text,
-    approval_reason text,
+create table if not exists agent_runs (
+    run_id uuid primary key,
+    alert_id uuid not null references ops_alert_queue(alert_id) on delete cascade,
+    card_id uuid not null references priority_cards(card_id) on delete cascade,
+    evaluation_run_id uuid,
+    manufacturer_id text,
+    substation_id integer,
+    parent_run_id uuid references agent_runs(run_id),
+    trigger_type text not null default 'alert',
+    requested_by text,
+    trigger_reason text,
+    approved_action_task_id uuid,
+    status text not null check (status in ('queued', 'running', 'completed', 'failed')),
+    agent_mode text check (agent_mode in ('llm', 'fallback')),
+    ops_output jsonb,
+    token_usage jsonb,
+    loop_summary jsonb,
+    review_status text not null default 'pending'
+        check (review_status in ('pending', 'approved', 'rejected', 'corrected')),
+    review_task_id uuid,
     error text,
-    model_candidate_id uuid,
-    auto_start_when_approved boolean not null default false,
     created_at timestamptz not null default now(),
-    approved_at timestamptz,
-    started_at timestamptz,
-    completed_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
-create table if not exists model_candidates (
-    candidate_id uuid primary key,
-    job_id uuid not null references retrain_jobs(job_id) on delete cascade,
-    version text not null,
-    artifact_uri text not null,
-    status text not null check (
-        status in ('awaiting_validation', 'awaiting_promotion', 'promoted', 'rejected')
-    ),
-    baseline_metrics jsonb not null default '{}'::jsonb,
-    candidate_metrics jsonb not null default '{}'::jsonb,
-    validation_summary jsonb not null default '{}'::jsonb,
-    promoted_by text,
-    promotion_reason text,
-    created_at timestamptz not null default now(),
-    promoted_at timestamptz
-);
+alter table agent_runs add column if not exists parent_run_id uuid references agent_runs(run_id);
+alter table agent_runs add column if not exists trigger_type text not null default 'alert';
+alter table agent_runs add column if not exists requested_by text;
+alter table agent_runs add column if not exists trigger_reason text;
+alter table agent_runs add column if not exists approved_action_task_id uuid;
 
-create table if not exists model_deployments (
-    deployment_id uuid primary key,
-    candidate_id uuid not null references model_candidates(candidate_id),
-    version text not null,
-    artifact_uri text not null,
-    active boolean not null default true,
-    promoted_by text not null,
+create table if not exists agent_run_events (
+    event_id bigserial primary key,
+    run_id uuid not null references agent_runs(run_id) on delete cascade,
+    event_type text not null,
+    message text not null,
+    payload jsonb,
     created_at timestamptz not null default now()
 );
 
-create index if not exists evidence_candidates_status_idx
-    on evidence_candidates(status, created_at desc);
-create index if not exists review_tasks_status_idx
-    on human_review_tasks(status, created_at desc);
-create index if not exists training_feedback_created_idx
-    on training_feedback(created_at desc);
-create index if not exists retrain_jobs_status_idx
-    on retrain_jobs(status, created_at desc);
-create index if not exists model_candidates_status_idx
-    on model_candidates(status, created_at desc);
-create unique index if not exists model_deployments_one_active_idx
-    on model_deployments(active) where active;
+create index if not exists agent_run_events_run_idx
+    on agent_run_events(run_id, event_id);
+
+create table if not exists agent_run_artifacts (
+    artifact_id uuid primary key,
+    run_id uuid not null references agent_runs(run_id) on delete cascade,
+    kind text not null,
+    name text not null,
+    uri text not null,
+    created_at timestamptz not null default now(),
+    unique (run_id, name)
+);
+
+create table if not exists agent_run_actions (
+    run_id uuid not null references agent_runs(run_id) on delete cascade,
+    action_name text not null,
+    status text not null check (status in ('running', 'completed', 'failed')),
+    requested_by text,
+    artifact_id uuid references agent_run_artifacts(artifact_id) on delete set null,
+    error text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (run_id, action_name)
+);

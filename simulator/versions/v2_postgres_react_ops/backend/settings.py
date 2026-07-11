@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     external_search_model: str = "gpt-5.4-mini"
     external_search_max_results: int = Field(default=5, ge=1, le=10)
     external_search_allowed_domains: str = ""
+    external_search_max_calls_per_run: int = Field(default=1, ge=1, le=4)
+    external_search_estimated_cost_usd: float = Field(default=0.01, ge=0.0)
+    external_search_budget_per_run_usd: float = Field(default=0.02, ge=0.0)
     retrain_auto_execute_enabled: bool = False
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)

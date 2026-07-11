@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import json
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
-import pandas as pd
 
+from heatgrid_ops.priority.inference import (
+    PriorityInferenceError,
+    PriorityInferenceRuntime,
+)
 from schemas import JsonValue, ModelVerificationResult
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -22,12 +22,27 @@ def verify_models(
     attempt: int = 1,
     active_artifact_uri: str | None = None,
 ) -> ModelVerificationResult:
-    model_root = _model_root(active_artifact_uri)
-    reasons: list[str] = []
     try:
-        risk = _verify_risk(model_root, feature_values)
-        anomaly = _verify_anomaly(model_root, feature_values)
-    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        runtime = PriorityInferenceRuntime(
+            model_root=_model_root(active_artifact_uri),
+            deployment_version=_deployment_version(active_artifact_uri),
+        )
+        inference = runtime.infer_batch(
+            [
+                {
+                    **_source_identity(source_input),
+                    "feature_values": feature_values,
+                }
+            ]
+        )[0]
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        PriorityInferenceError,
+    ) as exc:
         return ModelVerificationResult(
             status="error",
             attempt=attempt,
@@ -35,146 +50,166 @@ def verify_models(
             reasons=[str(exc)],
         )
 
-    coverages = [item["coverage"] for item in (risk, anomaly) if item["available"]]
-    coverage = min(coverages) if coverages else 0.0
-    stored_risk = _stored_score(source_input, ("risk_probability", "risk_score"))
-    risk_score = _optional_float(risk.get("score"))
-    risk_delta = (
-        abs(risk_score - stored_risk)
-        if risk_score is not None and stored_risk is not None
-        else None
+    coverage_values = [
+        float(value)
+        for value in inference.get("feature_coverage", {}).values()
+    ]
+    coverage = min(coverage_values) if coverage_values else 0.0
+    risk_score = _optional_float(inference.get("risk_score"))
+    stored_risk = _stored_float(source_input, ("risk_score", "risk_probability"))
+    risk_delta = _delta(risk_score, stored_risk)
+    anomaly_label = _optional_bool(inference.get("anomaly_label"))
+    stored_anomaly = _stored_bool(
+        source_input,
+        ("anomaly_label", "anomaly_event_label"),
     )
-    stored_anomaly = _stored_bool(source_input, "anomaly_event_label")
-    anomaly_label = anomaly.get("label")
+    leadtime_bucket = _optional_text(inference.get("leadtime_bucket"))
+    stored_leadtime = _stored_text(
+        source_input,
+        ("leadtime_bucket", "predicted_lead_time_bucket"),
+    )
+    priority_score = _optional_float(inference.get("priority_score"))
+    stored_priority = _stored_float(source_input, ("priority_score",))
+    priority_delta = _delta(priority_score, stored_priority)
 
-    checks: list[bool] = []
+    checks: dict[str, bool] = {}
+    reasons: list[str] = []
     if risk_delta is not None:
-        checks.append(risk_delta <= tolerance)
-        if risk_delta > tolerance:
-            reasons.append("저장된 위험도와 현재 활성 위험도 모델의 차이가 허용 범위를 넘었습니다.")
-    if stored_anomaly is not None and isinstance(anomaly_label, bool):
-        checks.append(stored_anomaly == anomaly_label)
-        if stored_anomaly != anomaly_label:
-            reasons.append("저장된 이상탐지 판정과 현재 활성 모델 판정이 다릅니다.")
-    if coverage < 0.8:
-        reasons.append("재검증 입력 특성의 80% 이상을 확보하지 못했습니다.")
+        checks["risk"] = risk_delta <= tolerance
+        if not checks["risk"]:
+            reasons.append("stored and active risk scores exceed tolerance")
+    if anomaly_label is not None and stored_anomaly is not None:
+        checks["anomaly"] = anomaly_label == stored_anomaly
+        if not checks["anomaly"]:
+            reasons.append("stored and active anomaly labels disagree")
+    if leadtime_bucket is not None and stored_leadtime is not None:
+        checks["leadtime"] = leadtime_bucket == stored_leadtime
+        if not checks["leadtime"]:
+            reasons.append("stored and active lead-time buckets disagree")
+    if priority_delta is not None:
+        priority_tolerance = max(1.0, tolerance * 100.0)
+        checks["priority"] = priority_delta <= priority_tolerance
+        if not checks["priority"]:
+            reasons.append("stored and active priority scores exceed tolerance")
+    if not inference.get("usable"):
+        reasons.append(
+            str(inference.get("inference_error") or "model input is incomplete")
+        )
 
-    if risk["available"] and anomaly["available"] and coverage >= 0.8:
+    if inference.get("usable") and len(checks) >= 3:
         status = "verified"
-    elif risk["available"] or anomaly["available"]:
+    elif inference.get("usable"):
         status = "partial"
     else:
         status = "unavailable"
-        reasons.append("실행 가능한 모델 아티팩트를 찾지 못했습니다.")
 
     return ModelVerificationResult(
         status=status,
         attempt=attempt,
         feature_count=len(feature_values),
-        feature_coverage=round(float(coverage), 4),
+        feature_coverage=round(coverage, 4),
         risk_score=risk_score,
         stored_risk_score=stored_risk,
         risk_score_delta=None if risk_delta is None else round(risk_delta, 6),
-        anomaly_score=_optional_float(anomaly.get("score")),
-        anomaly_label=anomaly_label if isinstance(anomaly_label, bool) else None,
-        agreement=all(checks) if checks else None,
-        active_model_version=str(risk.get("version") or anomaly.get("version") or "") or None,
+        anomaly_score=_optional_float(inference.get("anomaly_score")),
+        anomaly_label=anomaly_label,
+        leadtime_bucket=leadtime_bucket,
+        stored_leadtime_bucket=stored_leadtime,
+        priority_score=priority_score,
+        stored_priority_score=stored_priority,
+        priority_score_delta=None
+        if priority_delta is None
+        else round(priority_delta, 6),
+        priority_level=_optional_text(inference.get("priority_level")),
+        m1_specialist_priority_score=_optional_float(
+            inference.get("m1_specialist_priority_score")
+        ),
+        component_agreement=checks,
+        agreement=all(checks.values()) if checks else None,
+        active_model_version=_optional_text(inference.get("model_version")),
         reasons=reasons,
     )
 
 
-def _verify_risk(model_root: Path, features: dict[str, float]) -> dict[str, Any]:
-    model_path = model_root / "risk" / "risk_model_best.joblib"
-    metadata_path = model_root / "risk" / "risk_model_best_metadata.json"
-    if not model_path.exists() or not metadata_path.exists():
-        return {"available": False, "coverage": 0.0}
-    metadata = _read_json(metadata_path)
-    columns = [str(item) for item in metadata.get("model_feature_columns", [])]
-    matrix, coverage = _matrix(features, columns)
-    model = _load_model(str(model_path))
-    probabilities = model.predict_proba(matrix)
-    classes = list(getattr(model, "classes_", []))
-    positive_index = _positive_class_index(classes, probabilities.shape[1])
+def _source_identity(source_input: dict[str, JsonValue]) -> dict[str, Any]:
+    evaluation_context = _mapping(source_input.get("evaluation_context"))
+    evaluation_result = _mapping(evaluation_context.get("result"))
+    raw_context = _mapping(source_input.get("raw_context"))
+    window = _mapping(raw_context.get("window"))
+    substation = _mapping(raw_context.get("substation"))
     return {
-        "available": True,
-        "coverage": coverage,
-        "score": float(probabilities[0, positive_index]),
-        "version": metadata.get("model_version"),
+        "manufacturer_id": evaluation_result.get("manufacturer_id")
+        or window.get("manufacturer_id")
+        or window.get("manufacturer"),
+        "substation_id": evaluation_result.get("substation_id")
+        or window.get("substation_id")
+        or substation.get("substation_id"),
+        "configuration_type": substation.get("configuration_type")
+        or window.get("configuration_type"),
     }
 
 
-def _verify_anomaly(model_root: Path, features: dict[str, float]) -> dict[str, Any]:
-    anomaly_root = model_root / "anomaly"
-    paths = {
-        "scaler": anomaly_root / "standard_scaler.joblib",
-        "iforest": anomaly_root / "isolation_forest.joblib",
-        "mahalanobis": anomaly_root / "mahalanobis_ledoitwolf.joblib",
-        "metadata": anomaly_root / "anomaly_metadata.json",
-    }
-    if not all(path.exists() for path in paths.values()):
-        return {"available": False, "coverage": 0.0}
-    metadata = _read_json(paths["metadata"])
-    columns = [str(item) for item in metadata.get("feature_columns", [])]
-    matrix, coverage = _matrix(features, columns)
-    scaled = _load_model(str(paths["scaler"])).transform(matrix)
-    iforest_score = float(-_load_model(str(paths["iforest"])).score_samples(scaled)[0])
-    mahalanobis_score = float(
-        _load_model(str(paths["mahalanobis"])).mahalanobis(scaled)[0]
+def _stored_float(
+    source_input: dict[str, JsonValue],
+    names: tuple[str, ...],
+) -> float | None:
+    for value in _stored_values(source_input, names):
+        converted = _optional_float(value)
+        if converted is not None:
+            return converted
+    return None
+
+
+def _stored_text(
+    source_input: dict[str, JsonValue],
+    names: tuple[str, ...],
+) -> str | None:
+    for value in _stored_values(source_input, names):
+        converted = _optional_text(value)
+        if converted is not None:
+            return converted
+    return None
+
+
+def _stored_bool(
+    source_input: dict[str, JsonValue],
+    names: tuple[str, ...],
+) -> bool | None:
+    for value in _stored_values(source_input, names):
+        converted = _optional_bool(value)
+        if converted is not None:
+            return converted
+    return None
+
+
+def _stored_values(
+    source_input: dict[str, JsonValue],
+    names: tuple[str, ...],
+):
+    evaluation_context = _mapping(source_input.get("evaluation_context"))
+    containers = [_mapping(evaluation_context.get("result"))]
+    priority_context = _mapping(source_input.get("priority_context"))
+    containers.extend(
+        _mapping(priority_context.get(name))
+        for name in ("priority", "card", "model_signals", "explanation")
     )
-    iforest_threshold = float(metadata["iforest_threshold"])
-    mahalanobis_threshold = float(metadata["mahalanobis_threshold"])
-    iforest_ratio = iforest_score / max(iforest_threshold, 1e-12)
-    mahalanobis_ratio = mahalanobis_score / max(mahalanobis_threshold, 1e-12)
-    iforest_policy = float(metadata.get("iforest_policy_ratio_threshold", 0.9))
-    mahalanobis_policy = float(metadata.get("mahalanobis_policy_ratio_threshold", 1.0))
-    score = min(iforest_ratio / iforest_policy, mahalanobis_ratio / mahalanobis_policy)
-    return {
-        "available": True,
-        "coverage": coverage,
-        "score": float(score),
-        "label": bool(iforest_ratio >= iforest_policy and mahalanobis_ratio >= mahalanobis_policy),
-        "version": metadata.get("model_version"),
-    }
-
-
-def _matrix(features: dict[str, float], columns: list[str]) -> tuple[pd.DataFrame, float]:
-    imputation = _imputation_values()
-    present = sum(1 for column in columns if column in features)
-    values = {
-        column: _finite_float(features.get(column), imputation.get(column, 0.0))
-        for column in columns
-    }
-    coverage = present / max(1, len(columns))
-    return pd.DataFrame([values], columns=columns, dtype="float64"), coverage
-
-
-def _stored_score(source_input: dict[str, JsonValue], names: tuple[str, ...]) -> float | None:
-    priority_context = source_input.get("priority_context")
-    if not isinstance(priority_context, dict):
-        return None
+    for name in names:
+        for container in containers:
+            if name in container:
+                yield container[name]
     outputs = priority_context.get("model_outputs")
     if isinstance(outputs, list):
         for name in names:
             for item in outputs:
                 if isinstance(item, dict) and item.get("score_name") == name:
-                    value = _optional_float(item.get("score_value"))
-                    if value is not None:
-                        return value
-    raw_context = source_input.get("raw_context")
-    summaries = raw_context.get("sensor_summaries") if isinstance(raw_context, dict) else None
+                    yield item.get("score_value")
+    raw_context = _mapping(source_input.get("raw_context"))
+    summaries = raw_context.get("sensor_summaries")
     if isinstance(summaries, list):
         for name in names:
             for item in summaries:
                 if isinstance(item, dict) and item.get("feature_name") == name:
-                    value = _optional_float(item.get("feature_value"))
-                    if value is not None:
-                        return value
-    return None
-
-
-def _stored_bool(source_input: dict[str, JsonValue], name: str) -> bool | None:
-    value = _stored_score(source_input, (name,))
-    return None if value is None else value >= 0.5
+                    yield item.get("feature_value")
 
 
 def _model_root(active_artifact_uri: str | None) -> Path:
@@ -187,41 +222,18 @@ def _model_root(active_artifact_uri: str | None) -> Path:
     return ROOT / "models"
 
 
-@lru_cache(maxsize=16)
-def _load_model(path: str):
-    return joblib.load(path)
+def _deployment_version(active_artifact_uri: str | None) -> str:
+    if not active_artifact_uri:
+        return "active-local-model"
+    return f"active-deployment-{Path(active_artifact_uri).name}"
 
 
-@lru_cache(maxsize=8)
-def _read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
-@lru_cache(maxsize=1)
-def _imputation_values() -> dict[str, float]:
-    path = ROOT / "data" / "processed" / "imputation_values.csv"
-    if not path.exists():
-        return {}
-    frame = pd.read_csv(path)
-    return {
-        str(row.column_name): _finite_float(row.imputation_value, 0.0)
-        for row in frame.itertuples(index=False)
-    }
-
-
-def _positive_class_index(classes: list[Any], width: int) -> int:
-    for candidate in (1, True, "1", "pre_fault"):
-        if candidate in classes:
-            return classes.index(candidate)
-    return max(0, width - 1)
-
-
-def _finite_float(value: Any, fallback: float) -> float:
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError):
-        return fallback
-    return numeric if np.isfinite(numeric) else fallback
+def _delta(left: float | None, right: float | None) -> float | None:
+    return None if left is None or right is None else abs(left - right)
 
 
 def _optional_float(value: Any) -> float | None:
@@ -230,3 +242,24 @@ def _optional_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return numeric if np.isfinite(numeric) else None
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes"}:
+            return True
+        if normalized in {"false", "0", "no"}:
+            return False
+    return None

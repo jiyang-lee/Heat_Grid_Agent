@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -38,10 +39,24 @@ async def reset_automation_tables(module: ModuleType) -> None:
             )
         )
         await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
         await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
+
+
+async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
+    for _ in range(200):
+        response = await client.get(f"/api/agent-runs/{run_id}")
+        payload = response.json()
+        if payload.get("status") in {"completed", "failed"}:
+            return payload
+        await asyncio.sleep(0.025)
+    raise AssertionError(f"agent run {run_id} did not finish")
 
 
 @pytest.mark.anyio
@@ -58,6 +73,7 @@ async def test_review_feedback_evidence_and_policy_api_flow(
         await client.post("/api/alerts/enqueue")
         alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
         run = (await client.post("/api/agent-runs", json={"alert_id": alert["alert_id"]})).json()
+        run = await wait_for_agent_run(client, str(run["run_id"]))
 
         tasks = await client.get("/api/review-tasks", params={"status": "pending"})
         final_task = next(item for item in tasks.json() if item["task_type"] == "final_output")
@@ -177,18 +193,47 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
             },
         )
         await client.post("/api/alerts/enqueue")
+        async with module.engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "INSERT INTO ops_alert_queue ("
+                    "alert_id, card_id, evaluation_run_id, manufacturer_id, "
+                    "substation_id, priority_rank, freshness_status, priority_level, "
+                    "priority_score, enqueue_reason"
+                    ") "
+                    "SELECT md5('pytest-retrain|' || result.evaluation_result_id::text)::uuid, "
+                    "result.source_card_id, result.evaluation_run_id, result.manufacturer_id, "
+                    "result.substation_id, result.priority_rank, result.freshness_status, "
+                    "'high', result.priority_score, 'pytest guarded-auto retrain' "
+                    "FROM priority_evaluation_results result "
+                    "JOIN priority_evaluation_runs evaluation "
+                    "ON evaluation.evaluation_run_id = result.evaluation_run_id "
+                    "WHERE evaluation.is_active "
+                    "AND result.freshness_status = 'fresh' "
+                    "AND result.rank_included "
+                    "AND result.source_card_id IS NOT NULL "
+                    "AND NOT EXISTS ("
+                    "SELECT 1 FROM ops_alert_queue queued "
+                    "WHERE queued.evaluation_run_id = result.evaluation_run_id "
+                    "AND queued.manufacturer_id = result.manufacturer_id "
+                    "AND queued.substation_id = result.substation_id"
+                    ") "
+                    "ORDER BY result.priority_rank NULLS LAST "
+                    "LIMIT 1 ON CONFLICT DO NOTHING"
+                )
+            )
         alerts = (await client.get("/api/alerts", params={"status": "open"})).json()
-        assert alerts
+        assert len(alerts) >= 2
 
         automatic_job_ids: list[str | None] = []
-        for _ in range(2):
-            alert = alerts[0]
+        for alert in alerts[:2]:
             run = (
                 await client.post(
                     "/api/agent-runs",
                     json={"alert_id": alert["alert_id"]},
                 )
             ).json()
+            run = await wait_for_agent_run(client, str(run["run_id"]))
             tasks = (
                 await client.get(
                     "/api/review-tasks",

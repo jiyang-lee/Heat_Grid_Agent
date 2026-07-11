@@ -220,7 +220,7 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
     return f"data: {to_json({'type': kind, 'message': message, 'payload': payload})}\n\n"
 
 
-app.include_router(make_agent_run_router(engine))
+app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 

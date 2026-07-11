@@ -1,3 +1,4 @@
+import asyncio
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -30,10 +31,23 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
         await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
+
+
+async def wait_for_agent_run(client: AsyncClient, run_id: str) -> None:
+    for _ in range(200):
+        response = await client.get(f"/api/agent-runs/{run_id}")
+        if response.json().get("status") in {"completed", "failed"}:
+            return
+        await asyncio.sleep(0.025)
+    raise AssertionError(f"agent run {run_id} did not finish")
 
 
 @pytest.mark.anyio
@@ -55,6 +69,7 @@ async def test_agent_result_v4_returns_completed_run_contract(
             json={"alert_id": alert["alert_id"]},
         )
         run_id = created.json()["run_id"]
+        await wait_for_agent_run(client, run_id)
         result = await client.get(f"/api/agent-runs/{run_id}/result")
 
     payload = result.json()

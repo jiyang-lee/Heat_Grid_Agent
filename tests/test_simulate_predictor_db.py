@@ -96,6 +96,7 @@ def test_simulate_predictor_db_enqueues_urgent_high_alerts_once() -> None:
     async def _reset_queue() -> None:
         conn = await asyncpg.connect(_db_url())
         try:
+            await conn.execute("DROP TABLE IF EXISTS agent_run_actions")
             await conn.execute("DROP TABLE IF EXISTS agent_run_artifacts")
             await conn.execute("DROP TABLE IF EXISTS agent_run_events")
             await conn.execute("DROP TABLE IF EXISTS agent_runs")

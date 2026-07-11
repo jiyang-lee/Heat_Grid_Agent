@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from heatgrid_ops.priority.evaluation import (
     create_priority_evaluation,
     ensure_latest_priority_evaluation,
-    get_latest_priority_evaluation,
     get_latest_substation_result,
     get_priority_evaluation,
     latest_alert_results,
@@ -99,9 +98,6 @@ async def _latest_or_create(
     engine: AsyncEngine,
     settings: Settings,
 ) -> dict[str, object]:
-    latest = await get_latest_priority_evaluation(engine)
-    if latest is not None:
-        return latest
     try:
         return await ensure_latest_priority_evaluation(
             engine,

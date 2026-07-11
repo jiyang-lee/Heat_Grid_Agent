@@ -68,9 +68,14 @@ class AgentRuntime:
         external_context: dict[str, JsonValue],
         card_id: str,
     ) -> TokenUsage:
-        payload_size = sum(
-            len(item.invoke({"card_id": card_id}))
-            for item in self.tools_for(source_input, external_context)
+        payload_size = len(
+            to_json(
+                {
+                    "card_id": card_id,
+                    "source_input": source_input,
+                    "external_context": external_context,
+                }
+            )
         )
         return TokenUsage(evidence_payload_chars=payload_size)
 
@@ -132,6 +137,7 @@ class AgentRuntime:
         iteration: int,
         max_iterations: int,
         external_candidate_count: int,
+        external_search_attempted: bool = False,
     ) -> EvidenceAssessment:
         deterministic = assess_evidence(
             source_input=source_input,
@@ -142,6 +148,7 @@ class AgentRuntime:
             threshold=self.settings.agent_evidence_threshold,
             external_search_enabled=self.settings.external_search_enabled,
             external_candidate_count=external_candidate_count,
+            external_search_attempted=external_search_attempted,
         )
         key = self.settings.openai_api_key
         if key is None:
@@ -156,6 +163,7 @@ class AgentRuntime:
             else model_verification.model_dump(mode="json"),
             "retrieval_status": external_context.get("status"),
             "external_candidate_count": external_candidate_count,
+            "external_search_attempted": external_search_attempted,
         }
         model = ChatOpenAI(
             model=self.settings.openai_model,
@@ -174,6 +182,9 @@ class AgentRuntime:
                 ]
             )
             candidate = EvidenceAssessment.model_validate(candidate)
+            candidate = candidate.model_copy(
+                update={"decision_source": "llm_guarded"}
+            )
         except (OpenAIError, ValidationError, ValueError, TypeError):
             return deterministic
         return guard_llm_assessment(

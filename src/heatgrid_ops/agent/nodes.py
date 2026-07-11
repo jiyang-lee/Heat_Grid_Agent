@@ -18,12 +18,23 @@ from agent_run_repository import (
 )
 from heatgrid_ops.agent.assessment import validate_output as validate_ops_output
 from heatgrid_ops.agent.contracts import SimulateCard
+from heatgrid_ops.agent.external_search import ExternalEvidenceSearchResult
 from heatgrid_ops.agent.helpers import fallback_note
 from heatgrid_ops.agent.model_verification import verify_models
 from heatgrid_ops.agent.services import AgentRuntime, MissingApiKeyError
 from heatgrid_ops.agent.state import AgentState
-from heatgrid_ops.agent.tools import ReportToolPayloadError
-from heatgrid_ops.approval.policy import ApprovalPolicyContext, decide_approval
+from heatgrid_ops.agent.tools import (
+    ReportToolPayloadError,
+    make_external_search_tool,
+    make_stage_evidence_candidate_tool,
+)
+from heatgrid_ops.approval.policy import (
+    ActionExecutionDecision,
+    ActionExecutionContext,
+    ApprovalPolicyContext,
+    decide_action_execution,
+    decide_approval,
+)
 from heatgrid_ops.priority.evaluation import get_priority_evaluation_result
 from model_feature_repository import fetch_model_feature_snapshot
 from repository import fetch_ops_input
@@ -32,6 +43,7 @@ from review_repository import (
     create_evidence_candidate,
     create_review_task,
     get_automation_policy,
+    get_review_task,
 )
 from schemas import (
     AgentLoopSummary,
@@ -84,8 +96,13 @@ async def get_ops_evidence(context: AgentNodeContext, state: AgentState) -> Agen
     await record_decision(context, state, "get_ops_evidence")
     await record_tool_started(context, state, "get_ops_evidence")
     source_input = state["source_input"]
-    tools = context.runtime.tools_for(source_input, {"status": "pending"})
-    evidence_payload = tools[0].invoke({"card_id": state["card_id"]})
+    tools = {
+        item.name: item
+        for item in context.runtime.tools_for(source_input, {"status": "pending"})
+    }
+    evidence_payload = tools["get_ops_evidence"].invoke(
+        {"card_id": state["card_id"]}
+    )
     ops_evidence = _tool_json_object(evidence_payload)
     await record_tool_completed(
         context,
@@ -101,14 +118,33 @@ async def get_ops_evidence(context: AgentNodeContext, state: AgentState) -> Agen
 
 async def get_external_context(context: AgentNodeContext, state: AgentState) -> AgentState:
     await record_decision(context, state, "get_external_context")
-    await record_tool_started(context, state, "get_external_context")
-    external_context = context.runtime.external_context_for(
+    collected_context = context.runtime.external_context_for(
         state["card_id"],
         state["source_input"],
     )
-    tools = context.runtime.tools_for(state["source_input"], external_context)
-    context_payload = tools[1].invoke({"card_id": state["card_id"]})
+    tools = {
+        item.name: item
+        for item in context.runtime.tools_for(state["source_input"], collected_context)
+    }
+
+    await record_tool_started(context, state, "get_external_context")
+    context_payload = tools["get_external_context"].invoke(
+        {"card_id": state["card_id"]}
+    )
     external_context = _tool_json_object(context_payload)
+    await record_tool_completed(
+        context,
+        state,
+        "get_external_context",
+        {"status": str(external_context.get("status") or "unknown")},
+    )
+
+    await record_tool_started(context, state, "get_internal_references")
+    references_payload = tools["get_internal_references"].invoke(
+        {"card_id": state["card_id"]}
+    )
+    internal_references = _tool_json_object(references_payload)
+    external_context.update(internal_references)
     retrieval = external_context.get("retrieval")
     retrieval_status = (
         retrieval.get("status")
@@ -118,29 +154,31 @@ async def get_external_context(context: AgentNodeContext, state: AgentState) -> 
     await record_tool_completed(
         context,
         state,
-        "get_external_context",
+        "get_internal_references",
         {"status": str(retrieval_status or "unknown")},
     )
     return {
         "external_context": external_context,
-        "used_tools": [*state.get("used_tools", []), "get_external_context"],
+        "used_tools": [
+            *state.get("used_tools", []),
+            "get_external_context",
+            "get_internal_references",
+        ],
     }
 
 
 async def verify_model_output(context: AgentNodeContext, state: AgentState) -> AgentState:
     await record_decision(context, state, "verify_active_models")
-    await record_tool_started(context, state, "verify_active_models")
-    result, artifact_uri = await _run_model_verification(context, state, attempt=1)
-    await record_tool_completed(
-        context,
-        state,
-        "verify_active_models",
-        {
-            "status": result.status,
-            "feature_coverage": result.feature_coverage,
-            "agreement": str(result.agreement),
-        },
+    await record_agent_run_event(
+        context.engine,
+        AgentRunEventRecord(
+            run_id=state["run_id"],
+            event_type="model_verification_started",
+            message="active model verification started",
+            payload={"attempt": 1},
+        ),
     )
+    result, artifact_uri = await _run_model_verification(context, state, attempt=1)
     await record_agent_run_event(
         context.engine,
         AgentRunEventRecord(
@@ -153,7 +191,6 @@ async def verify_model_output(context: AgentNodeContext, state: AgentState) -> A
     response: AgentState = {
         "model_verification": result,
         "model_attempts": 1,
-        "used_tools": [*state.get("used_tools", []), "verify_active_models"],
     }
     if artifact_uri:
         response["active_model_artifact_uri"] = artifact_uri
@@ -174,6 +211,7 @@ async def assess_collected_evidence(
             "max_iterations", context.runtime.settings.agent_max_iterations
         ),
         external_candidate_count=len(state.get("external_candidate_ids", [])),
+        external_search_attempted=state.get("external_search_attempted", False),
     )
     await insert_agent_loop_iteration(
         context.engine,
@@ -198,6 +236,7 @@ async def assess_collected_evidence(
                 "confidence": assessment.confidence,
                 "evidence_score": assessment.evidence_score,
                 "missing_evidence": assessment.missing_evidence,
+                "decision_source": assessment.decision_source,
             },
         ),
     )
@@ -235,6 +274,11 @@ def route_after_assessment(
     "rerun_model_verification",
     "generate_operational_answer",
 ]:
+    if state.get("approved_action_task_id") and not state.get(
+        "external_search_attempted",
+        False,
+    ):
+        return "search_external_evidence"
     decision = state["evidence_assessment"].decision
     return {
         "expand_internal": "expand_internal_evidence",
@@ -269,7 +313,6 @@ async def expand_internal_evidence(
     return {
         "external_context": external_context,
         "loop_iteration": iteration,
-        "used_tools": [*state.get("used_tools", []), "expand_internal_evidence"],
     }
 
 
@@ -280,9 +323,122 @@ async def search_external_evidence(
     iteration = state.get("loop_iteration", 1) + 1
     query = _external_search_query(state)
     await record_decision(context, state, "search_external_evidence")
-    await record_tool_started(context, state, "search_external_evidence")
-    search = await context.runtime.search_external_evidence(query)
     policy = await get_automation_policy(context.engine)
+    settings = context.runtime.settings
+    search_calls = state.get("external_search_calls", 0)
+    remaining_budget = max(
+        0.0,
+        settings.external_search_budget_per_run_usd
+        - search_calls * settings.external_search_estimated_cost_usd,
+    )
+    allowed_domains = tuple(
+        item.strip()
+        for item in settings.external_search_allowed_domains.split(",")
+        if item.strip()
+    )
+    approved_task_id = state.get("approved_action_task_id")
+    approved_task = (
+        await get_review_task(context.engine, approved_task_id)
+        if approved_task_id
+        else None
+    )
+    if (
+        approved_task is not None
+        and approved_task.task_type == "external_search"
+        and approved_task.status == "approved"
+    ):
+        execution = ActionExecutionDecision(
+            action="execute",
+            reason=f"human approved external search task {approved_task.task_id}",
+            policy_eligible=True,
+        )
+    else:
+        execution = decide_action_execution(
+            policy,
+            ActionExecutionContext(
+                task_type="external_search",
+                risk_level="low",
+                confidence=state["evidence_assessment"].confidence,
+                source_trust=1.0 if allowed_domains else 0.0,
+                drift_score=_model_drift_score(state),
+                used_count=search_calls,
+                max_count=settings.external_search_max_calls_per_run,
+                estimated_cost_usd=settings.external_search_estimated_cost_usd,
+                remaining_cost_usd=remaining_budget,
+            ),
+        )
+    action_decision = {
+        "action": execution.action,
+        "task_type": "external_search",
+        "reason": execution.reason,
+        "iteration": iteration,
+        "estimated_cost_usd": settings.external_search_estimated_cost_usd,
+    }
+    await record_agent_run_event(
+        context.engine,
+        AgentRunEventRecord(
+            run_id=state["run_id"],
+            event_type="action_policy_decision",
+            message=f"external search policy: {execution.action}",
+            payload=action_decision,
+        ),
+    )
+    if execution.action != "execute":
+        if execution.action == "human_review":
+            task = await create_review_task(
+                context.engine,
+                task_type="external_search",
+                risk_level="low",
+                title="External evidence search approval",
+                run_id=state["run_id"],
+                payload={
+                    "run_id": state["run_id"],
+                    "alert_id": state["alert_id"],
+                    "card_id": state["card_id"],
+                    "query": query,
+                    "allowed_domains": list(allowed_domains),
+                    "estimated_cost_usd": settings.external_search_estimated_cost_usd,
+                    "policy_decision": action_decision,
+                },
+            )
+            action_decision["review_task_id"] = task.task_id
+            await record_agent_run_event(
+                context.engine,
+                AgentRunEventRecord(
+                    run_id=state["run_id"],
+                    event_type="action_review_requested",
+                    message="external search requires human approval",
+                    payload={
+                        "task_type": "external_search",
+                        "review_task_id": task.task_id,
+                    },
+                ),
+            )
+        external_context = dict(state["external_context"])
+        external_context["external_search"] = {
+            "status": "blocked",
+            "decision": execution.action,
+            "reason": execution.reason,
+        }
+        return {
+            "external_context": external_context,
+            "external_search_attempted": True,
+            "external_search_calls": search_calls,
+            "action_decisions": [
+                *state.get("action_decisions", []),
+                action_decision,
+            ],
+            "loop_iteration": iteration,
+            "force_review": True,
+        }
+
+    await record_tool_started(context, state, "search_external_evidence")
+    tool_result = await make_external_search_tool(
+        context.runtime.search_external_evidence
+    ).ainvoke({"query": query})
+    search = ExternalEvidenceSearchResult.model_validate(
+        _tool_json_object(tool_result)
+    )
     candidates = list(state.get("external_candidates", []))
     candidate_ids = list(state.get("external_candidate_ids", []))
     risk_level = _risk_level(state["source_input"])
@@ -297,44 +453,42 @@ async def search_external_evidence(
             ),
         )
         auto = approval.action == "auto_approve"
-        candidate = await create_evidence_candidate(
-            context.engine,
-            EvidenceCandidateCreateRequest(
-                run_id=state["run_id"],
-                source_type="web",
-                source_uri=hit.url,
-                title=hit.title,
-                content=hit.content,
-                query=query,
-                risk_level=risk_level,
-                trust_score=hit.trust_score,
-                metadata=hit.metadata,
-                requested_by="agent-loop",
-            ),
-            status="auto_approved" if auto else "pending",
-            reviewed_by="automation-policy" if auto else None,
-            review_reason=approval.reason if auto else None,
-        )
-        await create_review_task(
-            context.engine,
-            task_type="evidence_candidate",
-            risk_level=risk_level,
-            title=f"외부 근거 후보 검수: {candidate.title}",
+        candidate_payload = EvidenceCandidateCreateRequest(
             run_id=state["run_id"],
-            candidate_id=candidate.candidate_id,
-            payload=candidate.model_dump(mode="json"),
-            status="auto_approved" if auto else "pending",
-            reviewed_by="automation-policy" if auto else None,
+            source_type="web",
+            source_uri=hit.url,
+            title=hit.title,
+            content=hit.content,
+            query=query,
+            risk_level=risk_level,
+            trust_score=hit.trust_score,
+            metadata=hit.metadata,
+            requested_by="agent-loop",
         )
-        candidate_ids.append(candidate.candidate_id)
+        stage_result = await make_stage_evidence_candidate_tool(
+            lambda payload: _stage_evidence_candidate(context, payload)
+        ).ainvoke(
+            {
+                "payload_json": orjson.dumps(
+                    {
+                        "candidate": candidate_payload.model_dump(mode="json"),
+                        "status": "auto_approved" if auto else "pending",
+                        "reviewed_by": "automation-policy" if auto else None,
+                        "review_reason": approval.reason if auto else None,
+                    }
+                ).decode("utf-8")
+            }
+        )
+        candidate = _tool_json_object(stage_result)
+        candidate_ids.append(str(candidate["candidate_id"]))
         candidates.append(
             {
-                "candidate_id": candidate.candidate_id,
-                "title": candidate.title,
-                "content": candidate.content,
-                "source_uri": candidate.source_uri,
-                "status": candidate.status,
-                "trust_score": candidate.trust_score,
+                "candidate_id": candidate["candidate_id"],
+                "title": candidate["title"],
+                "content": candidate["content"],
+                "source_uri": candidate.get("source_uri"),
+                "status": candidate["status"],
+                "trust_score": candidate["trust_score"],
             }
         )
     await record_tool_completed(
@@ -359,8 +513,18 @@ async def search_external_evidence(
     return {
         "external_candidates": candidates,
         "external_candidate_ids": candidate_ids,
+        "external_search_attempted": True,
+        "external_search_calls": search_calls + 1,
+        "action_decisions": [
+            *state.get("action_decisions", []),
+            action_decision,
+        ],
         "loop_iteration": iteration,
-        "used_tools": [*state.get("used_tools", []), "search_external_evidence"],
+        "used_tools": [
+            *state.get("used_tools", []),
+            "search_external_evidence",
+            *(["stage_evidence_candidate"] if search.hits else []),
+        ],
     }
 
 
@@ -388,7 +552,6 @@ async def rerun_model_verification(
         "model_verification": result,
         "model_attempts": attempt,
         "loop_iteration": iteration,
-        "used_tools": [*state.get("used_tools", []), "rerun_model_verification"],
     }
     if artifact_uri:
         response["active_model_artifact_uri"] = artifact_uri
@@ -524,6 +687,8 @@ async def create_final_review(context: AgentNodeContext, state: AgentState) -> A
             "evidence_assessment": assessment.model_dump(mode="json"),
             "model_verification": state["model_verification"].model_dump(mode="json"),
             "external_candidate_ids": state.get("external_candidate_ids", []),
+            "used_tools": state.get("used_tools", []),
+            "action_decisions": state.get("action_decisions", []),
             "output_validation": state["output_validation"].model_dump(mode="json"),
         },
     )
@@ -552,6 +717,8 @@ async def complete_run(context: AgentNodeContext, state: AgentState) -> AgentSta
         evidence_score=assessment.evidence_score,
         missing_evidence=assessment.missing_evidence,
         external_candidate_ids=state.get("external_candidate_ids", []),
+        used_tools=state.get("used_tools", []),
+        action_decisions=state.get("action_decisions", []),
         model_verification=state.get("model_verification"),
         review_required=True,
         review_task_id=state.get("review_task_id"),
@@ -588,9 +755,9 @@ async def record_decision(
         context.engine,
         AgentRunEventRecord(
             run_id=state["run_id"],
-            event_type="llm_decision",
-            message=f"agent selected {next_step}",
-            payload={"next": next_step},
+            event_type="graph_transition",
+            message=f"graph entered {next_step}",
+            payload={"next": next_step, "decision_source": "graph"},
         ),
     )
 
@@ -717,6 +884,51 @@ def _risk_level(source_input: dict[str, JsonValue]) -> Literal["low", "medium", 
     if level == "low":
         return "low"
     return "medium"
+
+
+def _model_drift_score(state: AgentState) -> float:
+    verification = state.get("model_verification")
+    if verification is None or verification.risk_score_delta is None:
+        return 0.0
+    return min(1.0, abs(float(verification.risk_score_delta)))
+
+
+async def _stage_evidence_candidate(
+    context: AgentNodeContext,
+    payload: dict[str, JsonValue],
+) -> dict[str, JsonValue]:
+    candidate_payload = payload.get("candidate")
+    if not isinstance(candidate_payload, dict):
+        raise ReportToolPayloadError("candidate must be a JSON object")
+    status = str(payload.get("status") or "pending")
+    if status not in {"pending", "auto_approved"}:
+        raise ReportToolPayloadError("unsupported evidence candidate status")
+    reviewed_by_value = payload.get("reviewed_by")
+    review_reason_value = payload.get("review_reason")
+    reviewed_by = reviewed_by_value if isinstance(reviewed_by_value, str) else None
+    review_reason = (
+        review_reason_value if isinstance(review_reason_value, str) else None
+    )
+    request = EvidenceCandidateCreateRequest.model_validate(candidate_payload)
+    candidate = await create_evidence_candidate(
+        context.engine,
+        request,
+        status=status,
+        reviewed_by=reviewed_by,
+        review_reason=review_reason,
+    )
+    await create_review_task(
+        context.engine,
+        task_type="evidence_candidate",
+        risk_level=request.risk_level,
+        title=f"외부 근거 후보 검수: {candidate.title}",
+        run_id=request.run_id,
+        candidate_id=candidate.candidate_id,
+        payload=candidate.model_dump(mode="json"),
+        status=status,
+        reviewed_by=reviewed_by,
+    )
+    return candidate.model_dump(mode="json")
 
 
 def _tool_json_object(payload: str) -> dict[str, JsonValue]:

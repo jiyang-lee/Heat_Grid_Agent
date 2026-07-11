@@ -1,7 +1,9 @@
+import asyncio
 import importlib.util
 from pathlib import Path
 from types import ModuleType
 from typing import Final
+from uuid import uuid4
 
 from httpx import ASGITransport, AsyncClient
 import orjson
@@ -29,10 +31,24 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
+        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
         await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
         await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
+
+
+async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
+    for _ in range(200):
+        response = await client.get(f"/api/agent-runs/{run_id}")
+        payload = response.json()
+        if payload.get("status") in {"completed", "failed"}:
+            return payload
+        await asyncio.sleep(0.025)
+    raise AssertionError(f"agent run {run_id} did not finish")
 
 
 @pytest.mark.anyio
@@ -47,11 +63,23 @@ async def test_v2_postgres_tools_return_ops_and_external_context(
 
     evidence = orjson.loads(tools["get_ops_evidence"].invoke({"card_id": card_ids[0]}))
     context = orjson.loads(tools["get_external_context"].invoke({"card_id": card_ids[0]}))
+    references = orjson.loads(
+        tools["get_internal_references"].invoke({"card_id": card_ids[0]})
+    )
 
-    assert set(tools) == {"get_ops_evidence", "get_external_context"}
+    assert set(tools) == {
+        "get_ops_evidence",
+        "get_priority_snapshot",
+        "get_substation_context",
+        "get_sensor_evidence",
+        "get_model_evidence",
+        "get_internal_references",
+        "get_external_context",
+        "get_agent_loop_context",
+    }
     assert "site" in context
     assert "weather" in context
-    assert "retrieval" in context
+    assert "retrieval" in references
     assert evidence["priority_context"]["card"]["card_id"] == card_ids[0]
     assert "model_outputs" in evidence["priority_context"]
     assert isinstance(evidence["priority_context"]["model_outputs"], list)
@@ -82,6 +110,7 @@ async def test_api_server_exposes_health_and_metadata(
     assert openapi.status_code == 200
     assert "/api/alerts" in openapi.json()["paths"]
     assert "/api/agent-runs" in openapi.json()["paths"]
+    assert "/api/agent-runs/{run_id}/reports/daily" in openapi.json()["paths"]
     assert "/api/priority-evaluations/latest" in openapi.json()["paths"]
 
 
@@ -148,6 +177,7 @@ async def test_api_agent_run_creates_completed_run_from_alert(
             json={"alert_id": alert["alert_id"]},
         )
         run_id = created.json()["run_id"]
+        completed = await wait_for_agent_run(client, run_id)
         fetched = await client.get(f"/api/agent-runs/{run_id}")
         artifacts = await client.get(f"/api/agent-runs/{run_id}/artifacts")
         iterations = await client.get(f"/api/agent-runs/{run_id}/iterations")
@@ -164,56 +194,340 @@ async def test_api_agent_run_creates_completed_run_from_alert(
 
     assert enqueue.status_code == 200
     assert created.status_code == 200
-    assert created.json()["status"] == "completed"
-    assert created.json()["alert_id"] == alert["alert_id"]
-    assert created.json()["card_id"] == alert["card_id"]
-    assert created.json()["evaluation_run_id"] == alert["evaluation_run_id"]
-    assert created.json()["substation_id"] == alert["substation_id"]
-    assert created.json()["agent_mode"] == "fallback"
-    assert created.json()["ops_output"]["summary"]
-    assert created.json()["loop_summary"]["iterations"] >= 1
-    assert created.json()["loop_summary"]["model_verification"]["status"] in {
+    assert created.json()["status"] == "queued"
+    assert completed["status"] == "completed"
+    assert completed["alert_id"] == alert["alert_id"]
+    assert completed["card_id"] == alert["card_id"]
+    assert completed["evaluation_run_id"] == alert["evaluation_run_id"]
+    assert completed["substation_id"] == alert["substation_id"]
+    assert completed["agent_mode"] == "fallback"
+    assert completed["ops_output"]["summary"]
+    assert completed["loop_summary"]["iterations"] >= 1
+    assert completed["loop_summary"]["model_verification"]["status"] in {
         "verified",
         "partial",
         "unavailable",
         "error",
     }
-    assert created.json()["loop_summary"]["model_verification"]["evaluation_run_id"] == alert["evaluation_run_id"]
-    assert created.json()["loop_summary"]["model_verification"]["substation_id"] == alert["substation_id"]
-    assert created.json()["review_status"] == "pending"
-    assert created.json()["review_task_id"]
+    assert completed["loop_summary"]["model_verification"]["evaluation_run_id"] == alert["evaluation_run_id"]
+    assert completed["loop_summary"]["model_verification"]["substation_id"] == alert["substation_id"]
+    assert completed["review_status"] == "pending"
+    assert completed["review_task_id"]
     assert fetched.status_code == 200
-    assert fetched.json() == created.json()
+    assert fetched.json() == completed
     assert artifacts.status_code == 200
     assert artifacts.json() == []
     assert iterations.status_code == 200
     assert iterations.json()
     assert events.status_code == 200
     assert '"type":"run_started"' in events.text
+    assert '"type":"run_queued"' in events.text
     assert '"type":"status_changed"' in events.text
-    assert '"type":"llm_decision"' in events.text
+    assert '"type":"graph_transition"' in events.text
     assert '"type":"tool_started"' in events.text
     assert '"type":"tool_completed"' in events.text
     assert '"type":"final_output"' in events.text
     assert '"type":"run_completed"' in events.text
     assert '"type":"report_failed"' in events.text
-    assert event_types[:9] == [
+    assert event_types[:4] == [
+        "run_queued",
+        "status_changed",
+        "status_changed",
         "run_started",
-        "status_changed",
-        "status_changed",
-        "llm_decision",
-        "tool_started",
-        "tool_completed",
-        "llm_decision",
-        "tool_started",
-        "tool_completed",
     ]
+    assert "graph_transition" in event_types
     assert "model_verification" in event_types
     assert "loop_decision" in event_types
     assert "review_requested" in event_types
     assert event_types.index("final_output") < event_types.index("review_requested")
     assert event_types.index("review_requested") < event_types.index("run_completed")
-    assert event_types[-1] == "report_failed"
+    assert "report_failed" in event_types
+    assert event_types[-1] == "run_completed"
+
+
+@pytest.mark.anyio
+async def test_api_agent_run_reuses_one_run_for_the_same_alert(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        first = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        second = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        completed = await wait_for_agent_run(client, first.json()["run_id"])
+        events = await client.get(
+            f"/api/agent-runs/{first.json()['run_id']}/events"
+        )
+
+    async with module.engine.connect() as connection:
+        run_count = await connection.scalar(
+            text("SELECT count(*) FROM agent_runs WHERE alert_id = :alert_id"),
+            {"alert_id": alert["alert_id"]},
+        )
+        review_count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM human_review_tasks "
+                "WHERE run_id = :run_id AND task_type = 'final_output'"
+            ),
+            {"run_id": first.json()["run_id"]},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["run_id"] == first.json()["run_id"]
+    assert first.json()["status"] in {"queued", "running"}
+    assert second.json()["status"] in {"queued", "running", "completed"}
+    assert completed["status"] == "completed"
+    assert run_count == 1
+    assert review_count == 1
+    assert '"type":"run_reused"' in events.text
+
+
+@pytest.mark.anyio
+async def test_api_agent_run_recovers_an_orphaned_queued_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+
+        from agent_run_repository import create_queued_agent_run
+
+        orphaned_run_id = str(uuid4())
+        await create_queued_agent_run(
+            module.engine,
+            run_id=orphaned_run_id,
+            alert_id=alert["alert_id"],
+            card_id=alert["card_id"],
+        )
+
+        recovered = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        completed = await wait_for_agent_run(client, orphaned_run_id)
+        events = await client.get(f"/api/agent-runs/{orphaned_run_id}/events")
+
+    assert recovered.status_code == 200
+    assert recovered.json()["run_id"] == orphaned_run_id
+    assert completed["status"] == "completed"
+    assert '"type":"run_reused"' in events.text
+    assert '"type":"run_started"' in events.text
+
+
+@pytest.mark.anyio
+async def test_agent_run_manual_rerun_requires_audited_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        first = (await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )).json()
+        await wait_for_agent_run(client, str(first["run_id"]))
+
+        invalid = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"], "force_new": True},
+        )
+        rerun = await client.post(
+            "/api/agent-runs",
+            json={
+                "alert_id": alert["alert_id"],
+                "force_new": True,
+                "requested_by": "pytest",
+                "reason": "verify intentional rerun",
+            },
+        )
+        completed = await wait_for_agent_run(client, rerun.json()["run_id"])
+
+    assert invalid.status_code == 422
+    assert rerun.status_code == 200
+    assert rerun.json()["run_id"] != first["run_id"]
+    assert rerun.json()["parent_run_id"] == first["run_id"]
+    assert rerun.json()["trigger_type"] == "manual_rerun"
+    assert rerun.json()["requested_by"] == "pytest"
+    assert completed["status"] == "completed"
+
+
+@pytest.mark.anyio
+async def test_agent_run_event_stream_includes_events_created_after_subscription(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        events = await client.get(
+            f"/api/agent-runs/{created.json()['run_id']}/events"
+        )
+
+    assert created.json()["status"] == "queued"
+    assert "id: " in events.text
+    assert '"type":"run_queued"' in events.text
+    assert '"type":"run_completed"' in events.text
+
+
+@pytest.mark.anyio
+async def test_api_agent_run_replaces_expired_queued_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+
+        from agent_run_repository import create_queued_agent_run
+
+        expired_run_id = str(uuid4())
+        await create_queued_agent_run(
+            module.engine,
+            run_id=expired_run_id,
+            alert_id=alert["alert_id"],
+            card_id=alert["card_id"],
+        )
+        async with module.engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE agent_runs SET updated_at = now() - interval '1 hour' "
+                    "WHERE run_id = :run_id"
+                ),
+                {"run_id": expired_run_id},
+            )
+
+        replacement = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        completed = await wait_for_agent_run(client, replacement.json()["run_id"])
+        expired = await client.get(f"/api/agent-runs/{expired_run_id}")
+
+    assert replacement.status_code == 200
+    assert replacement.json()["status"] == "queued"
+    assert completed["status"] == "completed"
+    assert replacement.json()["run_id"] != expired_run_id
+    assert expired.status_code == 200
+    assert expired.json()["status"] == "failed"
+    assert expired.json()["error"] == "agent run lease expired"
+
+
+@pytest.mark.anyio
+async def test_daily_report_command_is_idempotent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        run = (
+            await client.post(
+                "/api/agent-runs",
+                json={"alert_id": alert["alert_id"]},
+            )
+        ).json()
+        run = await wait_for_agent_run(client, str(run["run_id"]))
+
+        import agent_run_routes
+        import asyncio
+        import time
+        from langchain_core.tools import tool
+        from pydantic import SecretStr
+
+        real_factory = agent_run_routes.make_daily_report_tool
+        base_report_tool = real_factory(output_root=tmp_path, mock=True)
+        report_calls = 0
+
+        def mock_report_tool(**_kwargs):
+            @tool(description="Write a delayed mock daily report for concurrency testing.")
+            def write_daily_report(payload_json: str) -> str:
+                nonlocal report_calls
+                report_calls += 1
+                time.sleep(0.2)
+                return base_report_tool.invoke({"payload_json": payload_json})
+
+            return write_daily_report
+
+        monkeypatch.setattr(agent_run_routes, "make_daily_report_tool", mock_report_tool)
+        module.agent_runtime.settings.openai_api_key = SecretStr("test-key")
+
+        first, second = await asyncio.gather(
+            client.post(
+                f"/api/agent-runs/{run['run_id']}/reports/daily",
+                json={"requested_by": "pytest-a"},
+            ),
+            client.post(
+                f"/api/agent-runs/{run['run_id']}/reports/daily",
+                json={"requested_by": "pytest-b"},
+            ),
+        )
+
+    async with module.engine.connect() as connection:
+        artifact_count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM agent_run_artifacts "
+                "WHERE run_id = :run_id AND name = 'daily_report.json'"
+            ),
+            {"run_id": run["run_id"]},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    assert report_calls == 1
+    assert artifact_count == 1
+    assert (
+        tmp_path
+        / "ops_agent"
+        / "reports"
+        / run["run_id"]
+        / "daily_report.json"
+    ).exists()
 
 
 @pytest.mark.anyio
@@ -253,7 +567,7 @@ async def test_api_dashboard_contract_runs_from_alert_feed_to_agent_result(
     assert '"type":"alerts_snapshot"' in alert_events.text
     assert created.status_code == 200
     assert created.json()["alert_id"] == alert["alert_id"]
-    assert created.json()["status"] == "completed"
+    assert created.json()["status"] == "queued"
     assert run_events.status_code == 200
     assert '"type":"run_completed"' in run_events.text
     assert '"type":"report_failed"' in run_events.text

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, Field
@@ -46,9 +47,15 @@ class OpenAIWebEvidenceProvider:
             "간결하게 정리하고 출처 URL과 제목을 반드시 남기세요." + domain_instruction
         )
         try:
+            web_search_tool: dict[str, Any] = {"type": "web_search"}
+            normalized_domains = _normalized_domains(self.allowed_domains)
+            if normalized_domains:
+                web_search_tool["filters"] = {
+                    "allowed_domains": list(normalized_domains),
+                }
             response = await AsyncOpenAI(api_key=self.api_key).responses.create(
                 model=self.model,
-                tools=[{"type": "web_search"}],
+                tools=[web_search_tool],
                 include=["web_search_call.action.sources"],
                 input=[
                     {"role": "system", "content": prompt},
@@ -62,7 +69,12 @@ class OpenAIWebEvidenceProvider:
                 message=str(exc),
             )
         payload = response.model_dump(mode="json")
-        hits = _hits_from_response(payload, response.output_text, self.max_results)
+        hits = _hits_from_response(
+            payload,
+            response.output_text,
+            self.max_results,
+            allowed_domains=self.allowed_domains,
+        )
         return ExternalEvidenceSearchResult(
             status="available" if hits else "no_match",
             query=query,
@@ -74,6 +86,8 @@ def _hits_from_response(
     payload: dict[str, Any],
     output_text: str,
     max_results: int,
+    *,
+    allowed_domains: tuple[str, ...] = (),
 ) -> list[ExternalEvidenceHit]:
     sources: list[tuple[str | None, str | None]] = []
     for item in payload.get("output", []):
@@ -93,7 +107,10 @@ def _hits_from_response(
 
     unique: list[tuple[str | None, str | None]] = []
     seen: set[str] = set()
+    normalized_domains = _normalized_domains(allowed_domains)
     for title, url in sources:
+        if normalized_domains and not _url_is_allowed(url, normalized_domains):
+            continue
         key = str(url or title or "").strip()
         if not key or key in seen:
             continue
@@ -101,7 +118,7 @@ def _hits_from_response(
         unique.append((title, url))
 
     summary = output_text.strip()[:4000]
-    if not unique and summary:
+    if not unique and summary and not normalized_domains:
         return [
             ExternalEvidenceHit(
                 title="외부 검색 요약",
@@ -119,3 +136,33 @@ def _hits_from_response(
         )
         for title, url in unique[:max_results]
     ]
+
+
+def _normalized_domains(domains: tuple[str, ...]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    for value in domains:
+        text = value.strip().lower()
+        if not text:
+            continue
+        parsed = urlparse(text if "://" in text else f"https://{text}")
+        hostname = (parsed.hostname or "").rstrip(".")
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+        if hostname and hostname not in normalized:
+            normalized.append(hostname)
+    return tuple(normalized)
+
+
+def _url_is_allowed(url: str | None, allowed_domains: tuple[str, ...]) -> bool:
+    if not url:
+        return False
+    try:
+        hostname = (urlparse(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+    return any(
+        hostname == domain or hostname.endswith(f".{domain}")
+        for domain in allowed_domains
+    )

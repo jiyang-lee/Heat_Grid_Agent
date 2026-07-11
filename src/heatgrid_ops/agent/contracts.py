@@ -13,3 +13,4 @@ class AgentRunRequest:
     run_id: str
     alert_id: str
     card_id: str
+    approved_action_task_id: str | None = None

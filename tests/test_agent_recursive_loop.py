@@ -4,13 +4,25 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 sys.path.insert(0, str(BACKEND))
 
-from heatgrid_ops.agent.assessment import assess_evidence, validate_output
+from heatgrid_ops.agent.assessment import (
+    EvidenceAssessment,
+    assess_evidence,
+    guard_llm_assessment,
+    validate_output,
+)
+from heatgrid_ops.agent import nodes
+from heatgrid_ops.agent.external_search import (
+    ExternalEvidenceSearchResult,
+    _hits_from_response,
+)
 from heatgrid_ops.agent.helpers import token_calls_from_messages
-from schemas import ModelVerificationResult, OpsAgentOutput
+from schemas import AutomationPolicy, ModelVerificationResult, OpsAgentOutput
 
 
 def source_input(*, review_required: bool = False) -> dict:
@@ -84,9 +96,222 @@ def test_internal_then_external_evidence_routes_are_bounded() -> None:
         threshold=0.95,
         external_search_enabled=True,
     )
+    after_external_attempt = assess_evidence(
+        source_input=source_input(),
+        external_context=external_context(0),
+        model_verification=verification(agreement=True),
+        iteration=3,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+        external_search_attempted=True,
+    )
     assert first.decision == "expand_internal"
     assert second.decision == "search_external"
+    assert after_external_attempt.decision == "request_human"
     assert final.decision == "request_human"
+
+
+def test_llm_cannot_reenter_external_search_outside_policy_envelope() -> None:
+    deterministic = assess_evidence(
+        source_input=source_input(),
+        external_context=external_context(0),
+        model_verification=verification(agreement=True),
+        iteration=3,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+        external_search_attempted=True,
+    )
+    llm_candidate = EvidenceAssessment(
+        decision="search_external",
+        confidence=0.99,
+        evidence_score=0.99,
+        missing_evidence=[],
+        rationale="search again",
+    )
+
+    guarded = guard_llm_assessment(
+        llm_candidate,
+        deterministic,
+        iteration=3,
+        max_iterations=4,
+        external_search_enabled=True,
+        model_verification=verification(agreement=True),
+    )
+
+    assert deterministic.decision == "request_human"
+    assert guarded.decision == "request_human"
+
+
+@pytest.mark.anyio
+async def test_external_search_node_checks_policy_before_calling_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_calls = 0
+
+    async def provider(_query: str) -> ExternalEvidenceSearchResult:
+        nonlocal provider_calls
+        provider_calls += 1
+        return ExternalEvidenceSearchResult(status="no_match", query="query")
+
+    async def no_event(*_args, **_kwargs) -> None:
+        return None
+
+    async def human_only_policy(_engine) -> AutomationPolicy:
+        return AutomationPolicy(
+            mode="human_only",
+            reviewed_count=0,
+            approval_rate=0,
+            eligible_for_guarded_auto=False,
+            updated_at="2026-07-10T00:00:00+00:00",
+        )
+
+    async def create_action_review(*_args, **_kwargs):
+        return SimpleNamespace(task_id="review-external-1")
+
+    monkeypatch.setattr(nodes, "get_automation_policy", human_only_policy)
+    monkeypatch.setattr(nodes, "record_decision", no_event)
+    monkeypatch.setattr(nodes, "record_agent_run_event", no_event)
+    monkeypatch.setattr(nodes, "create_review_task", create_action_review)
+    runtime = SimpleNamespace(
+        settings=SimpleNamespace(
+            external_search_budget_per_run_usd=0.02,
+            external_search_estimated_cost_usd=0.01,
+            external_search_allowed_domains="example.com",
+            external_search_max_calls_per_run=1,
+        ),
+        search_external_evidence=provider,
+    )
+    state = {
+        "run_id": "run-1",
+        "alert_id": "alert-1",
+        "card_id": "card-1",
+        "loop_iteration": 2,
+        "external_search_calls": 0,
+        "external_context": {},
+        "source_input": source_input(),
+        "evidence_assessment": EvidenceAssessment(
+            decision="search_external",
+            confidence=0.8,
+            evidence_score=0.5,
+            missing_evidence=["reference"],
+            rationale="need evidence",
+        ),
+    }
+
+    result = await nodes.search_external_evidence(
+        SimpleNamespace(engine=object(), runtime=runtime),
+        state,
+    )
+
+    assert provider_calls == 0
+    assert result["external_search_attempted"] is True
+    assert result["force_review"] is True
+    assert result["action_decisions"][0]["action"] == "human_review"
+
+
+@pytest.mark.anyio
+async def test_approved_external_search_task_resumes_controlled_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_calls = 0
+
+    async def provider(_query: str) -> ExternalEvidenceSearchResult:
+        nonlocal provider_calls
+        provider_calls += 1
+        return ExternalEvidenceSearchResult(status="no_match", query="query")
+
+    async def no_event(*_args, **_kwargs) -> None:
+        return None
+
+    async def human_only_policy(_engine) -> AutomationPolicy:
+        return AutomationPolicy(
+            mode="human_only",
+            reviewed_count=0,
+            approval_rate=0,
+            eligible_for_guarded_auto=False,
+            updated_at="2026-07-10T00:00:00+00:00",
+        )
+
+    async def approved_task(_engine, _task_id: str):
+        return SimpleNamespace(
+            task_id="review-external-approved",
+            task_type="external_search",
+            status="approved",
+        )
+
+    monkeypatch.setattr(nodes, "get_automation_policy", human_only_policy)
+    monkeypatch.setattr(nodes, "get_review_task", approved_task)
+    monkeypatch.setattr(nodes, "record_decision", no_event)
+    monkeypatch.setattr(nodes, "record_agent_run_event", no_event)
+    runtime = SimpleNamespace(
+        settings=SimpleNamespace(
+            external_search_budget_per_run_usd=0.02,
+            external_search_estimated_cost_usd=0.01,
+            external_search_allowed_domains="example.com",
+            external_search_max_calls_per_run=1,
+        ),
+        search_external_evidence=provider,
+    )
+    state = {
+        "run_id": "run-approved",
+        "alert_id": "alert-approved",
+        "card_id": "card-approved",
+        "approved_action_task_id": "review-external-approved",
+        "loop_iteration": 2,
+        "external_search_calls": 0,
+        "external_context": {},
+        "source_input": source_input(),
+        "evidence_assessment": EvidenceAssessment(
+            decision="search_external",
+            confidence=0.8,
+            evidence_score=0.5,
+            missing_evidence=["reference"],
+            rationale="need evidence",
+        ),
+    }
+
+    result = await nodes.search_external_evidence(
+        SimpleNamespace(engine=object(), runtime=runtime),
+        state,
+    )
+
+    assert provider_calls == 1
+    assert result["external_search_calls"] == 1
+    assert result["action_decisions"][0]["action"] == "execute"
+
+
+def test_external_search_rejects_sources_outside_allowed_domains() -> None:
+    payload = {
+        "output": [
+            {
+                "action": {
+                    "sources": [
+                        {"title": "allowed", "url": "https://docs.example.com/case"},
+                        {"title": "blocked", "url": "https://example.com.evil.test/case"},
+                        {"title": "blocked no url", "url": None},
+                    ]
+                }
+            }
+        ]
+    }
+
+    hits = _hits_from_response(
+        payload,
+        "search summary",
+        5,
+        allowed_domains=("example.com",),
+    )
+    no_citation = _hits_from_response(
+        {"output": []},
+        "uncited summary",
+        5,
+        allowed_domains=("example.com",),
+    )
+
+    assert [hit.url for hit in hits] == ["https://docs.example.com/case"]
+    assert no_citation == []
 
 
 def test_sufficient_evidence_finalizes_and_bad_output_requests_revision() -> None:
