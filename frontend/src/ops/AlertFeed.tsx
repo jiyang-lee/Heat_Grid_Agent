@@ -2,7 +2,7 @@
 
 import type { AlertStatus, PriorityLevel } from '../api/contracts'
 import { useAckAlert, useAlerts, useResolveAlert } from '../api/hooks'
-import { useBuildingNameResolver } from './useBuildingName'
+import { complexById } from '../domain/model'
 
 const STATUS_KO: Record<AlertStatus | 'all', string> = {
   open: '열림',
@@ -25,9 +25,13 @@ function fmtTime(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+function locationLabel(substationId: number | null): string {
+  if (substationId == null) return 'Substation -'
+  return `${complexById.get(substationId)?.name ?? '미등록 단지'} · Substation ${substationId}`
+}
+
 export default function AlertFeed({ status, priority, onStatus, onPriority, selectedId, onSelect }: Props) {
   const alerts = useAlerts({ status, priority_level: priority === 'all' ? undefined : priority })
-  const buildingName = useBuildingNameResolver()
   const ack = useAckAlert()
   const resolve = useResolveAlert()
 
@@ -64,9 +68,9 @@ export default function AlertFeed({ status, priority, onStatus, onPriority, sele
               {a.priority_level === 'urgent' ? '긴급' : '높음'}
             </div>
             <div className="info">
-              <div className="nm">{buildingName(a.card_id) ?? a.enqueue_reason}</div>
+              <div className="nm">{locationLabel(a.substation_id)} · 전체 {a.priority_rank ?? '-'}위</div>
               <div className="ad">
-                score {a.priority_score?.toFixed(3) ?? '-'} · {fmtTime(a.created_at)} · {STATUS_KO[a.status]}
+                score {a.priority_score?.toFixed(1) ?? '-'} · 기준 {a.as_of_time ? fmtTime(a.as_of_time) : '-'} · {STATUS_KO[a.status]}
                 {a.acked_by ? ` · ${a.acked_by}` : ''}
               </div>
             </div>

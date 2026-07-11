@@ -30,6 +30,16 @@
     "activity_gate": 0.5,
     "fault_pre_event_gate": 0.6
   },
+  "priority_thresholds": {
+    "specialist": {
+      "high": 75.0,
+      "urgent": 90.0
+    },
+    "hybrid": {
+      "high": 82.5,
+      "urgent": 95.0
+    }
+  },
   "role": "parallel M1 specialist gate/context branch; used by M1 hybrid priority, not a standalone risk/leadtime replacement",
   "parallel_agent_card_path": "output/agent/m1_specialist_parallel_agent_card.csv",
   "python_executable": ".venv/Scripts/python.exe",

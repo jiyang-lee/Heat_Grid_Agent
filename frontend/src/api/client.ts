@@ -6,11 +6,13 @@
  * 이 위에서 각 화면을 만드는 쪽이 작성한다.
  *
  * 모든 경로는 상대경로 `/api/...`로 호출한다. 개발 시 Vite dev proxy가
- * http://127.0.0.1:8002 로 전달하고, 배포 시 동일 오리진 또는 리버스 프록시가 처리한다.
+ * http://127.0.0.1:8003 로 전달하고, 배포 시 동일 오리진 또는 리버스 프록시가 처리한다.
  */
 
 import type {
   AgentRunArtifact,
+  AgentReportCreateRequest,
+  AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunResponse,
   OpsAgentResultV4,
@@ -20,6 +22,24 @@ import type {
   AlertListQuery,
   AlertSummary,
   HealthStatus,
+  AutomationPolicy,
+  AutomationPolicyUpdateRequest,
+  EvidenceCandidate,
+  EvidenceCandidateReviewRequest,
+  HumanReviewTask,
+  ModelCandidate,
+  ModelDeployment,
+  ModelPromotionRequest,
+  RetrainJob,
+  RetrainJobActionRequest,
+  RetrainJobCreateRequest,
+  ReviewSubmitResponse,
+  ReviewTaskSubmitRequest,
+  TrainingFeedback,
+  PriorityEvaluationCreateRequest,
+  PriorityEvaluationResult,
+  PriorityEvaluationSnapshot,
+  PrioritySubstationSnapshot,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -100,19 +120,21 @@ export const healthApi = {
   get: () => rawFetch<HealthStatus>('/health'),
 }
 
-/**
- * GET /cards — 계약(/api) 밖의 읽기 전용 편의 엔드포인트.
- * 알림(AlertSummary)에는 건물명이 없어서, card_id → substation_id 매핑을 얻어
- * 프론트 로컬 단지 데이터(complexes.ts)로 건물명을 붙이는 enrichment 용도로만 쓴다.
- * 계약·백엔드는 무변경이며, 이 엔드포인트가 없거나 실패하면 이름 없이 degrade한다.
- */
-export interface CardRef {
-  card_id: string
-  substation_id: number | null
-}
-
-export const cardsApi = {
-  list: () => rawFetch<CardRef[]>('/cards'),
+export const priorityEvaluationsApi = {
+  latest: () => apiFetch<PriorityEvaluationSnapshot>('/priority-evaluations/latest'),
+  get: (evaluationRunId: string) =>
+    apiFetch<PriorityEvaluationSnapshot>(`/priority-evaluations/${evaluationRunId}`),
+  create: (body: PriorityEvaluationCreateRequest = {}) =>
+    apiFetch<PriorityEvaluationSnapshot>('/priority-evaluations', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  alerts: () =>
+    apiFetch<PriorityEvaluationResult[]>('/priority-evaluations/latest/alerts'),
+  substation: (substationId: number, manufacturerId?: string) =>
+    apiFetch<PrioritySubstationSnapshot>(
+      `/priority-evaluations/latest/substations/${substationId}${toQueryString({ manufacturer_id: manufacturerId })}`,
+    ),
 }
 
 export const agentRunsApi = {
@@ -125,6 +147,83 @@ export const agentRunsApi = {
   result: (runId: string) => apiFetch<OpsAgentResultV4>(`/agent-runs/${runId}/result`),
   artifacts: (runId: string) =>
     apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),
+  dailyReport: (runId: string, body: AgentReportCreateRequest) =>
+    apiFetch<AgentRunArtifact>(`/agent-runs/${runId}/reports/daily`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  iterations: (runId: string) =>
+    apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
+}
+
+export const reviewTasksApi = {
+  list: (query?: { status?: string; task_type?: string }) =>
+    apiFetch<HumanReviewTask[]>(
+      `/review-tasks${toQueryString(query as Record<string, string | undefined> | undefined)}`,
+    ),
+  get: (taskId: string) => apiFetch<HumanReviewTask>(`/review-tasks/${taskId}`),
+  submit: (taskId: string, body: ReviewTaskSubmitRequest) =>
+    apiFetch<ReviewSubmitResponse>(`/review-tasks/${taskId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const evidenceCandidatesApi = {
+  list: (query?: { status?: string }) =>
+    apiFetch<EvidenceCandidate[]>(
+      `/evidence-candidates${toQueryString(query as Record<string, string | undefined> | undefined)}`,
+    ),
+  review: (candidateId: string, body: EvidenceCandidateReviewRequest) =>
+    apiFetch<EvidenceCandidate>(`/evidence-candidates/${candidateId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const trainingFeedbackApi = {
+  list: () => apiFetch<TrainingFeedback[]>('/training-feedback'),
+}
+
+export const automationPolicyApi = {
+  get: () => apiFetch<AutomationPolicy>('/automation-policy'),
+  update: (body: AutomationPolicyUpdateRequest) =>
+    apiFetch<AutomationPolicy>('/automation-policy', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const retrainJobsApi = {
+  list: (query?: { status?: string }) =>
+    apiFetch<RetrainJob[]>(
+      `/retrain-jobs${toQueryString(query as Record<string, string | undefined> | undefined)}`,
+    ),
+  create: (body: RetrainJobCreateRequest) =>
+    apiFetch<RetrainJob>('/retrain-jobs', { method: 'POST', body: JSON.stringify(body) }),
+  approve: (jobId: string, body: RetrainJobActionRequest) =>
+    apiFetch<RetrainJob>(`/retrain-jobs/${jobId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  reject: (jobId: string, body: RetrainJobActionRequest) =>
+    apiFetch<RetrainJob>(`/retrain-jobs/${jobId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const modelCandidatesApi = {
+  list: (query?: { status?: string }) =>
+    apiFetch<ModelCandidate[]>(
+      `/model-candidates${toQueryString(query as Record<string, string | undefined> | undefined)}`,
+    ),
+  promote: (candidateId: string, body: ModelPromotionRequest) =>
+    apiFetch<ModelCandidate>(`/model-candidates/${candidateId}/promote`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  active: () => apiFetch<ModelDeployment | null>('/model-deployments/active'),
 }
 
 // ---------------------------------------------------------------------------

@@ -22,6 +22,9 @@
 | 14 | `11_SERVICE_RAG_LOGGING_AND_CONTEXT.md` | RAG, pgvector, 운영 로그, 세종/기상 문맥 서비스화 |
 | 15 | `12_AGENT_RAG_CURRENT_HANDOFF.md` | 현재 Agent/RAG 구성과 추후 모델 서버 연동 인수인계 |
 | 16 | `13_BACKEND_V3_RAG_UPLOAD_PREP.md` | backend/v3_rag 업로드 전 충돌 요인과 정리 기준 |
+| 17 | `14_AGENT_RECURSIVE_AUTOMATION.md` | 에이전트 반복 판단, 모델 재검증, 검수, 재학습, 승격 전체 구조 |
+| 18 | `15_PRIORITY_EVALUATION_SNAPSHOT.md` | 31개 Substation 동시 평가 스냅샷, 순위, API, 지도 연결 구조 |
+| 19 | `HeatGrid_LangGraph_구조도.excalidraw.json` | 현재 LangGraph 실행·재귀·검수 흐름의 Excalidraw 원본 |
 
 ## 목적별 바로가기
 
@@ -69,6 +72,16 @@ package/PACKAGE_MANIFEST.md
 12_AGENT_RAG_CURRENT_HANDOFF.md
 13_BACKEND_V3_RAG_UPLOAD_PREP.md
 ../data/README.md
+```
+
+### 재귀 에이전트와 사람 검수 자동화를 볼 때
+
+```text
+14_AGENT_RECURSIVE_AUTOMATION.md
+15_PRIORITY_EVALUATION_SNAPSHOT.md
+HeatGrid_LangGraph_구조도.excalidraw.json
+contracts/ops_agent_result_v4.md
+../simulator/versions/v2_postgres_react_ops/README.md
 ```
 ## 핵심 파일 요약
 

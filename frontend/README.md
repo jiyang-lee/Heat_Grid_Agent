@@ -8,11 +8,11 @@
 ```bash
 cd frontend
 npm install
-cp .env.example .env      # 아래 값 채우기
+cp .env.example .env      # 사용자 지정 지도/백엔드가 필요할 때
 npm run dev               # → http://localhost:5173
 ```
 
-> `.env`는 커밋되지 않습니다(비밀값). 클론/풀 직후 **반드시 직접 만들어야** 합니다. 안 만들면 지도 관제에 지도가 안 뜨고, 운영 콘솔이 백엔드 호출에 실패합니다. (기계실 관제 화면은 로컬 데이터라 `.env` 없이도 표시됩니다.)
+> `.env`는 커밋되지 않습니다. 파일이 없어도 기본 CARTO 지도와 `http://127.0.0.1:8003` 실백엔드를 사용합니다. 사용자 지정 지도나 mock 모드가 필요할 때만 `.env.example`을 복사해 설정합니다.
 
 ## .env 설정
 
@@ -20,18 +20,15 @@ npm run dev               # → http://localhost:5173
 
 | 변수 | 설명 |
 |---|---|
-| `VITE_MAP_STYLE_URL` | MapTiler 키 또는 전체 style JSON URL. **비워두면 지도 안 뜸.** 키는 레포에 커밋하지 말고 팀 채널에서 공유받거나 각자 [MapTiler](https://cloud.maptiler.com/)에서 발급. |
+| `VITE_MAP_STYLE_URL` | 선택 사항. 전체 MapLibre style JSON URL을 지정하며, 비워두면 기본 CARTO 다크 지도를 사용. |
 | `VITE_USE_MOCK` | `true`면 백엔드 없이 mock 데이터로 전체 화면 구동(데모 권장). 미설정/`false`면 실백엔드(`VITE_BACKEND_URL`) 호출. |
-| `VITE_BACKEND_URL` | 실백엔드 프록시 대상. 기본 `http://127.0.0.1:8002`. |
+| `VITE_BACKEND_URL` | 실백엔드 프록시 대상. 기본 `http://127.0.0.1:8003`. |
 
 **백엔드 없이 전체 화면을 보려면** `.env`에 다음 두 줄이면 충분합니다:
 
 ```bash
-VITE_MAP_STYLE_URL=<MapTiler 키>
 VITE_USE_MOCK=true
 ```
-
-MapTiler 키는 브라우저에 노출되는 클라이언트 키입니다 → MapTiler 대시보드에서 **Allowed origins** 제한을 거는 것을 권장합니다.
 
 ## 스크립트
 
@@ -53,13 +50,11 @@ MapTiler 키는 브라우저에 노출되는 클라이언트 키입니다 → Ma
 1. [vercel.com](https://vercel.com) 로그인 → **Add New… → Project** → 이 GitHub 저장소 Import.
 2. **Root Directory = `frontend`** 로 설정 (Framework는 Vite 자동 감지, Build `npm run build`, Output `dist`).
 3. **Environment Variables** 추가:
-   - `VITE_MAP_STYLE_URL` = MapTiler 키
+   - `VITE_MAP_STYLE_URL` = 사용자 지정 style JSON URL(선택)
    - `VITE_USE_MOCK` = `true`
-4. **Deploy** → `https://<프로젝트>.vercel.app` 발급. 이후 `develop2`에 push하면 자동 재배포.
+4. **Deploy** → `https://<프로젝트>.vercel.app` 발급. 이후 연결한 배포 브랜치에 push하면 자동 재배포.
 
 **CLI 방식(대안)**: `cd frontend && npx vercel`(최초 로그인·설정) → `npx vercel --prod`.
-
-**배포 후 필수**: MapTiler 키의 **Allowed HTTP Origins에 배포 도메인**(예: `<프로젝트>.vercel.app`, 스킴·포트 없이) 추가 → 안 하면 지도만 안 뜬다.
 
 ## 참고
 

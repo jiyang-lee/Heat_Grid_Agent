@@ -9,6 +9,9 @@ from pathlib import Path
 
 import asyncpg
 import pandas as pd
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from heatgrid_ops.priority.evaluation import ensure_latest_priority_evaluation
 
 try:
     from ops_alert_queue import collect_source_diagnostics, enqueue_priority_alerts
@@ -26,6 +29,14 @@ MODEL_FAMILY = "priority_engine"
 MODEL_NAME = "offline_priority_simulator"
 MODEL_RUN_TYPE = "offline_simulation"
 MODEL_SOURCE_ARTIFACT = "output/agent_priority_card.csv"
+DEFAULT_MODEL_FEATURES = Path("output/merged_model_scores.csv")
+DEFAULT_M1_MODEL_FEATURES = Path("output/m1_specialist_compact13_features.csv")
+MODEL_METADATA_PATHS = (
+    Path("models/risk/risk_model_best_metadata.json"),
+    Path("models/leadtime/leadtime_model_best_metadata.json"),
+    Path("models/anomaly/anomaly_metadata.json"),
+    Path("models/m1_specialist/m1_specialist_gate_metadata.json"),
+)
 
 CURRENT_BEST_FEATURES = (
     "anomaly_ensemble_score",
@@ -53,6 +64,8 @@ M1_SPECIALIST_FEATURES = (
 class LoadPaths:
     agent_card: Path
     windows_csv: Path
+    model_features_csv: Path
+    m1_model_features_csv: Path
     database_url: str
     append: bool
     model_run_id: str | None
@@ -70,6 +83,16 @@ def parse_args() -> LoadPaths:
         "--windows-csv",
         default="data/processed/trainable_windows.csv",
         help="Path to data/processed/trainable_windows.csv",
+    )
+    parser.add_argument(
+        "--model-features-csv",
+        default=str(DEFAULT_MODEL_FEATURES),
+        help="Path to merged model outputs used to complete model input snapshots.",
+    )
+    parser.add_argument(
+        "--m1-model-features-csv",
+        default=str(DEFAULT_M1_MODEL_FEATURES),
+        help="Path to M1 compact13 model inputs.",
     )
     parser.add_argument(
         "--database-url",
@@ -95,6 +118,8 @@ def parse_args() -> LoadPaths:
     return LoadPaths(
         agent_card=Path(args.agent_card),
         windows_csv=Path(args.windows_csv),
+        model_features_csv=Path(args.model_features_csv),
+        m1_model_features_csv=Path(args.m1_model_features_csv),
         database_url=args.database_url,
         append=args.append,
         model_run_id=args.model_run_id,
@@ -112,6 +137,11 @@ def normalize_key_value(value: object) -> str:
 
 def normalize_database_url(url: str) -> str:
     return url.replace("+asyncpg://", "://", 1) if "+asyncpg://" in url else url
+
+
+def sqlalchemy_database_url(url: str) -> str:
+    normalized = normalize_database_url(url)
+    return normalized.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
 def to_utc_iso(value: object) -> str:
@@ -213,6 +243,77 @@ def build_feature_records(row: pd.Series | dict[str, object]) -> list[tuple[str,
     return records
 
 
+def load_model_feature_names() -> list[str]:
+    names: list[str] = []
+    for path in MODEL_METADATA_PATHS:
+        if not path.exists():
+            continue
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        columns = (
+            payload.get("model_feature_columns")
+            or payload.get("feature_columns")
+            or payload.get("features")
+            or []
+        )
+        names.extend(str(column) for column in columns)
+    return list(dict.fromkeys(names))
+
+
+def build_model_feature_snapshots(
+    windows: pd.DataFrame,
+    model_features: pd.DataFrame,
+    m1_model_features: pd.DataFrame | None = None,
+) -> dict[tuple[str, str, str, str], dict[str, float]]:
+    required = ("manufacturer", "substation_id", "window_start", "window_end")
+    for source_name, frame in (("windows", windows), ("model_features", model_features)):
+        missing = [column for column in required if column not in frame.columns]
+        if missing:
+            raise KeyError(f"{source_name} 모델 특성 키 컬럼 누락: {', '.join(missing)}")
+
+    from third_model.common import add_sensor_horizon_features
+    from third_model.current_best_internal import SENSOR_HORIZON_SOURCE_COLUMNS
+
+    enriched_windows, _ = add_sensor_horizon_features(
+        windows,
+        SENSOR_HORIZON_SOURCE_COLUMNS,
+    )
+    feature_names = load_model_feature_names()
+    model_by_key = {
+        feature_key(row): row
+        for row in model_features.to_dict(orient="records")
+    }
+    m1_by_key = {
+        feature_key(row): row
+        for row in (
+            m1_model_features.to_dict(orient="records")
+            if m1_model_features is not None and not m1_model_features.empty
+            else []
+        )
+    }
+    snapshots: dict[tuple[str, str, str, str], dict[str, float]] = {}
+    for window_row in enriched_windows.to_dict(orient="records"):
+        key = feature_key(window_row)
+        model_row = model_by_key.get(key, {})
+        m1_row = m1_by_key.get(key, {})
+        values: dict[str, float] = {}
+        for name in feature_names:
+            raw = m1_row.get(name, model_row.get(name, window_row.get(name)))
+            numeric = to_optional_float(raw)
+            if numeric is not None:
+                values[name] = numeric
+        snapshots[key] = values
+    return snapshots
+
+
+def feature_key(row: dict[str, object]) -> tuple[str, str, str, str]:
+    return (
+        normalize_key_value(row["manufacturer"]),
+        normalize_key_value(to_optional_int(row["substation_id"])),
+        to_utc_iso(row["window_start"]),
+        to_utc_iso(row["window_end"]),
+    )
+
+
 async def count_rows(conn: asyncpg.Connection, table: str) -> int:
     return int(await conn.fetchval(f"SELECT count(*) FROM {table}"))
 
@@ -268,8 +369,11 @@ async def reset_tables(conn: asyncpg.Connection) -> None:
     tables = (
         "agent_run_artifacts",
         "agent_runs",
+        "priority_evaluation_results",
+        "priority_evaluation_runs",
         "model_runs",
         "model_outputs",
+        "model_feature_snapshots",
         "sensor_summaries",
         "priority_card_review_reasons",
         "llm_ops_notes",
@@ -289,7 +393,18 @@ async def reset_tables(conn: asyncpg.Connection) -> None:
 async def load(paths: LoadPaths) -> dict[str, object]:
     agent = read_csv(paths.agent_card)
     windows = read_csv(paths.windows_csv)
+    model_features = read_csv(paths.model_features_csv)
+    m1_model_features = (
+        read_csv(paths.m1_model_features_csv)
+        if paths.m1_model_features_csv.exists()
+        else pd.DataFrame()
+    )
     merged = validate_and_merge(agent, windows)
+    feature_snapshots = build_model_feature_snapshots(
+        windows,
+        model_features,
+        m1_model_features,
+    )
 
     key_cols = ["manufacturer", "substation_id", "window_start", "window_end"]
     if len(agent) != len(windows) or len(agent) != len(merged):
@@ -338,6 +453,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "review_reasons": expected_reason_count,
             "model_outputs": len(rows) if model_run_id is not None else 0,
             "model_runs": 1 if model_run_id is not None else 0,
+            "model_feature_snapshots": len(rows),
         }
 
         before_counts = {}
@@ -350,6 +466,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 "review_reasons": await count_rows(conn, "priority_card_review_reasons"),
                 "model_runs": await count_rows(conn, "model_runs"),
                 "model_outputs": await count_rows(conn, "model_outputs"),
+                "model_feature_snapshots": await count_rows(conn, "model_feature_snapshots"),
             }
 
         upsert_windows = (
@@ -375,7 +492,20 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             " m1_specialist_primary_state, m1_specialist_fault_group"
             ") VALUES ("
             "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16"
-            ") ON CONFLICT (priority_decision_id) DO NOTHING"
+            ") ON CONFLICT (priority_decision_id) DO UPDATE SET "
+            "current_best_priority_score = EXCLUDED.current_best_priority_score, "
+            "current_best_priority_level = EXCLUDED.current_best_priority_level, "
+            "m1_specialist_priority_score = EXCLUDED.m1_specialist_priority_score, "
+            "m1_specialist_priority_level = EXCLUDED.m1_specialist_priority_level, "
+            "priority_score = EXCLUDED.priority_score, priority_level = EXCLUDED.priority_level, "
+            "priority_source = EXCLUDED.priority_source, "
+            "m1_priority_agreement = EXCLUDED.m1_priority_agreement, "
+            "policy_version = EXCLUDED.policy_version, "
+            "current_best_weight = EXCLUDED.current_best_weight, "
+            "m1_specialist_weight = EXCLUDED.m1_specialist_weight, "
+            "decision_basis = EXCLUDED.decision_basis, "
+            "m1_specialist_primary_state = EXCLUDED.m1_specialist_primary_state, "
+            "m1_specialist_fault_group = EXCLUDED.m1_specialist_fault_group"
         )
         upsert_priority_cards = (
             "INSERT INTO priority_cards ("
@@ -384,7 +514,15 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             " stable_crossing_lead_hours, raw_card"
             ") VALUES ("
             "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12"
-            ") ON CONFLICT (card_id) DO NOTHING"
+            ") ON CONFLICT (card_id) DO UPDATE SET "
+            "operational_label = EXCLUDED.operational_label, "
+            "primary_state = EXCLUDED.primary_state, "
+            "review_required = EXCLUDED.review_required, trust_level = EXCLUDED.trust_level, "
+            "why_reason = EXCLUDED.why_reason, recommended_action = EXCLUDED.recommended_action, "
+            "first_crossing_time = EXCLUDED.first_crossing_time, "
+            "stable_crossing_time = EXCLUDED.stable_crossing_time, "
+            "stable_crossing_lead_hours = EXCLUDED.stable_crossing_lead_hours, "
+            "raw_card = EXCLUDED.raw_card"
         )
         upsert_sensor_summary = (
             "INSERT INTO sensor_summaries ("
@@ -414,6 +552,19 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "$1,$2,$3,$4,$5,$6,$7,$8,$9"
             ") ON CONFLICT (model_output_id) DO NOTHING"
         )
+        upsert_model_feature_snapshot = (
+            "INSERT INTO model_feature_snapshots ("
+            "window_id, feature_set_version, features, source_artifacts"
+            ") VALUES ($1,$2,$3::jsonb,$4::jsonb)"
+            " ON CONFLICT (window_id) DO UPDATE SET "
+            "feature_set_version = EXCLUDED.feature_set_version,"
+            " features = EXCLUDED.features, source_artifacts = EXCLUDED.source_artifacts,"
+            " updated_at = now() "
+            "WHERE model_feature_snapshots.feature_set_version IS DISTINCT FROM "
+            "EXCLUDED.feature_set_version OR model_feature_snapshots.features IS DISTINCT FROM "
+            "EXCLUDED.features OR model_feature_snapshots.source_artifacts IS DISTINCT FROM "
+            "EXCLUDED.source_artifacts"
+        )
 
         counters = {
             "windows": 0,
@@ -423,6 +574,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "review_reasons": 0,
             "model_runs": 0,
             "model_outputs": 0,
+            "model_feature_snapshots": 0,
         }
 
         for row in rows:
@@ -466,6 +618,31 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             )
             counters["windows"] += 1
 
+            snapshot = feature_snapshots.get(
+                (
+                    manufacturer_id,
+                    normalize_key_value(substation_id),
+                    to_utc_iso(row["window_start"]),
+                    to_utc_iso(row["window_end"]),
+                ),
+                {},
+            )
+            await conn.execute(
+                upsert_model_feature_snapshot,
+                window_id,
+                "active-model-input-v2",
+                json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
+                json.dumps(
+                    [
+                        str(paths.windows_csv),
+                        str(paths.model_features_csv),
+                        str(paths.m1_model_features_csv),
+                    ],
+                    ensure_ascii=False,
+                ),
+            )
+            counters["model_feature_snapshots"] += 1
+
             await conn.execute(
                 upsert_priority_decisions,
                 decision_id,
@@ -500,6 +677,36 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 "fault_event_id": to_optional_str(row.get("fault_event_id")),
                 "priority_score": row.get("priority_score"),
                 "priority_level": row.get("priority_level"),
+                "priority_source": to_optional_str(row.get("priority_source")),
+                "anomaly_ensemble_score": to_optional_float(
+                    row.get("anomaly_ensemble_score")
+                ),
+                "anomaly_policy_score": to_optional_float(
+                    row.get("anomaly_policy_score")
+                ),
+                "anomaly_event_label": to_optional_bool(
+                    row.get("anomaly_event_label")
+                ),
+                "risk_probability": to_optional_float(row.get("risk_probability")),
+                "risk_score": to_optional_float(row.get("risk_score")),
+                "risk_level_calibrated": to_optional_str(
+                    row.get("risk_level_calibrated")
+                ),
+                "predicted_lead_time_bucket": to_optional_str(
+                    row.get("predicted_lead_time_bucket")
+                ),
+                "leadtime_urgency_score": to_optional_float(
+                    row.get("leadtime_urgency_score")
+                ),
+                "current_best_priority_score": to_optional_float(
+                    row.get("current_best_priority_score")
+                ),
+                "m1_specialist_priority_score": to_optional_float(
+                    row.get("m1_specialist_priority_score")
+                ),
+                "m1_specialist_fault_probability": to_optional_float(
+                    row.get("m1_specialist_fault_probability")
+                ),
             }
 
             await conn.execute(
@@ -610,7 +817,19 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "review_reasons": await count_rows(conn, "priority_card_review_reasons"),
             "model_runs": await count_rows(conn, "model_runs"),
             "model_outputs": await count_rows(conn, "model_outputs"),
+            "model_feature_snapshots": await count_rows(conn, "model_feature_snapshots"),
         }
+        evaluation_engine = create_async_engine(sqlalchemy_database_url(paths.database_url))
+        try:
+            evaluation_snapshot = await ensure_latest_priority_evaluation(
+                evaluation_engine,
+                stale_after_hours=720,
+                model_version="active-priority-contract-v1",
+                expected_substations=31,
+            )
+        finally:
+            await evaluation_engine.dispose()
+
         alert_summary = None
         if paths.enqueue_alerts:
             alert_summary = await enqueue_priority_alerts(conn)
@@ -622,6 +841,8 @@ async def load(paths: LoadPaths) -> dict[str, object]:
             "review_reasons": after_counts["review_reasons"],
             "model_runs": after_counts["model_runs"],
             "model_outputs": after_counts["model_outputs"],
+            "model_feature_snapshots": after_counts["model_feature_snapshots"],
+            "evaluation_run_id": evaluation_snapshot["evaluation"]["evaluation_run_id"],
         }
 
         if not paths.append:
@@ -649,6 +870,7 @@ async def load(paths: LoadPaths) -> dict[str, object]:
                 "review_reasons": actual_counts["review_reasons"] - before_counts["review_reasons"],
                 "model_runs": actual_counts["model_runs"] - before_counts["model_runs"],
                 "model_outputs": actual_counts["model_outputs"] - before_counts["model_outputs"],
+                "model_feature_snapshots": actual_counts["model_feature_snapshots"] - before_counts["model_feature_snapshots"],
             }
         return summary
     finally:

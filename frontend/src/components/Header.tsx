@@ -1,6 +1,5 @@
 /** 헤더 — 로고 + 타이틀 + 뷰 전환(지도/운영) + 헬스 + 긴급/주의/정상 요약. */
 
-import { useModel } from '../domain/ModelProvider'
 import { useHealth } from '../api/hooks'
 
 export type AppView = 'map' | 'ops'
@@ -10,11 +9,10 @@ interface Props {
   onAppView: (v: AppView) => void
   theme: 'dark' | 'light'
   onToggleTheme: () => void
+  prioritySummary: { urgent: number; high: number; unavailable: number }
 }
 
-export default function Header({ appView, onAppView, theme, onToggleTheme }: Props) {
-  const { summaryCounts } = useModel()
-  const c = summaryCounts()
+export default function Header({ appView, onAppView, theme, onToggleTheme, prioritySummary }: Props) {
   const health = useHealth()
   const h = health.data
 
@@ -54,15 +52,15 @@ export default function Header({ appView, onAppView, theme, onToggleTheme }: Pro
         )}
         <div className="badge">
           <i className="dot u" />
-          긴급 <b className="u">{c.urgent}</b>
+          긴급 <b className="u">{prioritySummary.urgent}</b>
         </div>
         <div className="badge">
           <i className="dot c" />
-          주의 <b className="c">{c.caution}</b>
+          높음 <b className="c">{prioritySummary.high}</b>
         </div>
         <div className="badge">
-          <i className="dot n" />
-          정상 <b className="n">{c.normal}</b>
+          <i className="dot stale" />
+          지연·누락 <b>{prioritySummary.unavailable}</b>
         </div>
       </div>
 

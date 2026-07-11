@@ -14,11 +14,18 @@
 
 export type AlertStatus = 'open' | 'acked' | 'resolved'
 export type PriorityLevel = 'urgent' | 'high'
+export type FreshnessStatus = 'fresh' | 'stale' | 'missing'
 
 /** GET /api/alerts, GET /api/alerts/{alert_id} 응답 항목 */
 export interface AlertSummary {
   alert_id: string
   card_id: string
+  evaluation_run_id: string | null
+  as_of_time: string | null
+  manufacturer_id: string | null
+  substation_id: number | null
+  priority_rank: number | null
+  freshness_status: FreshnessStatus | null
   priority_level: PriorityLevel
   priority_score: number | null
   status: AlertStatus
@@ -42,12 +49,76 @@ export interface AlertEnqueueResponse {
   existing_count: number
   open_count: number
   total_count: number
+  evaluation_run_id: string | null
+  as_of_time: string | null
 }
 
 /** GET /api/alerts 쿼리 파라미터 */
 export interface AlertListQuery {
   status?: AlertStatus | 'all'
   priority_level?: PriorityLevel
+}
+
+// ---------------------------------------------------------------------------
+// Priority evaluation snapshots
+// ---------------------------------------------------------------------------
+
+export interface PriorityEvaluationRun {
+  evaluation_run_id: string
+  as_of_time: string
+  stale_after_seconds: number
+  model_version: string
+  status: 'running' | 'completed' | 'failed'
+  is_active: boolean
+  target_count: number
+  success_count: number
+  stale_count: number
+  missing_count: number
+  ranked_count: number
+  error: string | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface PriorityEvaluationResult {
+  evaluation_result_id: string
+  evaluation_run_id: string
+  manufacturer_id: string
+  substation_id: number
+  source_window_id: string | null
+  source_window_start: string | null
+  source_window_end: string | null
+  source_card_id: string | null
+  source_priority_decision_id: string | null
+  priority_score: number | null
+  priority_rank: number | null
+  rank_included: boolean
+  priority_level: string | null
+  risk_score: number | null
+  anomaly_score: number | null
+  anomaly_label: boolean | null
+  leadtime_bucket: string | null
+  leadtime_urgency_score: number | null
+  leadtime_hours: number | null
+  freshness_status: FreshnessStatus
+  data_age_seconds: number | null
+  model_components: Record<string, unknown>
+  created_at: string
+}
+
+export interface PriorityEvaluationSnapshot {
+  evaluation: PriorityEvaluationRun
+  results: PriorityEvaluationResult[]
+}
+
+export interface PrioritySubstationSnapshot {
+  evaluation: PriorityEvaluationRun
+  result: PriorityEvaluationResult
+}
+
+export interface PriorityEvaluationCreateRequest {
+  as_of_time?: string
+  stale_after_hours?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +169,13 @@ export interface TokenUsage {
 /** POST /api/agent-runs 요청 body */
 export interface AgentRunCreateRequest {
   alert_id: string
+  force_new?: boolean
+  requested_by?: string
+  reason?: string
+}
+
+export interface AgentReportCreateRequest {
+  requested_by: string
 }
 
 /** POST /api/agent-runs, GET /api/agent-runs/{run_id} 응답 */
@@ -107,10 +185,77 @@ export interface AgentRunResponse {
   input_source: 'alert'
   alert_id: string
   card_id: string
+  evaluation_run_id: string | null
+  manufacturer_id: string | null
+  substation_id: number | null
+  parent_run_id: string | null
+  trigger_type: string
+  requested_by: string | null
+  trigger_reason: string | null
+  approved_action_task_id: string | null
   agent_mode: AgentMode | null
   ops_output: OpsAgentOutput | null
   token_usage: TokenUsage | null
+  loop_summary: AgentLoopSummary | null
+  review_status: ReviewStatus
+  review_task_id: string | null
   error: string | null
+}
+
+export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'corrected'
+
+export interface ModelVerificationResult {
+  status: 'verified' | 'partial' | 'unavailable' | 'error'
+  attempt: number
+  feature_count: number
+  feature_coverage: number
+  risk_score: number | null
+  stored_risk_score: number | null
+  risk_score_delta: number | null
+  anomaly_score: number | null
+  anomaly_label: boolean | null
+  leadtime_bucket: string | null
+  stored_leadtime_bucket: string | null
+  priority_score: number | null
+  stored_priority_score: number | null
+  priority_score_delta: number | null
+  priority_level: string | null
+  m1_specialist_priority_score: number | null
+  component_agreement: Record<string, boolean>
+  agreement: boolean | null
+  active_model_version: string | null
+  evaluation_run_id: string | null
+  manufacturer_id: string | null
+  substation_id: number | null
+  reasons: string[]
+}
+
+export interface AgentLoopSummary {
+  iterations: number
+  max_iterations: number
+  decision: string
+  confidence: number
+  evidence_score: number
+  missing_evidence: string[]
+  external_candidate_ids: string[]
+  used_tools: string[]
+  action_decisions: Record<string, unknown>[]
+  model_verification: ModelVerificationResult | null
+  review_required: boolean
+  review_task_id: string | null
+}
+
+export interface AgentLoopIteration {
+  iteration_id: number
+  run_id: string
+  iteration: number
+  phase: string
+  decision: string
+  confidence: number
+  evidence_score: number
+  missing_evidence: string[]
+  model_verification: ModelVerificationResult | null
+  created_at: string
 }
 
 export interface OpsAgentEvidenceItem {
@@ -135,6 +280,9 @@ export interface OpsAgentResultV4 {
   schema_version: 'ops_agent_result.v4'
   run_id: string
   card_id: string
+  evaluation_run_id: string | null
+  manufacturer_id: string | null
+  substation_id: number | null
   headline: string
   situation: string
   evidence: OpsAgentEvidenceItem[]
@@ -150,6 +298,221 @@ export interface AgentRunArtifact {
   kind: string
   name: string
   uri: string
+}
+
+// ---------------------------------------------------------------------------
+// Automation review and evidence
+// ---------------------------------------------------------------------------
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical'
+export type ReviewTaskStatus =
+  | 'pending'
+  | 'auto_approved'
+  | 'approved'
+  | 'rejected'
+  | 'corrected'
+  | 'cancelled'
+export type ReviewTaskType =
+  | 'final_output'
+  | 'model_disagreement'
+  | 'evidence_candidate'
+  | 'label_correction'
+  | 'retrain_approval'
+  | 'model_promotion'
+  | 'external_search'
+
+export interface HumanReviewTask {
+  task_id: string
+  task_type: ReviewTaskType
+  status: ReviewTaskStatus
+  risk_level: RiskLevel
+  title: string
+  run_id: string | null
+  candidate_id: string | null
+  retrain_job_id: string | null
+  model_candidate_id: string | null
+  payload: Record<string, unknown>
+  resolution: Record<string, unknown>
+  assigned_to: string | null
+  reviewed_by: string | null
+  created_at: string
+  reviewed_at: string | null
+}
+
+export interface ReviewTaskSubmitRequest {
+  decision: 'approve' | 'reject' | 'correct'
+  reviewer: string
+  reason: string
+  corrected_output?: OpsAgentOutput
+  corrected_label?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface TrainingFeedback {
+  feedback_id: string
+  task_id: string
+  run_id: string | null
+  card_id: string | null
+  reviewer: string
+  decision: string
+  original_output: Record<string, unknown>
+  corrected_output: Record<string, unknown>
+  corrected_label: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface ReviewSubmitResponse {
+  task: HumanReviewTask
+  feedback: TrainingFeedback | null
+  automatic_retrain_job_id: string | null
+  automatic_retrain_status: RetrainJobStatus | null
+  resumed_agent_run_id: string | null
+  resumed_agent_run_status: AgentRunStatus | null
+}
+
+export type EvidenceCandidateStatus =
+  | 'pending'
+  | 'auto_approved'
+  | 'approved'
+  | 'rejected'
+  | 'ingest_failed'
+
+export interface EvidenceCandidate {
+  candidate_id: string
+  run_id: string | null
+  source_type: string
+  source_uri: string | null
+  title: string
+  content: string
+  query: string | null
+  risk_level: RiskLevel
+  trust_score: number
+  status: EvidenceCandidateStatus
+  metadata: Record<string, unknown>
+  requested_by: string
+  reviewed_by: string | null
+  review_reason: string | null
+  rag_document_id: string | null
+  rag_chunk_id: string | null
+  created_at: string
+  reviewed_at: string | null
+}
+
+export interface EvidenceCandidateReviewRequest {
+  decision: 'approve' | 'reject'
+  reviewer: string
+  reason: string
+  trust_score?: number
+}
+
+export type AutomationMode = 'human_only' | 'assisted' | 'guarded_auto'
+
+export interface AutomationPolicy {
+  policy_id: 'default'
+  mode: AutomationMode
+  auto_transition_enabled: boolean
+  minimum_review_count: number
+  minimum_approval_rate: number
+  minimum_confidence: number
+  minimum_source_trust: number
+  maximum_drift_score: number
+  final_review_required: boolean
+  reviewed_count: number
+  approval_rate: number
+  eligible_for_guarded_auto: boolean
+  updated_by: string
+  updated_at: string
+}
+
+export interface AutomationPolicyUpdateRequest {
+  mode?: AutomationMode
+  auto_transition_enabled?: boolean
+  minimum_review_count?: number
+  minimum_approval_rate?: number
+  minimum_confidence?: number
+  minimum_source_trust?: number
+  maximum_drift_score?: number
+  updated_by: string
+}
+
+// ---------------------------------------------------------------------------
+// Retraining and model deployment
+// ---------------------------------------------------------------------------
+
+export type RetrainJobStatus =
+  | 'pending_approval'
+  | 'approved'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'rejected'
+  | 'cancelled'
+
+export interface RetrainJob {
+  job_id: string
+  status: RetrainJobStatus
+  requested_by: string
+  reason: string
+  feedback_ids: string[]
+  dataset_snapshot: Record<string, unknown>
+  execution_metadata: Record<string, unknown>
+  approved_by: string | null
+  error: string | null
+  model_candidate_id: string | null
+  created_at: string
+  approved_at: string | null
+  started_at: string | null
+  completed_at: string | null
+}
+
+export interface RetrainJobCreateRequest {
+  requested_by: string
+  reason: string
+  feedback_ids: string[]
+  auto_start_when_approved: boolean
+}
+
+export interface RetrainJobActionRequest {
+  reviewer: string
+  reason: string
+}
+
+export type ModelCandidateStatus =
+  | 'awaiting_validation'
+  | 'awaiting_promotion'
+  | 'promoted'
+  | 'rejected'
+
+export interface ModelCandidate {
+  candidate_id: string
+  job_id: string
+  version: string
+  artifact_uri: string
+  status: ModelCandidateStatus
+  baseline_metrics: Record<string, unknown>
+  candidate_metrics: Record<string, unknown>
+  validation_summary: Record<string, unknown>
+  promoted_by: string | null
+  promotion_reason: string | null
+  created_at: string
+  promoted_at: string | null
+}
+
+export interface ModelPromotionRequest {
+  reviewer: string
+  reason: string
+  decision: 'promote' | 'reject'
+}
+
+export interface ModelDeployment {
+  deployment_id: string
+  candidate_id: string
+  version: string
+  artifact_uri: string
+  active: boolean
+  promoted_by: string
+  created_at: string
 }
 
 // ---------------------------------------------------------------------------

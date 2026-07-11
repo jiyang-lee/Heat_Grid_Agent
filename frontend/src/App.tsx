@@ -14,8 +14,7 @@ import DetailAside from './components/DetailAside'
 import RoomSchematic from './room/RoomSchematic'
 import OpsConsole from './ops/OpsConsole'
 import { complexById } from './domain/model'
-import { ModelProvider } from './domain/ModelProvider'
-import { USE_MOCK } from './api/config'
+import { useAlerts, usePrioritySnapshot } from './api/hooks'
 
 type View = 'city' | 'room'
 type Theme = 'dark' | 'light'
@@ -26,6 +25,16 @@ function App() {
   const [selBld, setSelBld] = useState<number | null>(null)
   const [selMachine, setSelMachine] = useState<string | null>(null)
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') === 'light' ? 'light' : 'dark'))
+  const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
+  const prioritySnapshot = usePrioritySnapshot()
+  const alerts = useAlerts({ status: 'all' })
+  const evaluation = prioritySnapshot.data?.evaluation ?? null
+  const priorityResults = prioritySnapshot.data?.results ?? []
+  const prioritySummary = {
+    urgent: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'urgent').length,
+    high: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'high').length,
+    unavailable: priorityResults.filter((item) => item.freshness_status !== 'fresh').length,
+  }
 
   // 테마를 <html data-theme>에 반영 + localStorage 저장.
   useEffect(() => {
@@ -39,6 +48,14 @@ function App() {
     setSelMachine(null)
     setView('room')
   }
+  const selectBuilding = (id: number) => {
+    setSelBld(id)
+    setSelMachine(null)
+  }
+  const openOps = (alertId: string) => {
+    setInitialAlertId(alertId)
+    setAppView('ops')
+  }
   const backToCity = () => {
     setSelMachine(null)
     setView('city')
@@ -49,10 +66,15 @@ function App() {
   const sel = selBld != null ? complexById.get(selBld) ?? null : null
 
   return (
-    <ModelProvider>
     <div className="app">
-      <Header appView={appView} onAppView={setAppView} theme={theme} onToggleTheme={toggleTheme} />
-      {appView === 'ops' && <OpsConsole />}
+      <Header
+        appView={appView}
+        onAppView={setAppView}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        prioritySummary={prioritySummary}
+      />
+      {appView === 'ops' && <OpsConsole initialAlertId={initialAlertId} />}
       {appView === 'map' && (
       <div className="wrap">
         {/* 메인 패널 */}
@@ -68,7 +90,14 @@ function App() {
           </div>
           <div className={`stage ${city ? '' : 'room'}`.trim()}>
             {city ? (
-              <MapView selectedId={selBld} onSelectComplex={enterBuilding} theme={theme} />
+              <MapView
+                selectedId={selBld}
+                onSelectComplex={selectBuilding}
+                theme={theme}
+                results={priorityResults}
+                loading={prioritySnapshot.isLoading}
+                error={prioritySnapshot.isError}
+              />
             ) : sel ? (
               <RoomSchematic complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
             ) : null}
@@ -80,17 +109,19 @@ function App() {
             </span>
             <span>
               <i className="dot c" />
-              주의
+              높음
             </span>
             <span>
               <i className="dot n" />
-              정상
+              중간·낮음
+            </span>
+            <span>
+              <i className="dot stale" />
+              지연·누락
             </span>
             <span className="note">
               {city
-                ? USE_MOCK
-                  ? '· 상태=총관리비 단가(대리 열부하) 기반 데모 · 위치=실제 위경도'
-                  : '· 상태=모델 우선순위(priority_score) 기반 · 위치=실제 위경도'
+                ? `· 모델 평가 ${evaluation ? new Date(evaluation.as_of_time).toLocaleString('ko-KR') : '조회 중'} · 위치=정적 메타데이터`
                 : '· 회색=해당 PreDist 센서 미탑재(감시 불가)'}
             </span>
           </div>
@@ -99,12 +130,22 @@ function App() {
         {/* 보조 패널 */}
         <aside className="panel">
           <div className="panel-head">
-            <span>{city ? '수리 우선순위' : '단지 · 설비 상세'}</span>
+            <span>{city ? '전체 Priority 순위' : '단지 · 설비 상세'}</span>
             <span className="tag">{city ? 'PRIORITY' : 'DETAIL'}</span>
           </div>
           {city ? (
             <div className="aside-body">
-              <PriorityAside selectedId={selBld} onSelect={enterBuilding} />
+              <PriorityAside
+                selectedId={selBld}
+                onSelect={selectBuilding}
+                onOpenRoom={enterBuilding}
+                onOpenOps={openOps}
+                evaluation={evaluation}
+                results={priorityResults}
+                alerts={alerts.data ?? []}
+                loading={prioritySnapshot.isLoading}
+                error={prioritySnapshot.isError}
+              />
             </div>
           ) : sel ? (
             <DetailAside complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
@@ -113,7 +154,6 @@ function App() {
       </div>
       )}
     </div>
-    </ModelProvider>
   )
 }
 
