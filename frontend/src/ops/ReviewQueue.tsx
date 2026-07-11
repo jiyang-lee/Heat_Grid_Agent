@@ -45,7 +45,7 @@ export default function ReviewQueue() {
     setCaution(output?.caution ?? '')
     setCorrectedLabel('')
     setReason('')
-  }, [selected?.task_id])
+  }, [selected])
 
   const send = (decision: 'approve' | 'reject' | 'correct') => {
     if (!selected) return
@@ -97,6 +97,9 @@ export default function ReviewQueue() {
             <div className="form-stack">
               <div className="detail-line"><span>유형</span><b>{selected.task_type}</b></div>
               <div className="detail-line"><span>위험도</span><b>{selected.risk_level}</b></div>
+              {selected.task_type === 'external_search' && typeof selected.payload.query === 'string' && (
+                <div className="detail-line"><span>검색어</span><b>{selected.payload.query}</b></div>
+              )}
               <label>검수자<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} /></label>
               {taskOutput(selected) && (
                 <>
@@ -121,7 +124,10 @@ export default function ReviewQueue() {
               {submit.data?.automatic_retrain_job_id && (
                 <div className="save-ok">교정 라벨이 반영되어 자동 재학습이 시작됐습니다.</div>
               )}
-              {submit.isSuccess && !submit.data.automatic_retrain_job_id && (
+              {submit.data?.resumed_agent_run_id && (
+                <div className="save-ok">승인된 작업으로 에이전트 실행이 재개됐습니다.</div>
+              )}
+              {submit.isSuccess && !submit.data.automatic_retrain_job_id && !submit.data.resumed_agent_run_id && (
                 <div className="save-ok">검수 결과가 저장됐습니다.</div>
               )}
               {submit.isError && <div className="wo-err">검수 결과 저장 실패</div>}

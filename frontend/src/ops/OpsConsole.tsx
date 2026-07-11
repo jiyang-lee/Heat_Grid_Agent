@@ -1,8 +1,8 @@
 /** 운영 콘솔 — 알림 큐(피드) + 토큰·비용 지표 + 알림 상세/작업지시서. 전부 /api 계약 소비(mock/real 스위치). */
 
-import { useEffect, useState } from 'react'
-import type { AgentRunResponse, AlertStatus, PriorityLevel } from '../api/contracts'
-import { useAgentRunResult, useAlerts, useCreateAgentRun } from '../api/hooks'
+import { useEffect, useRef, useState } from 'react'
+import type { AgentRunArtifact, AgentRunResponse, AlertStatus, PriorityLevel } from '../api/contracts'
+import { useAgentRun, useAgentRunResult, useAlerts, useCreateAgentRun, useGenerateDailyReport } from '../api/hooks'
 import AlertFeed from './AlertFeed'
 import AlertDetail from './AlertDetail'
 import AgentStats from './AgentStats'
@@ -43,27 +43,61 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
     }
   }, [list, selectedId])
 
-  // 선택 알림에 대한 에이전트 자동 실행 — 지표 박스와 상세 박스가 결과를 공유한다.
   const create = useCreateAgentRun()
+  const dailyReport = useGenerateDailyReport()
   const [run, setRun] = useState<AgentRunResponse | null>(null)
-  const result = useAgentRunResult(run?.run_id ?? null)
+  const [dailyArtifact, setDailyArtifact] = useState<AgentRunArtifact | null>(null)
+  const selectedAlertRef = useRef<string | null>(selected?.alert_id ?? null)
+  const activeRunRef = useRef<string | null>(run?.run_id ?? null)
+  selectedAlertRef.current = selected?.alert_id ?? null
+  activeRunRef.current = run?.run_id ?? null
+  const runStatus = useAgentRun(run?.run_id ?? null)
+  const result = useAgentRunResult(run?.status === 'completed' ? run.run_id : null)
+
+  useEffect(() => {
+    if (!runStatus.data) return
+    setRun((current) => current?.run_id === runStatus.data.run_id ? runStatus.data : current)
+  }, [runStatus.data])
 
   useEffect(() => {
     setRun(null)
-    if (!selected) return
-    let cancelled = false
-    create
-      .mutateAsync({ alertId: selected.alert_id })
-      .then((r) => {
-        if (!cancelled) setRun(r)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-    // create는 안정 참조(react-query)라 선택 알림 변경에만 반응한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setDailyArtifact(null)
   }, [selected?.alert_id])
+
+  const runSelectedAlert = (forceNew = false) => {
+    if (!selected) return
+    const targetAlertId = selected.alert_id
+    const reason = forceNew
+      ? window.prompt('재실행 사유를 입력하세요')?.trim()
+      : undefined
+    if (forceNew && !reason) return
+    create.mutate(
+      {
+        alertId: targetAlertId,
+        forceNew,
+        requestedBy: forceNew ? 'ops-console' : undefined,
+        reason,
+      },
+      {
+        onSuccess: (createdRun) => {
+          if (selectedAlertRef.current === targetAlertId) setRun(createdRun)
+        },
+      },
+    )
+  }
+
+  const generateDailyReport = () => {
+    if (!run) return
+    const targetRunId = run.run_id
+    dailyReport.mutate(
+      { runId: targetRunId },
+      {
+        onSuccess: (artifact) => {
+          if (activeRunRef.current === targetRunId) setDailyArtifact(artifact)
+        },
+      },
+    )
+  }
 
   return (
     <div className="ops-console">
@@ -106,7 +140,32 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
         <aside className="panel">
           <div className="panel-head">
             <span>알림 상세 · 에이전트</span>
-            <span className="tag">AGENT</span>
+            <div className="command-row">
+              <button
+                type="button"
+                className="mini primary"
+                disabled={!selected || create.isPending || run?.status === 'queued' || run?.status === 'running'}
+                onClick={() => runSelectedAlert(run?.status === 'completed')}
+              >
+                {create.isPending
+                  ? '생성 중'
+                  : run?.status === 'failed'
+                    ? '작업지시서 다시 생성'
+                    : run?.status === 'queued' || run?.status === 'running'
+                      ? '작업지시서 실행 중'
+                      : run?.status === 'completed'
+                      ? '작업지시서 다시 실행'
+                      : '작업지시서 생성'}
+              </button>
+              <button
+                type="button"
+                className="mini"
+                disabled={!run || run.status !== 'completed' || dailyReport.isPending || dailyArtifact != null}
+                onClick={generateDailyReport}
+              >
+                {dailyReport.isPending ? '보고서 생성 중' : dailyArtifact ? '보고서 생성됨' : '일일 보고서 생성'}
+              </button>
+            </div>
           </div>
           <AlertDetail
             alert={selected}
@@ -115,6 +174,9 @@ export default function OpsConsole({ initialAlertId = null }: Props) {
             resultLoading={result.isLoading}
             resultError={result.isError}
             running={create.isPending}
+            commandError={create.isError || runStatus.isError}
+            dailyReport={dailyArtifact}
+            dailyReportError={dailyReport.isError}
           />
         </aside>
       </div>

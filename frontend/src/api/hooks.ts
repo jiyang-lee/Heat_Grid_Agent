@@ -26,6 +26,7 @@ import type {
 export const qk = {
   alerts: (q?: AlertListQuery) => ['alerts', q?.status ?? 'open', q?.priority_level ?? 'all'] as const,
   artifacts: (id: string) => ['artifacts', id] as const,
+  run: (id: string) => ['agent-run', id] as const,
   result: (id: string) => ['agent-run-result', id] as const,
   iterations: (id: string) => ['agent-run-iterations', id] as const,
   reviews: (status: string) => ['review-tasks', status] as const,
@@ -76,8 +77,24 @@ export function useResolveAlert() {
 export function useCreateAgentRun() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { alertId: string }) => agentRunsApi.create({ alert_id: v.alertId }),
+    mutationFn: (v: { alertId: string; forceNew?: boolean; requestedBy?: string; reason?: string }) =>
+      agentRunsApi.create({
+        alert_id: v.alertId,
+        force_new: v.forceNew,
+        requested_by: v.requestedBy,
+        reason: v.reason,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
+  })
+}
+
+export function useGenerateDailyReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { runId: string; requestedBy?: string }) =>
+      agentRunsApi.dailyReport(v.runId, { requested_by: v.requestedBy ?? 'operator' }),
+    onSuccess: (_artifact, value) =>
+      qc.invalidateQueries({ queryKey: qk.artifacts(value.runId) }),
   })
 }
 
@@ -86,6 +103,18 @@ export function useArtifacts(runId: string | null) {
     queryKey: qk.artifacts(runId ?? ''),
     queryFn: () => agentRunsApi.artifacts(runId as string),
     enabled: runId != null,
+  })
+}
+
+export function useAgentRun(runId: string | null) {
+  return useQuery({
+    queryKey: qk.run(runId ?? ''),
+    queryFn: () => agentRunsApi.get(runId as string),
+    enabled: runId != null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'queued' || status === 'running' ? 1000 : false
+    },
   })
 }
 

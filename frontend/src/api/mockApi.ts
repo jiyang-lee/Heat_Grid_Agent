@@ -5,6 +5,7 @@
 
 import type {
   AgentRunArtifact,
+  AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunResponse,
@@ -185,6 +186,10 @@ export const priorityEvaluationsApi = {
 
 export const agentRunsApi = {
   async create(body: AgentRunCreateRequest): Promise<AgentRunResponse> {
+    const existing = [...store.runs.values()].find(
+      (run) => run.alert_id === body.alert_id && run.status !== 'failed',
+    )
+    if (existing && !body.force_new) return existing
     await delay(1100)
     const alert = store.alerts.get(body.alert_id)
     if (!alert) throw new ApiError(404, '/agent-runs', 'alert_id를 찾을 수 없습니다.')
@@ -203,6 +208,11 @@ export const agentRunsApi = {
       evaluation_run_id: alert.evaluation_run_id,
       manufacturer_id: alert.manufacturer_id,
       substation_id: alert.substation_id,
+      parent_run_id: existing?.run_id ?? null,
+      trigger_type: body.force_new ? 'manual_rerun' : 'alert',
+      requested_by: body.requested_by ?? null,
+      trigger_reason: body.reason ?? null,
+      approved_action_task_id: null,
       agent_mode: 'llm',
       ops_output: opsOutput,
       token_usage: tokenUsage,
@@ -214,6 +224,8 @@ export const agentRunsApi = {
         evidence_score: 0.78,
         missing_evidence: [],
         external_candidate_ids: [],
+        used_tools: ['get_ops_evidence', 'get_external_context'],
+        action_decisions: [],
         model_verification: {
           status: 'verified',
           attempt: 1,
@@ -224,6 +236,14 @@ export const agentRunsApi = {
           risk_score_delta: 0,
           anomaly_score: 0.7,
           anomaly_label: false,
+          leadtime_bucket: '1-3d',
+          stored_leadtime_bucket: '1-3d',
+          priority_score: alert.priority_score,
+          stored_priority_score: alert.priority_score,
+          priority_score_delta: 0,
+          priority_level: alert.priority_level,
+          m1_specialist_priority_score: alert.priority_score,
+          component_agreement: { risk: true, anomaly: true, leadtime: true, priority: true },
           agreement: true,
           active_model_version: 'mock-v1',
           evaluation_run_id: alert.evaluation_run_id,
@@ -300,6 +320,22 @@ export const agentRunsApi = {
     if (!store.runs.has(runId)) throw new ApiError(404, `/agent-runs/${runId}/artifacts`, 'run_id를 찾을 수 없습니다.')
     return store.artifacts.get(runId) ?? []
   },
+  async dailyReport(runId: string, _body: AgentReportCreateRequest): Promise<AgentRunArtifact> {
+    await delay(400)
+    if (!store.runs.has(runId)) throw new ApiError(404, `/agent-runs/${runId}`, 'run_id를 찾을 수 없습니다.')
+    const artifacts = store.artifacts.get(runId) ?? []
+    const existing = artifacts.find((item) => item.name === 'daily_report.json')
+    if (existing) return existing
+    const artifact: AgentRunArtifact = {
+      artifact_id: `${runId}-daily`,
+      run_id: runId,
+      kind: 'daily_report',
+      name: 'daily_report.json',
+      uri: `output/ops_agent/reports/${runId}/daily_report.json`,
+    }
+    store.artifacts.set(runId, [...artifacts, artifact])
+    return artifact
+  },
   async iterations(runId: string): Promise<AgentLoopIteration[]> {
     await delay(80)
     const r = store.runs.get(runId)
@@ -370,6 +406,8 @@ export const reviewTasksApi = {
       feedback,
       automatic_retrain_job_id: null,
       automatic_retrain_status: null,
+      resumed_agent_run_id: null,
+      resumed_agent_run_status: null,
     }
   },
 }

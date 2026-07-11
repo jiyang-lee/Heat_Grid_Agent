@@ -4,7 +4,7 @@
  * 작업지시서 카드 골격은 항상 고정 표시하고, 값이 아직 없으면(선택 직후/실행 중) 자리표시자(—)만 보여준다.
  */
 
-import type { AgentRunResponse, AlertSummary, OpsAgentResultV4 } from '../api/contracts'
+import type { AgentRunArtifact, AgentRunResponse, AlertSummary, OpsAgentResultV4 } from '../api/contracts'
 import { useAgentIterations } from '../api/hooks'
 import { complexById } from '../domain/model'
 
@@ -15,12 +15,25 @@ interface Props {
   resultLoading: boolean
   resultError: boolean
   running: boolean
+  commandError: boolean
+  dailyReport: AgentRunArtifact | null
+  dailyReportError: boolean
 }
 
 const DASH = '—'
 
-export default function AlertDetail({ alert, run, opsResult, resultLoading, resultError, running }: Props) {
-  const iterations = useAgentIterations(run?.run_id ?? null)
+export default function AlertDetail({
+  alert,
+  run,
+  opsResult,
+  resultLoading,
+  resultError,
+  running,
+  commandError,
+  dailyReport,
+  dailyReportError,
+}: Props) {
+  const iterations = useAgentIterations(run?.status === 'completed' ? run.run_id : null)
   if (!alert) return <div className="empty">왼쪽에서 알림을 선택하세요</div>
   const location = alert.substation_id == null
     ? 'Substation -'
@@ -32,6 +45,7 @@ export default function AlertDetail({ alert, run, opsResult, resultLoading, resu
     ? opsResult.actions.map((item) => `${item.priority}. ${item.title}\n${item.detail}`).join('\n\n')
     : ops?.action_plan ?? DASH
   const caution = opsResult ? opsResult.cautions.join('\n') : ops?.caution ?? DASH
+  const runMode = run?.agent_mode?.toUpperCase() ?? (run ? 'AGENT' : null)
 
   return (
     <div className="aside-body">
@@ -43,10 +57,24 @@ export default function AlertDetail({ alert, run, opsResult, resultLoading, resu
         </div>
         <div className="ba">평가 {alert.evaluation_run_id ?? '-'} · 기준 {alert.as_of_time ? new Date(alert.as_of_time).toLocaleString('ko-KR') : '-'}</div>
       </div>
+      {commandError && <div className="wo-err">작업지시서 생성에 실패했습니다.</div>}
+      {dailyReportError && <div className="wo-err">일일 보고서 생성에 실패했습니다.</div>}
+      {dailyReport && (
+        <div className="ba">
+          일일 보고서 ·{' '}
+          <a
+            href={`/api/agent-runs/${dailyReport.run_id}/artifacts/${dailyReport.artifact_id}/content`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {dailyReport.name}
+          </a>
+        </div>
+      )}
 
       {/* 작업 지시서(작업지시서 카드) — 골격 항상 고정 표시. */}
       <div className="wo-card">
-        <div className="wo-mode">{run ? `${(run.agent_mode ?? 'mock').toUpperCase()} · ${run.run_id} · ${run.status}` : running ? '작업 지시서 생성 중…' : DASH}</div>
+        <div className="wo-mode">{run ? `${runMode} · ${run.run_id} · ${run.status}` : running ? '작업 지시서 생성 중…' : DASH}</div>
         {run?.loop_summary && (
           <div className="loop-summary">
             <span>반복 <b>{run.loop_summary.iterations}/{run.loop_summary.max_iterations}</b></span>

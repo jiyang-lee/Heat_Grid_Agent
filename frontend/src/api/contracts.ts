@@ -169,6 +169,13 @@ export interface TokenUsage {
 /** POST /api/agent-runs 요청 body */
 export interface AgentRunCreateRequest {
   alert_id: string
+  force_new?: boolean
+  requested_by?: string
+  reason?: string
+}
+
+export interface AgentReportCreateRequest {
+  requested_by: string
 }
 
 /** POST /api/agent-runs, GET /api/agent-runs/{run_id} 응답 */
@@ -181,6 +188,11 @@ export interface AgentRunResponse {
   evaluation_run_id: string | null
   manufacturer_id: string | null
   substation_id: number | null
+  parent_run_id: string | null
+  trigger_type: string
+  requested_by: string | null
+  trigger_reason: string | null
+  approved_action_task_id: string | null
   agent_mode: AgentMode | null
   ops_output: OpsAgentOutput | null
   token_usage: TokenUsage | null
@@ -202,6 +214,14 @@ export interface ModelVerificationResult {
   risk_score_delta: number | null
   anomaly_score: number | null
   anomaly_label: boolean | null
+  leadtime_bucket: string | null
+  stored_leadtime_bucket: string | null
+  priority_score: number | null
+  stored_priority_score: number | null
+  priority_score_delta: number | null
+  priority_level: string | null
+  m1_specialist_priority_score: number | null
+  component_agreement: Record<string, boolean>
   agreement: boolean | null
   active_model_version: string | null
   evaluation_run_id: string | null
@@ -218,6 +238,8 @@ export interface AgentLoopSummary {
   evidence_score: number
   missing_evidence: string[]
   external_candidate_ids: string[]
+  used_tools: string[]
+  action_decisions: Record<string, unknown>[]
   model_verification: ModelVerificationResult | null
   review_required: boolean
   review_task_id: string | null
@@ -297,6 +319,7 @@ export type ReviewTaskType =
   | 'label_correction'
   | 'retrain_approval'
   | 'model_promotion'
+  | 'external_search'
 
 export interface HumanReviewTask {
   task_id: string
@@ -344,6 +367,8 @@ export interface ReviewSubmitResponse {
   feedback: TrainingFeedback | null
   automatic_retrain_job_id: string | null
   automatic_retrain_status: RetrainJobStatus | null
+  resumed_agent_run_id: string | null
+  resumed_agent_run_status: AgentRunStatus | null
 }
 
 export type EvidenceCandidateStatus =

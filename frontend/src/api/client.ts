@@ -11,6 +11,7 @@
 
 import type {
   AgentRunArtifact,
+  AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunResponse,
@@ -146,6 +147,11 @@ export const agentRunsApi = {
   result: (runId: string) => apiFetch<OpsAgentResultV4>(`/agent-runs/${runId}/result`),
   artifacts: (runId: string) =>
     apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),
+  dailyReport: (runId: string, body: AgentReportCreateRequest) =>
+    apiFetch<AgentRunArtifact>(`/agent-runs/${runId}/reports/daily`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   iterations: (runId: string) =>
     apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
 }
