@@ -15,6 +15,9 @@ from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput, ResultSt
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 MIGRATION: Final = ROOT / "docker" / "postgres" / "init" / "004_agent_execution.sql"
+BASE_AGENT_SCHEMA: Final = (
+    ROOT / "docker" / "postgres" / "init" / "002_agent_automation.sql"
+)
 
 
 class RecordingGraph:
@@ -88,3 +91,13 @@ def test_agent_execution_migration_contract() -> None:
     assert "external_search_limit" in sql
     assert "check (external_search_limit = 0)" in sql
     assert "on conflict (run_id, task_key) do nothing" in sql
+    assert "agent_run_tasks_run_id_fkey" in sql
+    assert "agent_budget_ledger_run_id_fkey" in sql
+
+
+def test_clean_init_defers_agent_base_until_predictor_dependencies_exist() -> None:
+    sql = BASE_AGENT_SCHEMA.read_text(encoding="utf-8").lower()
+
+    assert "to_regclass('public.ops_alert_queue') is null" in sql
+    assert "to_regclass('public.priority_cards') is null" in sql
+    assert "agent automation schema deferred" in sql

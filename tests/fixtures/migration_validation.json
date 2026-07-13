@@ -1,0 +1,26 @@
+{
+  "clean_db": {
+    "fresh_001_to_004": "passed",
+    "predictor_rows": 1252,
+    "open_alerts": 1,
+    "server_graph_ready": true,
+    "checkpoint_pool_ready": true,
+    "agent_run_status": "completed",
+    "agent_mode": "fallback",
+    "task_count": 1,
+    "parent_ledger_count": 1,
+    "final_review_count": 1,
+    "duplicate_artifact_count": 0
+  },
+  "existing_db": {
+    "base_001_to_003": "passed",
+    "migration_004_apply_count": 2,
+    "server_graph_ready": true,
+    "checkpoint_pool_ready": true,
+    "existing_run_api_status_code": 200,
+    "reclaim_after_forced_lifespan_stop": "queued",
+    "task_count": 1,
+    "foreign_keys_present": true,
+    "unique_constraints_present": true
+  }
+}

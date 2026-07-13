@@ -76,6 +76,12 @@ def decide_action_execution(
     policy: AutomationPolicySnapshot,
     context: ActionExecutionContext,
 ) -> ActionExecutionDecision:
+    if context.task_type == "external_search":
+        return ActionExecutionDecision(
+            action="deny",
+            reason="외부 웹 검색 실행 capability는 폐기되었습니다.",
+            policy_eligible=False,
+        )
     if context.already_executed:
         return ActionExecutionDecision(
             action="reuse",

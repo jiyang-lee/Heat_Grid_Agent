@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS agent_run_tasks (
     task_id uuid PRIMARY KEY,
-    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
+    run_id uuid NOT NULL,
     task_key text NOT NULL,
     operation_key text NOT NULL,
     parent_task_id uuid REFERENCES agent_run_tasks(task_id) ON DELETE SET NULL,
@@ -28,7 +28,7 @@ WHERE status IN ('queued', 'running');
 
 CREATE TABLE IF NOT EXISTS agent_budget_ledger (
     ledger_id uuid PRIMARY KEY,
-    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
+    run_id uuid NOT NULL,
     task_id uuid REFERENCES agent_run_tasks(task_id) ON DELETE CASCADE,
     parent_ledger_id uuid REFERENCES agent_budget_ledger(ledger_id) ON DELETE CASCADE,
     operation_key text NOT NULL UNIQUE,
@@ -60,6 +60,28 @@ CHECK (tokens_used IS NULL OR (tokens_used >= 0 AND tokens_used <= token_limit))
 
 DO $$
 BEGIN
+    IF to_regclass('public.agent_runs') IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conname = 'agent_run_tasks_run_id_fkey'
+             AND conrelid = 'agent_run_tasks'::regclass
+       ) THEN
+        ALTER TABLE agent_run_tasks
+        ADD CONSTRAINT agent_run_tasks_run_id_fkey
+        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE CASCADE;
+    END IF;
+
+    IF to_regclass('public.agent_runs') IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conname = 'agent_budget_ledger_run_id_fkey'
+             AND conrelid = 'agent_budget_ledger'::regclass
+       ) THEN
+        ALTER TABLE agent_budget_ledger
+        ADD CONSTRAINT agent_budget_ledger_run_id_fkey
+        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE CASCADE;
+    END IF;
+
     IF to_regclass('public.agent_run_events') IS NOT NULL THEN
         ALTER TABLE agent_run_events ADD COLUMN IF NOT EXISTS operation_key text;
         CREATE UNIQUE INDEX IF NOT EXISTS agent_run_events_operation_key_uidx
@@ -82,24 +104,25 @@ BEGIN
         CREATE UNIQUE INDEX IF NOT EXISTS human_review_tasks_operation_key_uidx
         ON human_review_tasks(operation_key) WHERE operation_key IS NOT NULL;
     END IF;
+    IF to_regclass('public.agent_runs') IS NOT NULL THEN
+        INSERT INTO agent_run_tasks (
+            task_id,
+            run_id,
+            task_key,
+            operation_key,
+            status,
+            checkpoint_thread_id
+        )
+        SELECT
+            gen_random_uuid(),
+            run_id,
+            'agent_graph:v1',
+            'agent-graph:' || run_id::text,
+            'queued',
+            run_id::text
+        FROM agent_runs
+        WHERE status IN ('queued', 'running')
+        ON CONFLICT (run_id, task_key) DO NOTHING;
+    END IF;
 END
 $$;
-
-INSERT INTO agent_run_tasks (
-    task_id,
-    run_id,
-    task_key,
-    operation_key,
-    status,
-    checkpoint_thread_id
-)
-SELECT
-    gen_random_uuid(),
-    run_id,
-    'agent_graph:v1',
-    'agent-graph:' || run_id::text,
-    'queued',
-    run_id::text
-FROM agent_runs
-WHERE status IN ('queued', 'running')
-ON CONFLICT (run_id, task_key) DO NOTHING;

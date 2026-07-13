@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 JsonPrimitive: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
@@ -250,16 +250,17 @@ class AgentLoopIteration(BaseModel):
 
 
 class EvidenceCandidateCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     run_id: str | None = None
-    source_type: Literal["web", "manual", "internal"] = "manual"
+    source_type: Literal["manual"] = "manual"
     source_uri: str | None = None
     title: str
     content: str
-    query: str | None = None
     risk_level: Literal["low", "medium", "high", "critical"] = "medium"
     trust_score: float = Field(default=0.5, ge=0.0, le=1.0)
     metadata: JsonObject = Field(default_factory=dict)
-    requested_by: str = "agent"
+    requested_by: str = "operator"
 
 
 class EvidenceCandidate(BaseModel):

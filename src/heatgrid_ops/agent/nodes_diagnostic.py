@@ -12,6 +12,7 @@ from heatgrid_ops.agent.diagnostics import (
     DiagnosticRagChunk,
     estimate_diagnostic_input_tokens,
 )
+from heatgrid_ops.agent.diagnostic_input import prepare_diagnostic_input
 from heatgrid_ops.agent.models import JsonObject, JsonValue
 from heatgrid_ops.agent.node_context import AgentNodeContext
 from heatgrid_ops.agent.nodes_audit import record_decision
@@ -23,21 +24,33 @@ async def run_diagnostic_worker(
     state: AgentState,
 ) -> AgentStateUpdate:
     await record_decision(context, state, "fault_diagnosis:v1")
-    request = build_diagnostic_input(state)
-    execution = await _execute_worker(context, state, request)
+    raw_request = build_diagnostic_input(state)
+    preparation = prepare_diagnostic_input(raw_request)
+    request = preparation.request
+    execution = (
+        _unavailable_execution(
+            preparation.after_tokens,
+            preparation.fallback_reason or "diagnostic_input_unavailable",
+        )
+        if request is None
+        else await _execute_worker(context, state, request)
+    )
     summary = execution.summary
     await context.audit.record_event(
         state.request.run_id,
         "diagnostic_worker_completed",
         "read-only diagnostic worker completed",
         {
-            "task_key": request.task_key,
+            "task_key": raw_request.task_key,
             "status": summary.status,
             "attempts": summary.attempts,
             "input_tokens": summary.input_tokens,
             "output_tokens": summary.output_tokens,
             "hypothesis_count": len(summary.hypotheses),
             "fallback_reason": summary.fallback_reason,
+            "input_tokens_before_compaction": preparation.before_tokens,
+            "input_tokens_after_compaction": preparation.after_tokens,
+            "selected_evidence_ids": list(preparation.selected_evidence_ids),
         },
     )
     return {
@@ -144,7 +157,7 @@ def _rag_chunks(retrieval: JsonObject) -> list[DiagnosticRagChunk]:
     if not isinstance(values, list):
         return []
     chunks: list[DiagnosticRagChunk] = []
-    for index, value in enumerate(values[:5]):
+    for index, value in enumerate(values):
         if not isinstance(value, dict):
             continue
         chunks.append(
@@ -154,12 +167,12 @@ def _rag_chunks(retrieval: JsonObject) -> list[DiagnosticRagChunk]:
                 title=str(
                     value.get("document_title") or value.get("title") or "untitled"
                 ),
-                section=_string(value.get("section")),
-                excerpt=str(value.get("text") or value.get("content") or "")[:4000],
+                section=_string(value.get("section") or value.get("section_title")),
+                excerpt=str(value.get("text") or value.get("content") or ""),
                 score=_number(value.get("score")) or 0.0,
             )
         )
-    return chunks
+    return sorted(chunks, key=lambda chunk: (-chunk.score, chunk.evidence_id))[:5]
 
 
 def _unavailable_execution(

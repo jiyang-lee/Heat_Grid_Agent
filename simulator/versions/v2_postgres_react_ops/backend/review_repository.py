@@ -151,6 +151,7 @@ async def create_evidence_candidate(
     params = {
         **payload.model_dump(mode="json"),
         "candidate_id": candidate_id,
+        "query": None,
         "status": status,
         "metadata": _json(payload.metadata),
         "reviewed_by": reviewed_by,
@@ -206,6 +207,9 @@ async def review_evidence_candidate(
     payload: EvidenceCandidateReviewRequest,
 ) -> EvidenceCandidate | None:
     await ensure_review_tables(engine)
+    existing = await get_evidence_candidate(engine, candidate_id)
+    if existing is not None and _is_historical_external_candidate(existing):
+        raise ValueError("외부 검색 근거는 과거 기록 조회만 허용됩니다.")
     status = "approved" if payload.decision == "approve" else "rejected"
     query = text(
         "UPDATE evidence_candidates SET status = :status, reviewed_by = :reviewer, "
@@ -254,6 +258,8 @@ async def ingest_evidence_candidate(
     candidate = await get_evidence_candidate(engine, candidate_id)
     if candidate is None:
         raise ValueError("candidate_id를 찾을 수 없습니다.")
+    if _is_historical_external_candidate(candidate):
+        raise ValueError("외부 검색 근거는 RAG에 적재할 수 없습니다.")
     document_id = f"approved-evidence-{candidate.candidate_id}"
     chunk_id = f"approved-evidence-{candidate.candidate_id}-001"
     embedding = vector_literal(
@@ -273,7 +279,7 @@ async def ingest_evidence_candidate(
                     "document_id, title, document_type, source_path, source_owner, "
                     "trust_level, metadata"
                     ") VALUES ("
-                    ":document_id, :title, 'approved_external_evidence', :source_path, "
+                    ":document_id, :title, 'operator_manual_evidence', :source_path, "
                     ":source_owner, :trust_level, CAST(:metadata AS jsonb)"
                     ") ON CONFLICT (document_id) DO UPDATE SET "
                     "title = EXCLUDED.title, source_path = EXCLUDED.source_path, "
@@ -309,7 +315,7 @@ async def ingest_evidence_candidate(
                     "content": candidate.content,
                     "title": candidate.title,
                     "source_file": candidate.source_uri,
-                    "curated_file": f"db/evidence_candidates/{candidate.candidate_id}.json",
+                    "curated_file": f"db/manual_evidence/{candidate.candidate_id}.json",
                     "download_url": candidate.source_uri,
                     "embedding": embedding,
                     "metadata": _json(metadata),
@@ -358,6 +364,8 @@ async def create_review_task(
     task_id: str | None = None,
     operation_key: str | None = None,
 ) -> HumanReviewTask:
+    if task_type == "external_search":
+        raise ValueError("외부 검색 승인 작업은 새로 만들 수 없습니다.")
     await ensure_review_tables(engine)
     task_id = task_id or str(uuid4())
     query = text(
@@ -446,6 +454,8 @@ async def submit_review_task(
     task = await get_review_task(engine, task_id)
     if task is None:
         return None
+    if task.task_type == "external_search":
+        raise ValueError("외부 검색 승인 작업은 과거 기록 조회만 허용됩니다.")
     if task.status != "pending":
         raise ValueError("이미 처리된 검수 작업입니다.")
     status = {
@@ -544,7 +554,9 @@ async def get_automation_policy(engine: AsyncEngine) -> AutomationPolicy:
                     "FROM automation_policy WHERE policy_id = 'default'"
                 )
             )
-            policy = _policy_from_row(result.mappings().one(), reviewed_count, approved_count)
+            policy = _policy_from_row(
+                result.mappings().one(), reviewed_count, approved_count
+            )
     return policy
 
 
@@ -804,6 +816,15 @@ def _trust_level(score: float) -> str:
     if score >= 0.6:
         return "medium"
     return "low"
+
+
+def _is_historical_external_candidate(candidate: EvidenceCandidate) -> bool:
+    origin = candidate.metadata.get("origin")
+    return bool(
+        candidate.source_type in {"web", "external_search"}
+        or candidate.query is not None
+        or origin == "external_search"
+    )
 
 
 def _json(value: object) -> str:
