@@ -27,6 +27,7 @@ class DecisionContext:
     iteration: int
     max_iterations: int
     diagnostic_available: bool = False
+    priority_level: str = ""
 
     @property
     def model_disagrees(self) -> bool:
@@ -94,7 +95,11 @@ def _needs_internal_rag(context: DecisionContext) -> bool:
 def _needs_diagnostic_worker(context: DecisionContext) -> bool:
     return bool(
         context.diagnostic_available
-        and (context.review_required or context.model_disagrees)
+        and (
+            context.priority_level in {"urgent", "high"}
+            or context.review_required
+            or context.model_disagrees
+        )
     )
 
 

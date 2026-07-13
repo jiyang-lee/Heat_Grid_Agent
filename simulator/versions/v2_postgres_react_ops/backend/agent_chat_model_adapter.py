@@ -12,6 +12,12 @@ from pydantic import SecretStr, ValidationError
 from heatgrid_ops.agent.assessment import EvidenceAssessment
 from heatgrid_ops.agent.config import SYSTEM_PROMPT
 from heatgrid_ops.agent.contracts import ChatModelRequest, EvidenceAssessmentRequest
+from heatgrid_ops.agent.diagnostics import (
+    DIAGNOSTIC_SYSTEM_PROMPT,
+    DiagnosticModelResult,
+    DiagnosticWorkerInput,
+    DiagnosticWorkerOutput,
+)
 from heatgrid_ops.agent.errors import AgentDependencyError, MissingApiKeyError
 from heatgrid_ops.agent.helpers import to_json, token_calls_from_messages
 from heatgrid_ops.agent.models import OpsAgentOutput, TokenCall
@@ -79,6 +85,27 @@ class OpenAIChatModelAdapter:
         except (OpenAIError, ValidationError, ValueError, TypeError):
             return None
 
+    async def diagnose(self, request: DiagnosticWorkerInput) -> DiagnosticModelResult:
+        model = self._model().with_structured_output(
+            DiagnosticWorkerOutput,
+            include_raw=True,
+        )
+        try:
+            result = await model.ainvoke(
+                [
+                    ("system", DIAGNOSTIC_SYSTEM_PROMPT),
+                    ("human", request.model_dump_json()),
+                ]
+            )
+            output = DiagnosticWorkerOutput.model_validate(result.get("parsed"))
+            raw = result.get("raw")
+        except (OpenAIError, ValidationError, ValueError, TypeError) as exc:
+            raise AgentDependencyError(service="llm", detail=str(exc)) from exc
+        return DiagnosticModelResult(
+            output=output,
+            calls=token_calls_from_messages([raw]),
+        )
+
     async def stream(
         self,
         request: ChatModelRequest,
@@ -91,7 +118,11 @@ class OpenAIChatModelAdapter:
         )
         try:
             async for event in agent.astream_events(
-                {"messages": [{"role": "user", "content": f"card_id={request.card_id}"}]},
+                {
+                    "messages": [
+                        {"role": "user", "content": f"card_id={request.card_id}"}
+                    ]
+                },
                 version="v2",
             ):
                 converted = _stream_event(event)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from heatgrid_ops.agent.node_context import AgentNodeContext
+from heatgrid_ops.agent.nodes_diagnostic import run_diagnostic_worker
 from heatgrid_ops.agent.nodes_evidence import (
     assess_collected_evidence,
     expand_internal_evidence,
@@ -40,6 +41,7 @@ __all__ = [
     "mark_running",
     "prepare_output_retry",
     "rerun_model_verification",
+    "run_diagnostic_worker",
     "route_after_assessment",
     "route_after_llm",
     "route_after_output_validation",

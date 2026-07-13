@@ -17,7 +17,14 @@ from heatgrid_ops.agent.contracts import (
 )
 from heatgrid_ops.agent.errors import AgentDependencyError
 from heatgrid_ops.agent.graph import AgentGraphContext, execute_agent_graph
-from heatgrid_ops.agent.models import ModelVerificationResult
+from heatgrid_ops.agent.diagnostics import (
+    DiagnosticBudgetReservation,
+    DiagnosticHypothesis,
+    DiagnosticModelResult,
+    DiagnosticWorkerInput,
+    DiagnosticWorkerOutput,
+)
+from heatgrid_ops.agent.models import ModelVerificationResult, TokenCall
 from heatgrid_ops.agent.run_models import (
     AgentRunResult,
     AgentStreamEvent,
@@ -186,31 +193,92 @@ class FakeReportWriterPort:
         raise AssertionError("daily report is not part of the graph")
 
 
+class FakeDiagnosticModel:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def diagnose(self, request: DiagnosticWorkerInput) -> DiagnosticModelResult:
+        self.calls += 1
+        return DiagnosticModelResult(
+            output=DiagnosticWorkerOutput(
+                hypotheses=[
+                    DiagnosticHypothesis(
+                        hypothesis_id="hypothesis-1",
+                        title="Inspection reference match",
+                        rationale="The internal reference describes the same pattern.",
+                        evidence_ids=[request.rag_chunks[0].evidence_id],
+                        confidence=0.7,
+                    )
+                ]
+            ),
+            calls=[TokenCall(input_tokens=500, output_tokens=80, total_tokens=580)],
+        )
+
+
+class FakeBudgetPort:
+    def __init__(self) -> None:
+        self.reserved = 0
+        self.settled = 0
+
+    async def reserve_diagnostic(
+        self,
+        run_id: str,
+        token_limit: int,
+    ) -> DiagnosticBudgetReservation:
+        assert run_id == "run-1"
+        self.reserved = token_limit
+        return DiagnosticBudgetReservation(
+            reservation_id="budget-1",
+            granted=True,
+        )
+
+    async def finish_diagnostic(
+        self,
+        reservation_id: str,
+        *,
+        tokens_used: int,
+        model_called: bool,
+    ) -> None:
+        assert reservation_id == "budget-1"
+        assert model_called is True
+        self.settled = tokens_used
+
+
 @pytest.mark.anyio
 async def test_graph_executes_with_core_ports_only() -> None:
     await run_fake_graph()
 
 
+@pytest.mark.anyio
+async def test_graph_runs_read_only_diagnostic_once_then_requests_review() -> None:
+    diagnostic_model = FakeDiagnosticModel()
+    budget = FakeBudgetPort()
+    runtime = _runtime(FakeExternalDataPort(), diagnostic_model=diagnostic_model)
+    context = AgentGraphContext(
+        runtime=runtime,
+        inputs=FakeInputPort(),
+        lifecycle=FakeLifecyclePort(),
+        audit=FakeAuditPort(),
+        reviews=FakeReviewPort(),
+        artifacts=FakeArtifactPort(),
+        budget=budget,
+    )
+
+    result = await execute_agent_graph(
+        context,
+        AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1"),
+    )
+
+    assert result.loop_summary is not None
+    assert result.loop_summary.decision == "request_human"
+    assert diagnostic_model.calls == 1
+    assert budget.reserved == 4_000
+    assert 0 < budget.settled <= 4_000
+
+
 async def run_fake_graph() -> None:
     external_data = FakeExternalDataPort()
-    runtime = AgentRuntime(
-        config=AgentRuntimeConfig(
-            openai_model="fake-model",
-            rag_top_k=5,
-            agent_max_iterations=4,
-            agent_evidence_threshold=0.75,
-            model_score_tolerance=0.05,
-            input_usd_per_1m=0.0,
-            cached_input_usd_per_1m=0.0,
-            output_usd_per_1m=0.0,
-            pricing_source="test",
-        ),
-        rag=FakeRagPort(),
-        external_data=external_data,
-        chat_model=FakeChatModelPort(),
-        model_verification=FakeModelVerificationPort(),
-        report_writer=FakeReportWriterPort(),
-    )
+    runtime = _runtime(external_data)
     context = AgentGraphContext(
         runtime=runtime,
         inputs=FakeInputPort(),
@@ -231,6 +299,32 @@ async def run_fake_graph() -> None:
     assert result.loop_summary is not None
     assert result.loop_summary.decision == "finalize"
     assert external_data.calls == 1
+
+
+def _runtime(
+    external_data: FakeExternalDataPort,
+    *,
+    diagnostic_model: FakeDiagnosticModel | None = None,
+) -> AgentRuntime:
+    return AgentRuntime(
+        config=AgentRuntimeConfig(
+            openai_model="fake-model",
+            rag_top_k=5,
+            agent_max_iterations=4,
+            agent_evidence_threshold=0.75,
+            model_score_tolerance=0.05,
+            input_usd_per_1m=0.0,
+            cached_input_usd_per_1m=0.0,
+            output_usd_per_1m=0.0,
+            pricing_source="test",
+        ),
+        rag=FakeRagPort(),
+        external_data=external_data,
+        chat_model=FakeChatModelPort(),
+        model_verification=FakeModelVerificationPort(),
+        report_writer=FakeReportWriterPort(),
+        diagnostic_model=diagnostic_model,
+    )
 
 
 def _source_input(card_id: str) -> dict:

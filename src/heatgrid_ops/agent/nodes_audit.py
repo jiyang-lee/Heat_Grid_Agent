@@ -55,6 +55,10 @@ def enriched_external_context(state: AgentState) -> JsonObject:
         context["model_verification"] = verification.model_dump(mode="json")
     if assessment is not None:
         context["evidence_assessment"] = assessment.model_dump(mode="json")
+    if state.evidence.diagnostic_summary is not None:
+        context["diagnostic_summary"] = state.evidence.diagnostic_summary.model_dump(
+            mode="json"
+        )
     return context
 
 
@@ -63,9 +67,7 @@ def risk_level(
 ) -> Literal["low", "medium", "high", "critical"]:
     priority_context = source_input.get("priority_context")
     priority = (
-        priority_context.get("priority")
-        if isinstance(priority_context, dict)
-        else None
+        priority_context.get("priority") if isinstance(priority_context, dict) else None
     )
     level = (
         str(priority.get("priority_level") or "medium").lower()

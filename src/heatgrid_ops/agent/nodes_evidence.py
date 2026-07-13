@@ -49,6 +49,12 @@ async def assess_collected_evidence(
         model_verification=state.evidence.model_verification,
         iteration=state.loop.iteration,
         max_iterations=state.loop.max_iterations,
+        diagnostic_available=bool(
+            context.runtime.diagnostic_model is not None
+            and context.budget is not None
+            and not state.loop.diagnostic_attempted
+        ),
+        force_review=state.loop.force_review,
     )
     await context.audit.record_loop_iteration(
         AgentLoopIterationRecord(
@@ -113,6 +119,7 @@ def route_after_assessment(
 ) -> Literal[
     "expand_internal_evidence",
     "rerun_model_verification",
+    "run_diagnostic_worker",
     "generate_operational_answer",
 ]:
     assessment = state.loop.assessment
@@ -122,6 +129,8 @@ def route_after_assessment(
         return "expand_internal_evidence"
     if assessment.decision == "rerun_model":
         return "rerun_model_verification"
+    if assessment.decision == "diagnostic_worker":
+        return "run_diagnostic_worker"
     return "generate_operational_answer"
 
 
