@@ -5,11 +5,13 @@ from typing import Literal, TypedDict
 from pydantic import BaseModel, ConfigDict, Field
 
 from heatgrid_ops.agent.assessment import EvidenceAssessment, OutputValidation
+from heatgrid_ops.agent.diagnostics import DiagnosticSummary
 from heatgrid_ops.agent.models import (
     JsonObject,
     JsonValue,
     ModelVerificationResult,
     OpsAgentOutput,
+    TokenCall,
     TokenUsage,
 )
 from heatgrid_ops.agent.run_models import AgentRunResult
@@ -32,6 +34,8 @@ class EvidenceState(FrozenStateModel):
     model_verification: ModelVerificationResult | None = None
     model_attempts: int = 0
     active_model_artifact_uri: str | None = None
+    diagnostic_summary: DiagnosticSummary | None = None
+    diagnostic_calls: list[TokenCall] = Field(default_factory=list)
 
 
 class LoopState(FrozenStateModel):
@@ -43,6 +47,7 @@ class LoopState(FrozenStateModel):
     force_review: bool = False
     model_review_task_id: str | None = None
     review_task_id: str | None = None
+    diagnostic_attempted: bool = False
 
 
 class OutputState(FrozenStateModel):

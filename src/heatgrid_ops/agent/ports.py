@@ -4,7 +4,6 @@ from collections.abc import AsyncIterator
 from typing import Protocol
 
 from heatgrid_ops.agent.assessment import EvidenceAssessment
-
 from heatgrid_ops.agent.contracts import (
     AgentInputSnapshot,
     ChatModelRequest,
@@ -15,6 +14,7 @@ from heatgrid_ops.agent.contracts import (
     AgentRunRequest,
     ReportWriteRequest,
 )
+from heatgrid_ops.agent.diagnostics import DiagnosticBudgetReservation
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.run_models import (
     AgentRunResult,
@@ -64,7 +64,9 @@ class RunAuditPort(Protocol):
 
 
 class ReviewPort(Protocol):
-    async def create_review(self, request: AgentReviewRequest) -> ReviewTaskSnapshot: ...
+    async def create_review(
+        self, request: AgentReviewRequest
+    ) -> ReviewTaskSnapshot: ...
 
 
 class ArtifactPort(Protocol):
@@ -94,6 +96,22 @@ class ChatModelPort(Protocol):
     ) -> EvidenceAssessment | None: ...
 
     def stream(self, request: ChatModelRequest) -> AsyncIterator[AgentStreamEvent]: ...
+
+
+class AgentBudgetPort(Protocol):
+    async def reserve_diagnostic(
+        self,
+        run_id: str,
+        token_limit: int,
+    ) -> DiagnosticBudgetReservation: ...
+
+    async def finish_diagnostic(
+        self,
+        reservation_id: str,
+        *,
+        tokens_used: int,
+        model_called: bool,
+    ) -> None: ...
 
 
 class ModelVerificationPort(Protocol):

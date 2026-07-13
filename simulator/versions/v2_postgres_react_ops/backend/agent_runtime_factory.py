@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_budget_adapter import PostgresAgentBudgetAdapter
 from agent_chat_model_adapter import OpenAIChatModelAdapter
 from agent_evidence_adapters import (
     InternalRagEvidenceAdapter,
@@ -38,14 +39,15 @@ def create_agent_runtime(
     input_model = PostgresAgentInputModelAdapter(engine)
     key = settings.openai_api_key
     api_key = None if key is None else key.get_secret_value()
+    chat_model = OpenAIChatModelAdapter(
+        api_key=api_key,
+        model=settings.openai_model,
+    )
     return AgentRuntime(
         config=agent_runtime_config(settings),
         rag=InternalRagEvidenceAdapter(searcher),
         external_data=StructuredExternalDataAdapter(searcher),
-        chat_model=OpenAIChatModelAdapter(
-            api_key=api_key,
-            model=settings.openai_model,
-        ),
+        chat_model=chat_model,
         model_verification=ActiveModelVerificationAdapter(
             model_data=input_model,
             tolerance=settings.model_score_tolerance,
@@ -55,6 +57,7 @@ def create_agent_runtime(
             model=settings.openai_model,
             output_root=default_report_output_root(),
         ),
+        diagnostic_model=chat_model,
     )
 
 
@@ -72,6 +75,7 @@ def create_agent_graph_context(
         reviews=PostgresAgentReviewAdapter(engine),
         artifacts=persistence,
         legacy_simulate_card=simulate_card,
+        budget=PostgresAgentBudgetAdapter(engine),
     )
 
 

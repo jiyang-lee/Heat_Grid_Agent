@@ -15,6 +15,7 @@ from heatgrid_ops.agent.contracts import (
     EvidenceAssessmentRequest,
     ReportWriteRequest,
 )
+from heatgrid_ops.agent.diagnostics import DiagnosticModelPort
 from heatgrid_ops.agent.errors import AgentDependencyError
 from heatgrid_ops.agent.helpers import fallback_note, to_json
 from heatgrid_ops.agent.models import (
@@ -49,6 +50,7 @@ class AgentRuntime:
     chat_model: ChatModelPort
     model_verification: ModelVerificationPort
     report_writer: ReportWriterPort
+    diagnostic_model: DiagnosticModelPort | None = None
 
     async def external_context_for(
         self,
@@ -128,6 +130,8 @@ class AgentRuntime:
         model_verification: ModelVerificationResult | None,
         iteration: int,
         max_iterations: int,
+        diagnostic_available: bool = False,
+        force_review: bool = False,
     ) -> EvidenceAssessment:
         deterministic = assess_evidence(
             source_input=source_input,
@@ -136,6 +140,8 @@ class AgentRuntime:
             iteration=iteration,
             max_iterations=max_iterations,
             threshold=self.config.agent_evidence_threshold,
+            diagnostic_available=diagnostic_available,
+            force_review=force_review,
         )
         candidate = await self.chat_model.assess(
             EvidenceAssessmentRequest(

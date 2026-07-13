@@ -4,6 +4,7 @@ from typing import Protocol
 
 from heatgrid_ops.agent.contracts import SimulateCard
 from heatgrid_ops.agent.ports import (
+    AgentBudgetPort,
     ArtifactPort,
     AgentInputPort,
     ReviewPort,
@@ -34,3 +35,6 @@ class AgentNodeContext(Protocol):
 
     @property
     def legacy_simulate_card(self) -> SimulateCard | None: ...
+
+    @property
+    def budget(self) -> AgentBudgetPort | None: ...

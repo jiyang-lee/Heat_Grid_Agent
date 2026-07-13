@@ -14,6 +14,7 @@ from heatgrid_ops.agent.models import JsonValue, ModelVerificationResult, OpsAge
 LoopDecision = Literal[
     "expand_internal",
     "rerun_model",
+    "diagnostic_worker",
     "request_human",
     "finalize",
 ]
@@ -47,6 +48,8 @@ def assess_evidence(
     max_iterations: int,
     threshold: float,
     policy: DecisionPolicy | None = None,
+    diagnostic_available: bool = False,
+    force_review: bool = False,
 ) -> EvidenceAssessment:
     priority_context = _mapping(source_input.get("priority_context"))
     card = _mapping(priority_context.get("card"))
@@ -97,7 +100,8 @@ def assess_evidence(
         missing.append("운전 부하를 설명할 기상 정보")
 
     score = round(min(1.0, score), 4)
-    review_required = bool(card.get("review_required"))
+    review_required = bool(card.get("review_required")) or force_review
+    priority_level = str(priority.get("priority_level") or "").lower()
 
     selected = (policy or default_decision_policy()).decide(
         DecisionContext(
@@ -108,14 +112,18 @@ def assess_evidence(
             evidence_threshold=threshold,
             iteration=iteration,
             max_iterations=max_iterations,
+            diagnostic_available=diagnostic_available,
+            priority_level=priority_level,
         )
     )
     if selected == "rerun_model":
         return _assessment(selected, score, missing, _RATIONALES[selected])
     if selected == "expand_internal":
         return _assessment(selected, score, missing, _RATIONALES[selected])
-    if selected in {"diagnostic_worker", "request_human"}:
-        return _assessment("request_human", score, missing, _RATIONALES[selected])
+    if selected == "diagnostic_worker":
+        return _assessment(selected, score, missing, _RATIONALES[selected])
+    if selected == "request_human":
+        return _assessment(selected, score, missing, _RATIONALES[selected])
     return _assessment(
         "finalize",
         score,
@@ -168,7 +176,11 @@ def validate_output(output: OpsAgentOutput, *, agent_mode: str) -> OutputValidat
             issues.append(f"{label}이 너무 짧습니다.")
     if output.summary == output.action_plan:
         issues.append("상황 요약과 조치 계획이 구분되지 않았습니다.")
-    if agent_mode == "llm" and "확정" in output.summary and "추정" not in output.caution:
+    if (
+        agent_mode == "llm"
+        and "확정" in output.summary
+        and "추정" not in output.caution
+    ):
         issues.append("고장 원인을 확정 표현했지만 불확실성 주의가 없습니다.")
     score = max(0.0, 1.0 - 0.25 * len(issues))
     return OutputValidation(valid=not issues, score=score, issues=issues)
@@ -201,7 +213,7 @@ def _list(value: JsonValue | None) -> list[JsonValue]:
 _RATIONALES = {
     "rerun_model": "저장된 예측값과 활성 모델 결과가 달라 모델 입력을 다시 읽고 재검증합니다.",
     "expand_internal": "내부 운영 참고자료가 부족해 검색 범위와 조회 개수를 확장합니다.",
-    "diagnostic_worker": "읽기 전용 진단 worker를 사용할 수 없어 사람의 최종 판단을 요청합니다.",
+    "diagnostic_worker": "읽기 전용 진단 worker가 제한된 근거에서 고장 가설을 정리합니다.",
     "request_human": "검수 조건이 남아 있어 운영 답변과 함께 사람의 최종 판단을 요청합니다.",
     "finalize": "근거와 모델 재검증 결과가 기준을 충족해 답변 생성을 진행합니다.",
 }

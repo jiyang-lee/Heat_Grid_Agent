@@ -50,6 +50,7 @@ async def generate_operational_answer(
         enriched_context,
         state.request.card_id,
     )
+    usage.calls.extend(state.evidence.diagnostic_calls)
     try:
         output = await context.runtime.generate_llm_output(
             state.request.source_input,
@@ -89,6 +90,8 @@ async def generate_fallback_output(
         enriched_context,
         state.request.card_id,
     )
+    if state.output.token_usage is None:
+        usage.calls.extend(state.evidence.diagnostic_calls)
     return {
         "output": state.output.model_copy(
             update={
@@ -202,6 +205,10 @@ async def create_final_review(
         "action_decisions": _json_objects(state.audit.action_decisions),
         "output_validation": validation.model_dump(mode="json"),
     }
+    if state.evidence.diagnostic_summary is not None:
+        review_payload["diagnostic_summary"] = (
+            state.evidence.diagnostic_summary.model_dump(mode="json")
+        )
     task = await context.reviews.create_review(
         AgentReviewRequest(
             task_type="final_output",
@@ -217,9 +224,7 @@ async def create_final_review(
         "final human review requested",
         {"task_id": task.task_id, "task_type": task.task_type},
     )
-    return {
-        "loop": state.loop.model_copy(update={"review_task_id": task.task_id})
-    }
+    return {"loop": state.loop.model_copy(update={"review_task_id": task.task_id})}
 
 
 def route_after_llm(

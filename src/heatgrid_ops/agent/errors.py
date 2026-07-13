@@ -25,7 +25,7 @@ class AgentInputContractError(AgentCoreError):
         return self.detail
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class AgentDependencyError(AgentCoreError):
     service: Literal["llm", "model", "persistence", "rag", "report"]
     detail: str
@@ -34,7 +34,7 @@ class AgentDependencyError(AgentCoreError):
         return self.detail
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class MissingApiKeyError(AgentDependencyError):
     service: Literal["llm"] = "llm"
     detail: str = "OPENAI_API_KEY가 필요합니다."
