@@ -28,6 +28,9 @@ class PostgresAgentReviewAdapter:
             run_id=request.run_id,
             candidate_id=request.candidate_id,
             reviewed_by=request.reviewed_by,
+            operation_key=None
+            if request.run_id is None
+            else f"agent-review:{request.run_id}:{request.task_type}",
         )
         return _task_snapshot(task)
 

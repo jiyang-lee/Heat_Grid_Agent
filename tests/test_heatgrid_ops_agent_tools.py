@@ -14,10 +14,13 @@ BACKEND_DIR: Final = (
 )
 sys.path.insert(0, str(BACKEND_DIR))
 
+import agent_evidence_adapters  # noqa: E402
 import agent_report_writer_adapter  # noqa: E402
+from agent_evidence_adapters import StructuredExternalDataAdapter  # noqa: E402
 from agent_report_writer_adapter import LocalReportWriterAdapter  # noqa: E402
 from heatgrid_ops.agent.contracts import ReportWriteRequest  # noqa: E402
 from heatgrid_ops.agent.models import JsonValue, OpsAgentOutput  # noqa: E402
+from heatgrid_ops.agent.run_models import ExternalDataRequest  # noqa: E402
 from heatgrid_ops.agent.tools import (  # noqa: E402
     ALL_AGENT_TOOL_NAMES,
     GRAPH_CONTROLLED_TOOL_NAMES,
@@ -26,6 +29,7 @@ from heatgrid_ops.agent.tools import (  # noqa: E402
     make_operational_tools,
     make_ops_evidence_tool,
 )
+from heatgrid_rag.search import RagSearcher  # noqa: E402
 
 
 def test_ops_evidence_and_external_context_tools_return_json_payloads() -> None:
@@ -153,6 +157,33 @@ async def test_report_writer_does_not_mutate_process_environment(
         "model": "process-model",
         "caller_api_key": "adapter-key",
         "caller_model": "adapter-model",
+    }
+
+
+@pytest.mark.anyio
+async def test_weather_snapshot_failure_keeps_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_snapshot(*_: object) -> object:
+        raise RuntimeError("weather provider unavailable")
+
+    monkeypatch.setattr(agent_evidence_adapters, "_external_snapshot", fail_snapshot)
+    adapter = StructuredExternalDataAdapter(RagSearcher())
+
+    snapshot = await adapter.snapshot(
+        ExternalDataRequest(
+            substation_id=31,
+            window_start="2026-07-14T00:00:00Z",
+            window_end="2026-07-14T01:00:00Z",
+        )
+    )
+
+    assert snapshot.status == "unavailable"
+    assert snapshot.weather["status"] == "unavailable"
+    assert snapshot.weather["window_start"] == "2026-07-14T00:00:00Z"
+    assert snapshot.weather["provenance"] == {
+        "error_type": "RuntimeError",
+        "message": "weather provider unavailable",
     }
 
 
