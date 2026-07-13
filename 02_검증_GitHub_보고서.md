@@ -2,11 +2,12 @@
 
 ## GitHub
 
+- PR #16: merged, `2b049c9`
 - PR #17: merged, `4ba77af`
 - PR #18: merged, `c5b1a9e`
 - PR #19: merged, `6eb492f`
 - PR #20: merged, `fc1b812`
-- PR 05: `codex/agent-foundation-05-hardening`, 자체 diff 감사와 gate 후 squash merge
+- PR #21: merged, `8ddc0b4`
 
 GitHub는 PR 작성자의 자기 승인을 허용하지 않는다. 각 PR은 변경 diff 감사, 집중 테스트, smoke를 통과한 뒤 작성자가 직접 merge했다.
 
@@ -24,6 +25,7 @@ GitHub는 PR 작성자의 자기 승인을 허용하지 않는다. 각 PR은 변
 | existing run backfill 중복 방지 | task count 1 |
 | task/ledger/FK/UNIQUE/API columns | present |
 | clean HTTP agent run | completed, fallback, final review 1 |
+| manual evidence 생성·검수 API smoke | 1 passed |
 | existing run API | HTTP 200 |
 | forced lifespan stop 후 reclaim task | queued, task count 1 |
 
