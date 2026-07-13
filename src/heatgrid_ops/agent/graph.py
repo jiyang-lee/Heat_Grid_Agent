@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial
+from typing import Protocol
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Checkpointer, Durability
+from pydantic import TypeAdapter
 
 from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
 from heatgrid_ops.agent.nodes import (
@@ -59,12 +64,65 @@ class AgentGraphContext:
     legacy_simulate_card: SimulateCard | None = None
 
 
+class AgentGraphInvoker(Protocol):
+    @property
+    def checkpointer_enabled(self) -> bool: ...
+
+    @property
+    def max_iterations(self) -> int: ...
+
+    async def ainvoke(
+        self,
+        input: AgentGraphInput | None,
+        config: RunnableConfig,
+        *,
+        durability: Durability | None,
+    ) -> AgentGraphOutput: ...
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledAgentGraph:
+    compiled: CompiledStateGraph[
+        AgentState,
+        None,
+        AgentGraphInput,
+        AgentGraphOutput,
+    ]
+    max_iterations: int
+
+    @property
+    def checkpointer_enabled(self) -> bool:
+        return self.compiled.checkpointer is not None
+
+    async def ainvoke(
+        self,
+        input: AgentGraphInput | None,
+        config: RunnableConfig,
+        *,
+        durability: Durability | None,
+    ) -> AgentGraphOutput:
+        output = await self.compiled.ainvoke(
+            input,
+            config,
+            durability=durability,
+        )
+        return TypeAdapter(AgentGraphOutput).validate_python(output)
+
+
 async def execute_agent_graph(
-    context: AgentGraphContext,
+    context: AgentGraphContext | None,
     request: AgentRunRequest,
+    *,
+    graph: AgentGraphInvoker | None = None,
+    resume: bool = False,
 ) -> AgentRunResult:
-    graph = build_agent_graph(context)
-    initial: AgentGraphInput = {
+    if graph is None:
+        if context is None:
+            raise ValueError("context is required when graph is not precompiled")
+        active_graph = build_agent_graph(context)
+    else:
+        active_graph = graph
+    initial: AgentGraphInput | None = None if resume else {
         "request": RequestState(
             run_id=request.run_id,
             alert_id=request.alert_id,
@@ -72,15 +130,20 @@ async def execute_agent_graph(
         ),
         "evidence": EvidenceState(),
         "loop": LoopState(
-            max_iterations=context.runtime.config.agent_max_iterations,
+            max_iterations=active_graph.max_iterations,
         ),
         "output": OutputState(),
         "audit": AuditState(),
         "result": ResultState(),
     }
-    state = await graph.ainvoke(
+    config: RunnableConfig = {
+        "configurable": {"thread_id": request.run_id},
+        "recursion_limit": 64,
+    }
+    state = await active_graph.ainvoke(
         initial,
-        config={"recursion_limit": 64},
+        config,
+        durability="sync" if active_graph.checkpointer_enabled else None,
     )
     result = ResultState.model_validate(state["result"])
     if result.value is None:
@@ -88,7 +151,10 @@ async def execute_agent_graph(
     return result.value
 
 
-def build_agent_graph(context: AgentGraphContext):
+def build_agent_graph(
+    context: AgentGraphContext,
+    checkpointer: Checkpointer = None,
+) -> AgentGraphInvoker:
     graph = StateGraph(
         AgentState,
         input_schema=AgentGraphInput,
@@ -147,4 +213,7 @@ def build_agent_graph(context: AgentGraphContext):
     graph.add_edge("create_final_review", "write_anomaly_report")
     graph.add_edge("write_anomaly_report", "complete_run")
     graph.add_edge("complete_run", END)
-    return graph.compile()
+    return CompiledAgentGraph(
+        compiled=graph.compile(checkpointer=checkpointer),
+        max_iterations=context.runtime.config.agent_max_iterations,
+    )

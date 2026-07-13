@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Final
 
 import orjson
@@ -26,6 +27,7 @@ class AgentRunEventRecord:
     event_type: str
     message: str
     payload: JsonObject
+    operation_key: str | None = None
 
 
 async def ensure_agent_run_event_table(engine: AsyncEngine) -> None:
@@ -53,16 +55,35 @@ async def insert_agent_run_event(
 ) -> None:
     await connection.execute(
         text(
-            "INSERT INTO agent_run_events (run_id, event_type, message, payload) "
-            "VALUES (:run_id, :event_type, :message, CAST(:payload AS jsonb))"
+            "INSERT INTO agent_run_events ("
+            "run_id, event_type, message, payload, operation_key"
+            ") VALUES ("
+            ":run_id, :event_type, :message, CAST(:payload AS jsonb), :operation_key"
+            ") ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL DO NOTHING"
         ),
         {
             "run_id": event.run_id,
             "event_type": event.event_type,
             "message": event.message,
             "payload": orjson.dumps(event.payload).decode("utf-8"),
+            "operation_key": event.operation_key or _event_operation_key(event),
         },
     )
+
+
+def _event_operation_key(event: AgentRunEventRecord) -> str:
+    payload = orjson.dumps(event.payload, option=orjson.OPT_SORT_KEYS)
+    digest = sha256(
+        b"\x00".join(
+            (
+                event.run_id.encode(),
+                event.event_type.encode(),
+                event.message.encode(),
+                payload,
+            )
+        )
+    ).hexdigest()
+    return f"agent-event:{digest}"
 
 
 async def list_agent_run_events(

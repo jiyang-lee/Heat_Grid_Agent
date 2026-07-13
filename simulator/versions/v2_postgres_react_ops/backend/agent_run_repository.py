@@ -274,6 +274,12 @@ async def _expire_stale_agent_runs(
             f"WHERE {identity_sql} AND status IN ('queued', 'running') "
             "AND updated_at < now() - "
             "(:stale_after_seconds * interval '1 second') "
+            "AND NOT EXISTS ("
+            "SELECT 1 FROM agent_run_tasks task "
+            "WHERE task.run_id = agent_runs.run_id "
+            "AND task.status IN ('queued', 'running') "
+            "AND task.attempt_count < task.max_attempts"
+            ") "
             "RETURNING run_id"
         ),
         params,
@@ -511,7 +517,7 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         loop_summary=None
         if loop_summary is None
         else AgentLoopSummary.model_validate(orjson.loads(loop_summary)),
-        review_status=str(row["review_status"] or "pending"),
+        review_status=row["review_status"] or "pending",
         review_task_id=None
         if row["review_task_id"] is None
         else str(row["review_task_id"]),

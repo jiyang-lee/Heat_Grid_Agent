@@ -1,14 +1,22 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.tools import BaseTool
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import DictRow, dict_row
+from psycopg_pool import AsyncConnectionPool
 
+from agent_execution_migration import apply_agent_execution_migration
 from agent_error_mapping import install_agent_error_handlers
-from agent_runtime_factory import create_agent_runtime
+from agent_runner import resume_reclaimable_agent_runs
+from agent_runtime_factory import create_agent_graph_context, create_agent_runtime
+from heatgrid_ops.agent.graph import AgentGraphInvoker, build_agent_graph
 from heatgrid_ops.agent.helpers import (
     card_id_from_input as runtime_card_id_from_input,
     fallback_note as runtime_fallback_note,
@@ -60,6 +68,23 @@ rag_searcher = RagSearcher()
 agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
 
 
+@dataclass(slots=True)
+class AgentApplicationResources:
+    graph: AgentGraphInvoker | None = None
+    checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] | None = None
+
+
+agent_resources = AgentApplicationResources()
+
+
+def _agent_graph() -> AgentGraphInvoker | None:
+    return agent_resources.graph
+
+
+def _psycopg_database_url(database_url: str) -> str:
+    return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await ensure_priority_evaluation_tables(engine)
@@ -74,7 +99,38 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await ensure_agent_loop_iteration_table(engine)
     await ensure_review_tables(engine)
     await ensure_retrain_tables(engine)
-    yield
+    checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] = AsyncConnectionPool(
+        conninfo=_psycopg_database_url(settings.database_url),
+        min_size=1,
+        max_size=10,
+        open=False,
+        kwargs={
+            "autocommit": True,
+            "prepare_threshold": 0,
+            "row_factory": dict_row,
+        },
+    )
+    await checkpoint_pool.open()
+    try:
+        await apply_agent_execution_migration(checkpoint_pool)
+        checkpointer = AsyncPostgresSaver(checkpoint_pool)
+        await checkpointer.setup()
+        graph = build_agent_graph(
+            create_agent_graph_context(engine, agent_runtime),
+            checkpointer=checkpointer,
+        )
+        agent_resources.graph = graph
+        agent_resources.checkpoint_pool = checkpoint_pool
+        await resume_reclaimable_agent_runs(
+            engine,
+            runtime=agent_runtime,
+            graph=graph,
+        )
+        yield
+    finally:
+        agent_resources.graph = None
+        agent_resources.checkpoint_pool = None
+        await checkpoint_pool.close()
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
@@ -228,10 +284,21 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
     return f"data: {to_json({'type': kind, 'message': message, 'payload': payload})}\n\n"
 
 
-app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
+app.include_router(
+    make_agent_run_router(
+        engine,
+        runtime=agent_runtime,
+        graph_provider=_agent_graph,
+    )
+)
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=settings.api_host, port=settings.api_port)
+    uvicorn.run(
+        app,
+        host=settings.api_host,
+        port=settings.api_port,
+        loop="selector_loop:selector_event_loop_factory",
+    )

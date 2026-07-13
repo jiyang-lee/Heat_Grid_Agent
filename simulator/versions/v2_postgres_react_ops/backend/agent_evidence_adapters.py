@@ -27,7 +27,23 @@ class StructuredExternalDataAdapter:
     searcher: RagSearcher
 
     async def snapshot(self, request: ExternalDataRequest) -> ExternalDataSnapshot:
-        return await run_sync(partial(_external_snapshot, self.searcher, request))
+        try:
+            return await run_sync(partial(_external_snapshot, self.searcher, request))
+        except Exception as exc:
+            return ExternalDataSnapshot(
+                status="unavailable",
+                site={"status": "unavailable"},
+                weather={
+                    "status": "unavailable",
+                    "source": "structured_weather_snapshot",
+                    "window_start": request.window_start,
+                    "window_end": request.window_end,
+                    "provenance": {
+                        "error_type": type(exc).__name__,
+                        "message": str(exc)[:500],
+                    },
+                },
+            )
 
 
 def _search_rag(

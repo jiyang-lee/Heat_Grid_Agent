@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from uuid import uuid4
 
@@ -40,6 +40,7 @@ from agent_run_repository import (
 from alert_repository import get_alert
 from heatgrid_ops.agent.contracts import ReportWriteRequest
 from heatgrid_ops.agent.errors import AgentDependencyError
+from heatgrid_ops.agent.graph import AgentGraphInvoker
 from heatgrid_ops.agent.models import OpsAgentOutput as CoreOpsAgentOutput
 from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
 from heatgrid_ops.agent.services import AgentRuntime
@@ -69,6 +70,7 @@ def make_agent_run_router(
     engine: AsyncEngine,
     simulate_card: SimulateCard | None = None,
     runtime: AgentRuntime | None = None,
+    graph_provider: Callable[[], AgentGraphInvoker | None] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
     runtime = runtime or create_agent_runtime(Settings(), engine)
@@ -98,7 +100,7 @@ def make_agent_run_router(
             reason=payload.reason,
         )
         if created or (
-            queued.status == "queued"
+            queued.status in {"queued", "running"}
             and not is_agent_run_scheduled(queued.run_id)
         ):
             schedule_reserved_agent_graph(
@@ -110,6 +112,7 @@ def make_agent_run_router(
                 ),
                 simulate_card,
                 runtime,
+                None if graph_provider is None else graph_provider(),
             )
         return queued
 

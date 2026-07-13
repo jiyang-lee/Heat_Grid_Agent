@@ -107,7 +107,7 @@ docker compose up -d --wait
 uv sync
 # 로컬 DB 테이블을 초기화하고, 저장된 agent card와 urgent/high 알림을 적재한다.
 uv run python scripts/simulate_predictor_db.py --enqueue-alerts
-uv run uvicorn --app-dir simulator/versions/v2_postgres_react_ops/backend server:app --host 127.0.0.1 --port 8002
+uv run uvicorn --app-dir simulator/versions/v2_postgres_react_ops/backend server:app --host 127.0.0.1 --port 8002 --loop selector_loop:selector_event_loop_factory
 ```
 
 `simulate_predictor_db.py`는 기본적으로 로컬 simulation 테이블을 초기화한다. 기존 로컬 데이터를 보존하려면 `--append` 옵션을 사용한다.

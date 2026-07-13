@@ -122,7 +122,11 @@ class FakeRagPort:
 
 
 class FakeExternalDataPort:
+    def __init__(self) -> None:
+        self.calls = 0
+
     async def snapshot(self, request: ExternalDataRequest) -> ExternalDataSnapshot:
+        self.calls += 1
         assert request.substation_id == 31
         return ExternalDataSnapshot(
             status="available",
@@ -188,6 +192,7 @@ async def test_graph_executes_with_core_ports_only() -> None:
 
 
 async def run_fake_graph() -> None:
+    external_data = FakeExternalDataPort()
     runtime = AgentRuntime(
         config=AgentRuntimeConfig(
             openai_model="fake-model",
@@ -201,7 +206,7 @@ async def run_fake_graph() -> None:
             pricing_source="test",
         ),
         rag=FakeRagPort(),
-        external_data=FakeExternalDataPort(),
+        external_data=external_data,
         chat_model=FakeChatModelPort(),
         model_verification=FakeModelVerificationPort(),
         report_writer=FakeReportWriterPort(),
@@ -225,6 +230,7 @@ async def run_fake_graph() -> None:
     assert result.agent_mode == "fallback"
     assert result.loop_summary is not None
     assert result.loop_summary.decision == "finalize"
+    assert external_data.calls == 1
 
 
 def _source_input(card_id: str) -> dict:

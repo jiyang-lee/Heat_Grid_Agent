@@ -356,18 +356,21 @@ async def create_review_task(
     assigned_to: str | None = None,
     reviewed_by: str | None = None,
     task_id: str | None = None,
+    operation_key: str | None = None,
 ) -> HumanReviewTask:
     await ensure_review_tables(engine)
     task_id = task_id or str(uuid4())
     query = text(
         "INSERT INTO human_review_tasks ("
         "task_id, task_type, status, risk_level, title, run_id, candidate_id, "
-        "retrain_job_id, model_candidate_id, payload, assigned_to, reviewed_by, reviewed_at"
+        "retrain_job_id, model_candidate_id, payload, assigned_to, reviewed_by, reviewed_at, "
+        "operation_key"
         ") VALUES ("
         ":task_id, :task_type, :status, :risk_level, :title, :run_id, :candidate_id, "
         ":retrain_job_id, :model_candidate_id, CAST(:payload AS jsonb), :assigned_to, "
-        ":reviewed_by, :reviewed_at"
-        ") RETURNING " + _review_select_columns()
+        ":reviewed_by, :reviewed_at, :operation_key"
+        ") ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL DO UPDATE SET "
+        "operation_key = EXCLUDED.operation_key RETURNING " + _review_select_columns()
     )
     async with engine.begin() as connection:
         result = await connection.execute(
@@ -388,6 +391,7 @@ async def create_review_task(
                 "reviewed_at": None
                 if reviewed_by is None
                 else datetime.now(timezone.utc),
+                "operation_key": operation_key,
             },
         )
     return _review_from_row(result.mappings().one())
@@ -692,49 +696,59 @@ def _feedback_select_columns() -> str:
 
 
 def _candidate_from_row(row: RowMapping) -> EvidenceCandidate:
-    return EvidenceCandidate(
-        candidate_id=str(row["candidate_id"]),
-        run_id=None if row["run_id"] is None else str(row["run_id"]),
-        source_type=str(row["source_type"]),
-        source_uri=row["source_uri"],
-        title=str(row["title"]),
-        content=str(row["content"]),
-        query=row["query"],
-        risk_level=str(row["risk_level"]),
-        trust_score=float(row["trust_score"]),
-        status=str(row["status"]),
-        metadata=orjson.loads(row["metadata"]),
-        requested_by=str(row["requested_by"]),
-        reviewed_by=row["reviewed_by"],
-        review_reason=row["review_reason"],
-        rag_document_id=row["rag_document_id"],
-        rag_chunk_id=row["rag_chunk_id"],
-        created_at=row["created_at"].isoformat(),
-        reviewed_at=None if row["reviewed_at"] is None else row["reviewed_at"].isoformat(),
+    return EvidenceCandidate.model_validate(
+        {
+            "candidate_id": str(row["candidate_id"]),
+            "run_id": None if row["run_id"] is None else str(row["run_id"]),
+            "source_type": str(row["source_type"]),
+            "source_uri": row["source_uri"],
+            "title": str(row["title"]),
+            "content": str(row["content"]),
+            "query": row["query"],
+            "risk_level": str(row["risk_level"]),
+            "trust_score": float(row["trust_score"]),
+            "status": str(row["status"]),
+            "metadata": orjson.loads(row["metadata"]),
+            "requested_by": str(row["requested_by"]),
+            "reviewed_by": row["reviewed_by"],
+            "review_reason": row["review_reason"],
+            "rag_document_id": row["rag_document_id"],
+            "rag_chunk_id": row["rag_chunk_id"],
+            "created_at": row["created_at"].isoformat(),
+            "reviewed_at": None
+            if row["reviewed_at"] is None
+            else row["reviewed_at"].isoformat(),
+        }
     )
 
 
 def _review_from_row(row: RowMapping) -> HumanReviewTask:
-    return HumanReviewTask(
-        task_id=str(row["task_id"]),
-        task_type=str(row["task_type"]),
-        status=str(row["status"]),
-        risk_level=str(row["risk_level"]),
-        title=str(row["title"]),
-        run_id=None if row["run_id"] is None else str(row["run_id"]),
-        candidate_id=None if row["candidate_id"] is None else str(row["candidate_id"]),
-        retrain_job_id=None
-        if row["retrain_job_id"] is None
-        else str(row["retrain_job_id"]),
-        model_candidate_id=None
-        if row["model_candidate_id"] is None
-        else str(row["model_candidate_id"]),
-        payload=orjson.loads(row["payload"]),
-        resolution=orjson.loads(row["resolution"]),
-        assigned_to=row["assigned_to"],
-        reviewed_by=row["reviewed_by"],
-        created_at=row["created_at"].isoformat(),
-        reviewed_at=None if row["reviewed_at"] is None else row["reviewed_at"].isoformat(),
+    return HumanReviewTask.model_validate(
+        {
+            "task_id": str(row["task_id"]),
+            "task_type": str(row["task_type"]),
+            "status": str(row["status"]),
+            "risk_level": str(row["risk_level"]),
+            "title": str(row["title"]),
+            "run_id": None if row["run_id"] is None else str(row["run_id"]),
+            "candidate_id": None
+            if row["candidate_id"] is None
+            else str(row["candidate_id"]),
+            "retrain_job_id": None
+            if row["retrain_job_id"] is None
+            else str(row["retrain_job_id"]),
+            "model_candidate_id": None
+            if row["model_candidate_id"] is None
+            else str(row["model_candidate_id"]),
+            "payload": orjson.loads(row["payload"]),
+            "resolution": orjson.loads(row["resolution"]),
+            "assigned_to": row["assigned_to"],
+            "reviewed_by": row["reviewed_by"],
+            "created_at": row["created_at"].isoformat(),
+            "reviewed_at": None
+            if row["reviewed_at"] is None
+            else row["reviewed_at"].isoformat(),
+        }
     )
 
 
@@ -764,21 +778,23 @@ def _policy_from_row(
         reviewed_count >= int(row["minimum_review_count"])
         and approval_rate >= float(row["minimum_approval_rate"])
     )
-    return AutomationPolicy(
-        policy_id="default",
-        mode=str(row["mode"]),
-        auto_transition_enabled=bool(row["auto_transition_enabled"]),
-        minimum_review_count=int(row["minimum_review_count"]),
-        minimum_approval_rate=float(row["minimum_approval_rate"]),
-        minimum_confidence=float(row["minimum_confidence"]),
-        minimum_source_trust=float(row["minimum_source_trust"]),
-        maximum_drift_score=float(row["maximum_drift_score"]),
-        final_review_required=bool(row["final_review_required"]),
-        reviewed_count=reviewed_count,
-        approval_rate=round(approval_rate, 4),
-        eligible_for_guarded_auto=eligible,
-        updated_by=str(row["updated_by"]),
-        updated_at=row["updated_at"].isoformat(),
+    return AutomationPolicy.model_validate(
+        {
+            "policy_id": "default",
+            "mode": str(row["mode"]),
+            "auto_transition_enabled": bool(row["auto_transition_enabled"]),
+            "minimum_review_count": int(row["minimum_review_count"]),
+            "minimum_approval_rate": float(row["minimum_approval_rate"]),
+            "minimum_confidence": float(row["minimum_confidence"]),
+            "minimum_source_trust": float(row["minimum_source_trust"]),
+            "maximum_drift_score": float(row["maximum_drift_score"]),
+            "final_review_required": bool(row["final_review_required"]),
+            "reviewed_count": reviewed_count,
+            "approval_rate": round(approval_rate, 4),
+            "eligible_for_guarded_auto": eligible,
+            "updated_by": str(row["updated_by"]),
+            "updated_at": row["updated_at"].isoformat(),
+        }
     )
 
 
