@@ -7,16 +7,21 @@ from heatgrid_ops.agent.assessment import validate_output as validate_ops_output
 from heatgrid_ops.agent.contracts import (
     AgentLoopIterationRecord,
     AgentReviewRequest,
-    AgentRunCompletion,
 )
 from heatgrid_ops.agent.errors import AgentDependencyError
 from heatgrid_ops.agent.helpers import fallback_note
-from heatgrid_ops.agent.models import JsonObject, JsonValue, SimulationResponse
+from heatgrid_ops.agent.models import (
+    JsonObject,
+    JsonValue,
+    OpsAgentOutput,
+)
 from heatgrid_ops.agent.node_context import AgentNodeContext
-from heatgrid_ops.agent.nodes_audit import enriched_external_context, record_decision
-from heatgrid_ops.agent.run_models import AgentLoopSummary
+from heatgrid_ops.agent.nodes_audit import (
+    enriched_external_context,
+    record_decision,
+    risk_level,
+)
 from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
-from heatgrid_ops.agent.usage import usage_with_totals
 
 
 LOGGER = logging.getLogger(__name__)
@@ -29,37 +34,49 @@ async def generate_operational_answer(
     await record_decision(context, state, "generate_operational_answer")
     legacy = context.legacy_simulate_card
     if legacy is not None:
-        simulation = await legacy(state["card_id"])
+        simulation = await legacy(state.request.card_id)
         return {
-            "ops_output": simulation.ops_output,
-            "token_usage": simulation.token_usage,
-            "agent_mode": simulation.agent_mode,
+            "output": state.output.model_copy(
+                update={
+                    "value": simulation.ops_output,
+                    "token_usage": simulation.token_usage,
+                    "mode": simulation.agent_mode,
+                }
+            )
         }
     enriched_context = enriched_external_context(state)
     usage = context.runtime.token_usage_for(
-        state["source_input"],
+        state.request.source_input,
         enriched_context,
-        state["card_id"],
+        state.request.card_id,
     )
     try:
         output = await context.runtime.generate_llm_output(
-            state["source_input"],
+            state.request.source_input,
             enriched_context,
-            state["card_id"],
-            model_verification=state.get("model_verification"),
-            evidence_assessment=state.get("evidence_assessment"),
-            revision_feedback=state.get("revision_feedback"),
+            state.request.card_id,
+            model_verification=state.evidence.model_verification,
+            evidence_assessment=state.loop.assessment,
+            revision_feedback=state.loop.revision_feedback,
             usage=usage,
         )
     except AgentDependencyError as exc:
         LOGGER.warning(
             "Operational LLM fallback for card_id=%s: %s: %s",
-            state["card_id"],
+            state.request.card_id,
             type(exc).__name__,
             exc,
         )
-        return {"token_usage": usage, "agent_mode": "fallback"}
-    return {"ops_output": output, "token_usage": usage, "agent_mode": "llm"}
+        return {
+            "output": state.output.model_copy(
+                update={"token_usage": usage, "mode": "fallback"}
+            )
+        }
+    return {
+        "output": state.output.model_copy(
+            update={"value": output, "token_usage": usage, "mode": "llm"}
+        )
+    }
 
 
 async def generate_fallback_output(
@@ -67,15 +84,19 @@ async def generate_fallback_output(
     state: AgentState,
 ) -> AgentStateUpdate:
     enriched_context = enriched_external_context(state)
-    usage = state.get("token_usage") or context.runtime.token_usage_for(
-        state["source_input"],
+    usage = state.output.token_usage or context.runtime.token_usage_for(
+        state.request.source_input,
         enriched_context,
-        state["card_id"],
+        state.request.card_id,
     )
     return {
-        "ops_output": fallback_note(state["source_input"], enriched_context),
-        "token_usage": usage,
-        "agent_mode": "fallback",
+        "output": state.output.model_copy(
+            update={
+                "value": fallback_note(state.request.source_input, enriched_context),
+                "token_usage": usage,
+                "mode": "fallback",
+            }
+        )
     }
 
 
@@ -83,34 +104,40 @@ async def validate_output(
     context: AgentNodeContext,
     state: AgentState,
 ) -> AgentStateUpdate:
-    output = state["ops_output"]
-    validation = validate_ops_output(output, agent_mode=state["agent_mode"])
-    used_tools = state.get("used_tools", [])
+    output = _required_output(state)
+    mode = _required_mode(state)
+    validation = validate_ops_output(output, agent_mode=mode)
     output_payload: JsonObject = {
-        "card_id": state["card_id"],
-        "agent_mode": state["agent_mode"],
-        "used_tool_count": len(used_tools),
-        "used_tools": _json_strings(used_tools),
+        "card_id": state.request.card_id,
+        "agent_mode": mode,
+        "used_tool_count": len(state.audit.used_tools),
+        "used_tools": _json_strings(state.audit.used_tools),
         "validation": validation.model_dump(mode="json"),
     }
     await context.audit.record_event(
-        state["run_id"],
+        state.request.run_id,
         "final_output",
         "final output generated",
         output_payload,
     )
-    return {"ops_output": output, "output_validation": validation}
+    return {
+        "output": state.output.model_copy(
+            update={"value": output, "validation": validation}
+        )
+    }
 
 
 def route_after_output_validation(
     state: AgentState,
 ) -> Literal["prepare_output_retry", "create_final_review"]:
-    validation = state["output_validation"]
+    validation = state.output.validation
+    if validation is None:
+        raise RuntimeError("output validation is missing")
     if (
         not validation.valid
-        and state.get("agent_mode") == "llm"
-        and state.get("revision_count", 0) < 1
-        and state.get("loop_iteration", 1) < state.get("max_iterations", 4)
+        and state.output.mode == "llm"
+        and state.loop.revision_count < 1
+        and state.loop.iteration < state.loop.max_iterations
     ):
         return "prepare_output_retry"
     return "create_final_review"
@@ -120,34 +147,40 @@ async def prepare_output_retry(
     context: AgentNodeContext,
     state: AgentState,
 ) -> AgentStateUpdate:
-    iteration = state.get("loop_iteration", 1) + 1
-    issues = state["output_validation"].issues
+    validation = state.output.validation
+    assessment = state.loop.assessment
+    if validation is None or assessment is None:
+        raise RuntimeError("loop output state is incomplete")
+    iteration = state.loop.iteration + 1
     await context.audit.record_loop_iteration(
         AgentLoopIterationRecord(
-            run_id=state["run_id"],
+            run_id=state.request.run_id,
             iteration=iteration,
             phase="output_revision",
             decision="revise_output",
-            confidence=state["output_validation"].score,
-            evidence_score=state["evidence_assessment"].evidence_score,
-            missing_evidence=issues,
-            model_verification=state.get("model_verification"),
+            confidence=validation.score,
+            evidence_score=assessment.evidence_score,
+            missing_evidence=validation.issues,
+            model_verification=state.evidence.model_verification,
         )
     )
-    retry_payload: JsonObject = {
-        "iteration": iteration,
-        "issues": _json_strings(issues),
-    }
     await context.audit.record_event(
-        state["run_id"],
+        state.request.run_id,
         "output_retry",
         "output validation requested one revision",
-        retry_payload,
+        {
+            "iteration": iteration,
+            "issues": _json_strings(validation.issues),
+        },
     )
     return {
-        "loop_iteration": iteration,
-        "revision_count": state.get("revision_count", 0) + 1,
-        "revision_feedback": issues,
+        "loop": state.loop.model_copy(
+            update={
+                "iteration": iteration,
+                "revision_count": state.loop.revision_count + 1,
+                "revision_feedback": validation.issues,
+            }
+        )
     }
 
 
@@ -155,96 +188,63 @@ async def create_final_review(
     context: AgentNodeContext,
     state: AgentState,
 ) -> AgentStateUpdate:
-    assessment = state["evidence_assessment"]
+    assessment = state.loop.assessment
+    validation = state.output.validation
+    verification = state.evidence.model_verification
+    if assessment is None or validation is None or verification is None:
+        raise RuntimeError("final review state is incomplete")
     review_payload: JsonObject = {
-        "card_id": state["card_id"],
-        "ops_output": state["ops_output"].model_dump(mode="json"),
+        "card_id": state.request.card_id,
+        "ops_output": _required_output(state).model_dump(mode="json"),
         "evidence_assessment": assessment.model_dump(mode="json"),
-        "model_verification": state["model_verification"].model_dump(mode="json"),
-        "external_candidate_ids": _json_strings(
-            state.get("external_candidate_ids", [])
-        ),
-        "used_tools": _json_strings(state.get("used_tools", [])),
-        "action_decisions": _json_objects(state.get("action_decisions", [])),
-        "output_validation": state["output_validation"].model_dump(mode="json"),
+        "model_verification": verification.model_dump(mode="json"),
+        "used_tools": _json_strings(state.audit.used_tools),
+        "action_decisions": _json_objects(state.audit.action_decisions),
+        "output_validation": validation.model_dump(mode="json"),
     }
     task = await context.reviews.create_review(
         AgentReviewRequest(
             task_type="final_output",
-            risk_level=_risk_level(state),
-            title=f"에이전트 최종 운영 결과 검수: {state['card_id']}",
-            run_id=state["run_id"],
+            risk_level=risk_level(state.request.source_input),
+            title=f"에이전트 최종 운영 결과 검수: {state.request.card_id}",
+            run_id=state.request.run_id,
             payload=review_payload,
         )
     )
     await context.audit.record_event(
-        state["run_id"],
+        state.request.run_id,
         "review_requested",
         "final human review requested",
         {"task_id": task.task_id, "task_type": task.task_type},
     )
-    return {"review_task_id": task.task_id}
+    return {
+        "loop": state.loop.model_copy(update={"review_task_id": task.task_id})
+    }
 
 
-async def complete_run(
-    context: AgentNodeContext,
+def route_after_llm(
     state: AgentState,
-) -> AgentStateUpdate:
-    usage = usage_with_totals(state["token_usage"], context.runtime.config)
-    assessment = state["evidence_assessment"]
-    loop_summary = AgentLoopSummary(
-        iterations=state.get("loop_iteration", 1),
-        max_iterations=state.get("max_iterations", context.runtime.config.agent_max_iterations),
-        decision=assessment.decision,
-        confidence=assessment.confidence,
-        evidence_score=assessment.evidence_score,
-        missing_evidence=assessment.missing_evidence,
-        external_candidate_ids=state.get("external_candidate_ids", []),
-        used_tools=state.get("used_tools", []),
-        action_decisions=state.get("action_decisions", []),
-        model_verification=state.get("model_verification"),
-        review_required=True,
-        review_task_id=state.get("review_task_id"),
-    )
-    result = await context.lifecycle.complete(
-        state["run_id"],
-        AgentRunCompletion(
-            simulation=SimulationResponse(
-                card_id=state["card_id"],
-                input_source="postgresql",
-                agent_mode=state["agent_mode"],
-                ops_output=state["ops_output"],
-                token_usage=usage,
-            ),
-            loop_summary=loop_summary,
-            review_task_id=state.get("review_task_id"),
-        ),
-    )
-    return {"result": result, "token_usage": usage}
-
-
-def route_after_llm(state: AgentState) -> Literal["generate_fallback_output", "validate_output"]:
-    if state.get("ops_output") is None:
+) -> Literal["generate_fallback_output", "validate_output"]:
+    if state.output.value is None:
         return "generate_fallback_output"
     return "validate_output"
 
 
-def _risk_level(state: AgentState) -> Literal["low", "medium", "high", "critical"]:
-    priority_context = state["source_input"].get("priority_context")
-    priority = priority_context.get("priority") if isinstance(priority_context, dict) else None
-    level = str(priority.get("priority_level") or "medium").lower() if isinstance(priority, dict) else "medium"
-    if level == "urgent":
-        return "critical"
-    if level == "high":
-        return "high"
-    if level == "low":
-        return "low"
-    return "medium"
+def _required_output(state: AgentState) -> OpsAgentOutput:
+    if state.output.value is None:
+        raise RuntimeError("agent output is missing")
+    return state.output.value
+
+
+def _required_mode(state: AgentState) -> Literal["llm", "fallback"]:
+    if state.output.mode is None:
+        raise RuntimeError("agent mode is missing")
+    return state.output.mode
 
 
 def _json_strings(values: list[str]) -> list[JsonValue]:
     return [value for value in values]
 
 
-def _json_objects(values: list[dict[str, JsonValue]]) -> list[JsonValue]:
+def _json_objects(values: list[JsonObject]) -> list[JsonValue]:
     return [value for value in values]

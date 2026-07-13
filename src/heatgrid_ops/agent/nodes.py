@@ -14,8 +14,8 @@ from heatgrid_ops.agent.nodes_input import (
     load_ops_input,
     mark_running,
 )
+from heatgrid_ops.agent.nodes_completion import complete_run
 from heatgrid_ops.agent.nodes_output import (
-    complete_run,
     create_final_review,
     generate_fallback_output,
     generate_operational_answer,

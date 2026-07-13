@@ -16,21 +16,24 @@ async def write_anomaly_report(
     state: AgentState,
 ) -> AgentStateUpdate:
     tool_name = "write_anomaly_report"
-    used_tools = [*state.get("used_tools", []), tool_name]
+    used_tools = [*state.audit.used_tools, tool_name]
     await record_decision(context, state, tool_name)
     await record_tool_started(context, state, tool_name)
+    output = state.output.value
+    if output is None:
+        raise RuntimeError("agent output is missing")
     try:
         draft = await context.runtime.write_anomaly(
             ReportWriteRequest(
-                run_id=state["run_id"],
-                card_id=state["card_id"],
-                source_input=state["source_input"],
-                evidence_context=state["external_context"],
-                ops_output=state["ops_output"],
+                run_id=state.request.run_id,
+                card_id=state.request.card_id,
+                source_input=state.request.source_input,
+                evidence_context=state.evidence.external_context,
+                ops_output=output,
             )
         )
         artifact = await context.artifacts.record(
-            state["run_id"],
+            state.request.run_id,
             draft.kind,
             draft.name,
             draft.uri,
@@ -39,18 +42,23 @@ async def write_anomaly_report(
         message = str(exc)
         await record_tool_completed(context, state, tool_name, {"status": "failed"})
         await _record_report_failed(context, state, message)
-        return {"used_tools": used_tools, "report_errors": [message]}
+        return {
+            "audit": state.audit.model_copy(update={"used_tools": used_tools}),
+            "output": state.output.model_copy(update={"report_errors": [message]}),
+        }
 
     await record_tool_completed(context, state, tool_name, {"status": "completed"})
     await context.audit.record_event(
-        state["run_id"],
+        state.request.run_id,
         "report_written",
         "anomaly report written",
         {"kind": artifact.kind, "name": artifact.name, "uri": artifact.uri},
     )
     return {
-        "used_tools": used_tools,
-        "report_artifacts": [artifact.model_dump(mode="json")],
+        "audit": state.audit.model_copy(update={"used_tools": used_tools}),
+        "output": state.output.model_copy(
+            update={"report_artifacts": [artifact.model_dump(mode="json")]}
+        ),
     }
 
 
@@ -60,7 +68,7 @@ async def _record_report_failed(
     message: str,
 ) -> None:
     await context.audit.record_event(
-        state["run_id"],
+        state.request.run_id,
         "report_failed",
         "anomaly report failed",
         {"kind": "anomaly_report", "error": message[:500]},

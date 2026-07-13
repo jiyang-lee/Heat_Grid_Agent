@@ -23,7 +23,6 @@ class AgentLoopSummary(BaseModel):
     confidence: float = 0.0
     evidence_score: float = 0.0
     missing_evidence: list[str] = Field(default_factory=list)
-    external_candidate_ids: list[str] = Field(default_factory=list)
     used_tools: list[str] = Field(default_factory=list)
     action_decisions: list[JsonObject] = Field(default_factory=list)
     model_verification: ModelVerificationResult | None = None

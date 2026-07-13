@@ -35,7 +35,17 @@ from heatgrid_ops.agent.ports import (
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
 from heatgrid_ops.agent.run_models import AgentRunResult
 from heatgrid_ops.agent.services import AgentRuntime
-from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput, AgentState
+from heatgrid_ops.agent.state import (
+    AgentGraphInput,
+    AgentGraphOutput,
+    AgentState,
+    AuditState,
+    EvidenceState,
+    LoopState,
+    OutputState,
+    RequestState,
+    ResultState,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,24 +64,28 @@ async def execute_agent_graph(
     request: AgentRunRequest,
 ) -> AgentRunResult:
     graph = build_agent_graph(context)
+    initial: AgentGraphInput = {
+        "request": RequestState(
+            run_id=request.run_id,
+            alert_id=request.alert_id,
+            card_id=request.card_id,
+        ),
+        "evidence": EvidenceState(),
+        "loop": LoopState(
+            max_iterations=context.runtime.config.agent_max_iterations,
+        ),
+        "output": OutputState(),
+        "audit": AuditState(),
+        "result": ResultState(),
+    }
     state = await graph.ainvoke(
-        {
-            "run_id": request.run_id,
-            "alert_id": request.alert_id,
-            "card_id": request.card_id,
-            "approved_action_task_id": request.approved_action_task_id,
-            "used_tools": [],
-            "external_candidates": [],
-            "external_candidate_ids": [],
-            "action_decisions": [],
-            "loop_iteration": 1,
-            "max_iterations": context.runtime.config.agent_max_iterations,
-            "model_attempts": 0,
-            "revision_count": 0,
-        },
+        initial,
         config={"recursion_limit": 64},
     )
-    return state["result"]
+    result = ResultState.model_validate(state["result"])
+    if result.value is None:
+        raise RuntimeError("agent graph completed without a result")
+    return result.value
 
 
 def build_agent_graph(context: AgentGraphContext):

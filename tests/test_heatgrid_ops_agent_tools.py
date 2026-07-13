@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 from typing import Final
@@ -13,6 +14,7 @@ BACKEND_DIR: Final = (
 )
 sys.path.insert(0, str(BACKEND_DIR))
 
+import agent_report_writer_adapter  # noqa: E402
 from agent_report_writer_adapter import LocalReportWriterAdapter  # noqa: E402
 from heatgrid_ops.agent.contracts import ReportWriteRequest  # noqa: E402
 from heatgrid_ops.agent.models import JsonValue, OpsAgentOutput  # noqa: E402
@@ -104,6 +106,54 @@ async def test_report_writer_adapter_writes_anomaly_and_daily_artifacts(
     assert (
         tmp_path / "ops_agent" / "reports" / "run-test" / "daily_report.json"
     ).exists()
+
+
+@pytest.mark.anyio
+async def test_report_writer_does_not_mutate_process_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, str | None] = {}
+
+    def capture_environment(*_args: object, **_kwargs: object) -> dict[str, JsonValue]:
+        observed["api_key"] = os.environ.get("OPENAI_API_KEY")
+        observed["model"] = os.environ.get("OPENAI_MODEL")
+        observed["caller_api_key"] = str(_kwargs.get("api_key"))
+        observed["caller_model"] = str(_kwargs.get("model"))
+        return {}
+
+    monkeypatch.setenv("OPENAI_API_KEY", "process-key")
+    monkeypatch.setenv("OPENAI_MODEL", "process-model")
+    monkeypatch.setattr(
+        agent_report_writer_adapter,
+        "write_anomaly_report_json",
+        capture_environment,
+    )
+    writer = LocalReportWriterAdapter(
+        api_key="adapter-key",
+        model="adapter-model",
+        output_root=tmp_path,
+    )
+    request = ReportWriteRequest(
+        run_id="run-test",
+        card_id="card-test",
+        source_input=fake_source_input(),
+        evidence_context={"status": "unavailable"},
+        ops_output=OpsAgentOutput(
+            summary="테스트 요약",
+            action_plan="테스트 조치",
+            caution="테스트 주의",
+        ),
+    )
+
+    await writer.write_anomaly(request)
+
+    assert observed == {
+        "api_key": "process-key",
+        "model": "process-model",
+        "caller_api_key": "adapter-key",
+        "caller_model": "adapter-model",
+    }
 
 
 def fake_source_input() -> dict[str, JsonValue]:

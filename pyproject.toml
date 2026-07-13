@@ -47,6 +47,7 @@ select = ["E4", "E7", "E9", "F"]
 [tool.basedpyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
+extraPaths = ["v0_ops_handoff_package/report_generator_hsj/report_generator/src"]
 
 [dependency-groups]
 dev = [

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
+from anyio.to_thread import run_sync
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from alert_repository import get_alert
@@ -52,32 +54,47 @@ class PostgresAgentInputModelAdapter:
         source_input: JsonObject,
         active_artifact_uri: str | None,
     ) -> ModelInferenceSnapshot:
-        try:
-            runtime = PriorityInferenceRuntime(
-                model_root=_model_root(active_artifact_uri),
-                deployment_version=_deployment_version(active_artifact_uri),
+        return await run_sync(
+            partial(
+                _infer_model,
+                feature_values,
+                source_input,
+                active_artifact_uri,
             )
-            inference = runtime.infer_batch(
-                [
-                    {
-                        **_source_identity(source_input),
-                        "feature_values": feature_values,
-                    }
-                ]
-            )[0]
-        except (
-            OSError,
-            ValueError,
-            TypeError,
-            KeyError,
-            AttributeError,
-            PriorityInferenceError,
-        ) as exc:
-            return ModelInferenceSnapshot(error=str(exc))
-        return ModelInferenceSnapshot(
-            usable=bool(inference.get("usable")),
-            payload=inference,
         )
+
+
+def _infer_model(
+    feature_values: dict[str, float],
+    source_input: JsonObject,
+    active_artifact_uri: str | None,
+) -> ModelInferenceSnapshot:
+    try:
+        runtime = PriorityInferenceRuntime(
+            model_root=_model_root(active_artifact_uri),
+            deployment_version=_deployment_version(active_artifact_uri),
+        )
+        inference = runtime.infer_batch(
+            [
+                {
+                    **_source_identity(source_input),
+                    "feature_values": feature_values,
+                }
+            ]
+        )[0]
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+        PriorityInferenceError,
+    ) as exc:
+        return ModelInferenceSnapshot(error=str(exc))
+    return ModelInferenceSnapshot(
+        usable=bool(inference.get("usable")),
+        payload=inference,
+    )
 
 
 async def _evaluation_context(
