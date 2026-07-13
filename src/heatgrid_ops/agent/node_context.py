@@ -4,12 +4,11 @@ from typing import Protocol
 
 from heatgrid_ops.agent.contracts import SimulateCard
 from heatgrid_ops.agent.ports import (
-    AgentArtifactPort,
+    ArtifactPort,
     AgentInputPort,
-    AgentModelDataPort,
-    AgentReviewPort,
-    AgentRunAuditPort,
-    AgentRunLifecyclePort,
+    ReviewPort,
+    RunAuditPort,
+    RunLifecyclePort,
 )
 from heatgrid_ops.agent.services import AgentRuntime
 
@@ -22,19 +21,16 @@ class AgentNodeContext(Protocol):
     def inputs(self) -> AgentInputPort: ...
 
     @property
-    def lifecycle(self) -> AgentRunLifecyclePort: ...
+    def lifecycle(self) -> RunLifecyclePort: ...
 
     @property
-    def audit(self) -> AgentRunAuditPort: ...
+    def audit(self) -> RunAuditPort: ...
 
     @property
-    def model_data(self) -> AgentModelDataPort: ...
+    def reviews(self) -> ReviewPort: ...
 
     @property
-    def reviews(self) -> AgentReviewPort: ...
-
-    @property
-    def artifacts(self) -> AgentArtifactPort: ...
+    def artifacts(self) -> ArtifactPort: ...
 
     @property
     def legacy_simulate_card(self) -> SimulateCard | None: ...

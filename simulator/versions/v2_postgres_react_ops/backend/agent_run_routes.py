@@ -8,7 +8,6 @@ from uuid import uuid4
 import orjson
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
-from openai import OpenAIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_result_contract import build_ops_agent_result_v4
@@ -39,10 +38,11 @@ from agent_run_repository import (
     reserve_agent_run,
 )
 from alert_repository import get_alert
-from heatgrid_ops.agent.helpers import to_json
+from heatgrid_ops.agent.contracts import ReportWriteRequest
+from heatgrid_ops.agent.errors import AgentDependencyError
+from heatgrid_ops.agent.models import OpsAgentOutput as CoreOpsAgentOutput
 from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
 from heatgrid_ops.agent.services import AgentRuntime
-from heatgrid_ops.agent.tools import ReportToolPayloadError, make_daily_report_tool
 from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
     decide_action_execution,
@@ -71,7 +71,7 @@ def make_agent_run_router(
     runtime: AgentRuntime | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
-    runtime = runtime or create_agent_runtime(Settings())
+    runtime = runtime or create_agent_runtime(Settings(), engine)
 
     @router.post("/agent-runs", response_model=AgentRunResponse)
     async def create_agent_run(payload: AgentRunCreateRequest) -> AgentRunResponse:
@@ -260,13 +260,10 @@ async def _create_daily_report_artifact(
     if run.ops_output is None:
         raise HTTPException(status_code=409, detail="agent run result is not ready.")
 
-    key = runtime.config.openai_api_key
-    if key is None:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY가 필요합니다.")
     source_input = await fetch_ops_input(engine, run.card_id)
     if source_input is None:
         raise HTTPException(status_code=404, detail="card_id를 찾을 수 없습니다.")
-    external_context = runtime.external_context_for(run.card_id, source_input)
+    external_context = await runtime.external_context_for(run.card_id, source_input)
     claimed = await claim_agent_run_action(
         engine,
         run_id=run.run_id,
@@ -285,39 +282,30 @@ async def _create_daily_report_artifact(
             await asyncio.sleep(0.05)
         raise HTTPException(status_code=409, detail="daily report generation is already running")
 
-    report_tool = make_daily_report_tool(
-        openai_api_key=key,
-        openai_model=runtime.config.openai_model,
-    )
     try:
-        tool_result = await asyncio.to_thread(
-            report_tool.invoke,
-            {
-                "payload_json": to_json(
-                    {
-                        "run_id": run.run_id,
-                        "card_id": run.card_id,
-                        "source_input": source_input,
-                        "external_context": external_context,
-                        "ops_output": run.ops_output.model_dump(mode="json"),
-                    }
-                )
-            },
+        draft = await runtime.write_daily(
+            ReportWriteRequest(
+                run_id=run.run_id,
+                card_id=run.card_id,
+                source_input=source_input,
+                evidence_context=external_context,
+                ops_output=CoreOpsAgentOutput.model_validate(
+                    run.ops_output.model_dump(mode="json")
+                ),
+            )
         )
-        artifact_payload = _json_object(tool_result)
         artifact = await insert_agent_run_artifact(
             engine,
             run_id=run.run_id,
-            kind=_required_text(artifact_payload, "kind"),
-            name=_required_text(artifact_payload, "name"),
-            uri=_required_text(artifact_payload, "uri"),
+            kind=draft.kind,
+            name=draft.name,
+            uri=draft.uri,
         )
     except (
+        AgentDependencyError,
         OSError,
         RuntimeError,
         ValueError,
-        OpenAIError,
-        ReportToolPayloadError,
     ) as exc:
         await fail_agent_run_action(
             engine,
@@ -404,17 +392,3 @@ def sse(
     event = {"type": kind, "message": message, "payload": payload}
     prefix = "" if event_id is None else f"id: {event_id}\n"
     return f"{prefix}data: {orjson.dumps(event).decode('utf-8')}\n\n"
-
-
-def _json_object(payload: str) -> dict[str, JsonValue]:
-    value = orjson.loads(payload)
-    if not isinstance(value, dict):
-        raise ReportToolPayloadError("tool result must be a JSON object")
-    return value
-
-
-def _required_text(payload: dict[str, JsonValue], field_name: str) -> str:
-    value = payload.get(field_name)
-    if not isinstance(value, str) or not value:
-        raise ReportToolPayloadError(f"{field_name} must be a non-empty string")
-    return value

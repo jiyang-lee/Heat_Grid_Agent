@@ -4,8 +4,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from heatgrid_ops.agent.assessment import EvidenceAssessment
 from heatgrid_ops.agent.errors import AgentInputContractError
 from heatgrid_ops.agent.models import (
     JsonObject,
@@ -14,10 +15,7 @@ from heatgrid_ops.agent.models import (
     SimulationResponse,
     TokenUsage,
 )
-from heatgrid_ops.agent.run_models import (
-    AgentLoopSummary,
-    EvidenceCandidateRequest,
-)
+from heatgrid_ops.agent.run_models import AgentLoopSummary
 
 
 type SimulateCard = Callable[[str], Awaitable[SimulationResponse]]
@@ -105,17 +103,40 @@ class AgentReviewRequest(BaseModel):
     reviewed_by: str | None = None
 
 
-class EvidenceCandidateStage(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    candidate: EvidenceCandidateRequest
-    status: Literal["pending", "auto_approved"]
-    reviewed_by: str | None = None
-    review_reason: str | None = None
-
-
 class AgentOutputContext(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     output: OpsAgentOutput
     usage: TokenUsage
+
+
+class ChatModelRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    card_id: str
+    source_input: JsonObject
+    evidence_context: JsonObject
+    model_verification: ModelVerificationResult | None = None
+    evidence_assessment: EvidenceAssessment | None = None
+    revision_feedback: list[str] = Field(default_factory=list)
+
+
+class EvidenceAssessmentRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    source_input: JsonObject
+    evidence_context: JsonObject
+    model_verification: ModelVerificationResult | None = None
+    iteration: int
+    max_iterations: int
+    deterministic: EvidenceAssessment
+
+
+class ReportWriteRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    run_id: str
+    card_id: str
+    source_input: JsonObject
+    evidence_context: JsonObject
+    ops_output: OpsAgentOutput

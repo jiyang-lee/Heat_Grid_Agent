@@ -1,23 +1,33 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Protocol
+
+from heatgrid_ops.agent.assessment import EvidenceAssessment
 
 from heatgrid_ops.agent.contracts import (
     AgentInputSnapshot,
+    ChatModelRequest,
+    EvidenceAssessmentRequest,
     AgentLoopIterationRecord,
     AgentReviewRequest,
     AgentRunCompletion,
     AgentRunRequest,
-    EvidenceCandidateStage,
+    ReportWriteRequest,
 )
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.run_models import (
     AgentRunResult,
+    AgentStreamEvent,
     ArtifactRecord,
-    AutomationPolicySnapshot,
-    EvidenceCandidateSnapshot,
-    EvidenceContextSnapshot,
-    ModelInferenceSnapshot,
+    ChatModelResult,
+    ExternalDataRequest,
+    ExternalDataSnapshot,
+    ModelVerificationRequest,
+    ModelVerificationSnapshot,
+    RagEvidenceRequest,
+    RagEvidenceSnapshot,
+    ReportArtifactDraft,
     ReviewTaskSnapshot,
 )
 
@@ -26,7 +36,7 @@ class AgentInputPort(Protocol):
     async def load(self, request: AgentRunRequest) -> AgentInputSnapshot | None: ...
 
 
-class AgentRunLifecyclePort(Protocol):
+class RunLifecyclePort(Protocol):
     async def mark_running(self, run_id: str) -> None: ...
 
     async def complete(
@@ -38,7 +48,7 @@ class AgentRunLifecyclePort(Protocol):
     async def fail(self, run_id: str, error: str) -> AgentRunResult: ...
 
 
-class AgentRunAuditPort(Protocol):
+class RunAuditPort(Protocol):
     async def record_event(
         self,
         run_id: str,
@@ -53,33 +63,11 @@ class AgentRunAuditPort(Protocol):
     ) -> None: ...
 
 
-class AgentModelDataPort(Protocol):
-    async def feature_values(self, card_id: str) -> dict[str, float]: ...
-
-    async def active_artifact_uri(self) -> str | None: ...
-
-    async def infer(
-        self,
-        feature_values: dict[str, float],
-        source_input: JsonObject,
-        active_artifact_uri: str | None,
-    ) -> ModelInferenceSnapshot: ...
-
-
-class AgentReviewPort(Protocol):
-    async def automation_policy(self) -> AutomationPolicySnapshot: ...
-
-    async def review_task(self, task_id: str) -> ReviewTaskSnapshot | None: ...
-
+class ReviewPort(Protocol):
     async def create_review(self, request: AgentReviewRequest) -> ReviewTaskSnapshot: ...
 
-    async def stage_evidence(
-        self,
-        stage: EvidenceCandidateStage,
-    ) -> EvidenceCandidateSnapshot: ...
 
-
-class AgentArtifactPort(Protocol):
+class ArtifactPort(Protocol):
     async def record(
         self,
         run_id: str,
@@ -89,10 +77,39 @@ class AgentArtifactPort(Protocol):
     ) -> ArtifactRecord: ...
 
 
-class AgentEvidenceContextPort(Protocol):
-    def collect(
+class ExternalDataPort(Protocol):
+    async def snapshot(self, request: ExternalDataRequest) -> ExternalDataSnapshot: ...
+
+
+class RagEvidencePort(Protocol):
+    async def search(self, request: RagEvidenceRequest) -> RagEvidenceSnapshot: ...
+
+
+class ChatModelPort(Protocol):
+    async def generate(self, request: ChatModelRequest) -> ChatModelResult: ...
+
+    async def assess(
         self,
-        card_id: str,
-        source_input: JsonObject,
-        top_k: int,
-    ) -> EvidenceContextSnapshot: ...
+        request: EvidenceAssessmentRequest,
+    ) -> EvidenceAssessment | None: ...
+
+    def stream(self, request: ChatModelRequest) -> AsyncIterator[AgentStreamEvent]: ...
+
+
+class ModelVerificationPort(Protocol):
+    async def verify(
+        self,
+        request: ModelVerificationRequest,
+    ) -> ModelVerificationSnapshot: ...
+
+
+class ReportWriterPort(Protocol):
+    async def write_anomaly(
+        self,
+        request: ReportWriteRequest,
+    ) -> ReportArtifactDraft: ...
+
+    async def write_daily(
+        self,
+        request: ReportWriteRequest,
+    ) -> ReportArtifactDraft: ...

@@ -3,21 +3,19 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from openai import OpenAIError
-from pydantic import ValidationError
-
 from heatgrid_ops.agent.assessment import validate_output as validate_ops_output
 from heatgrid_ops.agent.contracts import (
     AgentLoopIterationRecord,
     AgentReviewRequest,
     AgentRunCompletion,
 )
-from heatgrid_ops.agent.errors import MissingApiKeyError
+from heatgrid_ops.agent.errors import AgentDependencyError
 from heatgrid_ops.agent.helpers import fallback_note
+from heatgrid_ops.agent.models import JsonObject, JsonValue, SimulationResponse
 from heatgrid_ops.agent.node_context import AgentNodeContext
 from heatgrid_ops.agent.nodes_audit import enriched_external_context, record_decision
 from heatgrid_ops.agent.run_models import AgentLoopSummary
-from heatgrid_ops.agent.state import AgentState
+from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
 from heatgrid_ops.agent.usage import usage_with_totals
 
 
@@ -27,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 async def generate_operational_answer(
     context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     await record_decision(context, state, "generate_operational_answer")
     legacy = context.legacy_simulate_card
     if legacy is not None:
@@ -50,11 +48,10 @@ async def generate_operational_answer(
             state["card_id"],
             model_verification=state.get("model_verification"),
             evidence_assessment=state.get("evidence_assessment"),
-            external_candidates=state.get("external_candidates"),
             revision_feedback=state.get("revision_feedback"),
             usage=usage,
         )
-    except (MissingApiKeyError, OpenAIError, ValidationError) as exc:
+    except AgentDependencyError as exc:
         LOGGER.warning(
             "Operational LLM fallback for card_id=%s: %s: %s",
             state["card_id"],
@@ -68,7 +65,7 @@ async def generate_operational_answer(
 async def generate_fallback_output(
     context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     enriched_context = enriched_external_context(state)
     usage = state.get("token_usage") or context.runtime.token_usage_for(
         state["source_input"],
@@ -82,21 +79,25 @@ async def generate_fallback_output(
     }
 
 
-async def validate_output(context: AgentNodeContext, state: AgentState) -> AgentState:
+async def validate_output(
+    context: AgentNodeContext,
+    state: AgentState,
+) -> AgentStateUpdate:
     output = state["ops_output"]
     validation = validate_ops_output(output, agent_mode=state["agent_mode"])
     used_tools = state.get("used_tools", [])
+    output_payload: JsonObject = {
+        "card_id": state["card_id"],
+        "agent_mode": state["agent_mode"],
+        "used_tool_count": len(used_tools),
+        "used_tools": _json_strings(used_tools),
+        "validation": validation.model_dump(mode="json"),
+    }
     await context.audit.record_event(
         state["run_id"],
         "final_output",
         "final output generated",
-        {
-            "card_id": state["card_id"],
-            "agent_mode": state["agent_mode"],
-            "used_tool_count": len(used_tools),
-            "used_tools": used_tools,
-            "validation": validation.model_dump(mode="json"),
-        },
+        output_payload,
     )
     return {"ops_output": output, "output_validation": validation}
 
@@ -118,7 +119,7 @@ def route_after_output_validation(
 async def prepare_output_retry(
     context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     iteration = state.get("loop_iteration", 1) + 1
     issues = state["output_validation"].issues
     await context.audit.record_loop_iteration(
@@ -133,11 +134,15 @@ async def prepare_output_retry(
             model_verification=state.get("model_verification"),
         )
     )
+    retry_payload: JsonObject = {
+        "iteration": iteration,
+        "issues": _json_strings(issues),
+    }
     await context.audit.record_event(
         state["run_id"],
         "output_retry",
         "output validation requested one revision",
-        {"iteration": iteration, "issues": issues},
+        retry_payload,
     )
     return {
         "loop_iteration": iteration,
@@ -149,24 +154,27 @@ async def prepare_output_retry(
 async def create_final_review(
     context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     assessment = state["evidence_assessment"]
+    review_payload: JsonObject = {
+        "card_id": state["card_id"],
+        "ops_output": state["ops_output"].model_dump(mode="json"),
+        "evidence_assessment": assessment.model_dump(mode="json"),
+        "model_verification": state["model_verification"].model_dump(mode="json"),
+        "external_candidate_ids": _json_strings(
+            state.get("external_candidate_ids", [])
+        ),
+        "used_tools": _json_strings(state.get("used_tools", [])),
+        "action_decisions": _json_objects(state.get("action_decisions", [])),
+        "output_validation": state["output_validation"].model_dump(mode="json"),
+    }
     task = await context.reviews.create_review(
         AgentReviewRequest(
             task_type="final_output",
             risk_level=_risk_level(state),
             title=f"에이전트 최종 운영 결과 검수: {state['card_id']}",
             run_id=state["run_id"],
-            payload={
-                "card_id": state["card_id"],
-                "ops_output": state["ops_output"].model_dump(mode="json"),
-                "evidence_assessment": assessment.model_dump(mode="json"),
-                "model_verification": state["model_verification"].model_dump(mode="json"),
-                "external_candidate_ids": state.get("external_candidate_ids", []),
-                "used_tools": state.get("used_tools", []),
-                "action_decisions": state.get("action_decisions", []),
-                "output_validation": state["output_validation"].model_dump(mode="json"),
-            },
+            payload=review_payload,
         )
     )
     await context.audit.record_event(
@@ -178,7 +186,10 @@ async def create_final_review(
     return {"review_task_id": task.task_id}
 
 
-async def complete_run(context: AgentNodeContext, state: AgentState) -> AgentState:
+async def complete_run(
+    context: AgentNodeContext,
+    state: AgentState,
+) -> AgentStateUpdate:
     usage = usage_with_totals(state["token_usage"], context.runtime.config)
     assessment = state["evidence_assessment"]
     loop_summary = AgentLoopSummary(
@@ -198,13 +209,13 @@ async def complete_run(context: AgentNodeContext, state: AgentState) -> AgentSta
     result = await context.lifecycle.complete(
         state["run_id"],
         AgentRunCompletion(
-            simulation={
-                "card_id": state["card_id"],
-                "input_source": "postgresql",
-                "agent_mode": state["agent_mode"],
-                "ops_output": state["ops_output"],
-                "token_usage": usage,
-            },
+            simulation=SimulationResponse(
+                card_id=state["card_id"],
+                input_source="postgresql",
+                agent_mode=state["agent_mode"],
+                ops_output=state["ops_output"],
+                token_usage=usage,
+            ),
             loop_summary=loop_summary,
             review_task_id=state.get("review_task_id"),
         ),
@@ -229,3 +240,11 @@ def _risk_level(state: AgentState) -> Literal["low", "medium", "high", "critical
     if level == "low":
         return "low"
     return "medium"
+
+
+def _json_strings(values: list[str]) -> list[JsonValue]:
+    return [value for value in values]
+
+
+def _json_objects(values: list[dict[str, JsonValue]]) -> list[JsonValue]:
+    return [value for value in values]

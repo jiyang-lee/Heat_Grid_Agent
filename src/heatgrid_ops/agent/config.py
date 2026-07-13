@@ -18,18 +18,10 @@ SYSTEM_PROMPT: Final = (
 @dataclass(frozen=True, slots=True)
 class AgentRuntimeConfig:
     openai_model: str
-    openai_api_key: str | None
     rag_top_k: int
     agent_max_iterations: int
     agent_evidence_threshold: float
     model_score_tolerance: float
-    external_search_enabled: bool
-    external_search_model: str
-    external_search_max_results: int
-    external_search_allowed_domains: str
-    external_search_max_calls_per_run: int
-    external_search_estimated_cost_usd: float
-    external_search_budget_per_run_usd: float
     input_usd_per_1m: float
     cached_input_usd_per_1m: float
     output_usd_per_1m: float
