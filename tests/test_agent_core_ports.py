@@ -10,6 +10,18 @@ from heatgrid_ops.agent.errors import (
     AgentInputNotFoundError,
 )
 from heatgrid_ops.agent.nodes import load_ops_input
+from heatgrid_ops.agent.ports import (
+    ArtifactPort,
+    ChatModelPort,
+    ExternalDataPort,
+    ModelVerificationPort,
+    RagEvidencePort,
+    ReportWriterPort,
+    ReviewPort,
+    RunAuditPort,
+    RunLifecyclePort,
+)
+from heatgrid_ops.agent.run_models import ExternalDataRequest
 
 
 class FakeAgentInputPort:
@@ -20,6 +32,32 @@ class FakeAgentInputPort:
     async def load(self, request: AgentRunRequest) -> AgentInputSnapshot | None:
         self.requests.append(request)
         return self.snapshot
+
+
+def test_core_exposes_narrow_runtime_ports() -> None:
+    assert RunLifecyclePort
+    assert RunAuditPort
+    assert ExternalDataPort
+    assert RagEvidencePort
+    assert ChatModelPort
+    assert ModelVerificationPort
+    assert ReportWriterPort
+    assert ReviewPort
+    assert ArtifactPort
+
+
+def test_external_data_request_rejects_generic_network_inputs() -> None:
+    with pytest.raises(Exception):
+        ExternalDataRequest.model_validate(
+            {
+                "substation_id": 31,
+                "window_start": "2020-01-11T00:00:00+09:00",
+                "window_end": "2020-01-11T06:00:00+09:00",
+                "url": "https://example.com",
+                "query": "search the web",
+                "domain": "example.com",
+            }
+        )
 
 
 @pytest.mark.anyio

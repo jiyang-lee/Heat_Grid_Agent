@@ -65,20 +65,7 @@ def enriched_external_context(state: AgentState) -> JsonObject:
     context["evidence_assessment"] = state["evidence_assessment"].model_dump(
         mode="json"
     )
-    if state.get("external_candidates"):
-        context["pending_external_evidence"] = state["external_candidates"]
     return context
-
-
-def external_search_query(state: AgentState) -> str:
-    assessment = state["evidence_assessment"]
-    priority_context = state["source_input"].get("priority_context")
-    explanation = (
-        priority_context.get("explanation") if isinstance(priority_context, dict) else None
-    )
-    recommended = explanation.get("recommended_action") if isinstance(explanation, dict) else ""
-    terms = [*assessment.missing_evidence, str(recommended or ""), "지역난방 운영 점검"]
-    return " ".join(item for item in terms if item).strip()
 
 
 def risk_level(

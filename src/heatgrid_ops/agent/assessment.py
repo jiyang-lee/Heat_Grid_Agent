@@ -8,7 +8,6 @@ from heatgrid_ops.agent.models import JsonValue, ModelVerificationResult, OpsAge
 
 LoopDecision = Literal[
     "expand_internal",
-    "search_external",
     "rerun_model",
     "request_human",
     "finalize",
@@ -38,9 +37,6 @@ def assess_evidence(
     iteration: int,
     max_iterations: int,
     threshold: float,
-    external_search_enabled: bool,
-    external_candidate_count: int = 0,
-    external_search_attempted: bool = False,
 ) -> EvidenceAssessment:
     priority_context = _mapping(source_input.get("priority_context"))
     card = _mapping(priority_context.get("card"))
@@ -90,9 +86,6 @@ def assess_evidence(
     elif weather.get("status") not in {"disabled", "not_configured"}:
         missing.append("운전 부하를 설명할 기상 정보")
 
-    if external_candidate_count:
-        score += min(0.05, external_candidate_count * 0.02)
-
     score = round(min(1.0, score), 4)
     review_required = bool(card.get("review_required"))
     model_disagrees = bool(
@@ -112,19 +105,6 @@ def assess_evidence(
             score,
             missing,
             "내부 운영 참고자료가 부족해 검색 범위와 조회 개수를 확장합니다.",
-        )
-    if (
-        score < threshold
-        and external_search_enabled
-        and external_candidate_count == 0
-        and not external_search_attempted
-        and iteration < max_iterations
-    ):
-        return _assessment(
-            "search_external",
-            score,
-            missing,
-            "내부 근거만으로 기준 점수를 충족하지 못해 외부 근거 후보를 검색합니다.",
         )
     if review_required or model_disagrees or score < threshold:
         return _assessment(
@@ -147,19 +127,15 @@ def guard_llm_assessment(
     *,
     iteration: int,
     max_iterations: int,
-    external_search_enabled: bool,
     model_verification: ModelVerificationResult | None,
 ) -> EvidenceAssessment:
     if iteration >= max_iterations and candidate.decision in {
         "expand_internal",
-        "search_external",
         "rerun_model",
     }:
         return deterministic.model_copy(update={"decision": "request_human"})
-    if candidate.decision == "search_external" and not external_search_enabled:
-        return deterministic
     if (
-        candidate.decision in {"search_external", "rerun_model", "finalize"}
+        candidate.decision in {"rerun_model", "finalize"}
         and candidate.decision != deterministic.decision
     ):
         return deterministic

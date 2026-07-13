@@ -8,7 +8,6 @@ from heatgrid_ops.agent.nodes_evidence import (
     route_after_assessment,
     verify_model_output,
 )
-from heatgrid_ops.agent.nodes_external_search import search_external_evidence
 from heatgrid_ops.agent.nodes_input import (
     get_external_context,
     get_ops_evidence,
@@ -44,7 +43,6 @@ __all__ = [
     "route_after_assessment",
     "route_after_llm",
     "route_after_output_validation",
-    "search_external_evidence",
     "validate_output",
     "verify_model_output",
 ]

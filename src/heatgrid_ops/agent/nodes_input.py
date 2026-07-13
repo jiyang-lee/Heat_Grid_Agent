@@ -7,17 +7,16 @@ from heatgrid_ops.agent.nodes_audit import (
     record_decision,
     record_tool_completed,
     record_tool_started,
-    tool_json_object,
 )
-from heatgrid_ops.agent.state import AgentState
+from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
 
 
-async def mark_running(context: AgentNodeContext, state: AgentState) -> AgentState:
+async def mark_running(context: AgentNodeContext, state: AgentState) -> AgentStateUpdate:
     await context.lifecycle.mark_running(state["run_id"])
     return {}
 
 
-async def load_ops_input(context: AgentNodeContext, state: AgentState) -> AgentState:
+async def load_ops_input(context: AgentNodeContext, state: AgentState) -> AgentStateUpdate:
     request = AgentRunRequest(
         run_id=state["run_id"],
         alert_id=state["alert_id"],
@@ -33,21 +32,16 @@ async def load_ops_input(context: AgentNodeContext, state: AgentState) -> AgentS
     return {"source_input": validate_agent_input(snapshot, request)}
 
 
-async def get_ops_evidence(context: AgentNodeContext, state: AgentState) -> AgentState:
+async def get_ops_evidence(context: AgentNodeContext, state: AgentState) -> AgentStateUpdate:
     tool_name = "get_ops_evidence"
     await record_decision(context, state, tool_name)
     await record_tool_started(context, state, tool_name)
-    tools = {
-        item.name: item
-        for item in context.runtime.tools_for(state["source_input"], {"status": "pending"})
-    }
-    evidence_payload = tools[tool_name].invoke({"card_id": state["card_id"]})
-    ops_evidence = tool_json_object(evidence_payload)
+    ops_evidence = state["source_input"]
     await record_tool_completed(
         context,
         state,
         tool_name,
-        {"payload_chars": len(evidence_payload)},
+        {"payload_chars": len(str(ops_evidence))},
     )
     return {
         "ops_evidence": ops_evidence,
@@ -58,20 +52,14 @@ async def get_ops_evidence(context: AgentNodeContext, state: AgentState) -> Agen
 async def get_external_context(
     context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     tool_name = "get_external_context"
     await record_decision(context, state, tool_name)
-    collected_context = context.runtime.external_context_for(
+    external_context = await context.runtime.external_context_for(
         state["card_id"],
         state["source_input"],
     )
-    tools = {
-        item.name: item
-        for item in context.runtime.tools_for(state["source_input"], collected_context)
-    }
     await record_tool_started(context, state, tool_name)
-    context_payload = tools[tool_name].invoke({"card_id": state["card_id"]})
-    external_context = tool_json_object(context_payload)
     await record_tool_completed(
         context,
         state,
@@ -81,9 +69,6 @@ async def get_external_context(
 
     reference_tool = "get_internal_references"
     await record_tool_started(context, state, reference_tool)
-    references_payload = tools[reference_tool].invoke({"card_id": state["card_id"]})
-    internal_references = tool_json_object(references_payload)
-    external_context.update(internal_references)
     retrieval = external_context.get("retrieval")
     retrieval_status = (
         retrieval.get("status")

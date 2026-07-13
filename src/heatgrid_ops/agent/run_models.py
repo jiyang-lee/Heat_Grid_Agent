@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from heatgrid_ops.agent.models import (
     JsonObject,
+    JsonValue,
     ModelVerificationResult,
     OpsAgentOutput,
+    TokenCall,
     TokenUsage,
 )
 
@@ -62,32 +64,6 @@ class ReviewTaskSnapshot(BaseModel):
     status: str
 
 
-class EvidenceCandidateRequest(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    run_id: str | None = None
-    source_type: Literal["web", "manual", "internal"] = "manual"
-    source_uri: str | None = None
-    title: str
-    content: str
-    query: str | None = None
-    risk_level: Literal["low", "medium", "high", "critical"] = "medium"
-    trust_score: float = Field(default=0.5, ge=0.0, le=1.0)
-    metadata: JsonObject = Field(default_factory=dict)
-    requested_by: str = "agent"
-
-
-class EvidenceCandidateSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    candidate_id: str
-    title: str
-    content: str
-    source_uri: str | None = None
-    status: str
-    trust_score: float
-
-
 class ArtifactRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -127,3 +103,75 @@ class ModelInferenceSnapshot(BaseModel):
     usable: bool = False
     payload: JsonObject = Field(default_factory=dict)
     error: str | None = None
+
+
+class ExternalDataRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    substation_id: int
+    window_start: str
+    window_end: str
+
+
+class ExternalDataSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: str
+    site: JsonObject = Field(default_factory=dict)
+    weather: JsonObject = Field(default_factory=dict)
+
+
+class RagEvidenceRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    card_id: str
+    source_input: JsonObject
+    top_k: int = Field(ge=1, le=20)
+
+
+class RagEvidenceSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: str
+    retrieval: JsonObject = Field(default_factory=dict)
+    references: JsonObject = Field(default_factory=dict)
+
+
+class ChatModelResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    output: OpsAgentOutput
+    calls: list[TokenCall] = Field(default_factory=list)
+
+
+class AgentStreamEvent(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: Literal["llm", "tool_start", "tool_end", "token", "final"]
+    message: str
+    payload: JsonValue | None = None
+    token_call: TokenCall | None = None
+    output: OpsAgentOutput | None = None
+
+
+class ModelVerificationRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    card_id: str
+    source_input: JsonObject
+    attempt: int = Field(ge=1)
+
+
+class ModelVerificationSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    result: ModelVerificationResult
+    artifact_uri: str | None = None
+
+
+class ReportArtifactDraft(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: str
+    name: str
+    uri: str

@@ -22,33 +22,30 @@ from heatgrid_ops.agent.nodes import (
     route_after_assessment,
     route_after_llm,
     route_after_output_validation,
-    search_external_evidence,
     validate_output,
     verify_model_output,
 )
 from heatgrid_ops.agent.ports import (
-    AgentArtifactPort,
+    ArtifactPort,
     AgentInputPort,
-    AgentModelDataPort,
-    AgentReviewPort,
-    AgentRunAuditPort,
-    AgentRunLifecyclePort,
+    ReviewPort,
+    RunAuditPort,
+    RunLifecyclePort,
 )
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
 from heatgrid_ops.agent.run_models import AgentRunResult
 from heatgrid_ops.agent.services import AgentRuntime
-from heatgrid_ops.agent.state import AgentState
+from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput, AgentState
 
 
 @dataclass(frozen=True, slots=True)
 class AgentGraphContext:
     runtime: AgentRuntime
     inputs: AgentInputPort
-    lifecycle: AgentRunLifecyclePort
-    audit: AgentRunAuditPort
-    model_data: AgentModelDataPort
-    reviews: AgentReviewPort
-    artifacts: AgentArtifactPort
+    lifecycle: RunLifecyclePort
+    audit: RunAuditPort
+    reviews: ReviewPort
+    artifacts: ArtifactPort
     legacy_simulate_card: SimulateCard | None = None
 
 
@@ -66,8 +63,6 @@ async def execute_agent_graph(
             "used_tools": [],
             "external_candidates": [],
             "external_candidate_ids": [],
-            "external_search_attempted": False,
-            "external_search_calls": 0,
             "action_decisions": [],
             "loop_iteration": 1,
             "max_iterations": context.runtime.config.agent_max_iterations,
@@ -80,7 +75,11 @@ async def execute_agent_graph(
 
 
 def build_agent_graph(context: AgentGraphContext):
-    graph = StateGraph(AgentState)
+    graph = StateGraph(
+        AgentState,
+        input_schema=AgentGraphInput,
+        output_schema=AgentGraphOutput,
+    )
     graph.add_node("mark_running", partial(mark_running, context))
     graph.add_node("load_ops_input", partial(load_ops_input, context))
     graph.add_node("get_ops_evidence", partial(get_ops_evidence, context))
@@ -88,7 +87,6 @@ def build_agent_graph(context: AgentGraphContext):
     graph.add_node("verify_model_output", partial(verify_model_output, context))
     graph.add_node("assess_collected_evidence", partial(assess_collected_evidence, context))
     graph.add_node("expand_internal_evidence", partial(expand_internal_evidence, context))
-    graph.add_node("search_external_evidence", partial(search_external_evidence, context))
     graph.add_node("rerun_model_verification", partial(rerun_model_verification, context))
     graph.add_node("generate_operational_answer", partial(generate_operational_answer, context))
     graph.add_node("generate_fallback_output", partial(generate_fallback_output, context))
@@ -108,13 +106,11 @@ def build_agent_graph(context: AgentGraphContext):
         route_after_assessment,
         {
             "expand_internal_evidence": "expand_internal_evidence",
-            "search_external_evidence": "search_external_evidence",
             "rerun_model_verification": "rerun_model_verification",
             "generate_operational_answer": "generate_operational_answer",
         },
     )
     graph.add_edge("expand_internal_evidence", "assess_collected_evidence")
-    graph.add_edge("search_external_evidence", "assess_collected_evidence")
     graph.add_edge("rerun_model_verification", "assess_collected_evidence")
     graph.add_conditional_edges(
         "generate_operational_answer",

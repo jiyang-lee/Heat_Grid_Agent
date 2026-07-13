@@ -58,7 +58,7 @@ async def test_v2_postgres_tools_return_ops_and_external_context(
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    external_context = module.external_context_for(card_ids[0], source_input)
+    external_context = await module.external_context_for(card_ids[0], source_input)
     tools = {item.name: item for item in module.tools_for(source_input, external_context)}
 
     evidence = orjson.loads(tools["get_ops_evidence"].invoke({"card_id": card_ids[0]}))
@@ -473,28 +473,36 @@ async def test_daily_report_command_is_idempotent(
         ).json()
         run = await wait_for_agent_run(client, str(run["run_id"]))
 
-        import agent_run_routes
-        import asyncio
-        import time
-        from langchain_core.tools import tool
-        from pydantic import SecretStr
+        import agent_report_writer_adapter
 
-        real_factory = agent_run_routes.make_daily_report_tool
-        base_report_tool = real_factory(output_root=tmp_path, mock=True)
+        from heatgrid_ops.agent.run_models import ReportArtifactDraft
+
         report_calls = 0
 
-        def mock_report_tool(**_kwargs):
-            @tool(description="Write a delayed mock daily report for concurrency testing.")
-            def write_daily_report(payload_json: str) -> str:
-                nonlocal report_calls
-                report_calls += 1
-                time.sleep(0.2)
-                return base_report_tool.invoke({"payload_json": payload_json})
+        async def write_daily_report(_writer, request) -> ReportArtifactDraft:
+            nonlocal report_calls
+            report_calls += 1
+            await asyncio.sleep(0.2)
+            path = (
+                tmp_path
+                / "ops_agent"
+                / "reports"
+                / request.run_id
+                / "daily_report.json"
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(orjson.dumps({"run_id": request.run_id}))
+            return ReportArtifactDraft(
+                kind="daily_report",
+                name="daily_report.json",
+                uri=f"output/ops_agent/reports/{request.run_id}/daily_report.json",
+            )
 
-            return write_daily_report
-
-        monkeypatch.setattr(agent_run_routes, "make_daily_report_tool", mock_report_tool)
-        module.agent_runtime.settings.openai_api_key = SecretStr("test-key")
+        monkeypatch.setattr(
+            agent_report_writer_adapter.LocalReportWriterAdapter,
+            "write_daily",
+            write_daily_report,
+        )
 
         first, second = await asyncio.gather(
             client.post(

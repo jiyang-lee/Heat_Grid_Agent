@@ -15,6 +15,7 @@ from heatgrid_ops.agent.helpers import (
     to_json,
 )
 from heatgrid_ops.agent.services import generate_note as runtime_generate_note
+from heatgrid_ops.agent.tools import make_operational_tools
 from heatgrid_ops.agent.models import (
     OpsAgentOutput as CoreOpsAgentOutput,
     TokenUsage as CoreTokenUsage,
@@ -35,6 +36,7 @@ from alert_routes import make_alert_router
 from repository import (
     check_database,
     fetch_ops_input,
+    list_card_ids as list_card_ids,
     list_cards,
     make_engine,
 )
@@ -55,7 +57,7 @@ from settings import Settings
 settings = Settings()
 engine = make_engine(settings.database_url)
 rag_searcher = RagSearcher()
-agent_runtime = create_agent_runtime(settings, rag_searcher)
+agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
 
 
 @asynccontextmanager
@@ -170,18 +172,18 @@ def card_id_from_input(source_input: dict[str, JsonValue]) -> str:
     return runtime_card_id_from_input(source_input)
 
 
-def external_context_for(
+async def external_context_for(
     card_id: str,
     source_input: dict[str, JsonValue],
 ) -> dict[str, JsonValue]:
-    return agent_runtime.external_context_for(card_id, source_input)
+    return await agent_runtime.external_context_for(card_id, source_input)
 
 
 def tools_for(
     source_input: dict[str, JsonValue],
     external_context: dict[str, JsonValue],
 ) -> list[BaseTool]:
-    return agent_runtime.tools_for(source_input, external_context)
+    return make_operational_tools(source_input, external_context)
 
 
 async def generate_note(

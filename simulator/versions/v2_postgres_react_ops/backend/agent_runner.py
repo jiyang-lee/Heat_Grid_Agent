@@ -44,7 +44,7 @@ async def run_reserved_agent_graph(
     simulate_card: SimulateCard | None = None,
     runtime: AgentRuntime | None = None,
 ) -> AgentRunResponse:
-    active_runtime = runtime or create_agent_runtime(Settings())
+    active_runtime = runtime or create_agent_runtime(Settings(), engine)
     try:
         result = await execute_agent_graph(
             create_agent_graph_context(engine, active_runtime, simulate_card),
