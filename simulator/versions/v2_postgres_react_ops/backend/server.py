@@ -1,18 +1,25 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.tools import BaseTool
 
-from heatgrid_ops.agent.services import (
-    AgentRuntime,
+from agent_error_mapping import install_agent_error_handlers
+from agent_runtime_factory import create_agent_runtime
+from heatgrid_ops.agent.helpers import (
     card_id_from_input as runtime_card_id_from_input,
     fallback_note as runtime_fallback_note,
-    generate_note as runtime_generate_note,
     to_json,
 )
+from heatgrid_ops.agent.services import generate_note as runtime_generate_note
+from heatgrid_ops.agent.models import (
+    OpsAgentOutput as CoreOpsAgentOutput,
+    TokenUsage as CoreTokenUsage,
+)
+from heatgrid_ops.agent.usage import usage_with_totals as core_usage_with_totals
 from heatgrid_rag.search import RagSearcher
 from heatgrid_ops.priority.evaluation import (
     ensure_latest_priority_evaluation,
@@ -28,7 +35,6 @@ from alert_routes import make_alert_router
 from repository import (
     check_database,
     fetch_ops_input,
-    list_card_ids,
     list_cards,
     make_engine,
 )
@@ -45,12 +51,11 @@ from schemas import (
     TokenUsage,
 )
 from settings import Settings
-from usage import usage_with_totals
 
 settings = Settings()
 engine = make_engine(settings.database_url)
 rag_searcher = RagSearcher()
-agent_runtime = AgentRuntime(settings=settings, rag_searcher=rag_searcher)
+agent_runtime = create_agent_runtime(settings, rag_searcher)
 
 
 @asynccontextmanager
@@ -71,6 +76,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
+install_agent_error_handlers(app)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))
@@ -127,13 +133,13 @@ async def card_evidence(card_id: str) -> dict[str, JsonValue]:
 async def simulate(card_id: str) -> SimulationResponse:
     source_input = await input_for_card(card_id)
     output, mode, usage = await generate_note(card_id, source_input)
-    usage = usage_with_totals(usage, settings)
+    usage = core_usage_with_totals(usage, agent_runtime.config)
     return SimulationResponse(
         card_id=card_id,
         input_source="postgresql",
         agent_mode=mode,
-        ops_output=output,
-        token_usage=usage,
+        ops_output=OpsAgentOutput.model_validate(output.model_dump(mode="json")),
+        token_usage=TokenUsage.model_validate(usage.model_dump(mode="json")),
     )
 
 
@@ -181,14 +187,14 @@ def tools_for(
 async def generate_note(
     card_id: str,
     source_input: dict[str, JsonValue],
-) -> tuple[OpsAgentOutput, str, TokenUsage]:
+) -> tuple[CoreOpsAgentOutput, Literal["llm", "fallback"], CoreTokenUsage]:
     return await runtime_generate_note(agent_runtime, card_id, source_input)
 
 
 def fallback_note(
     source_input: dict[str, JsonValue],
     external_context: dict[str, JsonValue] | None = None,
-) -> OpsAgentOutput:
+) -> CoreOpsAgentOutput:
     return runtime_fallback_note(source_input, external_context)
 
 
@@ -199,7 +205,7 @@ async def event_stream(
     yield sse("input", "PostgreSQL priority_card 조회 완료")
     yield sse("external_context", "세종 매핑, 기상, 운영 참고자료 조회 완료")
 
-    usage = TokenUsage()
+    usage = CoreTokenUsage()
     output = fallback_note(source_input)
     async for kind, message, payload, usage, output in agent_runtime.stream_events(
         card_id,
@@ -207,7 +213,7 @@ async def event_stream(
     ):
         yield sse(kind, message, payload)
 
-    usage = usage_with_totals(usage, settings)
+    usage = core_usage_with_totals(usage, agent_runtime.config)
     yield sse("token", "토큰 사용량 계산 완료", usage.model_dump(mode="json"))
     yield sse(
         "final",

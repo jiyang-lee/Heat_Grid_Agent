@@ -17,12 +17,13 @@ from heatgrid_ops.agent.assessment import (
     assess_evidence,
     guard_llm_assessment,
 )
+from heatgrid_ops.agent.config import AgentRuntimeConfig, SYSTEM_PROMPT
+from heatgrid_ops.agent.errors import AgentDependencyError, MissingApiKeyError
 from heatgrid_ops.agent.external_search import (
     ExternalEvidenceSearchResult,
     OpenAIWebEvidenceProvider,
 )
 from heatgrid_ops.agent.helpers import (
-    card_id_from_input,
     fallback_note,
     to_json,
     token_call_from_event,
@@ -30,9 +31,13 @@ from heatgrid_ops.agent.helpers import (
     unavailable_external_context,
 )
 from heatgrid_ops.agent.tools import make_operational_tools
-from heatgrid_rag.search import RagSearcher
-from schemas import JsonValue, ModelVerificationResult, OpsAgentOutput, TokenUsage
-from settings import SYSTEM_PROMPT, Settings
+from heatgrid_ops.agent.models import (
+    JsonValue,
+    ModelVerificationResult,
+    OpsAgentOutput,
+    TokenUsage,
+)
+from heatgrid_ops.agent.ports import AgentEvidenceContextPort
 
 
 LOGGER = logging.getLogger(__name__)
@@ -40,8 +45,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class AgentRuntime:
-    settings: Settings
-    rag_searcher: RagSearcher
+    config: AgentRuntimeConfig
+    evidence_context: AgentEvidenceContextPort
 
     def external_context_for(
         self,
@@ -51,13 +56,18 @@ class AgentRuntime:
         top_k: int | None = None,
     ) -> dict[str, JsonValue]:
         try:
-            return self.rag_searcher.external_context(
+            snapshot = self.evidence_context.collect(
                 card_id=card_id,
-                evidence=source_input,
-                top_k=top_k or self.settings.rag_top_k,
+                source_input=source_input,
+                top_k=top_k or self.config.rag_top_k,
             )
-        except (OSError, RuntimeError, ValueError) as exc:
+        except (AgentDependencyError, OSError, RuntimeError, ValueError) as exc:
             return unavailable_external_context(str(exc))
+        return {
+            "status": snapshot.status,
+            "retrieval": snapshot.rag_evidence,
+            **snapshot.external_data,
+        }
 
     def tools_for(
         self,
@@ -95,13 +105,13 @@ class AgentRuntime:
         revision_feedback: list[str] | None = None,
         usage: TokenUsage | None = None,
     ) -> OpsAgentOutput:
-        key = self.settings.openai_api_key
+        key = self.config.openai_api_key
         if key is None:
-            raise MissingApiKeyError
+            raise MissingApiKeyError()
 
         model = ChatOpenAI(
-            model=self.settings.openai_model,
-            api_key=key.get_secret_value(),
+            model=self.config.openai_model,
+            api_key=key,
         )
         enriched_context = dict(external_context)
         if model_verification is not None:
@@ -149,12 +159,12 @@ class AgentRuntime:
             model_verification=model_verification,
             iteration=iteration,
             max_iterations=max_iterations,
-            threshold=self.settings.agent_evidence_threshold,
-            external_search_enabled=self.settings.external_search_enabled,
+            threshold=self.config.agent_evidence_threshold,
+            external_search_enabled=self.config.external_search_enabled,
             external_candidate_count=external_candidate_count,
             external_search_attempted=external_search_attempted,
         )
-        key = self.settings.openai_api_key
+        key = self.config.openai_api_key
         if key is None:
             return deterministic
         compact: dict[str, JsonValue] = {
@@ -170,8 +180,8 @@ class AgentRuntime:
             "external_search_attempted": external_search_attempted,
         }
         model = ChatOpenAI(
-            model=self.settings.openai_model,
-            api_key=key.get_secret_value(),
+            model=self.config.openai_model,
+            api_key=key,
         ).with_structured_output(EvidenceAssessment)
         try:
             candidate = await model.ainvoke(
@@ -196,24 +206,24 @@ class AgentRuntime:
             deterministic,
             iteration=iteration,
             max_iterations=max_iterations,
-            external_search_enabled=self.settings.external_search_enabled,
+            external_search_enabled=self.config.external_search_enabled,
             model_verification=model_verification,
         )
 
     async def search_external_evidence(self, query: str) -> ExternalEvidenceSearchResult:
         domains = tuple(
             item.strip()
-            for item in self.settings.external_search_allowed_domains.split(",")
+            for item in self.config.external_search_allowed_domains.split(",")
             if item.strip()
         )
-        key = self.settings.openai_api_key
+        key = self.config.openai_api_key
         provider = OpenAIWebEvidenceProvider(
-            api_key=None if key is None else key.get_secret_value(),
-            model=self.settings.external_search_model,
-            max_results=self.settings.external_search_max_results,
+            api_key=key,
+            model=self.config.external_search_model,
+            max_results=self.config.external_search_max_results,
             allowed_domains=domains,
         )
-        if not self.settings.external_search_enabled:
+        if not self.config.external_search_enabled:
             return ExternalEvidenceSearchResult(
                 status="disabled",
                 query=query,
@@ -229,12 +239,12 @@ class AgentRuntime:
         external_context = self.external_context_for(card_id, source_input)
         output = fallback_note(source_input, external_context)
         usage = self.token_usage_for(source_input, external_context, card_id)
-        key = self.settings.openai_api_key
+        key = self.config.openai_api_key
         if key is None:
             yield "fallback", "OPENAI_API_KEY 없음, 로컬 fallback 답변 생성", None, usage, output
             return
 
-        model = ChatOpenAI(model=self.settings.openai_model, api_key=key.get_secret_value())
+        model = ChatOpenAI(model=self.config.openai_model, api_key=key)
         agent = create_agent(
             model,
             self.tools_for(source_input, external_context),
@@ -277,11 +287,6 @@ class AgentRuntime:
                 exc,
             )
             yield "fallback", "LLM 실행 실패, 로컬 fallback 답변 생성", None, usage, output
-
-
-class MissingApiKeyError(RuntimeError):
-    pass
-
 
 async def generate_note(
     runtime: AgentRuntime,
