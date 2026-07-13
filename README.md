@@ -145,6 +145,13 @@ curl http://127.0.0.1:5173/health
 
 전체 재현·재학습·테스트 명령은 [실행 Runbook](docs/05_RUNBOOK.md)을 참고한다.
 
+### Agent Foundation 운영 경계
+
+- 새 근거는 ML 결과, Substation·시간 구간으로 고정한 날씨, 내부 RAG, 운영자 수동 근거만 허용한다.
+- 외부 웹 검색, URL·도메인·검색어 조회, `external_search` 승인·실행 task는 생성하지 않는다.
+- 기존 외부 검색 DB row는 historical read-only로만 응답한다.
+- base/predictor 스키마는 `001~003` init SQL과 `scripts/predictor_db_schema.py`, agent task·checkpoint·budget 스키마는 `004_agent_execution.sql`이 소유한다.
+
 ## 주요 기능과 API
 
 `frontend/`는 Vite + React + TypeScript 앱이다.

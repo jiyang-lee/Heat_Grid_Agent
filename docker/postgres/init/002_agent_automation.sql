@@ -1,3 +1,12 @@
+DO $agent_automation$
+BEGIN
+IF to_regclass('public.ops_alert_queue') IS NULL
+   OR to_regclass('public.priority_cards') IS NULL THEN
+    RAISE NOTICE 'agent automation schema deferred until predictor and alert schemas exist';
+    RETURN;
+END IF;
+
+EXECUTE $ddl$
 create table if not exists agent_runs (
     run_id uuid primary key,
     alert_id uuid not null references ops_alert_queue(alert_id) on delete cascade,
@@ -21,14 +30,16 @@ create table if not exists agent_runs (
     error text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
-);
+)
+$ddl$;
 
-alter table agent_runs add column if not exists parent_run_id uuid references agent_runs(run_id);
-alter table agent_runs add column if not exists trigger_type text not null default 'alert';
-alter table agent_runs add column if not exists requested_by text;
-alter table agent_runs add column if not exists trigger_reason text;
-alter table agent_runs add column if not exists approved_action_task_id uuid;
+EXECUTE 'alter table agent_runs add column if not exists parent_run_id uuid references agent_runs(run_id)';
+EXECUTE 'alter table agent_runs add column if not exists trigger_type text not null default ''alert''';
+EXECUTE 'alter table agent_runs add column if not exists requested_by text';
+EXECUTE 'alter table agent_runs add column if not exists trigger_reason text';
+EXECUTE 'alter table agent_runs add column if not exists approved_action_task_id uuid';
 
+EXECUTE $ddl$
 create table if not exists agent_run_events (
     event_id bigserial primary key,
     run_id uuid not null references agent_runs(run_id) on delete cascade,
@@ -36,11 +47,12 @@ create table if not exists agent_run_events (
     message text not null,
     payload jsonb,
     created_at timestamptz not null default now()
-);
+)
+$ddl$;
 
-create index if not exists agent_run_events_run_idx
-    on agent_run_events(run_id, event_id);
+EXECUTE 'create index if not exists agent_run_events_run_idx on agent_run_events(run_id, event_id)';
 
+EXECUTE $ddl$
 create table if not exists agent_run_artifacts (
     artifact_id uuid primary key,
     run_id uuid not null references agent_runs(run_id) on delete cascade,
@@ -49,8 +61,10 @@ create table if not exists agent_run_artifacts (
     uri text not null,
     created_at timestamptz not null default now(),
     unique (run_id, name)
-);
+)
+$ddl$;
 
+EXECUTE $ddl$
 create table if not exists agent_run_actions (
     run_id uuid not null references agent_runs(run_id) on delete cascade,
     action_name text not null,
@@ -61,4 +75,7 @@ create table if not exists agent_run_actions (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     primary key (run_id, action_name)
-);
+)
+$ddl$;
+END
+$agent_automation$;

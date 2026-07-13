@@ -38,7 +38,8 @@ def create_agent_runtime(
     searcher = rag_searcher or RagSearcher()
     input_model = PostgresAgentInputModelAdapter(engine)
     key = settings.openai_api_key
-    api_key = None if key is None else key.get_secret_value()
+    key_value = None if key is None else key.get_secret_value().strip()
+    api_key = key_value or None
     chat_model = OpenAIChatModelAdapter(
         api_key=api_key,
         model=settings.openai_model,

@@ -105,10 +105,12 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             retrain_job = None
         updates: dict[str, object] = {}
         if retrain_job is not None:
-            updates.update({
-                "automatic_retrain_job_id": retrain_job.job_id,
-                "automatic_retrain_status": retrain_job.status,
-            })
+            updates.update(
+                {
+                    "automatic_retrain_job_id": retrain_job.job_id,
+                    "automatic_retrain_status": retrain_job.status,
+                }
+            )
         return result if not updates else result.model_copy(update=updates)
 
     @router.get("/evidence-candidates", response_model=list[EvidenceCandidate])
@@ -125,7 +127,9 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
     async def evidence_candidate(candidate_id: str) -> EvidenceCandidate:
         candidate = await get_evidence_candidate(engine, candidate_id)
         if candidate is None:
-            raise HTTPException(status_code=404, detail="candidate_id를 찾을 수 없습니다.")
+            raise HTTPException(
+                status_code=404, detail="candidate_id를 찾을 수 없습니다."
+            )
         return candidate
 
     @router.post("/evidence-candidates", response_model=EvidenceCandidate)
@@ -154,7 +158,7 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
             engine,
             task_type="evidence_candidate",
             risk_level=payload.risk_level,
-            title=f"외부 근거 후보 검수: {payload.title}",
+            title=f"운영자 수동 근거 검수: {payload.title}",
             run_id=payload.run_id,
             candidate_id=candidate.candidate_id,
             payload=candidate.model_dump(mode="json"),
@@ -171,9 +175,14 @@ def make_automation_router(engine: AsyncEngine, settings: Settings) -> APIRouter
         candidate_id: str,
         payload: EvidenceCandidateReviewRequest,
     ) -> EvidenceCandidate:
-        candidate = await review_evidence_candidate(engine, candidate_id, payload)
+        try:
+            candidate = await review_evidence_candidate(engine, candidate_id, payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         if candidate is None:
-            raise HTTPException(status_code=404, detail="candidate_id를 찾을 수 없습니다.")
+            raise HTTPException(
+                status_code=404, detail="candidate_id를 찾을 수 없습니다."
+            )
         return candidate
 
     @router.get("/training-feedback", response_model=list[TrainingFeedback])
