@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 from heatgrid_ops.agent.assessment import EvidenceAssessment, OutputValidation
-from schemas import (
-    AgentRunResponse,
+from heatgrid_ops.agent.models import (
     JsonValue,
     ModelVerificationResult,
     OpsAgentOutput,
     TokenUsage,
 )
+from heatgrid_ops.agent.run_models import AgentRunResult
 
 
 class AgentState(TypedDict, total=False):
@@ -44,4 +44,4 @@ class AgentState(TypedDict, total=False):
     token_usage: TokenUsage
     agent_mode: Literal["llm", "fallback"]
     error: str
-    result: AgentRunResponse
+    result: AgentRunResult

@@ -1,0 +1,103 @@
+from __future__ import annotations
+
+from typing import Literal
+
+import orjson
+
+from heatgrid_ops.agent.errors import AgentInputContractError
+from heatgrid_ops.agent.models import JsonObject
+from heatgrid_ops.agent.node_context import AgentNodeContext
+from heatgrid_ops.agent.state import AgentState
+
+
+async def record_decision(
+    context: AgentNodeContext,
+    state: AgentState,
+    next_step: str,
+) -> None:
+    await context.audit.record_event(
+        state["run_id"],
+        "graph_transition",
+        f"graph entered {next_step}",
+        {"next": next_step, "decision_source": "graph"},
+    )
+
+
+async def record_tool_started(
+    context: AgentNodeContext,
+    state: AgentState,
+    tool_name: str,
+) -> None:
+    await context.audit.record_event(
+        state["run_id"],
+        "tool_started",
+        f"{tool_name} started",
+        {"tool": tool_name},
+    )
+
+
+async def record_tool_completed(
+    context: AgentNodeContext,
+    state: AgentState,
+    tool_name: str,
+    payload: JsonObject,
+) -> None:
+    await context.audit.record_event(
+        state["run_id"],
+        "tool_completed",
+        f"{tool_name} completed",
+        {"tool": tool_name, **payload},
+    )
+
+
+def tool_json_object(payload: str) -> JsonObject:
+    value = orjson.loads(payload)
+    if not isinstance(value, dict):
+        raise AgentInputContractError(detail="tool result must be a JSON object")
+    return value
+
+
+def enriched_external_context(state: AgentState) -> JsonObject:
+    context = dict(state["external_context"])
+    context["model_verification"] = state["model_verification"].model_dump(
+        mode="json"
+    )
+    context["evidence_assessment"] = state["evidence_assessment"].model_dump(
+        mode="json"
+    )
+    if state.get("external_candidates"):
+        context["pending_external_evidence"] = state["external_candidates"]
+    return context
+
+
+def external_search_query(state: AgentState) -> str:
+    assessment = state["evidence_assessment"]
+    priority_context = state["source_input"].get("priority_context")
+    explanation = (
+        priority_context.get("explanation") if isinstance(priority_context, dict) else None
+    )
+    recommended = explanation.get("recommended_action") if isinstance(explanation, dict) else ""
+    terms = [*assessment.missing_evidence, str(recommended or ""), "지역난방 운영 점검"]
+    return " ".join(item for item in terms if item).strip()
+
+
+def risk_level(
+    source_input: JsonObject,
+) -> Literal["low", "medium", "high", "critical"]:
+    priority_context = source_input.get("priority_context")
+    priority = priority_context.get("priority") if isinstance(priority_context, dict) else None
+    level = str(priority.get("priority_level") or "medium").lower() if isinstance(priority, dict) else "medium"
+    if level == "urgent":
+        return "critical"
+    if level == "high":
+        return "high"
+    if level == "low":
+        return "low"
+    return "medium"
+
+
+def model_drift_score(state: AgentState) -> float:
+    verification = state.get("model_verification")
+    if verification is None or verification.risk_score_delta is None:
+        return 0.0
+    return min(1.0, abs(float(verification.risk_score_delta)))

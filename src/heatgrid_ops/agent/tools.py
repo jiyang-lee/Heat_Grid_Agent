@@ -10,12 +10,12 @@ from typing import Final
 import orjson
 from langchain_core.tools import BaseTool, tool
 
-from evidence_repository import filter_ops_evidence
+from heatgrid_ops.agent.evidence import filter_ops_evidence
 from heatgrid_ops.agent.external_search import ExternalEvidenceSearchResult
 from heatgrid_ops.agent.helpers import card_id_from_input, to_json
+from heatgrid_ops.agent.models import JsonValue
 from heatgrid_ops.reports.anomaly import write_anomaly_report_json
 from heatgrid_ops.reports.daily import write_daily_report_json
-from schemas import JsonValue
 
 REPORTS_URI_PREFIX: Final = "output/ops_agent/reports"
 LLM_SELECTABLE_TOOL_NAMES: Final = (

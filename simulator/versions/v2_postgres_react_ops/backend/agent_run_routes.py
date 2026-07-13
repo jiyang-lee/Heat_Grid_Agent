@@ -19,6 +19,7 @@ from agent_runner import (
     is_agent_run_scheduled,
     schedule_reserved_agent_graph,
 )
+from agent_runtime_factory import create_agent_runtime
 from agent_run_artifact_repository import (
     claim_agent_run_action,
     complete_agent_run_action,
@@ -39,13 +40,13 @@ from agent_run_repository import (
 )
 from alert_repository import get_alert
 from heatgrid_ops.agent.helpers import to_json
+from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
 from heatgrid_ops.agent.services import AgentRuntime
 from heatgrid_ops.agent.tools import ReportToolPayloadError, make_daily_report_tool
 from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
     decide_action_execution,
 )
-from heatgrid_rag.search import RagSearcher
 from repository import fetch_ops_input
 from review_repository import get_automation_policy
 from schemas import (
@@ -70,7 +71,7 @@ def make_agent_run_router(
     runtime: AgentRuntime | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
-    runtime = runtime or AgentRuntime(settings=Settings(), rag_searcher=RagSearcher())
+    runtime = runtime or create_agent_runtime(Settings())
 
     @router.post("/agent-runs", response_model=AgentRunResponse)
     async def create_agent_run(payload: AgentRunCreateRequest) -> AgentRunResponse:
@@ -222,7 +223,9 @@ async def _create_daily_report_artifact(
         run_id=run.run_id,
         name="daily_report.json",
     )
-    policy = await get_automation_policy(engine)
+    policy = AutomationPolicySnapshot.model_validate(
+        (await get_automation_policy(engine)).model_dump(mode="json")
+    )
     execution = decide_action_execution(
         policy,
         ActionExecutionContext(
@@ -254,8 +257,10 @@ async def _create_daily_report_artifact(
         return existing
     if execution.action != "execute":
         raise HTTPException(status_code=409, detail=execution.reason)
+    if run.ops_output is None:
+        raise HTTPException(status_code=409, detail="agent run result is not ready.")
 
-    key = runtime.settings.openai_api_key
+    key = runtime.config.openai_api_key
     if key is None:
         raise HTTPException(status_code=503, detail="OPENAI_API_KEY가 필요합니다.")
     source_input = await fetch_ops_input(engine, run.card_id)
@@ -281,8 +286,8 @@ async def _create_daily_report_artifact(
         raise HTTPException(status_code=409, detail="daily report generation is already running")
 
     report_tool = make_daily_report_tool(
-        openai_api_key=key.get_secret_value(),
-        openai_model=runtime.settings.openai_model,
+        openai_api_key=key,
+        openai_model=runtime.config.openai_model,
     )
     try:
         tool_result = await asyncio.to_thread(

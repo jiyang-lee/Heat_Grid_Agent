@@ -3,14 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import partial
 
-from fastapi import HTTPException
 from langgraph.graph import END, START, StateGraph
-from sqlalchemy.ext.asyncio import AsyncEngine
 
-from agent_run_repository import (
-    fail_agent_run,
-    reserve_agent_run,
-)
 from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
 from heatgrid_ops.agent.nodes import (
     assess_collected_evidence,
@@ -32,63 +26,56 @@ from heatgrid_ops.agent.nodes import (
     validate_output,
     verify_model_output,
 )
+from heatgrid_ops.agent.ports import (
+    AgentArtifactPort,
+    AgentInputPort,
+    AgentModelDataPort,
+    AgentReviewPort,
+    AgentRunAuditPort,
+    AgentRunLifecyclePort,
+)
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
+from heatgrid_ops.agent.run_models import AgentRunResult
 from heatgrid_ops.agent.services import AgentRuntime
 from heatgrid_ops.agent.state import AgentState
-from schemas import AgentRunResponse
 
 
 @dataclass(frozen=True, slots=True)
 class AgentGraphContext:
-    engine: AsyncEngine
     runtime: AgentRuntime
+    inputs: AgentInputPort
+    lifecycle: AgentRunLifecyclePort
+    audit: AgentRunAuditPort
+    model_data: AgentModelDataPort
+    reviews: AgentReviewPort
+    artifacts: AgentArtifactPort
     legacy_simulate_card: SimulateCard | None = None
 
 
-async def run_persistent_agent_graph(
+async def execute_agent_graph(
     context: AgentGraphContext,
     request: AgentRunRequest,
-) -> AgentRunResponse:
-    existing_or_queued, created = await reserve_agent_run(
-        context.engine,
-        run_id=request.run_id,
-        alert_id=request.alert_id,
-        card_id=request.card_id,
+) -> AgentRunResult:
+    graph = build_agent_graph(context)
+    state = await graph.ainvoke(
+        {
+            "run_id": request.run_id,
+            "alert_id": request.alert_id,
+            "card_id": request.card_id,
+            "approved_action_task_id": request.approved_action_task_id,
+            "used_tools": [],
+            "external_candidates": [],
+            "external_candidate_ids": [],
+            "external_search_attempted": False,
+            "external_search_calls": 0,
+            "action_decisions": [],
+            "loop_iteration": 1,
+            "max_iterations": context.runtime.config.agent_max_iterations,
+            "model_attempts": 0,
+            "revision_count": 0,
+        },
+        config={"recursion_limit": 64},
     )
-    if not created:
-        return existing_or_queued
-    return await execute_reserved_agent_graph(context, request)
-
-
-async def execute_reserved_agent_graph(
-    context: AgentGraphContext,
-    request: AgentRunRequest,
-) -> AgentRunResponse:
-    try:
-        graph = build_agent_graph(context)
-        state = await graph.ainvoke(
-            {
-                "run_id": request.run_id,
-                "alert_id": request.alert_id,
-                "card_id": request.card_id,
-                "approved_action_task_id": request.approved_action_task_id,
-                "used_tools": [],
-                "external_candidates": [],
-                "external_candidate_ids": [],
-                "external_search_attempted": False,
-                "external_search_calls": 0,
-                "action_decisions": [],
-                "loop_iteration": 1,
-                "max_iterations": context.runtime.settings.agent_max_iterations,
-                "model_attempts": 0,
-                "revision_count": 0,
-            },
-            config={"recursion_limit": 64},
-        )
-    except HTTPException as exc:
-        return await fail_agent_run(context.engine, request.run_id, str(exc.detail))
-    except Exception as exc:  # graph execution boundary
-        return await fail_agent_run(context.engine, request.run_id, str(exc))
     return state["result"]
 
 

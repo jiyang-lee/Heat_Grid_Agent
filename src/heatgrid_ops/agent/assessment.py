@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from schemas import JsonValue, ModelVerificationResult, OpsAgentOutput
+from heatgrid_ops.agent.models import JsonValue, ModelVerificationResult, OpsAgentOutput
 
 LoopDecision = Literal[
     "expand_internal",

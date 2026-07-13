@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-ROOT = Path(__file__).resolve().parents[1]
-BACKEND = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
-sys.path.insert(0, str(BACKEND))
 
 from heatgrid_ops.agent.assessment import (
     EvidenceAssessment,
@@ -22,7 +16,11 @@ from heatgrid_ops.agent.external_search import (
     _hits_from_response,
 )
 from heatgrid_ops.agent.helpers import token_calls_from_messages
-from schemas import AutomationPolicy, ModelVerificationResult, OpsAgentOutput
+from heatgrid_ops.agent.models import ModelVerificationResult, OpsAgentOutput
+from heatgrid_ops.agent.run_models import (
+    AutomationPolicySnapshot,
+    ReviewTaskSnapshot,
+)
 
 
 def source_input(*, review_required: bool = False) -> dict:
@@ -112,6 +110,75 @@ def test_internal_then_external_evidence_routes_are_bounded() -> None:
     assert final.decision == "request_human"
 
 
+def test_recursive_decision_precedence_contract_is_stable() -> None:
+    # Given: the same evidence envelope at each recursive stage.
+    insufficient_context = external_context(0)
+    sufficient_context = external_context(3)
+
+    # When: the deterministic assessment sees each defined loop condition.
+    rerun = assess_evidence(
+        source_input=source_input(),
+        external_context=sufficient_context,
+        model_verification=verification(agreement=False),
+        iteration=1,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+    )
+    expand = assess_evidence(
+        source_input=source_input(),
+        external_context=insufficient_context,
+        model_verification=verification(agreement=True),
+        iteration=1,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+    )
+    search = assess_evidence(
+        source_input=source_input(),
+        external_context=insufficient_context,
+        model_verification=verification(agreement=True),
+        iteration=2,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+    )
+    human_review = assess_evidence(
+        source_input=source_input(),
+        external_context=insufficient_context,
+        model_verification=verification(agreement=True),
+        iteration=3,
+        max_iterations=4,
+        threshold=0.95,
+        external_search_enabled=True,
+        external_search_attempted=True,
+    )
+    finalize = assess_evidence(
+        source_input=source_input(),
+        external_context=sufficient_context,
+        model_verification=verification(agreement=True),
+        iteration=1,
+        max_iterations=4,
+        threshold=0.75,
+        external_search_enabled=False,
+    )
+
+    # Then: PR 01 preserves the behavior that PR 02 will deliberately replace.
+    assert [
+        rerun.decision,
+        expand.decision,
+        search.decision,
+        human_review.decision,
+        finalize.decision,
+    ] == [
+        "rerun_model",
+        "expand_internal",
+        "search_external",
+        "request_human",
+        "finalize",
+    ]
+
+
 def test_llm_cannot_reenter_external_search_outside_policy_envelope() -> None:
     deterministic = assess_evidence(
         source_input=source_input(),
@@ -146,7 +213,6 @@ def test_llm_cannot_reenter_external_search_outside_policy_envelope() -> None:
 
 @pytest.mark.anyio
 async def test_external_search_node_checks_policy_before_calling_provider(
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider_calls = 0
 
@@ -158,24 +224,26 @@ async def test_external_search_node_checks_policy_before_calling_provider(
     async def no_event(*_args, **_kwargs) -> None:
         return None
 
-    async def human_only_policy(_engine) -> AutomationPolicy:
-        return AutomationPolicy(
+    async def human_only_policy() -> AutomationPolicySnapshot:
+        return AutomationPolicySnapshot(
             mode="human_only",
             reviewed_count=0,
             approval_rate=0,
             eligible_for_guarded_auto=False,
-            updated_at="2026-07-10T00:00:00+00:00",
         )
 
-    async def create_action_review(*_args, **_kwargs):
-        return SimpleNamespace(task_id="review-external-1")
+    async def no_review_task(_task_id: str) -> None:
+        return None
 
-    monkeypatch.setattr(nodes, "get_automation_policy", human_only_policy)
-    monkeypatch.setattr(nodes, "record_decision", no_event)
-    monkeypatch.setattr(nodes, "record_agent_run_event", no_event)
-    monkeypatch.setattr(nodes, "create_review_task", create_action_review)
+    async def create_action_review(_request) -> ReviewTaskSnapshot:
+        return ReviewTaskSnapshot(
+            task_id="review-external-1",
+            task_type="external_search",
+            status="pending",
+        )
+
     runtime = SimpleNamespace(
-        settings=SimpleNamespace(
+        config=SimpleNamespace(
             external_search_budget_per_run_usd=0.02,
             external_search_estimated_cost_usd=0.01,
             external_search_allowed_domains="example.com",
@@ -201,7 +269,15 @@ async def test_external_search_node_checks_policy_before_calling_provider(
     }
 
     result = await nodes.search_external_evidence(
-        SimpleNamespace(engine=object(), runtime=runtime),
+        SimpleNamespace(
+            runtime=runtime,
+            audit=SimpleNamespace(record_event=no_event),
+            reviews=SimpleNamespace(
+                automation_policy=human_only_policy,
+                review_task=no_review_task,
+                create_review=create_action_review,
+            ),
+        ),
         state,
     )
 
@@ -213,7 +289,6 @@ async def test_external_search_node_checks_policy_before_calling_provider(
 
 @pytest.mark.anyio
 async def test_approved_external_search_task_resumes_controlled_action(
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider_calls = 0
 
@@ -225,28 +300,23 @@ async def test_approved_external_search_task_resumes_controlled_action(
     async def no_event(*_args, **_kwargs) -> None:
         return None
 
-    async def human_only_policy(_engine) -> AutomationPolicy:
-        return AutomationPolicy(
+    async def human_only_policy() -> AutomationPolicySnapshot:
+        return AutomationPolicySnapshot(
             mode="human_only",
             reviewed_count=0,
             approval_rate=0,
             eligible_for_guarded_auto=False,
-            updated_at="2026-07-10T00:00:00+00:00",
         )
 
-    async def approved_task(_engine, _task_id: str):
-        return SimpleNamespace(
+    async def approved_task(_task_id: str) -> ReviewTaskSnapshot:
+        return ReviewTaskSnapshot(
             task_id="review-external-approved",
             task_type="external_search",
             status="approved",
         )
 
-    monkeypatch.setattr(nodes, "get_automation_policy", human_only_policy)
-    monkeypatch.setattr(nodes, "get_review_task", approved_task)
-    monkeypatch.setattr(nodes, "record_decision", no_event)
-    monkeypatch.setattr(nodes, "record_agent_run_event", no_event)
     runtime = SimpleNamespace(
-        settings=SimpleNamespace(
+        config=SimpleNamespace(
             external_search_budget_per_run_usd=0.02,
             external_search_estimated_cost_usd=0.01,
             external_search_allowed_domains="example.com",
@@ -273,7 +343,14 @@ async def test_approved_external_search_task_resumes_controlled_action(
     }
 
     result = await nodes.search_external_evidence(
-        SimpleNamespace(engine=object(), runtime=runtime),
+        SimpleNamespace(
+            runtime=runtime,
+            audit=SimpleNamespace(record_event=no_event),
+            reviews=SimpleNamespace(
+                automation_policy=human_only_policy,
+                review_task=approved_task,
+            ),
+        ),
         state,
     )
 
