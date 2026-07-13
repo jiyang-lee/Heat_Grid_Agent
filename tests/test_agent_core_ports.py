@@ -22,6 +22,7 @@ from heatgrid_ops.agent.ports import (
     RunLifecyclePort,
 )
 from heatgrid_ops.agent.run_models import ExternalDataRequest
+from heatgrid_ops.agent.state import AgentState, RequestState
 
 
 class FakeAgentInputPort:
@@ -72,11 +73,19 @@ async def test_load_ops_input_uses_typed_input_port() -> None:
         "raw_context": {},
     }
     input_port = FakeAgentInputPort(AgentInputSnapshot(source_input=source_input))
-    state = {"run_id": "run-1", "alert_id": "alert-1", "card_id": "card-1"}
+    state = AgentState(
+        request=RequestState(
+            run_id="run-1",
+            alert_id="alert-1",
+            card_id="card-1",
+        )
+    )
 
     result = await load_ops_input(SimpleNamespace(inputs=input_port), state)
 
-    assert result == {"source_input": source_input}
+    assert result == {
+        "request": state.request.model_copy(update={"source_input": source_input})
+    }
     assert input_port.requests == [
         AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1")
     ]
@@ -85,7 +94,13 @@ async def test_load_ops_input_uses_typed_input_port() -> None:
 @pytest.mark.anyio
 async def test_load_ops_input_raises_typed_not_found_error() -> None:
     input_port = FakeAgentInputPort(None)
-    state = {"run_id": "run-1", "alert_id": "alert-1", "card_id": "card-404"}
+    state = AgentState(
+        request=RequestState(
+            run_id="run-1",
+            alert_id="alert-1",
+            card_id="card-404",
+        )
+    )
 
     with pytest.raises(AgentInputNotFoundError) as captured:
         await load_ops_input(SimpleNamespace(inputs=input_port), state)
@@ -118,7 +133,13 @@ async def test_load_ops_input_rejects_invalid_source_contract(
     detail: str,
 ) -> None:
     input_port = FakeAgentInputPort(AgentInputSnapshot(source_input=source_input))
-    state = {"run_id": "run-1", "alert_id": "alert-1", "card_id": "card-1"}
+    state = AgentState(
+        request=RequestState(
+            run_id="run-1",
+            alert_id="alert-1",
+            card_id="card-1",
+        )
+    )
 
     with pytest.raises(AgentInputContractError) as captured:
         await load_ops_input(SimpleNamespace(inputs=input_port), state)

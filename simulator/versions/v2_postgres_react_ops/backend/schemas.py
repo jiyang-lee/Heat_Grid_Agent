@@ -336,8 +336,6 @@ class ReviewSubmitResponse(BaseModel):
     feedback: TrainingFeedback | None = None
     automatic_retrain_job_id: str | None = None
     automatic_retrain_status: RetrainJobStatus | None = None
-    resumed_agent_run_id: str | None = None
-    resumed_agent_run_status: AgentRunStatus | None = None
 
 
 class AutomationPolicy(BaseModel):

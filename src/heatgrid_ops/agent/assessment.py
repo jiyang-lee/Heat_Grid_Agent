@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from heatgrid_ops.agent.decision_policy import (
+    DecisionContext,
+    DecisionPolicy,
+    default_decision_policy,
+)
 from heatgrid_ops.agent.models import JsonValue, ModelVerificationResult, OpsAgentOutput
 
 LoopDecision = Literal[
@@ -15,6 +20,8 @@ LoopDecision = Literal[
 
 
 class EvidenceAssessment(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     decision: LoopDecision
     confidence: float = Field(ge=0.0, le=1.0)
     evidence_score: float = Field(ge=0.0, le=1.0)
@@ -24,6 +31,8 @@ class EvidenceAssessment(BaseModel):
 
 
 class OutputValidation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     valid: bool
     score: float = Field(ge=0.0, le=1.0)
     issues: list[str] = Field(default_factory=list)
@@ -37,6 +46,7 @@ def assess_evidence(
     iteration: int,
     max_iterations: int,
     threshold: float,
+    policy: DecisionPolicy | None = None,
 ) -> EvidenceAssessment:
     priority_context = _mapping(source_input.get("priority_context"))
     card = _mapping(priority_context.get("card"))
@@ -88,36 +98,29 @@ def assess_evidence(
 
     score = round(min(1.0, score), 4)
     review_required = bool(card.get("review_required"))
-    model_disagrees = bool(
-        model_verification is not None and model_verification.agreement is False
-    )
 
-    if model_disagrees and model_verification and model_verification.attempt < 2:
-        return _assessment(
-            "rerun_model",
-            score,
-            missing,
-            "저장된 예측값과 활성 모델 결과가 달라 모델 입력을 다시 읽고 재검증합니다.",
+    selected = (policy or default_decision_policy()).decide(
+        DecisionContext(
+            model_verification=model_verification,
+            rag_chunk_count=len(chunks),
+            review_required=review_required,
+            evidence_score=score,
+            evidence_threshold=threshold,
+            iteration=iteration,
+            max_iterations=max_iterations,
         )
-    if len(chunks) < 2 and iteration == 1 and iteration < max_iterations:
-        return _assessment(
-            "expand_internal",
-            score,
-            missing,
-            "내부 운영 참고자료가 부족해 검색 범위와 조회 개수를 확장합니다.",
-        )
-    if review_required or model_disagrees or score < threshold:
-        return _assessment(
-            "request_human",
-            score,
-            missing,
-            "검수 조건이 남아 있어 운영 답변과 함께 사람의 최종 판단을 요청합니다.",
-        )
+    )
+    if selected == "rerun_model":
+        return _assessment(selected, score, missing, _RATIONALES[selected])
+    if selected == "expand_internal":
+        return _assessment(selected, score, missing, _RATIONALES[selected])
+    if selected in {"diagnostic_worker", "request_human"}:
+        return _assessment("request_human", score, missing, _RATIONALES[selected])
     return _assessment(
         "finalize",
         score,
         missing,
-        "근거와 모델 재검증 결과가 기준을 충족해 답변 생성을 진행합니다.",
+        _RATIONALES["finalize"],
     )
 
 
@@ -193,3 +196,12 @@ def _mapping(value: JsonValue | None) -> dict[str, JsonValue]:
 
 def _list(value: JsonValue | None) -> list[JsonValue]:
     return value if isinstance(value, list) else []
+
+
+_RATIONALES = {
+    "rerun_model": "저장된 예측값과 활성 모델 결과가 달라 모델 입력을 다시 읽고 재검증합니다.",
+    "expand_internal": "내부 운영 참고자료가 부족해 검색 범위와 조회 개수를 확장합니다.",
+    "diagnostic_worker": "읽기 전용 진단 worker를 사용할 수 없어 사람의 최종 판단을 요청합니다.",
+    "request_human": "검수 조건이 남아 있어 운영 답변과 함께 사람의 최종 판단을 요청합니다.",
+    "finalize": "근거와 모델 재검증 결과가 기준을 충족해 답변 생성을 진행합니다.",
+}

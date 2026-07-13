@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 from uuid import uuid4
 
 import orjson
+from anyio import sleep
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -107,7 +107,6 @@ def make_agent_run_router(
                     run_id=queued.run_id,
                     alert_id=queued.alert_id,
                     card_id=queued.card_id,
-                    approved_action_task_id=queued.approved_action_task_id,
                 ),
                 simulate_card,
                 runtime,
@@ -279,7 +278,7 @@ async def _create_daily_report_artifact(
             )
             if existing is not None:
                 return existing
-            await asyncio.sleep(0.05)
+            await sleep(0.05)
         raise HTTPException(status_code=409, detail="daily report generation is already running")
 
     try:
@@ -375,7 +374,7 @@ async def stream_agent_run_events(
         run = await get_agent_run(engine, run_id)
         if run is None or (run.status in {"completed", "failed"} and not events):
             break
-        await asyncio.sleep(poll_interval_seconds)
+        await sleep(poll_interval_seconds)
         idle_seconds += poll_interval_seconds
         if idle_seconds >= 15.0:
             idle_seconds = 0.0

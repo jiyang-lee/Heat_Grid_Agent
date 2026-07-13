@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
 from heatgrid_ops.reports.graph import ReportJson
@@ -41,11 +42,22 @@ def write_daily_report_json(
     *,
     mock: bool = False,
     llm_caller: LLMCaller | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
     with_rag: bool = False,
     rag_url: str | None = None,
     rag_top_k: int = 5,
     force_rag: bool = False,
 ) -> ReportJson:
+    if llm_caller is None and api_key is not None and model is not None:
+        ensure_legacy_report_src_path()
+        from report_utils import call_llm_json_with_config
+
+        llm_caller = partial(
+            call_llm_json_with_config,
+            api_key=api_key,
+            model=model,
+        )
     report = generate_daily_report_from_input(
         input_data,
         mock=mock,
