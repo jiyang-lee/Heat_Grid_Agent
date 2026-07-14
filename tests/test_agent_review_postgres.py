@@ -269,7 +269,7 @@ async def _seed(engine: AsyncEngine) -> None:
                 "ledger_id, run_id, task_id, operation_key, token_limit, retry_limit"
                 ") VALUES ("
                 ":ledger_id, CAST(:run_id AS uuid), :task_id, "
-                "'agent-budget:' || :run_id, 20000, 3)"
+                "'agent-budget:' || :run_id, 60000, 3)"
             ),
             {
                 "ledger_id": PARENT_LEDGER_ID,
@@ -327,7 +327,7 @@ def _snapshot(run_id: str) -> AgentRunReviewSnapshotV1:
             reason="review test",
         ),
         budget=ReviewBudgetLineage(
-            parent_token_limit=20_000,
+            parent_token_limit=60_000,
             parent_tokens_used=100,
             diagnostic_token_limit=4_000,
             diagnostic_tokens_used=0,

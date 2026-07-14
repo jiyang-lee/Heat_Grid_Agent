@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from heatgrid_ops.agent.diagnostics import DiagnosticBudgetReservation
 
 
-PARENT_TOKEN_LIMIT: Final = 20_000
+PARENT_TOKEN_LIMIT: Final = 60_000
 PARENT_RETRY_LIMIT: Final = 3
 EXTERNAL_SEARCH_LIMIT: Final = 0
 DIAGNOSTIC_TASK_KEY: Final = "fault_diagnosis:v1"

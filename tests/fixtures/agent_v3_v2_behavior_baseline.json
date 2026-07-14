@@ -61,7 +61,7 @@
     "max_hypotheses": 3
   },
   "budget_contract": {
-    "parent_token_limit": 20000,
+    "parent_token_limit": 60000,
     "parent_retry_limit": 3,
     "external_search_limit": 0,
     "task_max_attempts": 3,

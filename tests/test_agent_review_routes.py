@@ -170,3 +170,130 @@ async def test_agent_run_review_rejects_malformed_uuid_without_querying_db(
 
     assert response.status_code == 422
     await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_agent_run_evaluations_returns_typed_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
+    from simulator.versions.v2_postgres_react_ops.backend.agent_review_api_models import (
+        AgentRunEvaluationItem,
+        AgentRunEvaluationPage,
+    )
+
+    async def fake_list_agent_run_evaluations(_engine, _filters) -> AgentRunEvaluationPage:
+        return AgentRunEvaluationPage(
+            items=(
+                AgentRunEvaluationItem(
+                    run_id="00000000-0000-0000-0000-000000000002",
+                    status="completed",
+                    alert_id="00000000-0000-0000-0000-000000000003",
+                    card_id="00000000-0000-0000-0000-000000000004",
+                    operator_review_status="pending",
+                    worker_status="completed",
+                    citation_coverage="complete",
+                    input_validity="valid",
+                    parent_handling="used_as_support",
+                    evidence_completeness="complete",
+                    review_snapshot_status="available",
+                    created_at=datetime(2026, 7, 14, tzinfo=UTC),
+                    updated_at=datetime(2026, 7, 14, tzinfo=UTC),
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(
+        agent_review_routes,
+        "list_agent_run_evaluations",
+        fake_list_agent_run_evaluations,
+    )
+    app = FastAPI()
+    engine = create_async_engine("postgresql+asyncpg://test:test@127.0.0.1:1/test")
+    app.include_router(agent_review_routes.make_agent_review_router(engine))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/agent-run-evaluations",
+            params={"worker_status": "completed"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["parent_handling"] == "used_as_support"
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_operator_review_submit_maps_stale_version_to_409(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
+
+    async def stale_submit_operator_review(_engine, _run_id, _request):
+        raise agent_review_routes.StaleReviewVersionError(
+            run_id="00000000-0000-0000-0000-000000000002"
+        )
+
+    monkeypatch.setattr(
+        agent_review_routes,
+        "submit_operator_review",
+        stale_submit_operator_review,
+    )
+    app = FastAPI()
+    engine = create_async_engine("postgresql+asyncpg://test:test@127.0.0.1:1/test")
+    app.include_router(agent_review_routes.make_agent_review_router(engine))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/agent-runs/00000000-0000-0000-0000-000000000002/reviews",
+            json={
+                "expected_review_version": 0,
+                "idempotency_key": "submit-1",
+                "decision": "approve",
+                "reviewer": "operator",
+                "reason": "confirmed",
+                "disposition": "normal_observation",
+            },
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "review version is stale"
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_policy_candidate_action_returns_404_for_unknown_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
+
+    async def missing_decide_policy_candidate(_engine, _candidate_id, _request, *, decision):
+        return None
+
+    monkeypatch.setattr(
+        agent_review_routes,
+        "decide_policy_candidate",
+        missing_decide_policy_candidate,
+    )
+    app = FastAPI()
+    engine = create_async_engine("postgresql+asyncpg://test:test@127.0.0.1:1/test")
+    app.include_router(agent_review_routes.make_agent_review_router(engine))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/agent-policy-candidates/00000000-0000-0000-0000-000000000002/approve",
+            json={
+                "expected_version": 1,
+                "reviewer": "operator",
+                "reason": "approved",
+            },
+        )
+
+    assert response.status_code == 404
+    await engine.dispose()
