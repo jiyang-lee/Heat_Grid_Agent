@@ -51,7 +51,33 @@ import { buildMockOpsOutput } from './workOrder'
 import { complexes } from '../data/complexes'
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
-const mockReviewTasks: HumanReviewTask[] = []
+
+/** 홈 '대기 서류' 시안 수치(3건) 재현용 검토 대기 문서. run 생성 시 새 task가 앞에 쌓인다. */
+function seedReviewTask(seq: number, title: string, riskLevel: HumanReviewTask['risk_level'], createdAt: string): HumanReviewTask {
+  return {
+    task_id: `review-seed-${seq}`,
+    task_type: 'final_output',
+    status: 'pending',
+    risk_level: riskLevel,
+    title,
+    run_id: null,
+    candidate_id: null,
+    retrain_job_id: null,
+    model_candidate_id: null,
+    payload: {},
+    resolution: {},
+    assigned_to: null,
+    reviewed_by: null,
+    created_at: createdAt,
+    reviewed_at: null,
+  }
+}
+
+const mockReviewTasks: HumanReviewTask[] = [
+  seedReviewTask(1, '작업 지시 보고서 승인: 공급온도 과다 대응', 'high', '2026-07-09T08:40:00.000Z'),
+  seedReviewTask(2, '점검 결과 보고서 검토: 압력 상승 경향', 'medium', '2026-07-09T08:10:00.000Z'),
+  seedReviewTask(3, '일일 운영 보고서 발행 승인', 'medium', '2026-07-09T07:30:00.000Z'),
+]
 const mockEvidenceCandidates: EvidenceCandidate[] = []
 const mockTrainingFeedback: TrainingFeedback[] = []
 const mockRetrainJobs: RetrainJob[] = []
@@ -61,7 +87,8 @@ const mockAsOfTime = '2026-07-09T00:00:00.000Z'
 const mockEvaluationRunId = 'evaluation-mock-latest'
 const mockPriorityResults: PriorityEvaluationResult[] = complexes.map((complex) => {
   const score = Number((100 - complex.id * 1.5).toFixed(3))
-  const level = complex.id <= 6 ? 'urgent' : complex.id <= 15 ? 'high' : complex.id <= 23 ? 'medium' : 'low'
+  // 홈 시안 수치 재현: 위험 2 / 주의 5 / 정상 24 (medium·low는 홈 집계상 정상).
+  const level = complex.id <= 2 ? 'urgent' : complex.id <= 7 ? 'high' : complex.id <= 23 ? 'medium' : 'low'
   return {
     evaluation_result_id: `evaluation-result-${complex.id}`,
     evaluation_run_id: mockEvaluationRunId,

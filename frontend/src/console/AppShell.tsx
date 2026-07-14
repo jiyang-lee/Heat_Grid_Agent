@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAlerts } from '../api/hooks'
+import { qk, useAlerts } from '../api/hooks'
 import { Icon, type IconName } from './icons'
 
 export type ConsolePage = 'dashboard' | 'alerts' | 'reports' | 'settings' | 'admin'
@@ -11,12 +11,12 @@ interface NavigationItem {
   readonly icon: IconName
 }
 
+/** admin 페이지는 유지하되 시안 사이드바에는 노출하지 않는다(직접 상태 전환으로만 진입). */
 const navigation: readonly NavigationItem[] = [
   { page: 'dashboard', label: '홈', icon: 'home' },
   { page: 'alerts', label: '알림', icon: 'bell' },
-  { page: 'reports', label: 'AI 활동', icon: 'activity' },
+  { page: 'reports', label: '보고서', icon: 'document' },
   { page: 'settings', label: '설정', icon: 'settings' },
-  { page: 'admin', label: '관리자', icon: 'shield' },
 ]
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const
@@ -47,6 +47,15 @@ export function AppShell({ page, onPageChange, children }: Props) {
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = `${now.getMonth() + 1}월 ${now.getDate()}일 ${WEEKDAYS[now.getDay()]}요일`
   const toggleCollapsed = () => setCollapsed((value) => !value)
+  // 홈 지표가 쓰는 4개 쿼리를 refetch. 일부 실패해도 나머지는 갱신되도록 allSettled.
+  const refreshAll = () => {
+    void Promise.allSettled([
+      queryClient.refetchQueries({ queryKey: qk.prioritySnapshot }),
+      queryClient.refetchQueries({ queryKey: ['alerts'] }),
+      queryClient.refetchQueries({ queryKey: qk.health }),
+      queryClient.refetchQueries({ queryKey: ['review-tasks'] }),
+    ])
+  }
 
   return (
     <div className={`ops-app-shell ${collapsed ? 'collapsed' : ''}`.trim()}>
@@ -68,7 +77,7 @@ export function AppShell({ page, onPageChange, children }: Props) {
           <div className="mobile-brand">HeatGrid Ops</div>
           <div className="topbar-tools">
             <div className="topbar-clock"><strong>{time}</strong><span>{date}</span></div>
-            <button className="refresh-button" onClick={() => void queryClient.invalidateQueries()} type="button"><Icon name="refresh" />새로고침</button>
+            <button className="refresh-button" onClick={refreshAll} type="button"><Icon name="refresh" />새로고침</button>
             <button aria-label={`알림 ${openCount}건`} className="notification-button" onClick={() => onPageChange('alerts')} type="button"><Icon name="bell" />{openCount > 0 && <b>{openCount}</b>}</button>
             <button className="profile-button" type="button"><span><Icon name="users" /></span><strong>운영자 김현우</strong><Icon className="profile-chevron" name="chevron" /></button>
           </div>

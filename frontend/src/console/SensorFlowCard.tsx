@@ -1,13 +1,13 @@
 /**
- * 실시간 센서 흐름 카드 — 클라이언트 시뮬레이션(DEMO).
+ * 실시간 센서 흐름 카드 — 클라이언트 시뮬레이션(LIVE 데모).
  * 백엔드에 원시 센서 시계열 API가 없어(evidence의 sensor_summaries는 모델 피처 요약)
- * 권장범위 내 가상값을 생성한다.
+ * 권장범위 내 가상값을 결정적 시드로 생성한다. Math.random을 렌더에서 쓰지 않는다.
  *
  * facility prop: 홈 '주요 알림'에서 선택한 설비. 설비별 결정적 시드로 서로 다른
  * 곡선을 보여준다(여전히 가상). 실 센서 시계열 계약이 생기면 이 prop을 키로
  * fetch하도록 seedSeries/tick 부분만 교체하면 된다.
  *
- * 기간 버튼: 실시간(5초 틱 라이브) / 6시간 / 일주일 / 한달 (정적 스냅샷).
+ * 창: 최근 30분(1분 간격 31포인트). 5초마다 현재값이 갱신되고 1분마다 창이 민다.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -39,35 +39,21 @@ const SERIES: readonly SeriesDef[] = [
   { key: 'flow', label: '유량', tile: '유량', unit: 'm³/h', icon: 'flow', min: 100, max: 160, base: 128.4, decimals: 1, className: 'sf-flow' },
 ]
 
-type RangeKey = 'live' | '6h' | '7d' | '30d'
-
-interface RangeDef {
-  readonly key: RangeKey
-  readonly label: string
-  /** 포인트 간 간격(ms). 차트는 항상 POINTS개 포인트로 그린다. */
-  readonly stepMs: number
-  /** 지터 크기 — 긴 구간일수록 변동 폭을 키워 자연스럽게. */
-  readonly jitter: number
-  readonly live: boolean
-  /** 설비 시드와 조합할 기간별 시드 소금값. */
-  readonly seedSalt: number
-}
-
-const POINTS = 30
+/** 최근 30분을 1분 간격으로 그린다(0..30 → 31포인트). 축 라벨은 5분마다. */
+const POINTS = 31
+const STEP_MS = 60_000
 const TICK_MS = 5_000
-const RANGES: readonly RangeDef[] = [
-  { key: 'live', label: '실시간', stepMs: TICK_MS, jitter: 0.12, live: true, seedSalt: 1 },
-  { key: '6h', label: '6시간', stepMs: (6 * 3_600_000) / (POINTS - 1), jitter: 0.22, live: false, seedSalt: 2 },
-  { key: '7d', label: '일주일', stepMs: (7 * 86_400_000) / (POINTS - 1), jitter: 0.3, live: false, seedSalt: 3 },
-  { key: '30d', label: '한달', stepMs: (30 * 86_400_000) / (POINTS - 1), jitter: 0.35, live: false, seedSalt: 4 },
-]
+const TICKS_PER_STEP = STEP_MS / TICK_MS
+const JITTER = 0.14
+/** 미선택 시 표시할 수집 대상 기계실 수(시안 고정 문구). */
+const DEFAULT_ROOM_COUNT = 12
 
 const CHART_W = 720
-const BAND_H = 44
-const BAND_GAP = 14
+const BAND_H = 36
+const BAND_GAP = 12
 const CHART_H = SERIES.length * (BAND_H + BAND_GAP) + BAND_GAP
 
-/** 결정적 PRNG(mulberry32) — 같은 설비·기간이면 항상 같은 곡선이 나오게. */
+/** 결정적 PRNG(mulberry32) — 같은 설비면 항상 같은 곡선이 나오게. */
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0
   return () => {
@@ -87,16 +73,16 @@ function anchorFor(def: SeriesDef, facilityId: number): number {
 }
 
 /** 평균회귀 + 소폭 지터로 권장범위 안에서 자연스럽게 흔들리는 다음 값. */
-function nextValue(def: SeriesDef, prev: number, jitter: number, anchor: number, rand: () => number): number {
+function nextValue(def: SeriesDef, prev: number, anchor: number, rand: () => number): number {
   const span = def.max - def.min
-  const drift = (rand() - 0.5) * span * jitter
+  const drift = (rand() - 0.5) * span * JITTER
   const pull = (anchor - prev) * 0.18
   return Math.min(def.max, Math.max(def.min, prev + drift + pull))
 }
 
-function seedSeries(def: SeriesDef, jitter: number, anchor: number, rand: () => number): number[] {
+function seedSeries(def: SeriesDef, anchor: number, rand: () => number): number[] {
   let value = anchor
-  return Array.from({ length: POINTS }, () => (value = nextValue(def, value, jitter, anchor, rand)))
+  return Array.from({ length: POINTS }, () => (value = nextValue(def, value, anchor, rand)))
 }
 
 function formatValue(def: SeriesDef, value: number): string {
@@ -105,15 +91,8 @@ function formatValue(def: SeriesDef, value: number): string {
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
 
-function formatClock(date: Date): string {
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
-}
-
-/** 축 라벨 — 기간에 따라 시각/일자 표기를 바꾼다. */
-function formatAxis(date: Date, range: RangeDef): string {
-  if (range.key === 'live') return formatClock(date)
-  if (range.key === '6h') return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
-  return `${date.getMonth() + 1}/${date.getDate()}`
+function formatAxis(date: Date): string {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
 }
 
 interface Props {
@@ -121,53 +100,71 @@ interface Props {
 }
 
 export default function SensorFlowCard({ facility = null }: Props) {
-  const [rangeKey, setRangeKey] = useState<RangeKey>('live')
-  const range = RANGES.find((item) => item.key === rangeKey) ?? RANGES[0]
   const facilityId = facility?.id ?? 0
-  const randRef = useRef<() => number>(Math.random)
-  const [data, setData] = useState<readonly number[][]>(() => SERIES.map((def) => seedSeries(def, RANGES[0].jitter, anchorFor(def, facilityId), mulberry32(facilityId * 1000 + RANGES[0].seedSalt))))
+  const randRef = useRef<() => number>(mulberry32(1))
+  const tickRef = useRef(0)
+  const [data, setData] = useState<readonly number[][]>(() => SERIES.map((def) => seedSeries(def, anchorFor(def, facilityId), mulberry32(facilityId * 1000 + 1))))
   const [updatedAt, setUpdatedAt] = useState(() => new Date())
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  // 설비/기간 전환 시 해당 조합의 결정적 시드로 다시 생성하고, 실시간에서만 5초 틱을 돌린다.
-  useEffect(() => {
-    const rand = mulberry32(facilityId * 1000 + range.seedSalt)
+  const reseed = (id: number) => {
+    const rand = mulberry32(id * 1000 + 1)
     randRef.current = rand
-    setData(SERIES.map((def) => seedSeries(def, range.jitter, anchorFor(def, facilityId), rand)))
+    tickRef.current = 0
+    setData(SERIES.map((def) => seedSeries(def, anchorFor(def, id), rand)))
     setUpdatedAt(new Date())
-    if (!range.live) return
+  }
+
+  // 설비 전환 시 해당 설비의 결정적 시드로 재생성하고 5초 틱을 돌린다.
+  // 틱마다 현재값(마지막 포인트)을 갱신하고, 1분(12틱)마다 창을 한 칸 민다.
+  useEffect(() => {
+    reseed(facilityId)
     const timer = window.setInterval(() => {
-      setData((prev) => prev.map((values, index) => [...values.slice(1), nextValue(SERIES[index], values[values.length - 1], range.jitter, anchorFor(SERIES[index], facilityId), randRef.current)]))
+      tickRef.current += 1
+      const shift = tickRef.current % TICKS_PER_STEP === 0
+      setData((prev) => prev.map((values, index) => {
+        const def = SERIES[index]
+        const next = nextValue(def, values[values.length - 1], anchorFor(def, facilityId), randRef.current)
+        return shift ? [...values.slice(1), next] : [...values.slice(0, -1), next]
+      }))
       setUpdatedAt(new Date())
     }, TICK_MS)
     return () => window.clearInterval(timer)
-  }, [range, facilityId])
+  }, [facilityId])
 
   const xAt = (index: number) => (index / (POINTS - 1)) * CHART_W
-  const axisIndexes = [0, Math.floor(POINTS / 2), POINTS - 1]
+  const axisIndexes = [0, 5, 10, 15, 20, 25, 30]
   const axisLabels = axisIndexes.map((index) => {
-    const at = new Date(updatedAt.getTime() - (POINTS - 1 - index) * range.stepMs)
-    return index === POINTS - 1 ? `${formatAxis(at, range)} (현재)` : formatAxis(at, range)
+    const at = new Date(updatedAt.getTime() - (POINTS - 1 - index) * STEP_MS)
+    return index === POINTS - 1 ? `${formatAxis(at)} (현재)` : formatAxis(at)
   })
-  const metaText = range.live
-    ? `시뮬레이션 데이터 · 5초 간격 · 마지막 갱신 ${formatClock(updatedAt)}`
-    : `시뮬레이션 데이터 · 최근 ${range.label}`
-  const title = facility ? `실시간 센서 흐름 — ${facility.name} (기계실 ${facility.id})` : '실시간 센서 흐름'
+  const subText = facility ? `${facility.name} · 최근 30분` : `기계실 ${DEFAULT_ROOM_COUNT} · 최근 30분`
 
   return (
     <SurfaceCard
       action={
         <div className="sf-head">
-          <div aria-label="조회 기간" className="sf-range" role="tablist">
-            {RANGES.map((item) => <button aria-selected={item.key === rangeKey} className={item.key === rangeKey ? 'active' : ''} key={item.key} onClick={() => setRangeKey(item.key)} role="tab" type="button">{item.label}</button>)}
+          <span className="sf-sub">{subText}</span>
+          <span className="live-badge">LIVE</span>
+          <div className="sf-right">
+            <span className="sf-meta"><i className="live-dot" />5초 전 업데이트</span>
+            <button aria-label="센서 흐름 새로고침" className="sf-icon-button" onClick={() => reseed(facilityId)} type="button"><Icon name="refresh" /></button>
+            <div className="sf-more">
+              <button aria-expanded={menuOpen} aria-label="더보기" className="sf-icon-button" onClick={() => setMenuOpen((value) => !value)} type="button"><Icon name="more" /></button>
+              {menuOpen && (
+                <div className="sf-menu" role="menu">
+                  <button onClick={() => { reseed(facilityId); setMenuOpen(false) }} role="menuitem" type="button">기준 데이터로 리셋</button>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="sf-meta"><span className="demo-badge">DEMO</span><span>{metaText}</span></div>
         </div>
       }
       className="sensor-flow"
-      title={title}
+      title="실시간 센서 흐름"
     >
       <div className="sensor-tiles">
-        {SERIES.map((def, index) => <article className={`sensor-tile ${def.className}`} key={def.key}><Icon name={def.icon} /><div><p>{def.tile}</p><strong>{formatValue(def, data[index][POINTS - 1])} <em>{def.unit}</em></strong></div></article>)}
+        {SERIES.map((def, index) => <article className={`sensor-tile ${def.className}`} key={def.key}><span className="tile-icon"><Icon name={def.icon} /></span><div><p>{def.tile}</p><strong>{formatValue(def, data[index][POINTS - 1])} <em>{def.unit}</em></strong></div></article>)}
       </div>
       <div className="sf-chart-row">
         <div className="sf-legend">
@@ -188,7 +185,7 @@ export default function SensorFlowCard({ facility = null }: Props) {
               )
             })}
           </svg>
-          <div className="sf-axis">{axisLabels.map((label) => <span key={label}>{label}</span>)}</div>
+          <div className="sf-axis">{axisLabels.map((label, index) => <span key={axisIndexes[index]}>{label}</span>)}</div>
         </div>
         <div className="sf-values">
           {SERIES.map((def, index) => <span className={`sf-value ${def.className}`} key={def.key}>{formatValue(def, data[index][POINTS - 1])}</span>)}

@@ -1,19 +1,33 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
+import type { AlertSummary } from '../api/contracts'
 import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
 import { Icon, type IconName } from './icons'
 import SensorFlowCard, { type SensorFacility } from './SensorFlowCard'
-import { ApiState, StatusBadge, SurfaceCard } from './ui'
+import { ApiState, StatusBadge, SurfaceCard, type Tone } from './ui'
 
-/** 알림 발생 시각의 상대 표기("n분 전"). 기한(SLA) 계약이 없어 발생 경과로 대체한다. */
-function relativeTime(iso: string): string {
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (minutes < 1) return '방금 전'
-  if (minutes < 60) return `${minutes}분 전`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}시간 전`
-  return `${Math.round(hours / 24)}일 전`
+type AlertDisplayTone = Extract<Tone, 'critical' | 'warning' | 'primary'>
+
+/**
+ * 알림 표시 톤. 계약 priority_level(urgent|high)에는 '안내' 단계가 없어
+ * 점검 예정성 알림만 안내(파랑)로 분류하는 표시 규칙이다(계약 변경 없음).
+ */
+function alertDisplayTone(alert: AlertSummary): AlertDisplayTone {
+  if (alert.priority_level === 'urgent') return 'critical'
+  if (alert.enqueue_reason.includes('점검 예정')) return 'primary'
+  return 'warning'
+}
+
+const ALERT_TONE_LABEL: Record<AlertDisplayTone, string> = { critical: '긴급', warning: '경고', primary: '안내' }
+const ALERT_TONE_ICON: Record<AlertDisplayTone, IconName> = { critical: 'alert', warning: 'warning', primary: 'info' }
+
+/** 확인 제한시간. SLA 계약이 없어 톤·노출 순서 기반 고정 규칙으로 표시한다(데모). */
+const WARNING_SLA_MINUTES = [15, 20, 30] as const
+function ackDeadlineLabel(tone: AlertDisplayTone, warningIndex: number): string {
+  if (tone === 'critical') return '5분 내 확인'
+  if (tone === 'primary') return '2시간 내 확인'
+  return `${WARNING_SLA_MINUTES[Math.min(warningIndex, WARNING_SLA_MINUTES.length - 1)]}분 내 확인`
 }
 
 interface HomeMetricProps {
@@ -48,9 +62,9 @@ export function DashboardPage({ onOpenAlerts }: Props) {
   const openAlerts = alerts.data ?? []
   const pendingDocs = reviews.data?.length ?? 0
 
-  // 주요 알림 선택 → 센서 카드 컨텍스트. 미선택/선택 소멸 시 첫 알림으로 폴백.
+  // 주요 알림 선택 → 센서 카드 컨텍스트. 미선택이면 카드가 전체(기계실 12) 기준을 보여준다.
   const shownAlerts = openAlerts.slice(0, 5)
-  const selectedAlert = shownAlerts.find((alert) => alert.alert_id === selectedAlertId) ?? shownAlerts[0] ?? null
+  const selectedAlert = shownAlerts.find((alert) => alert.alert_id === selectedAlertId) ?? null
   const sensorFacility: SensorFacility | null = selectedAlert && selectedAlert.substation_id != null
     ? { id: selectedAlert.substation_id, name: complexById.get(selectedAlert.substation_id)?.name ?? selectedAlert.manufacturer_id ?? '미상 설비' }
     : null
@@ -59,7 +73,7 @@ export function DashboardPage({ onOpenAlerts }: Props) {
     void mapWrapRef.current?.requestFullscreen?.()
   }
 
-  return <div className="page-stack">
+  return <div className="page-stack dashboard-home">
     <header className="page-title"><div><h1>홈</h1><p>현재 시스템 요약과 주요 현황을 한눈에 확인하세요.</p></div></header>
 
     <div className="metric-grid metric-grid-five">
@@ -68,15 +82,16 @@ export function DashboardPage({ onOpenAlerts }: Props) {
         <span className="dot-stat warn">주의 <b>{high}</b></span>
         <span className="dot-stat danger">위험 <b>{urgent}</b></span>
       </HomeMetric>
-      <HomeMetric icon="alert" label="긴급" tone="critical" unit="개소" value={String(urgent)}>즉시 확인 필요</HomeMetric>
-      <HomeMetric icon="warning" label="주의" tone="warning" unit="개소" value={String(high)}>우선 점검 권장</HomeMetric>
-      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>열린 알림 기준</HomeMetric>
+      {/* 전일 대비 증감 계약이 없어 시안과 동일한 고정 문구로 표시한다(데모). */}
+      <HomeMetric icon="alert" label="긴급" tone="critical" unit="개소" value={String(urgent)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
+      <HomeMetric icon="warning" label="주의" tone="warning" unit="개소" value={String(high)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
+      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>전일 대비 <b className="metric-delta">▲ 2</b></HomeMetric>
       <HomeMetric icon="document" label="대기 서류" tone="violet" unit="건" value={String(pendingDocs)}>운영자 검토 필요</HomeMetric>
     </div>
 
     <div className="home-grid">
       <SurfaceCard
-        action={<div className="map-legend"><span><i className="lg ok" />정상</span><span><i className="lg warn" />주의</span><span><i className="lg danger" />위험</span><span><i className="lg stale" />지연</span></div>}
+        action={<div className="map-legend"><span><i className="lg ok" />정상</span><span><i className="lg warn" />주의</span><span><i className="lg danger" />위험</span></div>}
         className="map-card"
         title="설비 위치 지도"
       >
@@ -88,18 +103,22 @@ export function DashboardPage({ onOpenAlerts }: Props) {
 
       <SurfaceCard action={<button className="text-link" onClick={onOpenAlerts} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
         <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
-        {shownAlerts.map((alert) => {
-          const urgentAlert = alert.priority_level === 'urgent'
-          const complexName = alert.substation_id != null ? complexById.get(alert.substation_id)?.name : undefined
-          const selected = selectedAlert?.alert_id === alert.alert_id
-          return (
-            <button aria-pressed={selected} className={`home-alert-row ${selected ? 'selected' : ''}`.trim()} key={alert.alert_id} onClick={() => setSelectedAlertId(alert.alert_id)} type="button">
-              <span className={`alert-symbol tone-${urgentAlert ? 'critical' : 'warning'}`}><Icon name={urgentAlert ? 'alert' : 'warning'} /></span>
-              <div><strong>{complexName ?? alert.manufacturer_id} (substation {alert.substation_id ?? '-'})</strong><small>{alert.enqueue_reason}</small></div>
-              <div className="home-alert-side"><StatusBadge tone={urgentAlert ? 'critical' : 'warning'}>{urgentAlert ? '긴급' : '경고'}</StatusBadge><time>{relativeTime(alert.created_at)}</time></div>
-            </button>
-          )
-        })}
+        {(() => {
+          let warningIndex = -1
+          return shownAlerts.map((alert) => {
+            const tone = alertDisplayTone(alert)
+            if (tone === 'warning') warningIndex += 1
+            const complexName = alert.substation_id != null ? complexById.get(alert.substation_id)?.name : undefined
+            const selected = selectedAlert?.alert_id === alert.alert_id
+            return (
+              <button aria-pressed={selected} className={`home-alert-row ${selected ? 'selected' : ''}`.trim()} key={alert.alert_id} onClick={() => setSelectedAlertId(alert.alert_id)} type="button">
+                <span className={`alert-symbol tone-${tone}`}><Icon name={ALERT_TONE_ICON[tone]} /></span>
+                <div><strong>{complexName ?? alert.manufacturer_id} (substation {alert.substation_id ?? '-'})</strong><small>{alert.enqueue_reason}</small></div>
+                <div className="home-alert-side"><StatusBadge tone={tone}>{ALERT_TONE_LABEL[tone]}</StatusBadge><span className="ack-deadline">{ackDeadlineLabel(tone, warningIndex)}</span></div>
+              </button>
+            )
+          })
+        })()}
       </SurfaceCard>
     </div>
 

@@ -14,14 +14,27 @@ import type {
   PriorityLevel,
   TokenUsage,
 } from './contracts'
-import { complexes, type Complex } from '../data/complexes'
+import type { Complex } from '../data/complexes'
 import { complexById } from '../domain/model'
 
-const priorityComplexes = complexes.filter((c) => c.id <= 15)
 const MOCK_EVALUATION_RUN_ID = 'evaluation-mock-latest'
 const BASE_MS = Date.parse('2026-07-09T09:00:00+09:00')
 
 const iso = (offsetMin: number): string => new Date(BASE_MS - offsetMin * 60000).toISOString()
+
+/**
+ * 홈 시안 재현용 열린 알림 7건(조치 필요 7건).
+ * substation 1은 긴급, 5는 점검 예정(홈에서 '안내' 톤으로 표시), 나머지는 경고.
+ */
+const ALERT_SEEDS: readonly { id: number; level: PriorityLevel; reason: string }[] = [
+  { id: 1, level: 'urgent', reason: '공급온도 과다 (83.3°C)' },
+  { id: 2, level: 'high', reason: '압력 상승 경향 (0.92 MPa)' },
+  { id: 3, level: 'high', reason: '환수온도 이상 (52.1°C)' },
+  { id: 4, level: 'high', reason: '유량 저하 (85.0 m³/h)' },
+  { id: 5, level: 'high', reason: '밸브 점검 예정 (07:00)' },
+  { id: 6, level: 'high', reason: '환수온도 편차 확대 감지' },
+  { id: 7, level: 'high', reason: '야간 유량 변동 관찰 필요' },
+]
 
 interface Store {
   alerts: Map<string, AlertSummary>
@@ -34,33 +47,29 @@ interface Store {
 function makeStore(): Store {
   const alerts = new Map<string, AlertSummary>()
   const alertComplex = new Map<string, number>()
-  priorityComplexes
-    .slice()
-    .sort((a, b) => a.id - b.id)
-    .forEach((c, i) => {
-      const alertId = `alert-${String(c.id).padStart(3, '0')}`
-      const cardId = `card-${String(c.id).padStart(3, '0')}`
-      const level: PriorityLevel = c.id <= 6 ? 'urgent' : 'high'
-      const score = Number((100 - c.id * 1.5).toFixed(3))
-      alerts.set(alertId, {
-        alert_id: alertId,
-        card_id: cardId,
-        evaluation_run_id: MOCK_EVALUATION_RUN_ID,
-        as_of_time: new Date(BASE_MS).toISOString(),
-        manufacturer_id: 'manufacturer 1',
-        substation_id: c.id,
-        priority_rank: c.id,
-        freshness_status: 'fresh',
-        priority_level: level,
-        priority_score: score,
-        status: 'open',
-        enqueue_reason: `${c.name} (substation ${c.id}) ${level} priority card`,
-        created_at: iso(i * 13),
-        acked_at: null,
-        acked_by: null,
-      })
-      alertComplex.set(alertId, c.id)
+  ALERT_SEEDS.forEach((seed, i) => {
+    const alertId = `alert-${String(seed.id).padStart(3, '0')}`
+    const cardId = `card-${String(seed.id).padStart(3, '0')}`
+    const score = Number((100 - seed.id * 1.5).toFixed(3))
+    alerts.set(alertId, {
+      alert_id: alertId,
+      card_id: cardId,
+      evaluation_run_id: MOCK_EVALUATION_RUN_ID,
+      as_of_time: new Date(BASE_MS).toISOString(),
+      manufacturer_id: 'manufacturer 1',
+      substation_id: seed.id,
+      priority_rank: seed.id,
+      freshness_status: 'fresh',
+      priority_level: seed.level,
+      priority_score: score,
+      status: 'open',
+      enqueue_reason: seed.reason,
+      created_at: iso(i * 13),
+      acked_at: null,
+      acked_by: null,
     })
+    alertComplex.set(alertId, seed.id)
+  })
   return { alerts, alertComplex, runs: new Map(), artifacts: new Map(), runSeq: 1 }
 }
 
