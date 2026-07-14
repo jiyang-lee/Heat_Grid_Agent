@@ -49,8 +49,8 @@ const JITTER = 0.14
 const DEFAULT_ROOM_COUNT = 12
 
 const CHART_W = 720
-const BAND_H = 45
-const BAND_GAP = 12
+const BAND_H = 49
+const BAND_GAP = 14
 const CHART_H = SERIES.length * (BAND_H + BAND_GAP) + BAND_GAP
 
 /** 결정적 PRNG(mulberry32) — 같은 설비면 항상 같은 곡선이 나오게. */
