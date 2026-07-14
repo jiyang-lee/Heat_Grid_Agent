@@ -393,19 +393,14 @@ class RagSearcher:
             }
 
     def log_agent_run(self, payload: dict[str, Any]) -> dict[str, Any]:
-        if self.pg_store is not None:
-            return self.pg_store.insert_agent_run(payload)
         from .pgstore import append_local_run_log
 
         return append_local_run_log(payload)
 
     def recent_runs(self, limit: int = 20) -> dict[str, Any]:
-        if self.pg_store is not None:
-            return self.pg_store.recent_runs(limit=limit)
-        return {
-            "status": "pgvector_disabled",
-            "runs": [],
-        }
+        from .pgstore import recent_local_run_logs
+
+        return recent_local_run_logs(limit=limit)
 
     def _serialize(self, item: ScoredChunk) -> dict[str, Any]:
         chunk = item.chunk

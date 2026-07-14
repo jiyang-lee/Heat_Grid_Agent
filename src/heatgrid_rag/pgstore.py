@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import uuid
 import re
 from pathlib import Path
 from typing import Any
@@ -39,29 +38,6 @@ def _psycopg():
     except ImportError:
         return None
     return psycopg
-
-
-def _to_int(value: Any) -> int | None:
-    if value in {None, ""}:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _parse_usage(usage: dict[str, Any] | None) -> dict[str, int | None]:
-    if not isinstance(usage, dict):
-        return {"input_tokens": None, "output_tokens": None, "total_tokens": None}
-    return {
-        "input_tokens": _to_int(usage.get("input_tokens")),
-        "output_tokens": _to_int(usage.get("output_tokens")),
-        "total_tokens": _to_int(usage.get("total_tokens")),
-    }
-
-
-def _mapping(value: Any) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
 
 
 class PgVectorStore:
@@ -115,14 +91,10 @@ class PgVectorStore:
                     cur.execute("select count(*) from substation_building_context")
                     site_row = cur.fetchone()
                     site_count = 0 if site_row is None else int(site_row[0])
-                    cur.execute("select count(*) from ops_agent_runs")
-                    run_row = cur.fetchone()
-                    run_count = 0 if run_row is None else int(run_row[0])
             return {
                 "status": "ok",
                 "chunk_count": chunk_count,
                 "site_count": site_count,
-                "run_count": run_count,
                 "roles": roles,
             }
         except Exception as exc:
@@ -262,151 +234,6 @@ class PgVectorStore:
             "chunks": chunks,
         }
 
-    def insert_agent_run(self, payload: dict[str, Any]) -> dict[str, Any]:
-        if self._psycopg is None:
-            return {"status": "missing_dependency", "message": "psycopg is not installed"}
-
-        output = _mapping(payload.get("output"))
-        external_context = _mapping(payload.get("external_context"))
-        row_identifier = _mapping(payload.get("row_identifier"))
-        usage_payload = _mapping(payload.get("openai_usage"))
-        usage = _parse_usage(_mapping(usage_payload.get("usage")))
-        site = _mapping(external_context.get("site"))
-        decision = _mapping(output.get("decision"))
-        output_evidence = _mapping(output.get("evidence"))
-        validation = _mapping(payload.get("validation"))
-        retrieval = _mapping(external_context.get("retrieval"))
-        run_id = str(payload.get("run_id") or uuid.uuid4())
-        substation_id = _to_int(row_identifier.get("substation_id") or site.get("substation_id"))
-
-        with self._psycopg.connect(self.database_url, connect_timeout=5) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    insert into ops_agent_runs (
-                        run_id, card_id, window_id, substation_id, apartment_name,
-                        window_start, window_end, priority, suspected_type, summary,
-                        action_plan, caution, model_name, prompt_version,
-                        input_tokens, output_tokens, total_tokens, latency_ms,
-                        validation_ok, status, output_json, external_context_json, validation_json
-                    )
-                    values (
-                        %s::uuid, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s,
-                        %s::jsonb, %s::jsonb, %s, %s,
-                        %s, %s, %s, %s,
-                        %s, %s, %s::jsonb, %s::jsonb, %s::jsonb
-                    )
-                    on conflict (run_id) do update set
-                        summary = excluded.summary,
-                        action_plan = excluded.action_plan,
-                        caution = excluded.caution,
-                        output_json = excluded.output_json,
-                        external_context_json = excluded.external_context_json,
-                        validation_json = excluded.validation_json
-                    """,
-                    (
-                        run_id,
-                        payload.get("card_id"),
-                        payload.get("window_id"),
-                        substation_id,
-                        site.get("apartment_name"),
-                        row_identifier.get("window_start"),
-                        row_identifier.get("window_end"),
-                        decision.get("priority"),
-                        output_evidence.get("m1_specialist"),
-                        output.get("summary"),
-                        json.dumps(output.get("action_plan") or [], ensure_ascii=False),
-                        json.dumps(output.get("caution") or [], ensure_ascii=False),
-                        usage_payload.get("model"),
-                        payload.get("prompt_version"),
-                        usage["input_tokens"],
-                        usage["output_tokens"],
-                        usage["total_tokens"],
-                        _to_int(payload.get("latency_ms")),
-                        bool(validation.get("valid")) if "valid" in validation else None,
-                        "ok",
-                        json.dumps(output, ensure_ascii=False),
-                        json.dumps(external_context, ensure_ascii=False),
-                        json.dumps(validation, ensure_ascii=False),
-                    ),
-                )
-
-                for rank, chunk in enumerate(retrieval.get("chunks") or [], start=1):
-                    cur.execute(
-                        """
-                        insert into ops_retrieval_hits (
-                            run_id, chunk_id, rank, score, document_type,
-                            rag_role, equipment_type, fault_type
-                        )
-                        values (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        (
-                            run_id,
-                            chunk.get("chunk_id"),
-                            rank,
-                            chunk.get("score"),
-                            chunk.get("document_title"),
-                            chunk.get("rag_role"),
-                            chunk.get("equipment_type"),
-                            chunk.get("fault_type"),
-                        ),
-                    )
-
-                for tool_name in output_evidence.get("used_tools") or []:
-                    cur.execute(
-                        """
-                        insert into ops_tool_calls (
-                            run_id, tool_name, tool_input, tool_output_summary, success
-                        )
-                        values (%s::uuid, %s, '{}'::jsonb, %s::jsonb, true)
-                        """,
-                        (
-                            run_id,
-                            tool_name,
-                            json.dumps({"card_id": payload.get("card_id")}, ensure_ascii=False),
-                        ),
-                    )
-            conn.commit()
-
-        return {"status": "ok", "run_id": run_id, "backend": "pgvector"}
-
-    def recent_runs(self, limit: int = 20) -> dict[str, Any]:
-        if self._psycopg is None:
-            return {"status": "missing_dependency", "runs": []}
-        with self._psycopg.connect(self.database_url, connect_timeout=5) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    select run_id::text, card_id, substation_id, apartment_name, priority,
-                           suspected_type, summary, total_tokens, latency_ms, created_at
-                    from ops_agent_runs
-                    order by created_at desc
-                    limit %s
-                    """,
-                    (max(1, min(int(limit or 20), 100)),),
-                )
-                rows = cur.fetchall()
-        return {
-            "status": "ok",
-            "runs": [
-                {
-                    "run_id": row[0],
-                    "card_id": row[1],
-                    "substation_id": row[2],
-                    "apartment_name": row[3],
-                    "priority": row[4],
-                    "suspected_type": row[5],
-                    "summary": row[6],
-                    "total_tokens": row[7],
-                    "latency_ms": row[8],
-                    "created_at": row[9].isoformat() if row[9] else None,
-                }
-                for row in rows
-            ],
-        }
-
-
 def append_local_run_log(payload: dict[str, Any]) -> dict[str, Any]:
     log_dir = ROOT / "output" / "ops_agent" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -417,3 +244,21 @@ def append_local_run_log(payload: dict[str, Any]) -> dict[str, Any]:
         "status": "local_logged",
         "path": str(log_path.relative_to(ROOT)),
     }
+
+
+def recent_local_run_logs(limit: int = 20) -> dict[str, Any]:
+    log_path = ROOT / "output" / "ops_agent" / "logs" / "ops_agent_runs.jsonl"
+    if not log_path.exists():
+        return {"status": "local_logged", "runs": []}
+
+    runs: list[dict[str, Any]] = []
+    for line in reversed(log_path.read_text(encoding="utf-8").splitlines()):
+        if len(runs) >= max(1, min(int(limit or 20), 100)):
+            break
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            runs.append(payload)
+    return {"status": "local_logged", "runs": runs}
