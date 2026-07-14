@@ -32,6 +32,7 @@ def test_v008_schema_contract_and_artifact_preflight_order() -> None:
     assert "blocked_legacy_input_unavailable" in sql
     assert "agent_run_tasks_one_graph_per_run_uidx" in sql
     assert "where task_key in ('agent_graph:v1', 'agent_graph:v2')" in sql
+    assert sql.count("owner to current_user") == 2
 
 
 def test_source_output_hash_uses_only_effective_output_fields() -> None:

@@ -23,6 +23,7 @@ ALTER TABLE public.sensor_summaries ALTER COLUMN display_rank SET DEFAULT 100;
 ALTER TABLE public.agent_budget_ledger DROP CONSTRAINT IF EXISTS agent_budget_ledger_check;
 
 ALTER SEQUENCE public.agent_run_events_event_id_seq OWNED BY NONE;
+ALTER SEQUENCE public.agent_run_events_event_id_seq OWNER TO CURRENT_USER;
 CREATE TABLE public.agent_run_events_v008 (
     event_id bigint NOT NULL DEFAULT nextval('public.agent_run_events_event_id_seq'::regclass),
     run_id uuid NOT NULL,
@@ -116,6 +117,7 @@ ALTER TABLE public.training_feedback ADD CONSTRAINT training_feedback_task_id_fk
 
 CREATE SEQUENCE IF NOT EXISTS public.priority_card_review_reasons_review_reason_id_seq;
 ALTER SEQUENCE public.priority_card_review_reasons_review_reason_id_seq OWNED BY NONE;
+ALTER SEQUENCE public.priority_card_review_reasons_review_reason_id_seq OWNER TO CURRENT_USER;
 CREATE TABLE public.priority_card_review_reasons_v008 (
     review_reason_id bigint NOT NULL DEFAULT nextval(
         'public.priority_card_review_reasons_review_reason_id_seq'::regclass

@@ -186,12 +186,6 @@ ADD CONSTRAINT substation_building_context_substation_uid_fkey
 FOREIGN KEY (substation_uid) REFERENCES public.substations(substation_uid)
 ON DELETE RESTRICT NOT VALID;
 
-ALTER TABLE public.windows DROP CONSTRAINT IF EXISTS windows_fault_event_id_fkey;
-ALTER TABLE public.windows
-ADD CONSTRAINT windows_fault_event_id_fkey
-FOREIGN KEY (fault_event_id) REFERENCES public.fault_events(fault_event_id)
-ON DELETE SET NULL NOT VALID;
-
 ALTER TABLE public.human_review_tasks ADD COLUMN IF NOT EXISTS subject_type text;
 ALTER TABLE public.human_review_tasks ADD COLUMN IF NOT EXISTS subject_key text;
 

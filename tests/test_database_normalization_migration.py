@@ -21,6 +21,11 @@ DATABASE_URL = os.getenv("HEATGRID_V3_REVIEW_TEST_DATABASE_URL")
 
 def test_database_normalization_contract() -> None:
     sql = MIGRATION.read_text(encoding="utf-8").lower()
+    allowlist = json.loads(
+        (ROOT / "migrations" / "id_reference_allowlist.json").read_text(
+            encoding="utf-8"
+        )
+    )
 
     assert "substation_uid uuid" in sql
     assert "primary key (substation_uid)" in sql
@@ -34,6 +39,8 @@ def test_database_normalization_contract() -> None:
     assert "drop table if exists public.feature_meta_map" in sql
     assert "drop table if exists public.llm_ops_notes" in sql
     assert "validate constraint" in sql
+    assert "windows_fault_event_id_fkey" not in sql
+    assert "windows.fault_event_id" in allowlist
 
 
 def test_natural_key_resolution_rejects_ambiguous_ids() -> None:

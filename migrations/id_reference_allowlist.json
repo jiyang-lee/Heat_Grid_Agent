@@ -11,6 +11,7 @@
   "sensor_readings.manufacturer_id",
   "sensor_readings.substation_id",
   "sensor_summaries.model_id",
+  "windows.fault_event_id",
   "windows.manufacturer_id",
   "windows.substation_id"
 ]
