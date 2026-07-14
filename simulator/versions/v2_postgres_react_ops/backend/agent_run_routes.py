@@ -11,6 +11,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_result_contract import build_ops_agent_result_v4
+from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
+from agent_input_snapshot_repository import get_agent_input_lineage
 from agent_loop_repository import list_agent_loop_iterations
 from agent_runner import (
     AgentRunRequest,
@@ -25,6 +27,7 @@ from agent_run_artifact_repository import (
     fail_agent_run_action,
     get_agent_run_artifact,
     get_agent_run_artifact_by_id,
+    get_effective_output_review_id,
     insert_agent_run_artifact,
     list_agent_run_artifacts,
 )
@@ -33,6 +36,7 @@ from agent_run_event_repository import (
     list_agent_run_events_after,
 )
 from agent_run_repository import (
+    AgentRunLineageLimitError,
     get_agent_run,
     record_agent_run_event,
     reserve_agent_run,
@@ -41,6 +45,7 @@ from alert_repository import get_alert
 from heatgrid_ops.agent.contracts import ReportWriteRequest
 from heatgrid_ops.agent.errors import AgentDependencyError
 from heatgrid_ops.agent.graph import AgentGraphInvoker
+from heatgrid_ops.agent.lineage import source_output_hash
 from heatgrid_ops.agent.models import OpsAgentOutput as CoreOpsAgentOutput
 from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
 from heatgrid_ops.agent.services import AgentRuntime
@@ -48,7 +53,6 @@ from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
     decide_action_execution,
 )
-from repository import fetch_ops_input
 from review_repository import get_automation_policy
 from schemas import (
     AgentReportCreateRequest,
@@ -90,15 +94,18 @@ def make_agent_run_router(
             alert_id=payload.alert_id,
             card_id=str(alert["card_id"]),
         )
-        queued, created = await reserve_agent_run(
-            engine,
-            run_id=request.run_id,
-            alert_id=request.alert_id,
-            card_id=request.card_id,
-            force_new=payload.force_new,
-            requested_by=payload.requested_by,
-            reason=payload.reason,
-        )
+        try:
+            queued, created = await reserve_agent_run(
+                engine,
+                run_id=request.run_id,
+                alert_id=request.alert_id,
+                card_id=request.card_id,
+                force_new=payload.force_new,
+                requested_by=payload.requested_by,
+                reason=payload.reason,
+            )
+        except AgentRunLineageLimitError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         if created or (
             queued.status in {"queued", "running"}
             and not is_agent_run_scheduled(queued.run_id)
@@ -113,6 +120,7 @@ def make_agent_run_router(
                 simulate_card,
                 runtime,
                 None if graph_provider is None else graph_provider(),
+                task_key=AGENT_GRAPH_TASK_KEY_V2,
             )
         return queued
 
@@ -220,10 +228,18 @@ async def _create_daily_report_artifact(
     run: AgentRunResponse,
     payload: AgentReportCreateRequest,
 ) -> AgentRunArtifact:
+    if run.ops_output is None:
+        raise HTTPException(status_code=409, detail="agent run result is not ready.")
+    effective_output = CoreOpsAgentOutput.model_validate(
+        run.ops_output.model_dump(mode="json")
+    )
+    output_hash = source_output_hash(effective_output)
+    source_review_id = await get_effective_output_review_id(engine, run.run_id)
     existing = await get_agent_run_artifact(
         engine,
         run_id=run.run_id,
         name="daily_report.json",
+        source_output_hash=output_hash,
     )
     policy = AutomationPolicySnapshot.model_validate(
         (await get_automation_policy(engine)).model_dump(mode="json")
@@ -259,17 +275,19 @@ async def _create_daily_report_artifact(
         return existing
     if execution.action != "execute":
         raise HTTPException(status_code=409, detail=execution.reason)
-    if run.ops_output is None:
-        raise HTTPException(status_code=409, detail="agent run result is not ready.")
-
-    source_input = await fetch_ops_input(engine, run.card_id)
-    if source_input is None:
-        raise HTTPException(status_code=404, detail="card_id를 찾을 수 없습니다.")
+    lineage = await get_agent_input_lineage(engine, run.run_id)
+    if lineage is None or lineage.status != "available" or lineage.source_input is None:
+        raise HTTPException(
+            status_code=409,
+            detail="legacy agent input snapshot is unavailable",
+        )
+    source_input = lineage.source_input
     external_context = await runtime.external_context_for(run.card_id, source_input)
+    action_name = f"daily_report:{output_hash}"
     claimed = await claim_agent_run_action(
         engine,
         run_id=run.run_id,
-        action_name="daily_report",
+        action_name=action_name,
         requested_by=payload.requested_by,
     )
     if not claimed:
@@ -278,6 +296,7 @@ async def _create_daily_report_artifact(
                 engine,
                 run_id=run.run_id,
                 name="daily_report.json",
+                source_output_hash=output_hash,
             )
             if existing is not None:
                 return existing
@@ -291,9 +310,8 @@ async def _create_daily_report_artifact(
                 card_id=run.card_id,
                 source_input=source_input,
                 evidence_context=external_context,
-                ops_output=CoreOpsAgentOutput.model_validate(
-                    run.ops_output.model_dump(mode="json")
-                ),
+                ops_output=effective_output,
+                source_output_hash=output_hash,
             )
         )
         artifact = await insert_agent_run_artifact(
@@ -302,6 +320,9 @@ async def _create_daily_report_artifact(
             kind=draft.kind,
             name=draft.name,
             uri=draft.uri,
+            source_output_hash=output_hash,
+            source_review_id=source_review_id,
+            contract_version="artifact.output-v2",
         )
     except (
         AgentDependencyError,
@@ -312,7 +333,7 @@ async def _create_daily_report_artifact(
         await fail_agent_run_action(
             engine,
             run_id=run.run_id,
-            action_name="daily_report",
+            action_name=action_name,
             error=str(exc),
         )
         await record_agent_run_event(
@@ -329,7 +350,7 @@ async def _create_daily_report_artifact(
     await complete_agent_run_action(
         engine,
         run_id=run.run_id,
-        action_name="daily_report",
+        action_name=action_name,
         artifact_id=artifact.artifact_id,
     )
 
@@ -344,6 +365,8 @@ async def _create_daily_report_artifact(
                 "name": artifact.name,
                 "uri": artifact.uri,
                 "requested_by": payload.requested_by,
+                "source_output_hash": output_hash,
+                "source_review_id": source_review_id,
             },
         ),
     )

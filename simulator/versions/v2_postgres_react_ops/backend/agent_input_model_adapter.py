@@ -7,6 +7,7 @@ from pathlib import Path
 from anyio.to_thread import run_sync
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_input_snapshot_repository import get_agent_input_lineage
 from alert_repository import get_alert
 from heatgrid_ops.agent.contracts import AgentInputSnapshot, AgentRunRequest
 from heatgrid_ops.agent.models import JsonObject, JsonValue
@@ -29,6 +30,11 @@ class PostgresAgentInputModelAdapter:
     engine: AsyncEngine
 
     async def load(self, request: AgentRunRequest) -> AgentInputSnapshot | None:
+        lineage = await get_agent_input_lineage(self.engine, request.run_id)
+        if lineage is not None and lineage.status == "available":
+            if lineage.source_input is None:
+                raise ValueError("available agent input snapshot is missing")
+            return AgentInputSnapshot(source_input=lineage.source_input)
         source_input = await fetch_ops_input(self.engine, request.card_id)
         if source_input is None:
             return None

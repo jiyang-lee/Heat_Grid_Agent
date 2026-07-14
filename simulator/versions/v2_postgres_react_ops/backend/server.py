@@ -13,6 +13,7 @@ from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from agent_error_mapping import install_agent_error_handlers
+from agent_graph_v2 import build_agent_graph_v2
 from agent_runner import resume_reclaimable_agent_runs
 from agent_runtime_factory import create_agent_graph_context, create_agent_runtime
 from heatgrid_ops.agent.graph import AgentGraphInvoker, build_agent_graph
@@ -64,7 +65,8 @@ agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
 
 @dataclass(slots=True)
 class AgentApplicationResources:
-    graph: AgentGraphInvoker | None = None
+    graph_v1: AgentGraphInvoker | None = None
+    graph_v2: AgentGraphInvoker | None = None
     checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] | None = None
 
 
@@ -72,7 +74,7 @@ agent_resources = AgentApplicationResources()
 
 
 def _agent_graph() -> AgentGraphInvoker | None:
-    return agent_resources.graph
+    return agent_resources.graph_v2
 
 
 def _psycopg_database_url(database_url: str) -> str:
@@ -102,20 +104,31 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await checkpoint_pool.open()
     try:
         checkpointer = AsyncPostgresSaver(checkpoint_pool)
-        graph = build_agent_graph(
+        graph_v1 = build_agent_graph(
             create_agent_graph_context(engine, agent_runtime),
             checkpointer=checkpointer,
         )
-        agent_resources.graph = graph
+        graph_v2 = build_agent_graph_v2(
+            graph_v1,
+            engine,
+            openai_model=settings.openai_model,
+            rag_quality_enabled=settings.rag_quality_enabled,
+            evidence_threshold=settings.agent_evidence_threshold,
+            model_score_tolerance=settings.model_score_tolerance,
+        )
+        agent_resources.graph_v1 = graph_v1
+        agent_resources.graph_v2 = graph_v2
         agent_resources.checkpoint_pool = checkpoint_pool
         await resume_reclaimable_agent_runs(
             engine,
             runtime=agent_runtime,
-            graph=graph,
+            graph=graph_v1,
+            v2_graph=graph_v2,
         )
         yield
     finally:
-        agent_resources.graph = None
+        agent_resources.graph_v1 = None
+        agent_resources.graph_v2 = None
         agent_resources.checkpoint_pool = None
         await checkpoint_pool.close()
 
@@ -278,7 +291,14 @@ app.include_router(
         graph_provider=_agent_graph,
     )
 )
-app.include_router(make_agent_review_router(engine))
+app.include_router(
+    make_agent_review_router(
+        engine,
+        settings,
+        agent_runtime,
+        _agent_graph,
+    )
+)
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 

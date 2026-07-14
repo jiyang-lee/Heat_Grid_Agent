@@ -61,7 +61,8 @@ async def load_review_snapshot_lineage(
                 "LEFT JOIN agent_budget_ledger diagnostic "
                 "ON diagnostic.parent_ledger_id = parent.ledger_id "
                 "AND diagnostic.operation_key = :diagnostic_operation_key "
-                "WHERE tasks.run_id = :run_id AND tasks.task_key = 'agent_graph:v1'"
+                "WHERE tasks.run_id = :run_id "
+                "AND tasks.task_key IN ('agent_graph:v1', 'agent_graph:v2')"
             ),
             {
                 "run_id": run_id,

@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     model_score_tolerance: float = Field(default=0.12, ge=0.0, le=1.0)
+    rag_quality_enabled: bool = False
     retrain_auto_execute_enabled: bool = False
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)

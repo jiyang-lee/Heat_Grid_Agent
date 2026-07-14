@@ -228,12 +228,12 @@ async def _seed(engine: AsyncEngine) -> None:
                 text(
                     "INSERT INTO agent_runs ("
                     "run_id, alert_id, card_id, substation_uid, manufacturer_id, substation_id, "
-                    "status, review_snapshot_expected, "
+                    "root_run_id, status, review_snapshot_expected, "
                     "created_at, updated_at"
                     ") VALUES ("
                     ":run_id, :alert_id, :card_id, (SELECT substation_uid FROM substations "
                     "WHERE manufacturer_id = 'maker' AND substation_id = 31), "
-                    "'maker', 31, :status, :expected, "
+                    "'maker', 31, :run_id, :status, :expected, "
                     ":created_at, :created_at"
                     ")"
                 ),

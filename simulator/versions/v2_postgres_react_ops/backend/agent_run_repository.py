@@ -21,9 +21,16 @@ from schemas import (
 
 ACTIVE_AGENT_RUN_STALE_AFTER_SECONDS: Final = 600
 
+
+class AgentRunLineageLimitError(RuntimeError):
+    def __str__(self) -> str:
+        return "agent run lineage depth limit reached"
+
+
 AGENT_RUN_SELECT: Final = (
     "SELECT run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
-    "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+    "substation_id, parent_run_id, root_run_id, lineage_depth, "
+    "trigger_type, requested_by, trigger_reason, "
     "NULL::uuid AS approved_action_task_id, "
     "status, agent_mode, "
     "CAST(COALESCE((SELECT correction FROM agent_run_reviews review "
@@ -98,6 +105,8 @@ async def reserve_agent_run(
                 ),
             )
             return _run_from_row(existing_row), False
+        if existing_row is not None and int(existing_row["lineage_depth"]) >= 2:
+            raise AgentRunLineageLimitError()
         run_row = await _insert_queued_agent_run(
             connection,
             run_id=run_id,
@@ -130,7 +139,8 @@ async def _insert_queued_agent_run(
     query = text(
         "INSERT INTO agent_runs ("
         "run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
-        "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+        "substation_id, parent_run_id, root_run_id, lineage_depth, "
+        "trigger_type, requested_by, trigger_reason, "
         "status"
         ") VALUES ("
         ":run_id, :alert_id, :card_id, "
@@ -138,7 +148,10 @@ async def _insert_queued_agent_run(
         "(SELECT substation_uid FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT manufacturer_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT substation_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
-        ":parent_run_id, :trigger_type, :requested_by, :trigger_reason, 'queued'"
+        ":parent_run_id, "
+        "COALESCE((SELECT root_run_id FROM agent_runs WHERE run_id = :parent_run_id), :run_id), "
+        "COALESCE((SELECT lineage_depth + 1 FROM agent_runs WHERE run_id = :parent_run_id), 0), "
+        ":trigger_type, :requested_by, :trigger_reason, 'queued'"
         ") "
         "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "

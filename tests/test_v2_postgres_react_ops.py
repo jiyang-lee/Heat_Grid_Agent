@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -15,6 +16,11 @@ BACKEND_DIR: Final = (
     ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 )
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
+
+
+@pytest.fixture
+def anyio_backend():
+    return ("asyncio", {"loop_factory": asyncio.SelectorEventLoop})
 
 
 def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
@@ -49,6 +55,16 @@ async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, obje
             return payload
         await asyncio.sleep(0.025)
     raise AssertionError(f"agent run {run_id} did not finish")
+
+
+async def wait_for_review_snapshot(client: AsyncClient, run_id: str) -> dict[str, object]:
+    for _ in range(200):
+        response = await client.get(f"/api/agent-runs/{run_id}/review")
+        payload = response.json()
+        if payload.get("status") == "available":
+            return payload
+        await asyncio.sleep(0.025)
+    raise AssertionError(f"agent run {run_id} review snapshot did not finish")
 
 
 @pytest.mark.anyio
@@ -365,6 +381,25 @@ async def test_agent_run_manual_rerun_requires_audited_reason(
             },
         )
         completed = await wait_for_agent_run(client, rerun.json()["run_id"])
+        second_rerun = await client.post(
+            "/api/agent-runs",
+            json={
+                "alert_id": alert["alert_id"],
+                "force_new": True,
+                "requested_by": "pytest",
+                "reason": "verify lineage depth two",
+            },
+        )
+        await wait_for_agent_run(client, second_rerun.json()["run_id"])
+        blocked_rerun = await client.post(
+            "/api/agent-runs",
+            json={
+                "alert_id": alert["alert_id"],
+                "force_new": True,
+                "requested_by": "pytest",
+                "reason": "must not exceed lineage depth two",
+            },
+        )
 
     assert invalid.status_code == 422
     assert rerun.status_code == 200
@@ -373,6 +408,9 @@ async def test_agent_run_manual_rerun_requires_audited_reason(
     assert rerun.json()["trigger_type"] == "manual_rerun"
     assert rerun.json()["requested_by"] == "pytest"
     assert completed["status"] == "completed"
+    assert second_rerun.status_code == 200
+    assert blocked_rerun.status_code == 409
+    assert blocked_rerun.json()["detail"] == "agent run lineage depth limit reached"
 
 
 @pytest.mark.anyio
@@ -535,6 +573,303 @@ async def test_daily_report_command_is_idempotent(
         / run["run_id"]
         / "daily_report.json"
     ).exists()
+
+
+@pytest.mark.anyio
+async def test_quality_review_creates_targeted_v2_child_with_stage_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    async with module.lifespan(module.app):
+        async with AsyncClient(
+            transport=ASGITransport(app=module.app),
+            base_url="http://test",
+        ) as client:
+            await client.post("/api/alerts/enqueue")
+            alert = (
+                await client.get("/api/alerts", params={"status": "open"})
+            ).json()[0]
+            created = await client.post(
+                "/api/agent-runs",
+                json={"alert_id": alert["alert_id"]},
+            )
+            parent = await wait_for_agent_run(client, created.json()["run_id"])
+            review = await client.post(
+                f"/api/agent-runs/{parent['run_id']}/reviews",
+                json={
+                    "expected_review_version": 0,
+                    "idempotency_key": f"quality-rerun-{uuid4()}",
+                    "decision": "keep_human_review",
+                    "reviewer": "pytest",
+                    "reason": "fault analysis requires reassessment",
+                    "reason_category": "fault_analysis_insufficient",
+                    "disposition": "urgent_review",
+                },
+            )
+
+            async with module.engine.connect() as connection:
+                rerun = (
+                    await connection.execute(
+                        text(
+                            "SELECT request.child_run_id, request.status, "
+                            "request.target_stage, child.parent_run_id, "
+                            "child.root_run_id, child.lineage_depth, "
+                            "task.task_key, task.operation_key "
+                            "FROM agent_rerun_requests request "
+                            "JOIN agent_runs child ON child.run_id = request.child_run_id "
+                            "JOIN agent_run_tasks task ON task.run_id = child.run_id "
+                            "WHERE request.source_review_id = :review_id"
+                        ),
+                        {"review_id": review.json()["review_id"]},
+                    )
+                ).mappings().one()
+
+            child = await wait_for_agent_run(client, str(rerun["child_run_id"]))
+            parent_review_snapshot = await wait_for_review_snapshot(
+                client,
+                parent["run_id"],
+            )
+            child_review_snapshot = await wait_for_review_snapshot(
+                client,
+                child["run_id"],
+            )
+
+    async with module.engine.connect() as connection:
+        parent_stages = (
+            await connection.execute(
+                text(
+                    "SELECT stage_name, execution_status, quality_status, score "
+                    "FROM agent_stage_snapshots WHERE run_id = :run_id "
+                    "ORDER BY created_at, stage_name"
+                ),
+                {"run_id": parent["run_id"]},
+            )
+        ).mappings().all()
+        child_stages = (
+            await connection.execute(
+                text(
+                    "SELECT stage_name, execution_status, reused_from_snapshot_id "
+                    "FROM agent_stage_snapshots WHERE run_id = :run_id"
+                ),
+                {"run_id": child["run_id"]},
+            )
+        ).mappings().all()
+
+    parent_by_name = {str(row["stage_name"]): row for row in parent_stages}
+    child_by_name = {str(row["stage_name"]): row for row in child_stages}
+    assert review.status_code == 200
+    assert rerun["status"] == "scheduled"
+    assert rerun["target_stage"] == "fault_analysis"
+    assert str(rerun["parent_run_id"]) == parent["run_id"]
+    assert str(rerun["root_run_id"]) == parent["run_id"]
+    assert rerun["lineage_depth"] == 1
+    assert rerun["task_key"] == "agent_graph:v2"
+    assert rerun["operation_key"] == f"agent-graph:{child['run_id']}"
+    assert child["status"] == "completed"
+    assert parent_review_snapshot["status"] == "available"
+    assert child_review_snapshot["status"] == "available"
+    assert len(parent_stages) == 9
+    assert parent_by_name["rag_retrieval"]["execution_status"] == "passed"
+    assert parent_by_name["rag_retrieval"]["quality_status"] == "skipped"
+    assert parent_by_name["rag_retrieval"]["score"] is None
+    assert child_by_name["ml_validation"]["execution_status"] == "reused"
+    assert child_by_name["ml_validation"]["reused_from_snapshot_id"] is not None
+
+
+@pytest.mark.anyio
+async def test_startup_reclaim_dispatches_v1_and_v2_graph_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+    run_repository = importlib.import_module("agent_run_repository")
+    v1_run_id = str(uuid4())
+    v2_run_id = str(uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+
+    await run_repository.create_queued_agent_run(
+        module.engine,
+        run_id=v1_run_id,
+        alert_id=alert["alert_id"],
+        card_id=alert["card_id"],
+    )
+    await run_repository.create_queued_agent_run(
+        module.engine,
+        run_id=v2_run_id,
+        alert_id=alert["alert_id"],
+        card_id=alert["card_id"],
+    )
+    async with module.engine.begin() as connection:
+        for run_id, task_key in (
+            (v1_run_id, "agent_graph:v1"),
+            (v2_run_id, "agent_graph:v2"),
+        ):
+            await connection.execute(
+                text(
+                    "INSERT INTO agent_run_tasks ("
+                    "task_id, run_id, task_key, operation_key, checkpoint_thread_id, "
+                    "status, input_snapshot) VALUES ("
+                    ":task_id, :run_id, :task_key, :operation_key, "
+                    ":checkpoint_thread_id, "
+                    "'queued', CAST(:input_snapshot AS jsonb))"
+                ),
+                {
+                    "task_id": str(uuid4()),
+                    "run_id": run_id,
+                    "task_key": task_key,
+                    "operation_key": f"agent-graph:{run_id}",
+                    "checkpoint_thread_id": run_id,
+                    "input_snapshot": orjson.dumps(
+                        {
+                            "run_id": run_id,
+                            "alert_id": alert["alert_id"],
+                            "card_id": alert["card_id"],
+                        }
+                    ).decode("utf-8"),
+                },
+            )
+
+    async with module.lifespan(module.app):
+        async with AsyncClient(
+            transport=ASGITransport(app=module.app),
+            base_url="http://test",
+        ) as client:
+            v1_run = await wait_for_agent_run(client, v1_run_id)
+            v2_run = await wait_for_agent_run(client, v2_run_id)
+            await wait_for_review_snapshot(client, v1_run_id)
+            await wait_for_review_snapshot(client, v2_run_id)
+
+    async with module.engine.connect() as connection:
+        task_rows = (
+            await connection.execute(
+                text(
+                    "SELECT run_id, task_key, status FROM agent_run_tasks "
+                    "WHERE run_id IN (:v1_run_id, :v2_run_id) ORDER BY task_key"
+                ),
+                {"v1_run_id": v1_run_id, "v2_run_id": v2_run_id},
+            )
+        ).mappings().all()
+        v1_stage_count = await connection.scalar(
+            text("SELECT count(*) FROM agent_stage_snapshots WHERE run_id = :run_id"),
+            {"run_id": v1_run_id},
+        )
+        v2_stage_count = await connection.scalar(
+            text("SELECT count(*) FROM agent_stage_snapshots WHERE run_id = :run_id"),
+            {"run_id": v2_run_id},
+        )
+
+    assert v1_run["status"] == "completed"
+    assert v2_run["status"] == "completed"
+    assert [(row["task_key"], row["status"]) for row in task_rows] == [
+        ("agent_graph:v1", "completed"),
+        ("agent_graph:v2", "completed"),
+    ]
+    assert v1_stage_count == 0
+    assert v2_stage_count == 9
+
+
+@pytest.mark.anyio
+async def test_daily_report_versions_follow_effective_output_corrections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    await reset_contract_tables(module)
+
+    import agent_report_writer_adapter
+
+    from heatgrid_ops.agent.run_models import ReportArtifactDraft
+
+    report_summaries: list[str] = []
+
+    async def write_daily_report(_writer, request) -> ReportArtifactDraft:
+        report_summaries.append(request.ops_output.summary)
+        return ReportArtifactDraft(
+            kind="daily_report",
+            name="daily_report.json",
+            uri=(
+                f"output/ops_agent/reports/{request.run_id}/"
+                f"{request.source_output_hash}/daily_report.json"
+            ),
+        )
+
+    monkeypatch.setattr(
+        agent_report_writer_adapter.LocalReportWriterAdapter,
+        "write_daily",
+        write_daily_report,
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app),
+        base_url="http://test",
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        run = await wait_for_agent_run(client, created.json()["run_id"])
+        first_report = await client.post(
+            f"/api/agent-runs/{run['run_id']}/reports/daily",
+            json={"requested_by": "pytest"},
+        )
+        correction = await client.post(
+            f"/api/agent-runs/{run['run_id']}/reviews",
+            json={
+                "expected_review_version": 0,
+                "idempotency_key": f"report-correction-{uuid4()}",
+                "decision": "correct",
+                "reviewer": "pytest",
+                "reason": "clarify the operator report",
+                "disposition": "inspection_recommended",
+                "correction": {
+                    "summary": "operator corrected summary",
+                    "action_plan": "inspect the heat exchanger",
+                    "caution": "isolate the circuit before inspection",
+                },
+            },
+        )
+        second_report = await client.post(
+            f"/api/agent-runs/{run['run_id']}/reports/daily",
+            json={"requested_by": "pytest"},
+        )
+
+    async with module.engine.connect() as connection:
+        artifacts = (
+            await connection.execute(
+                text(
+                    "SELECT source_output_hash, source_review_id, contract_version "
+                    "FROM agent_run_artifacts WHERE run_id = :run_id "
+                    "AND name = 'daily_report.json' ORDER BY created_at"
+                ),
+                {"run_id": run["run_id"]},
+            )
+        ).mappings().all()
+        action_count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM agent_run_actions WHERE run_id = :run_id "
+                "AND action_name LIKE 'daily_report:%'"
+            ),
+            {"run_id": run["run_id"]},
+        )
+
+    assert first_report.status_code == 200
+    assert correction.status_code == 200
+    assert second_report.status_code == 200
+    assert report_summaries[-1] == "operator corrected summary"
+    assert len(artifacts) == 2
+    assert artifacts[0]["source_output_hash"] != artifacts[1]["source_output_hash"]
+    assert artifacts[0]["source_review_id"] is None
+    assert str(artifacts[1]["source_review_id"]) == correction.json()["review_id"]
+    assert {row["contract_version"] for row in artifacts} == {"artifact.output-v2"}
+    assert action_count == 2
 
 
 @pytest.mark.anyio

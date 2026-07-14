@@ -12,7 +12,10 @@ from agent_budget_repository import reserve_parent_budget, settle_parent_budget
 from heatgrid_ops.agent.models import JsonObject
 
 
-AGENT_GRAPH_TASK_KEY: Final = "agent_graph:v1"
+AGENT_GRAPH_TASK_KEY_V1: Final = "agent_graph:v1"
+AGENT_GRAPH_TASK_KEY_V2: Final = "agent_graph:v2"
+AGENT_GRAPH_TASK_KEY: Final = AGENT_GRAPH_TASK_KEY_V1
+AGENT_GRAPH_TASK_KEYS: Final = (AGENT_GRAPH_TASK_KEY_V1, AGENT_GRAPH_TASK_KEY_V2)
 TASK_LEASE_SECONDS: Final = 120
 
 
@@ -29,6 +32,7 @@ class ReclaimableAgentRun:
     run_id: str
     alert_id: str
     card_id: str
+    task_key: str
 
 
 async def claim_agent_graph_task(
@@ -36,6 +40,11 @@ async def claim_agent_graph_task(
     *,
     run_id: str,
     input_snapshot: JsonObject,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
+    input_schema_version: str | None = None,
+    input_hash: str | None = None,
+    input_snapshot_origin: str = "native_v2",
+    input_snapshot_status: str = "unavailable",
 ) -> AgentTaskClaim:
     lease_owner = str(uuid4())
     async with engine.begin() as connection:
@@ -43,7 +52,16 @@ async def claim_agent_graph_task(
             text("SELECT pg_advisory_xact_lock(hashtext(:operation_key))"),
             {"operation_key": _task_operation_key(run_id)},
         )
-        task_id = await _ensure_task(connection, run_id, input_snapshot)
+        task_id = await _ensure_task(
+            connection,
+            run_id,
+            input_snapshot,
+            task_key=task_key,
+            input_schema_version=input_schema_version,
+            input_hash=input_hash,
+            input_snapshot_origin=input_snapshot_origin,
+            input_snapshot_status=input_snapshot_status,
+        )
         await reserve_parent_budget(connection, run_id=run_id, task_id=task_id)
         result = await connection.execute(
             text(
@@ -65,7 +83,7 @@ async def claim_agent_graph_task(
             {
                 "run_id": run_id,
                 "checkpoint_thread_id": run_id,
-                "task_key": AGENT_GRAPH_TASK_KEY,
+                "task_key": task_key,
                 "lease_owner": lease_owner,
                 "lease_seconds": TASK_LEASE_SECONDS,
             },
@@ -88,6 +106,7 @@ async def complete_agent_graph_task(
     lease_owner: str,
     output_snapshot: JsonObject,
     tokens_used: int,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
 ) -> None:
     async with engine.begin() as connection:
         task_result = await connection.execute(
@@ -106,7 +125,7 @@ async def complete_agent_graph_task(
             {
                 "run_id": run_id,
                 "checkpoint_thread_id": run_id,
-                "task_key": AGENT_GRAPH_TASK_KEY,
+                "task_key": task_key,
                 "lease_owner": lease_owner,
                 "output_snapshot": _json(output_snapshot),
             },
@@ -126,6 +145,7 @@ async def release_agent_graph_task(
     run_id: str,
     lease_owner: str,
     error: str,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
 ) -> bool:
     async with engine.begin() as connection:
         result = await connection.execute(
@@ -146,7 +166,7 @@ async def release_agent_graph_task(
             {
                 "run_id": run_id,
                 "checkpoint_thread_id": run_id,
-                "task_key": AGENT_GRAPH_TASK_KEY,
+                "task_key": task_key,
                 "lease_owner": lease_owner,
                 "error": error[:2000],
             },
@@ -159,21 +179,22 @@ async def list_reclaimable_agent_runs(
     engine: AsyncEngine,
 ) -> list[ReclaimableAgentRun]:
     query = text(
-        "SELECT runs.run_id, runs.alert_id, runs.card_id "
+        "SELECT runs.run_id, runs.alert_id, runs.card_id, tasks.task_key "
         "FROM agent_run_tasks tasks "
         "JOIN agent_runs runs ON runs.run_id = tasks.run_id "
-        "WHERE tasks.task_key = :task_key AND tasks.attempt_count < tasks.max_attempts "
+        "WHERE tasks.task_key = ANY(:task_keys) AND tasks.attempt_count < tasks.max_attempts "
         "AND (tasks.status = 'queued' OR (tasks.status = 'running' "
         "AND tasks.lease_expires_at <= now())) "
         "AND runs.status IN ('queued', 'running') ORDER BY tasks.created_at"
     )
     async with engine.connect() as connection:
-        result = await connection.execute(query, {"task_key": AGENT_GRAPH_TASK_KEY})
+        result = await connection.execute(query, {"task_keys": list(AGENT_GRAPH_TASK_KEYS)})
     return [
         ReclaimableAgentRun(
             run_id=str(row["run_id"]),
             alert_id=str(row["alert_id"]),
             card_id=str(row["card_id"]),
+            task_key=str(row["task_key"]),
         )
         for row in result.mappings().all()
     ]
@@ -183,26 +204,42 @@ async def _ensure_task(
     connection: AsyncConnection,
     run_id: str,
     input_snapshot: JsonObject,
+    *,
+    task_key: str,
+    input_schema_version: str | None,
+    input_hash: str | None,
+    input_snapshot_origin: str,
+    input_snapshot_status: str,
 ) -> str:
     task_id = str(uuid4())
     result = await connection.execute(
         text(
             "INSERT INTO agent_run_tasks ("
-            "task_id, run_id, task_key, operation_key, checkpoint_thread_id, input_snapshot"
+            "task_id, run_id, task_key, operation_key, checkpoint_thread_id, input_snapshot, "
+            "input_schema_version, input_hash, input_snapshot_origin, input_snapshot_status"
             ") VALUES ("
             ":task_id, :run_id, :task_key, :operation_key, :checkpoint_thread_id, "
-            "CAST(:input_snapshot AS jsonb)) "
+            "CAST(:input_snapshot AS jsonb), :input_schema_version, :input_hash, "
+            ":input_snapshot_origin, :input_snapshot_status) "
             "ON CONFLICT (run_id, task_key) DO UPDATE SET "
-            "input_snapshot = COALESCE(agent_run_tasks.input_snapshot, EXCLUDED.input_snapshot) "
+            "input_snapshot = COALESCE(agent_run_tasks.input_snapshot, EXCLUDED.input_snapshot), "
+            "input_schema_version = COALESCE(agent_run_tasks.input_schema_version, "
+            "EXCLUDED.input_schema_version), input_hash = COALESCE(agent_run_tasks.input_hash, "
+            "EXCLUDED.input_hash), input_snapshot_origin = EXCLUDED.input_snapshot_origin, "
+            "input_snapshot_status = EXCLUDED.input_snapshot_status "
             "RETURNING task_id"
         ),
         {
             "task_id": task_id,
             "run_id": run_id,
-            "task_key": AGENT_GRAPH_TASK_KEY,
+            "task_key": task_key,
             "operation_key": _task_operation_key(run_id),
             "checkpoint_thread_id": run_id,
             "input_snapshot": _json(input_snapshot),
+            "input_schema_version": input_schema_version,
+            "input_hash": input_hash,
+            "input_snapshot_origin": input_snapshot_origin,
+            "input_snapshot_status": input_snapshot_status,
         },
     )
     return str(result.scalar_one())

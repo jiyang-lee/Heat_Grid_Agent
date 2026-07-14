@@ -30,14 +30,23 @@ async def get_agent_run_artifact(
     *,
     run_id: str,
     name: str,
+    source_output_hash: str | None = None,
 ) -> AgentRunArtifact | None:
     query = text(
         "SELECT artifact_id, run_id, kind, name, uri "
         "FROM agent_run_artifacts WHERE run_id = :run_id AND name = :name "
+        "AND source_output_hash IS NOT DISTINCT FROM :source_output_hash "
         "ORDER BY created_at LIMIT 1"
     )
     async with engine.connect() as connection:
-        result = await connection.execute(query, {"run_id": run_id, "name": name})
+        result = await connection.execute(
+            query,
+            {
+                "run_id": run_id,
+                "name": name,
+                "source_output_hash": source_output_hash,
+            },
+        )
     row = result.mappings().one_or_none()
     return None if row is None else _artifact_from_row(row)
 
@@ -60,6 +69,23 @@ async def get_agent_run_artifact_by_id(
         )
     row = result.mappings().one_or_none()
     return None if row is None else _artifact_from_row(row)
+
+
+async def get_effective_output_review_id(
+    engine: AsyncEngine,
+    run_id: str,
+) -> str | None:
+    async with engine.connect() as connection:
+        result = await connection.execute(
+            text(
+                "SELECT review_id FROM agent_run_reviews "
+                "WHERE run_id = :run_id AND correction IS NOT NULL "
+                "ORDER BY review_version DESC LIMIT 1"
+            ),
+            {"run_id": run_id},
+        )
+    review_id = result.scalar_one_or_none()
+    return None if review_id is None else str(review_id)
 
 
 async def claim_agent_run_action(
@@ -137,12 +163,18 @@ async def insert_agent_run_artifact(
     name: str,
     uri: str,
     artifact_id: str | None = None,
+    source_output_hash: str | None = None,
+    source_review_id: str | None = None,
+    contract_version: str | None = None,
 ) -> AgentRunArtifact:
     artifact_id = artifact_id or str(uuid4())
     query = text(
-        "INSERT INTO agent_run_artifacts (artifact_id, run_id, kind, name, uri) "
-        "VALUES (:artifact_id, :run_id, :kind, :name, :uri) "
-        "ON CONFLICT (run_id, name) DO UPDATE SET "
+        "INSERT INTO agent_run_artifacts ("
+        "artifact_id, run_id, kind, name, uri, source_output_hash, source_review_id, "
+        "contract_version) VALUES ("
+        ":artifact_id, :run_id, :kind, :name, :uri, :source_output_hash, "
+        ":source_review_id, :contract_version) "
+        "ON CONFLICT (run_id, name, source_output_hash) DO UPDATE SET "
         "kind = EXCLUDED.kind, uri = EXCLUDED.uri "
         "RETURNING artifact_id, run_id, kind, name, uri"
     )
@@ -155,6 +187,14 @@ async def insert_agent_run_artifact(
                 "kind": kind,
                 "name": name,
                 "uri": uri,
+                "source_output_hash": source_output_hash,
+                "source_review_id": source_review_id,
+                "contract_version": contract_version
+                or (
+                    "artifact.legacy-v1"
+                    if source_output_hash is None
+                    else "artifact.output-v2"
+                ),
             },
         )
     return _artifact_from_row(result.mappings().one())

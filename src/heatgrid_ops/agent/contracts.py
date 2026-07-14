@@ -139,3 +139,4 @@ class ReportWriteRequest(BaseModel):
     source_input: JsonObject
     evidence_context: JsonObject
     ops_output: OpsAgentOutput
+    source_output_hash: str | None = None

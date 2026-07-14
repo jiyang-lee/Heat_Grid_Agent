@@ -26,12 +26,20 @@ class LocalReportWriterAdapter:
         request: ReportWriteRequest,
     ) -> ReportArtifactDraft:
         self._require_key()
-        path = self._report_path(request.run_id, "anomaly_report.json")
+        path = self._report_path(
+            request.run_id,
+            "anomaly_report.json",
+            request.source_output_hash,
+        )
         await run_sync(partial(self._write_anomaly_sync, request, path))
         return ReportArtifactDraft(
             kind="anomaly_report",
             name="anomaly_report.json",
-            uri=self._report_uri(request.run_id, "anomaly_report.json"),
+            uri=self._report_uri(
+                request.run_id,
+                "anomaly_report.json",
+                request.source_output_hash,
+            ),
         )
 
     async def write_daily(
@@ -39,12 +47,20 @@ class LocalReportWriterAdapter:
         request: ReportWriteRequest,
     ) -> ReportArtifactDraft:
         self._require_key()
-        path = self._report_path(request.run_id, "daily_report.json")
+        path = self._report_path(
+            request.run_id,
+            "daily_report.json",
+            request.source_output_hash,
+        )
         await run_sync(partial(self._write_daily_sync, request, path))
         return ReportArtifactDraft(
             kind="daily_report",
             name="daily_report.json",
-            uri=self._report_uri(request.run_id, "daily_report.json"),
+            uri=self._report_uri(
+                request.run_id,
+                "daily_report.json",
+                request.source_output_hash,
+            ),
         )
 
     def _write_anomaly_sync(self, request: ReportWriteRequest, path: Path) -> None:
@@ -89,12 +105,23 @@ class LocalReportWriterAdapter:
         if self.api_key is None and not self.mock:
             raise MissingApiKeyError()
 
-    def _report_path(self, run_id: str, filename: str) -> Path:
-        return self.output_root / "ops_agent" / "reports" / run_id / filename
+    def _report_path(
+        self,
+        run_id: str,
+        filename: str,
+        source_output_hash: str | None = None,
+    ) -> Path:
+        root = self.output_root / "ops_agent" / "reports" / run_id
+        return root / filename if source_output_hash is None else root / source_output_hash / filename
 
     @staticmethod
-    def _report_uri(run_id: str, filename: str) -> str:
-        return f"output/ops_agent/reports/{run_id}/{filename}"
+    def _report_uri(
+        run_id: str,
+        filename: str,
+        source_output_hash: str | None = None,
+    ) -> str:
+        version = "" if source_output_hash is None else f"{source_output_hash}/"
+        return f"output/ops_agent/reports/{run_id}/{version}{filename}"
 
 
 def default_report_output_root() -> Path:

@@ -231,7 +231,7 @@ async def test_operator_review_submit_maps_stale_version_to_409(
 ) -> None:
     from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
 
-    async def stale_submit_operator_review(_engine, _run_id, _request):
+    async def stale_submit_operator_review(_engine, _run_id, _request, **_kwargs):
         raise agent_review_routes.StaleReviewVersionError(
             run_id="00000000-0000-0000-0000-000000000002"
         )

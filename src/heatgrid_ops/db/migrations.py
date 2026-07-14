@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+from importlib.util import module_from_spec, spec_from_file_location
 from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Final, Literal
@@ -11,6 +12,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg import AsyncConnection, sql
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
+
+from heatgrid_ops.db.migration_hook_registry import get_data_hook
 
 
 MIGRATION_LOCK_KEY: Final = "heatgrid:database-migrations"
@@ -27,6 +30,47 @@ CHECKPOINT_INDEXES: Final = frozenset(
         "checkpoint_writes_thread_id_idx",
     }
 )
+APPLICATION_TABLES_V008: Final = frozenset(
+    {
+        "agent_budget_ledger",
+        "agent_loop_iterations",
+        "agent_policy_candidates",
+        "agent_rerun_requests",
+        "agent_run_actions",
+        "agent_run_artifacts",
+        "agent_run_events",
+        "agent_run_review_snapshots",
+        "agent_run_reviews",
+        "agent_run_tasks",
+        "agent_runs",
+        "agent_stage_snapshots",
+        "automation_policy",
+        "evidence_candidates",
+        "fault_events",
+        "human_review_tasks",
+        "model_candidates",
+        "model_deployments",
+        "model_feature_snapshots",
+        "model_outputs",
+        "model_runs",
+        "ops_alert_queue",
+        "priority_card_review_reasons",
+        "priority_cards",
+        "priority_decisions",
+        "priority_evaluation_results",
+        "priority_evaluation_runs",
+        "rag_chunks",
+        "rag_documents",
+        "retrain_jobs",
+        "schema_migrations",
+        "sensor_readings",
+        "sensor_summaries",
+        "substation_building_context",
+        "substations",
+        "training_feedback",
+        "windows",
+    }
+)
 ROOT: Final = Path(__file__).resolve().parents[3]
 MIGRATIONS_DIR: Final = ROOT / "migrations"
 
@@ -41,6 +85,7 @@ class Migration:
     name: str
     path: Path
     checksum: str
+    hook_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +107,13 @@ def load_migrations(directory: Path = MIGRATIONS_DIR) -> tuple[Migration, ...]:
             digest.update(b"\x00data-hook\x00")
             digest.update(hook.read_bytes())
         migrations.append(
-            Migration(version=version, name=name, path=path, checksum=digest.hexdigest())
+            Migration(
+                version=version,
+                name=name,
+                path=path,
+                checksum=digest.hexdigest(),
+                hook_path=hook if hook.exists() else None,
+            )
         )
     expected = list(range(len(migrations)))
     actual = [migration.version for migration in migrations]
@@ -135,6 +186,7 @@ async def migrate_database(
                             apply_mode="executed",
                         )
                 await _assert_applied_checksums(connection, migrations)
+                await _verify_application_catalog(connection, migrations[-1].version)
                 await _refresh_latest_contract(connection, migrations, manifest_hash)
             finally:
                 await connection.execute(
@@ -178,6 +230,7 @@ async def verify_database_contract(database_url: str) -> None:
             if row["checkpoint_schema_signature"] != signatures.checkpoint:
                 raise MigrationContractError("checkpoint schema signature mismatch")
             await _verify_checkpoint_catalog(connection)
+            await _verify_application_catalog(connection, migrations[-1].version)
     finally:
         await pool.close()
 
@@ -281,6 +334,8 @@ async def _apply_migration(
         return
     async with connection.transaction():
         await connection.execute(migration.path.read_bytes(), prepare=False)
+        await _run_data_hook(connection, migration)
+        await _verify_application_catalog(connection, migration.version)
         signatures = await calculate_schema_signatures(connection)
         await _insert_ledger(
             connection,
@@ -290,6 +345,28 @@ async def _apply_migration(
             application_signature=signatures.application,
             checkpoint_signature=signatures.checkpoint,
         )
+
+
+async def _run_data_hook(
+    connection: AsyncConnection[DictRow],
+    migration: Migration,
+) -> None:
+    if migration.hook_path is None:
+        return
+    module_name = f"heatgrid_migration_hook_{migration.version:03d}"
+    spec = spec_from_file_location(module_name, migration.hook_path)
+    if spec is None or spec.loader is None:
+        raise MigrationContractError(
+            f"cannot load data hook for migration {migration.version:03d}"
+        )
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    hook = get_data_hook(migration.version)
+    if hook is None:
+        raise MigrationContractError(
+            f"data hook did not register migration {migration.version:03d}"
+        )
+    await hook(connection)
 
 
 async def _apply_checkpoint_migration(
@@ -474,6 +551,25 @@ async def _verify_checkpoint_catalog(connection: AsyncConnection[DictRow]) -> No
     versions = list(version_row["versions"] or [])
     if versions != list(range(10)):
         raise MigrationContractError(f"checkpoint migration versions mismatch: {versions}")
+
+
+async def _verify_application_catalog(
+    connection: AsyncConnection[DictRow],
+    version: int,
+) -> None:
+    if version < 8:
+        return
+    result = await connection.execute(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+        "AND NOT (tablename = ANY(%s)) ORDER BY tablename",
+        (list(CHECKPOINT_TABLES),),
+    )
+    actual = {str(row["tablename"]) for row in await result.fetchall()}
+    if actual != APPLICATION_TABLES_V008:
+        raise MigrationContractError(
+            "application tables mismatch: "
+            f"expected={sorted(APPLICATION_TABLES_V008)}, actual={sorted(actual)}"
+        )
 
 
 async def _catalog_payload(

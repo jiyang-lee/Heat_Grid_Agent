@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import uuid4
 
 import orjson
@@ -15,6 +15,11 @@ from agent_review_api_models import (
     OperatorReviewHistoryResponse,
     OperatorReviewRecordResponse,
     OperatorReviewSubmitRequest,
+)
+from agent_rerun_repository import (
+    TargetedChildRun,
+    create_targeted_child_run,
+    mark_rerun_scheduled,
 )
 
 
@@ -39,6 +44,10 @@ class UnknownRunError(RuntimeError):
 class IdempotencyConflictError(RuntimeError):
     def __str__(self) -> str:
         return "idempotency key was already used with a different request"
+
+
+class TargetedChildScheduler(Protocol):
+    def __call__(self, child: TargetedChildRun) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,9 +77,13 @@ async def submit_operator_review(
     engine: AsyncEngine,
     run_id: str,
     request: OperatorReviewSubmitRequest,
+    *,
+    rag_quality_enabled: bool = False,
+    schedule_child: TargetedChildScheduler | None = None,
 ) -> OperatorReviewRecordResponse:
+    child: TargetedChildRun | None = None
     async with engine.begin() as connection:
-        return await record_review(
+        review = await record_review(
             connection,
             ReviewRecordInput(
                 run_id=run_id,
@@ -90,6 +103,19 @@ async def submit_operator_review(
                 expected_review_version=request.expected_review_version,
             ),
         )
+        child = await create_targeted_child_run(
+            connection,
+            review=review,
+            rag_quality_enabled=rag_quality_enabled,
+        )
+    if child is not None and schedule_child is not None:
+        try:
+            schedule_child(child)
+        except RuntimeError:
+            await mark_rerun_scheduled(engine, child, scheduled=False)
+        else:
+            await mark_rerun_scheduled(engine, child, scheduled=True)
+    return review
 
 
 async def record_subject_review(

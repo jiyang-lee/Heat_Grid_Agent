@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from collections.abc import Callable
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
+from agent_rerun_repository import TargetedChildRun
+from agent_runner import schedule_reserved_agent_graph
+from agent_runtime_factory import create_agent_runtime
 
 from agent_review_api_models import (
     AgentOperationsMetricsResponse,
@@ -50,10 +56,34 @@ from agent_run_listing_repository import (
     list_agent_runs,
 )
 from schemas import AgentRunStatus
+from heatgrid_ops.agent.contracts import AgentRunRequest
+from heatgrid_ops.agent.graph import AgentGraphInvoker
+from heatgrid_ops.agent.services import AgentRuntime
+from settings import Settings
 
 
-def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
+def make_agent_review_router(
+    engine: AsyncEngine,
+    settings: Settings | None = None,
+    runtime: AgentRuntime | None = None,
+    graph_provider: Callable[[], AgentGraphInvoker | None] | None = None,
+) -> APIRouter:
     router = APIRouter(prefix="/api")
+    active_settings = settings or Settings()
+    active_runtime = runtime or create_agent_runtime(active_settings, engine)
+
+    def schedule_child(child: TargetedChildRun) -> None:
+        schedule_reserved_agent_graph(
+            engine,
+            AgentRunRequest(
+                run_id=child.run_id,
+                alert_id=child.alert_id,
+                card_id=child.card_id,
+            ),
+            runtime=active_runtime,
+            graph=None if graph_provider is None else graph_provider(),
+            task_key=AGENT_GRAPH_TASK_KEY_V2,
+        )
 
     @router.get("/agent-runs", response_model=AgentRunListPage)
     async def agent_runs(
@@ -131,7 +161,13 @@ def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
         request: OperatorReviewSubmitRequest,
     ) -> OperatorReviewRecordResponse:
         try:
-            return await submit_operator_review(engine, str(run_id), request)
+            return await submit_operator_review(
+                engine,
+                str(run_id),
+                request,
+                rag_quality_enabled=active_settings.rag_quality_enabled,
+                schedule_child=schedule_child,
+            )
         except UnknownRunError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except StaleReviewVersionError as exc:
