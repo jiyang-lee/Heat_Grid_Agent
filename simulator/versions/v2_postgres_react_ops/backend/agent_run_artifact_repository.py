@@ -1,4 +1,3 @@
-from typing import Final
 from uuid import uuid4
 
 from sqlalchemy import text
@@ -7,50 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from schemas import AgentRunArtifact
 
-AGENT_RUN_ARTIFACTS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS agent_run_artifacts (
-    artifact_id uuid PRIMARY KEY,
-    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
-    kind text NOT NULL,
-    name text NOT NULL,
-    uri text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-)
-"""
-
-AGENT_RUN_ACTIONS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS agent_run_actions (
-    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
-    action_name text NOT NULL,
-    status text NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
-    requested_by text,
-    artifact_id uuid REFERENCES agent_run_artifacts(artifact_id) ON DELETE SET NULL,
-    error text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (run_id, action_name)
-)
-"""
-
-
 async def ensure_agent_run_artifact_table(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(AGENT_RUN_ARTIFACTS_DDL))
-        await connection.execute(
-            text(
-                "DELETE FROM agent_run_artifacts duplicate USING agent_run_artifacts kept "
-                "WHERE duplicate.run_id = kept.run_id AND duplicate.name = kept.name "
-                "AND (duplicate.created_at, duplicate.artifact_id) > "
-                "(kept.created_at, kept.artifact_id)"
-            )
-        )
-        await connection.execute(
-            text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS agent_run_artifact_run_name_idx "
-                "ON agent_run_artifacts(run_id, name)"
-            )
-        )
-        await connection.execute(text(AGENT_RUN_ACTIONS_DDL))
+    del engine
 
 
 async def list_agent_run_artifacts(

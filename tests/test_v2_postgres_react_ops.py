@@ -39,9 +39,6 @@ async def reset_contract_tables(module: ModuleType) -> None:
                 "agent_runs, ops_alert_queue CASCADE"
             )
         )
-    await module.ensure_alert_queue(module.engine)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_agent_loop_iteration_table(module.engine)
 
 
 async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:

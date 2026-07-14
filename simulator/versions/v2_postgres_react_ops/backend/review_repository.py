@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Final
 from uuid import uuid4
 
 import orjson
@@ -25,108 +24,8 @@ from schemas import (
     TrainingFeedback,
 )
 
-EVIDENCE_CANDIDATES_DDL: Final = """
-CREATE TABLE IF NOT EXISTS evidence_candidates (
-    candidate_id uuid PRIMARY KEY,
-    run_id uuid,
-    source_type text NOT NULL,
-    source_uri text,
-    title text NOT NULL,
-    content text NOT NULL,
-    query text,
-    risk_level text NOT NULL CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
-    trust_score double precision NOT NULL CHECK (trust_score >= 0 AND trust_score <= 1),
-    status text NOT NULL CHECK (
-        status IN ('pending', 'auto_approved', 'approved', 'rejected', 'ingest_failed')
-    ),
-    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    requested_by text NOT NULL,
-    reviewed_by text,
-    review_reason text,
-    rag_document_id text,
-    rag_chunk_id text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    reviewed_at timestamptz
-)
-"""
-
-HUMAN_REVIEW_TASKS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS human_review_tasks (
-    task_id uuid PRIMARY KEY,
-    task_type text NOT NULL,
-    status text NOT NULL CHECK (
-        status IN ('pending', 'auto_approved', 'approved', 'rejected', 'corrected', 'cancelled')
-    ),
-    risk_level text NOT NULL CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
-    title text NOT NULL,
-    run_id uuid,
-    candidate_id uuid REFERENCES evidence_candidates(candidate_id) ON DELETE SET NULL,
-    retrain_job_id uuid,
-    model_candidate_id uuid,
-    payload jsonb NOT NULL DEFAULT '{}'::jsonb,
-    resolution jsonb NOT NULL DEFAULT '{}'::jsonb,
-    assigned_to text,
-    reviewed_by text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    reviewed_at timestamptz
-)
-"""
-
-TRAINING_FEEDBACK_DDL: Final = """
-CREATE TABLE IF NOT EXISTS training_feedback (
-    feedback_id uuid PRIMARY KEY,
-    task_id uuid NOT NULL REFERENCES human_review_tasks(task_id) ON DELETE CASCADE,
-    run_id uuid,
-    card_id uuid,
-    reviewer text NOT NULL,
-    decision text NOT NULL,
-    original_output jsonb NOT NULL DEFAULT '{}'::jsonb,
-    corrected_output jsonb NOT NULL DEFAULT '{}'::jsonb,
-    corrected_label text,
-    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (task_id)
-)
-"""
-
-AUTOMATION_POLICY_DDL: Final = """
-CREATE TABLE IF NOT EXISTS automation_policy (
-    policy_id text PRIMARY KEY,
-    mode text NOT NULL CHECK (mode IN ('human_only', 'assisted', 'guarded_auto')),
-    auto_transition_enabled boolean NOT NULL DEFAULT false,
-    minimum_review_count integer NOT NULL DEFAULT 100,
-    minimum_approval_rate double precision NOT NULL DEFAULT 0.95,
-    minimum_confidence double precision NOT NULL DEFAULT 0.90,
-    minimum_source_trust double precision NOT NULL DEFAULT 0.85,
-    maximum_drift_score double precision NOT NULL DEFAULT 0.10,
-    final_review_required boolean NOT NULL DEFAULT true,
-    updated_by text NOT NULL DEFAULT 'system',
-    updated_at timestamptz NOT NULL DEFAULT now()
-)
-"""
-
-AUTOMATION_POLICY_SEED_DDL: Final = """
-INSERT INTO automation_policy (policy_id, mode)
-VALUES ('default', 'human_only')
-ON CONFLICT (policy_id) DO NOTHING
-"""
-
-AUTOMATION_INDEX_DDL: Final = (
-    "CREATE INDEX IF NOT EXISTS evidence_candidates_status_idx ON evidence_candidates(status, created_at DESC)",
-    "CREATE INDEX IF NOT EXISTS review_tasks_status_idx ON human_review_tasks(status, created_at DESC)",
-    "CREATE INDEX IF NOT EXISTS training_feedback_created_idx ON training_feedback(created_at DESC)",
-)
-
-
 async def ensure_review_tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(EVIDENCE_CANDIDATES_DDL))
-        await connection.execute(text(HUMAN_REVIEW_TASKS_DDL))
-        await connection.execute(text(TRAINING_FEEDBACK_DDL))
-        await connection.execute(text(AUTOMATION_POLICY_DDL))
-        await connection.execute(text(AUTOMATION_POLICY_SEED_DDL))
-        for statement in AUTOMATION_INDEX_DDL:
-            await connection.execute(text(statement))
+    del engine
 
 
 async def create_evidence_candidate(

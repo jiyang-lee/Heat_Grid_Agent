@@ -6,7 +6,7 @@ from typing import Final
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 MIGRATION: Final = (
-    ROOT / "docker" / "postgres" / "init" / "006_referential_integrity.sql"
+    ROOT / "migrations" / "006_referential_integrity.sql"
 )
 
 

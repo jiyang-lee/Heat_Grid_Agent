@@ -53,9 +53,6 @@ async def reset_automation_tables(module: ModuleType) -> None:
         await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
         await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
         await connection.execute(text("TRUNCATE TABLE ops_alert_queue CASCADE"))
-    await module.ensure_alert_queue(module.engine)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_agent_loop_iteration_table(module.engine)
 
 
 async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
@@ -73,9 +70,6 @@ async def test_review_feedback_evidence_and_policy_api_flow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_review_tables(module.engine)
-    await module.ensure_retrain_tables(module.engine)
     await reset_automation_tables(module)
 
     async with AsyncClient(
@@ -154,9 +148,6 @@ async def test_retrain_job_requires_explicit_approval_or_rejection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_server(monkeypatch)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_review_tables(module.engine)
-    await module.ensure_retrain_tables(module.engine)
 
     async with AsyncClient(
         transport=ASGITransport(app=module.app), base_url="http://test"
@@ -188,9 +179,6 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
 ) -> None:
     monkeypatch.setenv("HEATGRID_RETRAIN_AUTO_EXECUTE_ENABLED", "1")
     module = load_server(monkeypatch)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_review_tables(module.engine)
-    await module.ensure_retrain_tables(module.engine)
     await reset_automation_tables(module)
 
     automation_routes = importlib.import_module("automation_routes")
@@ -319,9 +307,6 @@ async def test_legacy_review_submission_records_v3_reject_state_once(
         await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
         await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
         await connection.execute(text("TRUNCATE TABLE ops_alert_queue CASCADE"))
-    await module.ensure_alert_queue(module.engine)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_agent_loop_iteration_table(module.engine)
 
     async with AsyncClient(
         transport=ASGITransport(app=module.app), base_url="http://test"

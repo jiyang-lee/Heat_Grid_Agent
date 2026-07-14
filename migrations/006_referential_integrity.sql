@@ -30,6 +30,51 @@ BEGIN
         ON DELETE RESTRICT NOT VALID;
     END IF;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'priority_evaluation_results_source_window_id_fkey'
+          AND conrelid = 'public.priority_evaluation_results'::regclass
+    ) THEN
+        ALTER TABLE public.priority_evaluation_results
+        ADD CONSTRAINT priority_evaluation_results_source_window_id_fkey
+        FOREIGN KEY (source_window_id) REFERENCES public.windows(window_id)
+        ON DELETE RESTRICT NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'priority_evaluation_results_source_card_id_fkey'
+          AND conrelid = 'public.priority_evaluation_results'::regclass
+    ) THEN
+        ALTER TABLE public.priority_evaluation_results
+        ADD CONSTRAINT priority_evaluation_results_source_card_id_fkey
+        FOREIGN KEY (source_card_id) REFERENCES public.priority_cards(card_id)
+        ON DELETE RESTRICT NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'priority_evaluation_results_source_priority_decision_id_fkey'
+          AND conrelid = 'public.priority_evaluation_results'::regclass
+    ) THEN
+        ALTER TABLE public.priority_evaluation_results
+        ADD CONSTRAINT priority_evaluation_results_source_priority_decision_id_fkey
+        FOREIGN KEY (source_priority_decision_id)
+        REFERENCES public.priority_decisions(priority_decision_id)
+        ON DELETE RESTRICT NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'agent_loop_iterations_run_id_fkey'
+          AND conrelid = 'public.agent_loop_iterations'::regclass
+    ) THEN
+        ALTER TABLE public.agent_loop_iterations
+        ADD CONSTRAINT agent_loop_iterations_run_id_fkey
+        FOREIGN KEY (run_id) REFERENCES public.agent_runs(run_id)
+        ON DELETE RESTRICT NOT VALID;
+    END IF;
+
     IF to_regclass('public.ops_alert_queue') IS NOT NULL
        AND to_regclass('public.substations') IS NOT NULL
        AND NOT EXISTS (
@@ -126,26 +171,22 @@ BEGIN
             'agent_runs_evaluation_run_id_fkey',
             'ops_alert_queue_substation_fkey',
             'agent_runs_substation_fkey',
+            'priority_evaluation_results_source_window_id_fkey',
+            'priority_evaluation_results_source_card_id_fkey',
+            'priority_evaluation_results_source_priority_decision_id_fkey',
+            'agent_loop_iterations_run_id_fkey',
             'agent_run_reviews_run_id_fkey',
             'agent_run_review_snapshots_run_id_fkey',
             'agent_policy_candidates_source_review_id_fkey'
         )
         AND NOT pc.convalidated
     LOOP
-        BEGIN
-            EXECUTE format(
-                'ALTER TABLE %I.%I VALIDATE CONSTRAINT %I',
-                constraint_row.schema_name,
-                constraint_row.table_name,
-                constraint_row.conname
-            );
-        EXCEPTION WHEN others THEN
-            RAISE NOTICE 'constraint % on %.% remains NOT VALID: %',
-                constraint_row.conname,
-                constraint_row.schema_name,
-                constraint_row.table_name,
-                SQLERRM;
-        END;
+        EXECUTE format(
+            'ALTER TABLE %I.%I VALIDATE CONSTRAINT %I',
+            constraint_row.schema_name,
+            constraint_row.table_name,
+            constraint_row.conname
+        );
     END LOOP;
 END
 $agent_validate_constraints$;

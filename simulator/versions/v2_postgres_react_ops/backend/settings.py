@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = (
-        "postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
+        "postgresql+asyncpg://heatgrid_app:heatgrid_app@127.0.0.1:55432/heatgrid_ops"
     )
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8003, ge=1, le=65535)

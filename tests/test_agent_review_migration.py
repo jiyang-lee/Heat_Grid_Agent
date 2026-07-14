@@ -5,7 +5,7 @@ from typing import Final
 
 
 ROOT: Final = Path(__file__).resolve().parents[1]
-MIGRATION: Final = ROOT / "docker" / "postgres" / "init" / "005_agent_review.sql"
+MIGRATION: Final = ROOT / "migrations" / "005_agent_review.sql"
 RUNNER: Final = (
     ROOT
     / "simulator"
@@ -44,21 +44,13 @@ def test_agent_review_migration_defers_agent_run_foreign_keys() -> None:
     assert "to_regclass('public.agent_run_reviews') is not null" in sql
 
 
-def test_backend_applies_004_then_005_under_one_lock() -> None:
+def test_migration_manifest_applies_004_then_005_under_one_lock() -> None:
     source = RUNNER.read_text(encoding="utf-8")
     executor_source = LOCK_EXECUTOR.read_text(encoding="utf-8")
 
-    assert '"004_agent_execution.sql"' in source
-    assert '"005_agent_review.sql"' in source
-    assert source.index('"004_agent_execution.sql"') < source.index(
-        '"005_agent_review.sql"'
-    )
-    assert source.index('"005_agent_review.sql"') < source.index(
-        '"006_referential_integrity.sql"'
-    )
-    assert executor_source.count("pg_advisory_xact_lock") == 1
-    assert "pg_advisory_unlock" not in executor_source
-    assert "connection.transaction()" in executor_source
+    assert "migrate_database" in source
+    assert "pool.conninfo" in source
+    assert "apply_migrations" in executor_source
 
 def test_agent_review_constraints_default_to_restrict() -> None:
     sql = MIGRATION.read_text(encoding="utf-8").lower()

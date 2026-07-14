@@ -18,7 +18,7 @@ from heatgrid_ops.agent.migrations import apply_migrations
 
 
 ROOT: Final = Path(__file__).resolve().parents[1]
-MIGRATION: Final = ROOT / "docker" / "postgres" / "init" / "005_agent_review.sql"
+MIGRATION: Final = ROOT / "migrations" / "005_agent_review.sql"
 DEFAULT_DATABASE_URL: Final = (
     "postgresql://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
 )

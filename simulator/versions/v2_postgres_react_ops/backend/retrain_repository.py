@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Final
 from uuid import uuid4
 
 import orjson
@@ -17,75 +16,8 @@ from schemas import (
     RetrainJobCreateRequest,
 )
 
-RETRAIN_JOBS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS retrain_jobs (
-    job_id uuid PRIMARY KEY,
-    status text NOT NULL CHECK (
-        status IN ('pending_approval', 'approved', 'running', 'completed', 'failed',
-                   'rejected', 'cancelled')
-    ),
-    requested_by text NOT NULL,
-    reason text NOT NULL,
-    feedback_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
-    dataset_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
-    execution_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    approved_by text,
-    approval_reason text,
-    error text,
-    model_candidate_id uuid,
-    auto_start_when_approved boolean NOT NULL DEFAULT false,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    approved_at timestamptz,
-    started_at timestamptz,
-    completed_at timestamptz
-)
-"""
-
-MODEL_CANDIDATES_DDL: Final = """
-CREATE TABLE IF NOT EXISTS model_candidates (
-    candidate_id uuid PRIMARY KEY,
-    job_id uuid NOT NULL REFERENCES retrain_jobs(job_id) ON DELETE CASCADE,
-    version text NOT NULL,
-    artifact_uri text NOT NULL,
-    status text NOT NULL CHECK (
-        status IN ('awaiting_validation', 'awaiting_promotion', 'promoted', 'rejected')
-    ),
-    baseline_metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
-    candidate_metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
-    validation_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
-    promoted_by text,
-    promotion_reason text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    promoted_at timestamptz
-)
-"""
-
-MODEL_DEPLOYMENTS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS model_deployments (
-    deployment_id uuid PRIMARY KEY,
-    candidate_id uuid NOT NULL REFERENCES model_candidates(candidate_id),
-    version text NOT NULL,
-    artifact_uri text NOT NULL,
-    active boolean NOT NULL DEFAULT true,
-    promoted_by text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-)
-"""
-
-RETRAIN_INDEX_DDL: Final = (
-    "CREATE INDEX IF NOT EXISTS retrain_jobs_status_idx ON retrain_jobs(status, created_at DESC)",
-    "CREATE INDEX IF NOT EXISTS model_candidates_status_idx ON model_candidates(status, created_at DESC)",
-    "CREATE UNIQUE INDEX IF NOT EXISTS model_deployments_one_active_idx ON model_deployments(active) WHERE active",
-)
-
-
 async def ensure_retrain_tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(RETRAIN_JOBS_DDL))
-        await connection.execute(text(MODEL_CANDIDATES_DDL))
-        await connection.execute(text(MODEL_DEPLOYMENTS_DDL))
-        for statement in RETRAIN_INDEX_DDL:
-            await connection.execute(text(statement))
+    del engine
 
 
 async def create_retrain_job(

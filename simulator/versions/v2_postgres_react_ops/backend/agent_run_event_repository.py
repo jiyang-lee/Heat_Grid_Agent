@@ -1,25 +1,11 @@
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Final
-
 import orjson
 from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from schemas import AgentRunEvent, JsonObject
-
-AGENT_RUN_EVENTS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS agent_run_events (
-    event_id bigserial PRIMARY KEY,
-    run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
-    event_type text NOT NULL,
-    message text NOT NULL,
-    payload jsonb,
-    created_at timestamptz NOT NULL DEFAULT now()
-)
-"""
-
 
 @dataclass(frozen=True, slots=True)
 class AgentRunEventRecord:
@@ -31,14 +17,7 @@ class AgentRunEventRecord:
 
 
 async def ensure_agent_run_event_table(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(AGENT_RUN_EVENTS_DDL))
-        await connection.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS agent_run_events_run_idx "
-                "ON agent_run_events(run_id, event_id)"
-            )
-        )
+    del engine
 
 
 async def record_agent_run_event(

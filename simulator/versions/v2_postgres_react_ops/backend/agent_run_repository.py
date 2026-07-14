@@ -7,10 +7,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from agent_run_artifact_repository import ensure_agent_run_artifact_table
 from agent_run_event_repository import (
     AgentRunEventRecord,
-    ensure_agent_run_event_table,
     insert_agent_run_event,
 )
 from schemas import (
@@ -22,57 +20,6 @@ from schemas import (
 )
 
 ACTIVE_AGENT_RUN_STALE_AFTER_SECONDS: Final = 600
-
-AGENT_RUNS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS agent_runs (
-    run_id uuid PRIMARY KEY,
-    alert_id uuid NOT NULL REFERENCES ops_alert_queue(alert_id) ON DELETE CASCADE,
-    card_id uuid NOT NULL REFERENCES priority_cards(card_id) ON DELETE CASCADE,
-    evaluation_run_id uuid,
-    manufacturer_id text,
-    substation_id integer,
-    parent_run_id uuid REFERENCES agent_runs(run_id),
-    trigger_type text NOT NULL DEFAULT 'alert',
-    requested_by text,
-    trigger_reason text,
-    approved_action_task_id uuid,
-    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed')),
-    agent_mode text CHECK (agent_mode IN ('llm', 'fallback')),
-    ops_output jsonb,
-    token_usage jsonb,
-    loop_summary jsonb,
-    review_status text NOT NULL DEFAULT 'pending'
-        CHECK (review_status IN ('pending', 'approved', 'rejected', 'corrected')),
-    review_task_id uuid,
-    error text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-)
-"""
-
-AGENT_RUNS_COMPATIBILITY_DDL: Final = (
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS loop_summary jsonb",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS review_status text NOT NULL DEFAULT 'pending'",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS review_task_id uuid",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS evaluation_run_id uuid",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS manufacturer_id text",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS substation_id integer",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS parent_run_id uuid REFERENCES agent_runs(run_id)",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS trigger_type text NOT NULL DEFAULT 'alert'",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS requested_by text",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS trigger_reason text",
-    "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS approved_action_task_id uuid",
-)
-
-DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
-ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_status_check
-"""
-
-ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
-ALTER TABLE agent_runs
-ADD CONSTRAINT agent_runs_status_check
-CHECK (status IN ('queued', 'running', 'completed', 'failed'))
-"""
 
 AGENT_RUN_SELECT: Final = (
     "SELECT run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
@@ -88,14 +35,7 @@ AGENT_RUN_SELECT: Final = (
 
 
 async def ensure_agent_run_tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(AGENT_RUNS_DDL))
-        for statement in AGENT_RUNS_COMPATIBILITY_DDL:
-            await connection.execute(text(statement))
-        await connection.execute(text(DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL))
-        await connection.execute(text(ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL))
-    await ensure_agent_run_artifact_table(engine)
-    await ensure_agent_run_event_table(engine)
+    del engine
 
 
 async def create_queued_agent_run(
