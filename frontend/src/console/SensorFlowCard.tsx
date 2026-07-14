@@ -49,7 +49,7 @@ const JITTER = 0.14
 const DEFAULT_ROOM_COUNT = 12
 
 const CHART_W = 720
-const BAND_H = 36
+const BAND_H = 45
 const BAND_GAP = 12
 const CHART_H = SERIES.length * (BAND_H + BAND_GAP) + BAND_GAP
 
