@@ -296,3 +296,81 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
     assert len(jobs.json()) == 1
     assert jobs.json()[0]["status"] == "approved"
     assert restored_policy.json()["mode"] == "human_only"
+
+
+@pytest.mark.anyio
+async def test_legacy_review_submission_records_v3_reject_state_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_server(monkeypatch)
+    async with module.engine.begin() as connection:
+        await connection.execute(
+            text(
+                "TRUNCATE TABLE human_review_tasks, evidence_candidates CASCADE"
+            )
+        )
+        await connection.execute(text("TRUNCATE TABLE automation_policy"))
+        await connection.execute(
+            text(
+                "INSERT INTO automation_policy (policy_id, mode) "
+                "VALUES ('default', 'human_only')"
+            )
+        )
+        await connection.execute(text("TRUNCATE TABLE agent_loop_iterations"))
+        await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
+        await connection.execute(text("TRUNCATE TABLE ops_alert_queue CASCADE"))
+    await module.ensure_alert_queue(module.engine)
+    await module.ensure_agent_run_tables(module.engine)
+    await module.ensure_agent_loop_iteration_table(module.engine)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=module.app), base_url="http://test"
+    ) as client:
+        await client.post("/api/alerts/enqueue")
+        alert = (await client.get("/api/alerts", params={"status": "open"})).json()[0]
+        created = await client.post(
+            "/api/agent-runs",
+            json={"alert_id": alert["alert_id"]},
+        )
+        run = await wait_for_agent_run(client, str(created.json()["run_id"]))
+        tasks = await client.get(
+            "/api/review-tasks",
+            params={"status": "pending", "task_type": "final_output"},
+        )
+        task = next(item for item in tasks.json() if item["run_id"] == run["run_id"])
+        payload = {
+            "decision": "reject",
+            "reviewer": "pytest",
+            "reason": "legacy reject mapping",
+        }
+        submitted = await client.post(
+            f"/api/review-tasks/{task['task_id']}/submit",
+            json=payload,
+        )
+        duplicate = await client.post(
+            f"/api/review-tasks/{task['task_id']}/submit",
+            json=payload,
+        )
+        detail = await client.get(f"/api/agent-runs/{run['run_id']}")
+        listed = await client.get(
+            "/api/agent-runs",
+            params={"limit": 100, "status": "completed"},
+        )
+
+    async with module.engine.connect() as connection:
+        review_count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM agent_run_reviews "
+                "WHERE run_id = :run_id"
+            ),
+            {"run_id": run["run_id"]},
+        )
+
+    listed_run = next(
+        item for item in listed.json()["items"] if item["run_id"] == run["run_id"]
+    )
+    assert submitted.status_code == 200
+    assert duplicate.status_code == 409
+    assert detail.json()["review_status"] == "rejected"
+    assert listed_run["operator_review_status"] == "keep_human_review"
+    assert review_count == 1

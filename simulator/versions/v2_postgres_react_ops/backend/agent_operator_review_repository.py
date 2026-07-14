@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from hashlib import sha256
 from typing import Literal
 
@@ -34,45 +35,90 @@ class UnknownRunError(RuntimeError):
         return "run_id was not found"
 
 
+@dataclass(frozen=True, slots=True)
+class ReviewRecordInput:
+    run_id: str
+    decision: Literal["approve", "correct", "keep_human_review"]
+    reviewer: str
+    reason: str
+    idempotency_key: str
+    request_hash: str
+    disposition: str | None
+    correction: dict[str, str] | None
+    evidence_annotations: tuple[dict[str, str | None], ...]
+    operator_labels: tuple[str, ...]
+    expected_review_version: int | None = None
+    legacy_status_override: Literal[
+        "approved", "corrected", "rejected", "pending"
+    ] | None = None
+
+
 async def submit_operator_review(
     engine: AsyncEngine,
     run_id: str,
     request: OperatorReviewSubmitRequest,
 ) -> OperatorReviewRecordResponse:
-    request_hash = _request_hash(request)
     async with engine.begin() as connection:
-        if not await _run_exists(connection, run_id):
-            raise UnknownRunError(run_id)
-        existing = await _select_review_by_idempotency(
+        return await record_review(
             connection,
-            run_id=run_id,
-            idempotency_key=request.idempotency_key,
+            ReviewRecordInput(
+                run_id=run_id,
+                decision=request.decision,
+                reviewer=request.reviewer,
+                reason=request.reason,
+                idempotency_key=request.idempotency_key,
+                request_hash=_request_hash(request),
+                disposition=request.disposition,
+                correction=request.correction,
+                evidence_annotations=request.evidence_annotations,
+                operator_labels=request.operator_labels,
+                expected_review_version=request.expected_review_version,
+            ),
         )
-        if existing is not None:
-            return existing
-        latest_version = await _latest_review_version(connection, run_id)
-        if latest_version != request.expected_review_version:
-            raise StaleReviewVersionError(run_id)
-        try:
+
+
+async def record_review(
+    connection: AsyncConnection,
+    request: ReviewRecordInput,
+) -> OperatorReviewRecordResponse:
+    if not await _run_exists(connection, request.run_id):
+        raise UnknownRunError(request.run_id)
+    existing = await _select_review_by_idempotency(
+        connection,
+        run_id=request.run_id,
+        idempotency_key=request.idempotency_key,
+    )
+    if existing is not None:
+        return existing
+    latest_version = await _latest_review_version(connection, request.run_id)
+    if (
+        request.expected_review_version is not None
+        and latest_version != request.expected_review_version
+    ):
+        raise StaleReviewVersionError(request.run_id)
+    try:
+        async with connection.begin_nested():
             review = await _insert_review(
                 connection,
-                run_id=run_id,
                 request=request,
-                request_hash=request_hash,
                 review_version=latest_version + 1,
             )
-        except IntegrityError as exc:
-            duplicate = await _select_review_by_idempotency(
-                connection,
-                run_id=run_id,
-                idempotency_key=request.idempotency_key,
-            )
-            if duplicate is not None:
-                return duplicate
-            raise StaleReviewVersionError(run_id) from exc
-        await _sync_legacy_run_review_status(connection, review)
-        if review.decision == "correct":
-            await _create_policy_candidate(connection, review)
+    except IntegrityError as exc:
+        duplicate = await _select_review_by_idempotency(
+            connection,
+            run_id=request.run_id,
+            idempotency_key=request.idempotency_key,
+        )
+        if duplicate is not None:
+            return duplicate
+        raise StaleReviewVersionError(request.run_id) from exc
+    await _sync_legacy_run_review_status(
+        connection,
+        review,
+        request.legacy_status_override,
+    )
+    if review.decision == "correct":
+        await _create_policy_candidate(connection, review)
     return review
 
 
@@ -139,9 +185,7 @@ async def _select_review_by_idempotency(
 async def _insert_review(
     connection: AsyncConnection,
     *,
-    run_id: str,
-    request: OperatorReviewSubmitRequest,
-    request_hash: str,
+    request: ReviewRecordInput,
     review_version: int,
 ) -> OperatorReviewRecordResponse:
     result = await connection.execute(
@@ -158,15 +202,17 @@ async def _insert_review(
             + _review_columns()
         ),
         {
-            "run_id": run_id,
+            "run_id": request.run_id,
             "review_version": review_version,
             "idempotency_key": request.idempotency_key,
-            "request_hash": request_hash,
+            "request_hash": request.request_hash,
             "decision": request.decision,
             "reviewer": request.reviewer,
             "reason": request.reason,
             "disposition": request.disposition,
-            "correction": _json(request.correction),
+            "correction": None
+            if request.correction is None
+            else _json(request.correction),
             "evidence_annotations": _json(request.evidence_annotations),
             "operator_labels": _json(request.operator_labels),
         },
@@ -177,8 +223,11 @@ async def _insert_review(
 async def _sync_legacy_run_review_status(
     connection: AsyncConnection,
     review: OperatorReviewRecordResponse,
+    legacy_status_override: Literal[
+        "approved", "corrected", "rejected", "pending"
+    ] | None = None,
 ) -> None:
-    status = _legacy_review_status(review.decision)
+    status = legacy_status_override or _legacy_review_status(review.decision)
     await connection.execute(
         text(
             "UPDATE agent_runs SET review_status = :status, updated_at = now() "

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from hashlib import sha256
 from typing import Final
 from uuid import uuid4
 
@@ -10,6 +11,7 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from agent_operator_review_repository import ReviewRecordInput, record_review
 from heatgrid_rag.embedding import hash_embedding, vector_literal
 from schemas import (
     AutomationPolicy,
@@ -436,11 +438,18 @@ async def get_review_task(
     task_id: str,
 ) -> HumanReviewTask | None:
     await ensure_review_tables(engine)
+    async with engine.connect() as connection:
+        return await _get_review_task(connection, task_id)
+
+
+async def _get_review_task(
+    connection: AsyncConnection,
+    task_id: str,
+) -> HumanReviewTask | None:
     query = text(
         f"SELECT {_review_select_columns()} FROM human_review_tasks WHERE task_id = :task_id"
     )
-    async with engine.connect() as connection:
-        result = await connection.execute(query, {"task_id": task_id})
+    result = await connection.execute(query, {"task_id": task_id})
     row = result.mappings().one_or_none()
     return None if row is None else _review_from_row(row)
 
@@ -470,6 +479,13 @@ async def submit_review_task(
         "WHERE task_id = :task_id RETURNING " + _review_select_columns()
     )
     async with engine.begin() as connection:
+        task = await _get_review_task(connection, task_id)
+        if task is None:
+            return None
+        if task.task_type == "external_search":
+            raise ValueError("?몃? 寃???뱀씤 ?묒뾽? 怨쇨굅 湲곕줉 議고쉶留??덉슜?⑸땲??")
+        if task.status != "pending":
+            raise ValueError("?대? 泥섎━??寃???묒뾽?낅땲??")
         result = await connection.execute(
             query,
             {
@@ -483,26 +499,79 @@ async def submit_review_task(
         feedback = await _insert_feedback(connection, updated, payload)
         if updated.run_id and updated.task_type == "final_output":
             corrected_output = (
-                payload.corrected_output.model_dump(mode="json")
+                {
+                    "summary": payload.corrected_output.summary,
+                    "action_plan": payload.corrected_output.action_plan,
+                    "caution": payload.corrected_output.caution,
+                }
                 if payload.corrected_output is not None
                 else None
             )
             await connection.execute(
                 text(
-                    "UPDATE agent_runs SET review_status = :status, "
+                    "UPDATE agent_runs SET "
                     "ops_output = COALESCE(CAST(:corrected_output AS jsonb), ops_output), "
                     "updated_at = now() "
                     "WHERE run_id = :run_id"
                 ),
                 {
                     "run_id": updated.run_id,
-                    "status": status,
                     "corrected_output": None
                     if corrected_output is None
                     else _json(corrected_output),
                 },
             )
+            await record_review(
+                connection,
+                _legacy_review_record_input(
+                    task=updated,
+                    payload=payload,
+                    corrected_output=corrected_output,
+                ),
+            )
     return ReviewSubmitResponse(task=updated, feedback=feedback)
+
+
+def _legacy_review_record_input(
+    *,
+    task: HumanReviewTask,
+    payload: ReviewTaskSubmitRequest,
+    corrected_output: dict[str, str] | None,
+) -> ReviewRecordInput:
+    match payload.decision:
+        case "approve":
+            decision = "approve"
+            legacy_status_override = None
+            operator_labels: tuple[str, ...] = ()
+        case "correct":
+            decision = "correct"
+            legacy_status_override = None
+            operator_labels = ()
+        case "reject":
+            decision = "keep_human_review"
+            legacy_status_override = "rejected"
+            operator_labels = ("legacy_reject",)
+    return ReviewRecordInput(
+        run_id=task.run_id or "",
+        decision=decision,
+        reviewer=payload.reviewer,
+        reason=payload.reason or "legacy review task submission",
+        idempotency_key=f"legacy-task:{task.task_id}",
+        request_hash=_legacy_request_hash(payload),
+        disposition=None,
+        correction=corrected_output,
+        evidence_annotations=(),
+        operator_labels=operator_labels,
+        legacy_status_override=legacy_status_override,
+    )
+
+
+def _legacy_request_hash(payload: ReviewTaskSubmitRequest) -> str:
+    canonical_payload = orjson.dumps(
+        payload.model_dump(mode="json"),
+        option=orjson.OPT_SORT_KEYS,
+    )
+    return sha256(canonical_payload).hexdigest()
 
 
 async def list_training_feedback(
