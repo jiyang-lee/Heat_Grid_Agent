@@ -1,55 +1,100 @@
-import { useMemo } from 'react'
-import { useAlerts, useHealth, usePrioritySnapshot } from '../api/hooks'
+import { useRef, type ReactNode } from 'react'
+import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
+import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
-import { Icon } from './icons'
-import { ApiState, MetricCard, Sparkline, StatusBadge, SurfaceCard, type Tone } from './ui'
+import type { ConsolePage } from './AppShell'
+import { Icon, type IconName } from './icons'
+import SensorFlowCard from './SensorFlowCard'
+import { ApiState, StatusBadge, SurfaceCard } from './ui'
 
-function priorityTone(value: string | null): Tone {
-  if (value === 'urgent') return 'critical'
-  if (value === 'high') return 'warning'
-  if (value === 'medium') return 'notice'
-  return 'success'
+/** 알림 발생 시각의 상대 표기("n분 전"). 기한(SLA) 계약이 없어 발생 경과로 대체한다. */
+function relativeTime(iso: string): string {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  return `${Math.round(hours / 24)}일 전`
 }
 
-export function DashboardPage() {
+interface HomeMetricProps {
+  readonly icon: IconName
+  readonly tone: string
+  readonly label: string
+  readonly value: string
+  readonly unit: string
+  readonly children: ReactNode
+}
+
+function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProps) {
+  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
+}
+
+interface Props {
+  readonly onNavigate: (page: ConsolePage) => void
+}
+
+export function DashboardPage({ onNavigate }: Props) {
   const priority = usePrioritySnapshot()
   const alerts = useAlerts({ status: 'open' })
-  const health = useHealth()
+  const reviews = useReviewTasks('pending')
+  const mapWrapRef = useRef<HTMLDivElement>(null)
+
   const rows = priority.data?.results ?? []
-  const hotCount = rows.filter((row) => row.priority_level === 'urgent' || row.priority_level === 'high').length
-  const averageRisk = rows.length === 0 ? 0 : rows.reduce((sum, row) => sum + (row.risk_score ?? 0), 0) / rows.length
-  const trend = useMemo(() => [1.8, 2.1, 2.4, 2.0, 2.7, 2.4, 2.5], [])
+  // 위험=urgent, 주의=high (fresh 기준), 정상=나머지(지연·누락 포함).
+  const urgent = rows.filter((row) => row.freshness_status === 'fresh' && row.priority_level === 'urgent').length
+  const high = rows.filter((row) => row.freshness_status === 'fresh' && row.priority_level === 'high').length
+  const normal = Math.max(0, rows.length - urgent - high)
   const openAlerts = alerts.data ?? []
+  const pendingDocs = reviews.data?.length ?? 0
+
+  const openFullMap = () => {
+    void mapWrapRef.current?.requestFullscreen?.()
+  }
 
   return <div className="page-stack">
-    <header className="page-title"><div><h1>지역난방 운영 보조 대시보드</h1><p>운영 데이터와 우선순위 모델을 함께 확인합니다.</p></div><span className="live-indicator"><i />실시간 모니터링</span></header>
+    <header className="page-title"><div><h1>홈</h1><p>현재 시스템 요약과 주요 현황을 한눈에 확인하세요.</p></div></header>
+
     <div className="metric-grid metric-grid-five">
-      <MetricCard icon="building" label="총 관리 건물 수" value={String(rows.length || 31)} hint="운영 대상 전체" />
-      <MetricCard icon="alert" label="긴급 알림 수" value={String(hotCount)} hint="즉시 검토 필요" tone="critical" />
-      <MetricCard icon="calendar" label="오늘 점검 필요" value={String(openAlerts.length)} hint="예정 포함" tone="warning" />
-      <MetricCard icon="shield" label="평균 위험도" value={`${(averageRisk * 5).toFixed(1)} / 5.0`} hint="활성 평가 기준" tone="critical" />
-      <MetricCard icon="check" label="정상 설비 비율" value={rows.length ? `${Math.max(0, 100 - hotCount * 3).toFixed(1)}%` : '-'} hint="최근 스냅샷 기준" tone="success" />
+      <HomeMetric icon="building" label="전체 관리 건물 수" tone="primary" unit="개소" value={String(rows.length)}>
+        <span className="dot-stat ok">정상 <b>{normal}</b></span>
+        <span className="dot-stat warn">주의 <b>{high}</b></span>
+        <span className="dot-stat danger">위험 <b>{urgent}</b></span>
+      </HomeMetric>
+      <HomeMetric icon="alert" label="긴급" tone="critical" unit="개소" value={String(urgent)}>즉시 확인 필요</HomeMetric>
+      <HomeMetric icon="warning" label="주의" tone="warning" unit="개소" value={String(high)}>우선 점검 권장</HomeMetric>
+      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>열린 알림 기준</HomeMetric>
+      <HomeMetric icon="document" label="대기 서류" tone="violet" unit="건" value={String(pendingDocs)}>운영자 검토 필요</HomeMetric>
     </div>
-    <div className="dashboard-grid">
-      <div className="dashboard-left">
-        <SurfaceCard className="ai-trend-card" title="AI 운영 요약">
-          <div className="ai-summary"><div><p className="summary-callout">현재 {hotCount || 0}개 기계실이 높은 위험 상태입니다.</p><p>우선순위 평가 결과를 기준으로 경보 대상과 권장 조치를 정렬했습니다. 실제 알림과 상세 근거는 알림 메뉴에서 검토할 수 있습니다.</p><button className="text-link" type="button">상세 현황 보기 <Icon name="arrow" /></button></div><div className="trend-block"><div className="trend-heading"><strong>위험도 추이</strong><span>최근 7일</span></div><svg aria-label="최근 7일 위험도 추이" className="large-trend" viewBox="0 0 300 150"><path className="large-grid" d="M0 25H300M0 62H300M0 99H300M0 136H300" /><polyline points={trend.map((value, index) => `${index * 50},${136 - value * 30}`).join(' ')} /><polyline className="trend-secondary" points="0,113 50,98 100,98 150,44 200,81 250,81 300,98" /></svg><div className="trend-axis"><span>07/05</span><span>07/07</span><span>07/09</span><span>07/11</span></div></div></div>
-        </SurfaceCard>
-        <SurfaceCard action={<span className="count-chip">전체 {rows.length}</span>} title="기계실/건물 상태 현황">
-          <ApiState empty={rows.length === 0} error={priority.isError} loading={priority.isLoading} retry={() => void priority.refetch()} />
-          {rows.length > 0 && <div className="table-scroll"><table className="ops-table"><thead><tr><th>기계실/건물명</th><th>공급온도</th><th>환수온도</th><th>압력</th><th>우선순위</th><th>상태</th><th>최근 데이터</th></tr></thead><tbody>{rows.slice(0, 6).map((row) => <tr key={row.evaluation_result_id}><td><strong>{row.manufacturer_id} #{row.substation_id}</strong><small>기계실 {row.substation_id}</small></td><td>{(72 + (row.substation_id % 9)).toFixed(1)} °C</td><td>{(40 + (row.substation_id % 7)).toFixed(1)} °C</td><td>{(0.4 + (row.risk_score ?? 0) / 3).toFixed(2)} MPa</td><td><span className="risk-value">{((row.risk_score ?? 0) * 5).toFixed(1)}</span></td><td><StatusBadge tone={priorityTone(row.priority_level)}>{row.priority_level ?? '정상'}</StatusBadge></td><td>{row.data_age_seconds == null ? '-' : `${Math.max(1, Math.round(row.data_age_seconds / 60))}분 전`}</td></tr>)}</tbody></table></div>}
-        </SurfaceCard>
-      </div>
-      <div className="dashboard-center">
-        {/* 세종 1생활권 31개 단지 실좌표 3D 지도(MapLibre). 새 콘솔에는 기계실 뷰가 없어 단지 클릭 선택은 아직 미연결. */}
-        <SurfaceCard title="설비 현황"><div aria-label="설비 현황 지도" className="map-live"><MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} theme="light" /></div></SurfaceCard>
-        <SurfaceCard title="AI 추천 조치"><ol className="recommendation-list">{openAlerts.slice(0, 4).map((alert, index) => <li key={alert.alert_id}><b>{index + 1}</b><div><strong>{alert.manufacturer_id} #{alert.substation_id} 현장 상태 확인</strong><span>{alert.enqueue_reason}</span></div><StatusBadge tone={alert.priority_level === 'urgent' ? 'critical' : 'warning'}>{alert.priority_level === 'urgent' ? '긴급' : '권장'}</StatusBadge></li>)}{openAlerts.length === 0 && <li><b>1</b><div><strong>활성 알림이 없습니다.</strong><span>백엔드 연결 상태를 확인해 주세요.</span></div></li>}</ol></SurfaceCard>
-      </div>
-      <div className="dashboard-right">
-        <SurfaceCard action={<button className="text-link" type="button">전체 보기</button>} title="주요 알림"><ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />{openAlerts.slice(0, 5).map((alert) => <div className="compact-alert" key={alert.alert_id}><span className={`alert-symbol tone-${alert.priority_level === 'urgent' ? 'critical' : 'warning'}`}><Icon name="alert" /></span><div><strong>{alert.enqueue_reason}</strong><span>{alert.manufacturer_id} #{alert.substation_id}</span></div><StatusBadge tone={alert.priority_level === 'urgent' ? 'critical' : 'warning'}>{alert.priority_level === 'urgent' ? '심각' : '경고'}</StatusBadge></div>)}</SurfaceCard>
-        <SurfaceCard title="예상 조치 시점"><div className="lead-grid"><article><span>누수 점검 완료 예상</span><strong>2시간 내</strong><Icon name="clock" /></article><article><span>압력 안정화 예상</span><strong>4시간 내</strong><Icon name="clock" /></article><article><span>센서 교체 예정</span><strong>당일 내</strong><Icon name="calendar" /></article><article><span>열교환기 점검 완료</span><strong>2일 내</strong><Icon name="calendar" /></article></div></SurfaceCard>
-        <SurfaceCard title="연결 상태"><div className="connection-list"><p><span>백엔드 API</span><StatusBadge tone={health.data?.database === 'connected' ? 'success' : 'neutral'}>{health.data?.database ?? '확인 중'}</StatusBadge></p><p><span>모델 서비스</span><StatusBadge tone={health.data?.openai === 'configured' ? 'success' : 'neutral'}>{health.data?.openai ?? '확인 중'}</StatusBadge></p><Sparkline tone="primary" values={[4, 5, 4, 6, 7, 5, 6]} /></div></SurfaceCard>
-      </div>
+
+    <div className="home-grid">
+      <SurfaceCard
+        action={<div className="map-legend"><span><i className="lg ok" />정상</span><span><i className="lg warn" />주의</span><span><i className="lg danger" />위험</span><span><i className="lg stale" />지연</span></div>}
+        className="map-card"
+        title="설비 위치 지도"
+      >
+        <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
+          <MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} theme="light" />
+          <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard action={<button className="text-link" onClick={() => onNavigate('alerts')} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
+        <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
+        {openAlerts.slice(0, 5).map((alert) => {
+          const urgentAlert = alert.priority_level === 'urgent'
+          const complexName = alert.substation_id != null ? complexById.get(alert.substation_id)?.name : undefined
+          return (
+            <div className="home-alert-row" key={alert.alert_id}>
+              <span className={`alert-symbol tone-${urgentAlert ? 'critical' : 'warning'}`}><Icon name={urgentAlert ? 'alert' : 'warning'} /></span>
+              <div><strong>{complexName ?? alert.manufacturer_id} (substation {alert.substation_id ?? '-'})</strong><small>{alert.enqueue_reason}</small></div>
+              <div className="home-alert-side"><StatusBadge tone={urgentAlert ? 'critical' : 'warning'}>{urgentAlert ? '긴급' : '경고'}</StatusBadge><time>{relativeTime(alert.created_at)}</time></div>
+            </div>
+          )
+        })}
+      </SurfaceCard>
     </div>
+
+    <SensorFlowCard />
   </div>
 }

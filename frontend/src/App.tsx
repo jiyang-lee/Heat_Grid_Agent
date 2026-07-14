@@ -16,7 +16,7 @@ function App() {
   const [page, setPage] = useState<ConsolePage>('dashboard')
   if (isShowcase()) return <ShowcasePage />
   return <AppShell onPageChange={setPage} page={page}>
-    {page === 'dashboard' && <DashboardPage />}
+    {page === 'dashboard' && <DashboardPage onNavigate={setPage} />}
     {page === 'alerts' && <AlertsPage />}
     {page === 'reports' && <ReportsPage />}
     {page === 'settings' && <SettingsPage />}
