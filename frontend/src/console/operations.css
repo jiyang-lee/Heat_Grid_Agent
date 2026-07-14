@@ -143,4 +143,27 @@
 @media (max-width: 1060px) { .home-grid { grid-template-columns: 1fr; }.sensor-tiles { grid-template-columns: repeat(2, 1fr); }.sf-chart-row { grid-template-columns: 1fr; }.sf-legend { grid-template-columns: repeat(2, 1fr); }.sf-values { display: none; }.topbar-clock span { display: none; } }
 @media (max-width: 720px) { .sensor-tiles { grid-template-columns: 1fr; }.refresh-button, .topbar-clock { display: none; } }
 
+/* ===== v3-02 운영자 검토·정책 후보 UI ===== */
+.review-form { display: grid; gap: var(--space-3); padding: var(--space-4); border-bottom: 1px solid var(--ops-border); }
+.review-form .review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.review-form label { display: grid; gap: var(--space-1); color: var(--ops-text-muted); font-size: 11px; font-weight: 600; }
+.review-form select, .review-form input, .review-form textarea { min-height: 34px; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; outline-color: var(--ops-primary); color: var(--ops-text); background: #fff; font: inherit; font-size: 12px; }
+.review-form textarea { min-height: 64px; resize: vertical; }
+.review-history { margin: 0; padding: 0; list-style: none; }
+.review-history li { display: grid; gap: 3px; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--ops-border); font-size: 12px; }
+.review-history li:first-child { border-top: 0; }
+.review-history li header { display: flex; align-items: center; gap: var(--space-2); }
+.review-history li header strong { color: var(--ops-text); font-size: 11px; }
+.review-history time { margin-left: auto; color: var(--ops-text-muted); font-size: 10px; }
+.review-history li > span { color: var(--ops-text-muted); }
+.review-history li > small { color: var(--ops-warning); font-size: 11px; }
+.policy-list { margin: 0; padding: 0; list-style: none; }
+.policy-list li { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--ops-border); }
+.policy-list li:first-child { border-top: 0; }
+.policy-list li header { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; }
+.policy-list li header small { margin-left: auto; color: var(--ops-text-muted); font-size: 10px; }
+.policy-proposal { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 6px; background: var(--ops-surface-muted); color: var(--ops-text-muted); font-size: 11px; overflow-x: auto; }
+.policy-actions { display: flex; gap: var(--space-2); }
+.policy-note { margin: 0; padding: var(--space-3) var(--space-4); color: var(--ops-text-muted); font-size: 10px; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; } }

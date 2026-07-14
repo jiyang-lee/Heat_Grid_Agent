@@ -2,12 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  agentRunEvaluationsApi,
   agentRunsApi,
   alertsApi,
   automationPolicyApi,
   evidenceCandidatesApi,
   healthApi,
   modelCandidatesApi,
+  operationsMetricsApi,
+  operatorReviewsApi,
+  policyCandidatesApi,
   priorityEvaluationsApi,
   retrainJobsApi,
   reviewTasksApi,
@@ -18,6 +22,8 @@ import type {
   AutomationPolicyUpdateRequest,
   EvidenceCandidateReviewRequest,
   ModelPromotionRequest,
+  OperatorReviewSubmitRequest,
+  PolicyCandidateDecisionRequest,
   RetrainJobActionRequest,
   RetrainJobCreateRequest,
   ReviewTaskSubmitRequest,
@@ -40,6 +46,10 @@ export const qk = {
   activeModel: ['active-model-deployment'] as const,
   health: ['health'] as const,
   prioritySnapshot: ['priority-evaluation-latest'] as const,
+  runEvaluation: (id: string) => ['agent-run-evaluation', id] as const,
+  operatorReviews: (id: string) => ['operator-reviews', id] as const,
+  policyCandidates: ['agent-policy-candidates'] as const,
+  operationsMetrics: ['agent-operations-metrics'] as const,
 }
 
 export function useAlerts(query?: AlertListQuery) {
@@ -273,4 +283,72 @@ export function usePromoteModelCandidate() {
 
 export function useActiveModelDeployment() {
   return useQuery({ queryKey: qk.activeModel, queryFn: () => modelCandidatesApi.active() })
+}
+
+/* ===== v3-02 운영자 검토·평가·정책 후보·운영 지표 훅 ===== */
+
+/** 선택 실행의 parent/worker 결정적 평가 projection (1건) */
+export function useAgentRunEvaluation(runId: string | null) {
+  return useQuery({
+    queryKey: qk.runEvaluation(runId ?? ''),
+    queryFn: async () => {
+      const page = await agentRunEvaluationsApi.list({ run_id: runId as string, limit: 1 })
+      return page.items[0] ?? null
+    },
+    enabled: runId != null,
+  })
+}
+
+export function useOperatorReviews(runId: string | null) {
+  return useQuery({
+    queryKey: qk.operatorReviews(runId ?? ''),
+    queryFn: () => operatorReviewsApi.history(runId as string),
+    enabled: runId != null,
+  })
+}
+
+export function useSubmitOperatorReview() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { runId: string; body: OperatorReviewSubmitRequest }) =>
+      operatorReviewsApi.submit(value.runId, value.body),
+    onSuccess: (_record, value) => {
+      qc.invalidateQueries({ queryKey: qk.operatorReviews(value.runId) })
+      qc.invalidateQueries({ queryKey: qk.runEvaluation(value.runId) })
+      qc.invalidateQueries({ queryKey: qk.runs })
+      // correct 검토는 정책 후보를 만들 수 있다 → 후보/지표 갱신.
+      qc.invalidateQueries({ queryKey: qk.policyCandidates })
+      qc.invalidateQueries({ queryKey: qk.operationsMetrics })
+    },
+  })
+}
+
+export function usePolicyCandidates() {
+  return useQuery({
+    queryKey: qk.policyCandidates,
+    queryFn: () => policyCandidatesApi.list(),
+    refetchInterval: 10000,
+  })
+}
+
+export function useDecidePolicyCandidate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { candidateId: string; approve: boolean; body: PolicyCandidateDecisionRequest }) =>
+      value.approve
+        ? policyCandidatesApi.approve(value.candidateId, value.body)
+        : policyCandidatesApi.reject(value.candidateId, value.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.policyCandidates })
+      qc.invalidateQueries({ queryKey: qk.operationsMetrics })
+    },
+  })
+}
+
+export function useOperationsMetrics() {
+  return useQuery({
+    queryKey: qk.operationsMetrics,
+    queryFn: () => operationsMetricsApi.get(),
+    refetchInterval: 15000,
+  })
 }

@@ -9,6 +9,10 @@ import * as mock from './mockApi'
 
 export const alertsApi = USE_MOCK ? mock.alertsApi : real.alertsApi
 export const agentRunsApi = USE_MOCK ? mock.agentRunsApi : real.agentRunsApi
+export const agentRunEvaluationsApi = USE_MOCK ? mock.agentRunEvaluationsApi : real.agentRunEvaluationsApi
+export const operatorReviewsApi = USE_MOCK ? mock.operatorReviewsApi : real.operatorReviewsApi
+export const policyCandidatesApi = USE_MOCK ? mock.policyCandidatesApi : real.policyCandidatesApi
+export const operationsMetricsApi = USE_MOCK ? mock.operationsMetricsApi : real.operationsMetricsApi
 export const healthApi = USE_MOCK ? mock.healthApi : real.healthApi
 export const priorityEvaluationsApi = USE_MOCK ? mock.priorityEvaluationsApi : real.priorityEvaluationsApi
 export const reviewTasksApi = USE_MOCK ? mock.reviewTasksApi : real.reviewTasksApi

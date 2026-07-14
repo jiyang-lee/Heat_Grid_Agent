@@ -253,6 +253,115 @@ export interface AgentRunReviewSnapshotResponse {
   readonly unavailable_reason: string | null
 }
 
+/* ===== v3-02 운영자 검토·평가 projection·정책 후보·운영 지표 =====
+ * 백엔드 agent_review_api_models.py와 1:1 대응. */
+
+export type CitationCoverage = 'complete' | 'partial' | 'missing' | 'not_applicable'
+export type InputValidity = 'valid' | 'invalid' | 'unavailable'
+export type ParentHandling = 'used_as_support' | 'invalid' | 'unavailable' | 'fallback_to_human'
+export type EvidenceCompleteness = 'complete' | 'partial' | 'missing'
+export type OperatorReviewDecision = 'approve' | 'correct' | 'keep_human_review'
+export type OperatorReviewDisposition = 'normal_observation' | 'inspection_recommended' | 'urgent_review'
+export type PolicyCandidateStatus = 'pending' | 'approved' | 'rejected'
+
+/** GET /api/agent-run-evaluations 항목 — snapshot 기준 parent/worker 결정적 평가 */
+export interface AgentRunEvaluationItem {
+  readonly run_id: string
+  readonly status: AgentRunStatus
+  readonly alert_id: string
+  readonly card_id: string
+  readonly operator_review_status: OperatorReviewStatus
+  readonly worker_status: WorkerStatus
+  readonly citation_coverage: CitationCoverage
+  readonly input_validity: InputValidity
+  readonly parent_handling: ParentHandling
+  readonly evidence_completeness: EvidenceCompleteness
+  readonly review_snapshot_status: ReviewSnapshotStatus
+  readonly created_at: string
+  readonly updated_at: string
+}
+
+export interface AgentRunEvaluationPage {
+  readonly items: readonly AgentRunEvaluationItem[]
+  readonly next_cursor: string | null
+}
+
+/** POST /api/agent-runs/{run_id}/reviews 요청 — append-only, 낙관적 버전 검사(409) */
+export interface OperatorReviewSubmitRequest {
+  readonly expected_review_version: number
+  readonly idempotency_key: string
+  readonly decision: OperatorReviewDecision
+  readonly reviewer: string
+  readonly reason: string
+  readonly disposition: OperatorReviewDisposition
+  readonly correction?: Record<string, string> | null
+  readonly evidence_annotations?: readonly Record<string, string | null>[]
+  readonly operator_labels?: readonly string[]
+}
+
+export interface OperatorReviewRecord {
+  readonly review_id: string
+  readonly run_id: string
+  readonly review_version: number
+  readonly idempotency_key: string
+  readonly request_hash: string
+  readonly decision: OperatorReviewDecision
+  readonly reviewer: string
+  readonly reason: string
+  readonly disposition: string | null
+  readonly correction: Record<string, string> | null
+  readonly evidence_annotations: readonly Record<string, string | null>[]
+  readonly operator_labels: readonly string[]
+  readonly created_at: string
+}
+
+export interface OperatorReviewHistory {
+  readonly run_id: string
+  readonly items: readonly OperatorReviewRecord[]
+}
+
+export interface PolicyCandidateDecisionRequest {
+  readonly expected_version: number
+  readonly reviewer: string
+  readonly reason: string
+}
+
+/** 교정(correct) 검토에서 생성되는 정책 후보 — 승인돼도 v3 런타임 자동 반영은 없음 */
+export interface PolicyCandidate {
+  readonly candidate_id: string
+  readonly source_review_id: string
+  readonly status: PolicyCandidateStatus
+  readonly version: number
+  readonly scope: string
+  readonly proposal: Record<string, string | number | boolean>
+  readonly supporting_evidence_ids: readonly string[]
+  readonly decision_history: readonly Record<string, string | number>[]
+  readonly created_at: string
+  readonly updated_at: string
+}
+
+export interface PolicyCandidatePage {
+  readonly items: readonly PolicyCandidate[]
+}
+
+/** GET /api/agent-operations/metrics — review/worker/정책 후보 운영 지표 */
+export interface AgentOperationsMetrics {
+  readonly run_count: number
+  readonly pending_review_count: number
+  readonly approved_review_count: number
+  readonly corrected_review_count: number
+  readonly keep_human_review_count: number
+  readonly diagnostic_completed_count: number
+  readonly diagnostic_timeout_count: number
+  readonly diagnostic_invalid_count: number
+  readonly diagnostic_budget_exceeded_count: number
+  readonly policy_candidate_pending_count: number
+  readonly policy_candidate_approved_count: number
+  readonly policy_candidate_rejected_count: number
+  readonly approval_rate: number
+  readonly correction_rate: number
+}
+
 export interface ModelVerificationResult {
   status: 'verified' | 'partial' | 'unavailable' | 'error'
   attempt: number

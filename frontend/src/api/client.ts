@@ -10,13 +10,21 @@
  */
 
 import type {
+  AgentOperationsMetrics,
   AgentRunArtifact,
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
+  AgentRunEvaluationPage,
   AgentRunListPage,
   AgentRunReviewSnapshotResponse,
   AgentRunResponse,
+  OperatorReviewHistory,
+  OperatorReviewRecord,
+  OperatorReviewSubmitRequest,
+  PolicyCandidate,
+  PolicyCandidateDecisionRequest,
+  PolicyCandidatePage,
   OpsAgentResultV4,
   SimulationResponse,
   AlertAckRequest,
@@ -182,6 +190,47 @@ export const agentRunsApi = {
     }),
   iterations: (runId: string) =>
     apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
+}
+
+/* ===== v3-02 신규 계약 (docs/report/06_agent_v3_backend_completion_ko.md) ===== */
+
+/** snapshot 기준 parent/worker 결정적 평가 projection */
+export const agentRunEvaluationsApi = {
+  list: (query?: { run_id?: string; limit?: number }) =>
+    apiFetch<AgentRunEvaluationPage>(
+      `/agent-run-evaluations${toQueryString({ run_id: query?.run_id, limit: query?.limit != null ? String(query.limit) : undefined })}`,
+    ),
+}
+
+/** 운영자 검토 append(낙관적 버전, 초과 시 409) + 이력 조회 */
+export const operatorReviewsApi = {
+  history: (runId: string) =>
+    apiFetch<OperatorReviewHistory>(`/agent-runs/${runId}/reviews`),
+  submit: (runId: string, body: OperatorReviewSubmitRequest) =>
+    apiFetch<OperatorReviewRecord>(`/agent-runs/${runId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+/** 교정 검토 기반 정책 후보 조회/결정 */
+export const policyCandidatesApi = {
+  list: () => apiFetch<PolicyCandidatePage>('/agent-policy-candidates'),
+  approve: (candidateId: string, body: PolicyCandidateDecisionRequest) =>
+    apiFetch<PolicyCandidate>(`/agent-policy-candidates/${candidateId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  reject: (candidateId: string, body: PolicyCandidateDecisionRequest) =>
+    apiFetch<PolicyCandidate>(`/agent-policy-candidates/${candidateId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+/** review/worker/정책 후보 운영 지표 */
+export const operationsMetricsApi = {
+  get: () => apiFetch<AgentOperationsMetrics>('/agent-operations/metrics'),
 }
 
 export const reviewTasksApi = {

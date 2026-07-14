@@ -1,21 +1,30 @@
 import { useState } from 'react'
-import { API_BASE } from '../api/client'
+import { API_BASE, ApiError } from '../api/client'
 import type {
   AgentRunArtifact,
   AgentRunListItem,
   AgentRunStatus,
+  CitationCoverage,
+  EvidenceCompleteness,
+  InputValidity,
+  OperatorReviewDecision,
+  OperatorReviewDisposition,
   OperatorReviewStatus,
+  ParentHandling,
   ReviewSnapshotStatus,
   WorkerStatus,
 } from '../api/contracts'
 import {
   useAgentIterations,
   useAgentRun,
+  useAgentRunEvaluation,
   useAgentRunReviewSnapshot,
   useAgentRuns,
   useAgentRunResult,
   useArtifacts,
   useGenerateDailyReport,
+  useOperatorReviews,
+  useSubmitOperatorReview,
   useSubmitReviewTask,
 } from '../api/hooks'
 import { ApiState, Button, StatusBadge, SurfaceCard, type Tone } from './ui'
@@ -72,6 +81,98 @@ function reviewSnapshotTone(status: ReviewSnapshotStatus): Tone {
   return 'neutral'
 }
 
+/* ===== v3-02 라벨 매핑 ===== */
+
+const citationLabels: Record<CitationCoverage, string> = {
+  complete: '완전', partial: '부분', missing: '없음', not_applicable: '해당 없음',
+}
+const validityLabels: Record<InputValidity, string> = {
+  valid: '유효', invalid: '무효', unavailable: '확인 불가',
+}
+const parentHandlingLabels: Record<ParentHandling, string> = {
+  used_as_support: '근거로 사용', invalid: '무효 처리', unavailable: '확인 불가', fallback_to_human: '사람 검토 전환',
+}
+const completenessLabels: Record<EvidenceCompleteness, string> = {
+  complete: '완전', partial: '부분', missing: '없음',
+}
+const decisionLabels: Record<OperatorReviewDecision, string> = {
+  approve: '승인', correct: '교정', keep_human_review: '사람 검토 유지',
+}
+const dispositionLabels: Record<OperatorReviewDisposition, string> = {
+  normal_observation: '정상 관찰', inspection_recommended: '점검 권장', urgent_review: '긴급 검토',
+}
+
+function decisionTone(decision: OperatorReviewDecision): Tone {
+  if (decision === 'approve') return 'success'
+  if (decision === 'correct') return 'warning'
+  return 'primary'
+}
+
+/** v3-02 결정적 품질 평가 projection — GET /api/agent-run-evaluations?run_id= */
+function EvaluationCard({ runId }: { readonly runId: string }) {
+  const { data, isError, isLoading, refetch } = useAgentRunEvaluation(runId)
+  return <SurfaceCard title="v3-02 품질 평가">
+    <ApiState empty={data === null && !isLoading} error={isError} loading={isLoading} retry={() => void refetch()} />
+    {data && <div className="detail-body"><div className="run-metrics">
+      <span>인용 커버리지 <strong>{citationLabels[data.citation_coverage]}</strong></span>
+      <span>입력 유효성 <strong>{validityLabels[data.input_validity]}</strong></span>
+      <span>AI 판단 처리 <strong>{parentHandlingLabels[data.parent_handling]}</strong></span>
+      <span>근거 완전성 <strong>{completenessLabels[data.evidence_completeness]}</strong></span>
+      <span>운영자 검토 <strong>{operatorReviewLabels[data.operator_review_status]}</strong></span>
+      <span>worker <strong>{workerStatusLabels[data.worker_status]}</strong></span>
+    </div></div>}
+  </SurfaceCard>
+}
+
+/** v3-02 운영자 검토 — POST /api/agent-runs/{id}/reviews (append) + 이력 조회 */
+function OperatorReviewCard({ runId }: { readonly runId: string }) {
+  const history = useOperatorReviews(runId)
+  const submit = useSubmitOperatorReview()
+  const [decision, setDecision] = useState<OperatorReviewDecision>('approve')
+  const [disposition, setDisposition] = useState<OperatorReviewDisposition>('inspection_recommended')
+  const [reason, setReason] = useState('')
+  const [correctionSummary, setCorrectionSummary] = useState('')
+  const items = history.data?.items ?? []
+  const latestVersion = items.at(-1)?.review_version ?? 0
+  const stale = submit.isError && submit.error instanceof ApiError && submit.error.status === 409
+
+  const onSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!reason.trim() || submit.isPending) return
+    submit.mutate(
+      {
+        runId,
+        body: {
+          expected_review_version: latestVersion,
+          idempotency_key: crypto.randomUUID(),
+          decision,
+          reviewer: 'ops-manager',
+          reason: reason.trim(),
+          disposition,
+          correction: decision === 'correct' && correctionSummary.trim() ? { summary: correctionSummary.trim() } : null,
+        },
+      },
+      { onSuccess: () => { setReason(''); setCorrectionSummary('') } },
+    )
+  }
+
+  return <SurfaceCard action={<span className="count-chip">검토 {items.length}건 · v{latestVersion}</span>} title="운영자 검토 (v3-02)">
+    <form className="review-form" onSubmit={onSubmit}>
+      <div className="review-fields">
+        <label>판정<select onChange={(event) => setDecision(event.target.value as OperatorReviewDecision)} value={decision}>{(Object.keys(decisionLabels) as OperatorReviewDecision[]).map((value) => <option key={value} value={value}>{decisionLabels[value]}</option>)}</select></label>
+        <label>처분<select onChange={(event) => setDisposition(event.target.value as OperatorReviewDisposition)} value={disposition}>{(Object.keys(dispositionLabels) as OperatorReviewDisposition[]).map((value) => <option key={value} value={value}>{dispositionLabels[value]}</option>)}</select></label>
+      </div>
+      {decision === 'correct' && <label>교정 내용<input onChange={(event) => setCorrectionSummary(event.target.value)} placeholder="AI 판단에서 바로잡을 내용" value={correctionSummary} /></label>}
+      <label>사유<textarea onChange={(event) => setReason(event.target.value)} placeholder="검토 판단의 근거를 남겨 주세요 (append-only 기록)" required value={reason} /></label>
+      <Button disabled={submit.isPending || !reason.trim()} tone="primary" type="submit">{submit.isPending ? '기록 중' : `${decisionLabels[decision]} 기록`}</Button>
+      {stale && <p className="form-error">다른 검토가 먼저 기록되었습니다(409). 이력을 새로고침한 뒤 다시 시도해 주세요.</p>}
+      {submit.isError && !stale && <p className="form-error">검토를 기록하지 못했습니다. 실행 상태를 확인해 주세요.</p>}
+    </form>
+    <ApiState empty={items.length === 0 && !history.isLoading} error={history.isError} loading={history.isLoading} retry={() => void history.refetch()} />
+    {items.length > 0 && <ol className="review-history">{[...items].reverse().map((item) => <li key={item.review_id}><header><StatusBadge tone={decisionTone(item.decision)}>{decisionLabels[item.decision]}</StatusBadge><strong>v{item.review_version} · {item.reviewer}</strong><time>{formatDateTime(item.created_at)}</time></header><span>{item.reason}</span>{item.correction?.summary && <small>교정: {item.correction.summary}</small>}</li>)}</ol>}
+  </SurfaceCard>
+}
+
 function reviewSnapshotTitle(status: ReviewSnapshotStatus): string {
   if (status === 'available') return '검토 스냅샷 사용 가능'
   if (status === 'legacy_unavailable') return '레거시 실행: 캡처 없음'
@@ -95,7 +196,7 @@ function RunProgress({ runId, onSelectRun }: { readonly runId: string; readonly 
   const iterations = useAgentIterations(runId)
   const phases = ['알림 감지', '데이터 수집', 'AI 판단', '보고서 생성', '작업지시서 초안', '완료']
   const completed = run.data?.status === 'completed' ? phases.length : Math.min(4, Math.max(1, (iterations.data?.length ?? 0) + 2))
-  return <div className="activity-stack"><RunList onSelectRun={onSelectRun} selectedRunId={runId} /><SurfaceCard title="선택된 AI 실행"><ApiState empty={false} error={run.isError} loading={run.isLoading} retry={() => void run.refetch()} />{run.data && <div className="detail-body"><div className="detail-title"><StatusBadge tone={runTone(run.data.status)}>{runStatusLabels[run.data.status]}</StatusBadge><h2>{run.data.manufacturer_id ?? '대상 설비'} · 기계실 {run.data.substation_id ?? '-'}</h2><p>실행 ID {run.data.run_id} · 요청자 {run.data.requested_by ?? '운영자'}</p></div><div className="run-steps">{phases.map((phase, index) => <div className={index < completed ? 'complete' : index === completed ? 'active' : ''} key={phase}><b>{index + 1}</b><span>{phase}</span></div>)}</div><div className="run-metrics"><span>모드 <strong>{run.data.agent_mode ?? '대기'}</strong></span><span>검토 상태 <strong>{run.data.review_status}</strong></span><span>모델 호출 <strong>{run.data.token_usage?.model_calls ?? 0}회</strong></span><span>토큰 <strong>{run.data.token_usage?.total_tokens.toLocaleString() ?? 0}</strong></span></div>{run.data.error && <p className="form-error">{run.data.error}</p>}</div>}</SurfaceCard><SurfaceCard title="v3-01 검토 캡처"><ApiState empty={false} error={review.isError} loading={review.isLoading} retry={() => void review.refetch()} />{review.data && <div className="detail-body"><div className="detail-title"><StatusBadge tone={reviewSnapshotTone(review.data.status)}>{review.data.status}</StatusBadge><h2>{review.data.schema_version ?? reviewSnapshotTitle(review.data.status)}</h2><p>{review.data.unavailable_reason ?? review.data.snapshot?.handling_reason ?? '이 실행은 v3-01 캡처 저장 이전에 생성되어 스냅샷 본문이 없습니다.'}</p></div><div className="run-metrics"><span>진단 상태 <strong>{review.data.snapshot ? workerStatusLabels[review.data.snapshot.diagnostic.status] : '-'}</strong></span><span>루프 <strong>{review.data.snapshot?.loop_count ?? 0}회</strong></span><span>근거 <strong>{review.data.snapshot?.evidence.length ?? 0}건</strong></span><span>해시 <strong>{review.data.snapshot_hash?.slice(0, 12) ?? '-'}</strong></span></div></div>}</SurfaceCard><SurfaceCard title="실행 단계 로그"><ApiState empty={false} error={iterations.isError} loading={iterations.isLoading} retry={() => void iterations.refetch()} />{iterations.data && <ol className="activity-log">{iterations.data.length > 0 ? iterations.data.map((item) => <li key={item.iteration_id}><strong>{item.phase}</strong><span>{item.decision}</span><small>신뢰도 {(item.confidence * 100).toFixed(0)}% · 근거 {(item.evidence_score * 100).toFixed(0)}%</small></li>) : <li><span>백엔드가 실행 단계를 기록하는 중입니다.</span></li>}</ol>}</SurfaceCard></div>
+  return <div className="activity-stack"><RunList onSelectRun={onSelectRun} selectedRunId={runId} /><SurfaceCard title="선택된 AI 실행"><ApiState empty={false} error={run.isError} loading={run.isLoading} retry={() => void run.refetch()} />{run.data && <div className="detail-body"><div className="detail-title"><StatusBadge tone={runTone(run.data.status)}>{runStatusLabels[run.data.status]}</StatusBadge><h2>{run.data.manufacturer_id ?? '대상 설비'} · 기계실 {run.data.substation_id ?? '-'}</h2><p>실행 ID {run.data.run_id} · 요청자 {run.data.requested_by ?? '운영자'}</p></div><div className="run-steps">{phases.map((phase, index) => <div className={index < completed ? 'complete' : index === completed ? 'active' : ''} key={phase}><b>{index + 1}</b><span>{phase}</span></div>)}</div><div className="run-metrics"><span>모드 <strong>{run.data.agent_mode ?? '대기'}</strong></span><span>검토 상태 <strong>{run.data.review_status}</strong></span><span>모델 호출 <strong>{run.data.token_usage?.model_calls ?? 0}회</strong></span><span>토큰 <strong>{run.data.token_usage?.total_tokens.toLocaleString() ?? 0}</strong></span></div>{run.data.error && <p className="form-error">{run.data.error}</p>}</div>}</SurfaceCard><SurfaceCard title="v3-01 검토 캡처"><ApiState empty={false} error={review.isError} loading={review.isLoading} retry={() => void review.refetch()} />{review.data && <div className="detail-body"><div className="detail-title"><StatusBadge tone={reviewSnapshotTone(review.data.status)}>{review.data.status}</StatusBadge><h2>{review.data.schema_version ?? reviewSnapshotTitle(review.data.status)}</h2><p>{review.data.unavailable_reason ?? review.data.snapshot?.handling_reason ?? '이 실행은 v3-01 캡처 저장 이전에 생성되어 스냅샷 본문이 없습니다.'}</p></div><div className="run-metrics"><span>진단 상태 <strong>{review.data.snapshot ? workerStatusLabels[review.data.snapshot.diagnostic.status] : '-'}</strong></span><span>루프 <strong>{review.data.snapshot?.loop_count ?? 0}회</strong></span><span>근거 <strong>{review.data.snapshot?.evidence.length ?? 0}건</strong></span><span>해시 <strong>{review.data.snapshot_hash?.slice(0, 12) ?? '-'}</strong></span></div></div>}</SurfaceCard><EvaluationCard runId={runId} /><OperatorReviewCard runId={runId} /><SurfaceCard title="실행 단계 로그"><ApiState empty={false} error={iterations.isError} loading={iterations.isLoading} retry={() => void iterations.refetch()} />{iterations.data && <ol className="activity-log">{iterations.data.length > 0 ? iterations.data.map((item) => <li key={item.iteration_id}><strong>{item.phase}</strong><span>{item.decision}</span><small>신뢰도 {(item.confidence * 100).toFixed(0)}% · 근거 {(item.evidence_score * 100).toFixed(0)}%</small></li>) : <li><span>백엔드가 실행 단계를 기록하는 중입니다.</span></li>}</ol>}</SurfaceCard></div>
 }
 
 function ReportPanel({ runId }: { readonly runId: string }) {

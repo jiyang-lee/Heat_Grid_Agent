@@ -4,13 +4,22 @@
  */
 
 import type {
+  AgentOperationsMetrics,
   AgentRunArtifact,
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
+  AgentRunEvaluationItem,
+  AgentRunEvaluationPage,
   AgentRunListPage,
   AgentRunReviewSnapshotResponse,
   AgentRunResponse,
+  OperatorReviewHistory,
+  OperatorReviewRecord,
+  OperatorReviewSubmitRequest,
+  PolicyCandidate,
+  PolicyCandidateDecisionRequest,
+  PolicyCandidatePage,
   AlertAckRequest,
   AlertEnqueueResponse,
   AlertListQuery,
@@ -396,6 +405,108 @@ export const agentRunsApi = {
         created_at: new Date().toISOString(),
       },
     ]
+  },
+}
+
+/* ===== v3-02 mock (계약 shape 동일, 데모 최소 구현) ===== */
+
+const mockOperatorReviews = new Map<string, OperatorReviewRecord[]>()
+
+export const agentRunEvaluationsApi = {
+  async list(query?: { run_id?: string; limit?: number }): Promise<AgentRunEvaluationPage> {
+    await delay(90)
+    const items = [...store.runs.values()]
+      .filter((run) => !query?.run_id || run.run_id === query.run_id)
+      .slice(0, query?.limit ?? 20)
+      .map((run): AgentRunEvaluationItem => ({
+        run_id: run.run_id,
+        status: run.status,
+        alert_id: run.alert_id,
+        card_id: run.card_id,
+        operator_review_status: (mockOperatorReviews.get(run.run_id)?.at(-1)?.decision === 'approve' ? 'approved' : mockOperatorReviews.get(run.run_id)?.at(-1)?.decision === 'correct' ? 'corrected' : mockOperatorReviews.get(run.run_id)?.length ? 'keep_human_review' : 'pending'),
+        worker_status: run.status === 'completed' ? 'completed' : 'not_triggered',
+        citation_coverage: 'partial',
+        input_validity: 'valid',
+        parent_handling: 'used_as_support',
+        evidence_completeness: 'partial',
+        review_snapshot_status: run.status === 'completed' ? 'available' : 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }))
+    return { items, next_cursor: null }
+  },
+}
+
+export const operatorReviewsApi = {
+  async history(runId: string): Promise<OperatorReviewHistory> {
+    await delay(80)
+    return { run_id: runId, items: mockOperatorReviews.get(runId) ?? [] }
+  },
+  async submit(runId: string, body: OperatorReviewSubmitRequest): Promise<OperatorReviewRecord> {
+    await delay(200)
+    const items = mockOperatorReviews.get(runId) ?? []
+    const latest = items.at(-1)?.review_version ?? 0
+    if (body.expected_review_version !== latest) {
+      throw new ApiError(409, `/agent-runs/${runId}/reviews`, 'review version is stale')
+    }
+    const record: OperatorReviewRecord = {
+      review_id: `mock-review-${latest + 1}`,
+      run_id: runId,
+      review_version: latest + 1,
+      idempotency_key: body.idempotency_key,
+      request_hash: 'mock'.padEnd(64, '0'),
+      decision: body.decision,
+      reviewer: body.reviewer,
+      reason: body.reason,
+      disposition: body.disposition,
+      correction: body.correction ?? null,
+      evidence_annotations: body.evidence_annotations ?? [],
+      operator_labels: body.operator_labels ?? [],
+      created_at: new Date().toISOString(),
+    }
+    mockOperatorReviews.set(runId, [...items, record])
+    return record
+  },
+}
+
+export const policyCandidatesApi = {
+  async list(): Promise<PolicyCandidatePage> {
+    await delay(80)
+    return { items: [] }
+  },
+  async approve(candidateId: string, _body: PolicyCandidateDecisionRequest): Promise<PolicyCandidate> {
+    await delay(100)
+    throw new ApiError(404, `/agent-policy-candidates/${candidateId}/approve`, 'mock에는 정책 후보가 없습니다.')
+  },
+  async reject(candidateId: string, _body: PolicyCandidateDecisionRequest): Promise<PolicyCandidate> {
+    await delay(100)
+    throw new ApiError(404, `/agent-policy-candidates/${candidateId}/reject`, 'mock에는 정책 후보가 없습니다.')
+  },
+}
+
+export const operationsMetricsApi = {
+  async get(): Promise<AgentOperationsMetrics> {
+    await delay(80)
+    const reviews = [...mockOperatorReviews.values()].flat()
+    const approved = reviews.filter((item) => item.decision === 'approve').length
+    const corrected = reviews.filter((item) => item.decision === 'correct').length
+    const runCount = store.runs.size
+    return {
+      run_count: runCount,
+      pending_review_count: Math.max(0, runCount - approved - corrected),
+      approved_review_count: approved,
+      corrected_review_count: corrected,
+      keep_human_review_count: reviews.filter((item) => item.decision === 'keep_human_review').length,
+      diagnostic_completed_count: runCount,
+      diagnostic_timeout_count: 0,
+      diagnostic_invalid_count: 0,
+      diagnostic_budget_exceeded_count: 0,
+      policy_candidate_pending_count: 0,
+      policy_candidate_approved_count: 0,
+      policy_candidate_rejected_count: 0,
+      approval_rate: runCount === 0 ? 0 : approved / runCount,
+      correction_rate: runCount === 0 ? 0 : corrected / runCount,
+    }
   },
 }
 
