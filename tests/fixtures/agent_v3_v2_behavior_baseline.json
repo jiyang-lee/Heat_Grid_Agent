@@ -1,0 +1,76 @@
+{
+  "schema_version": "heatgrid.agent.v3.v2-baseline.v1",
+  "provenance": {
+    "behavior_sha": "8ddc0b485dbe4a7ee9601066354280cc997101d6",
+    "branch_start_sha": "bb3fb32f6429f0ca84e162a88fa59109effc712b"
+  },
+  "scenarios": {
+    "normal_high": {
+      "decision_order": ["diagnostic_worker", "request_human"],
+      "loop_count": 2,
+      "terminal_status": "completed"
+    },
+    "model_mismatch_urgent": {
+      "decision_order": ["rerun_model", "diagnostic_worker", "request_human"],
+      "loop_count": 3,
+      "terminal_status": "completed"
+    },
+    "review_required_insufficient_evidence": {
+      "decision_order": ["expand_internal", "diagnostic_worker", "request_human"],
+      "loop_count": 3,
+      "terminal_status": "completed"
+    }
+  },
+  "run_response_contract": {
+    "fields": [
+      "run_id",
+      "status",
+      "input_source",
+      "alert_id",
+      "card_id",
+      "evaluation_run_id",
+      "manufacturer_id",
+      "substation_id",
+      "parent_run_id",
+      "trigger_type",
+      "requested_by",
+      "trigger_reason",
+      "approved_action_task_id",
+      "agent_mode",
+      "ops_output",
+      "token_usage",
+      "loop_summary",
+      "review_status",
+      "review_task_id",
+      "error"
+    ],
+    "statuses": ["queued", "running", "completed", "failed"],
+    "review_statuses": ["pending", "approved", "rejected", "corrected"],
+    "input_source": "alert",
+    "ops_output_fields": ["summary", "action_plan", "caution"]
+  },
+  "diagnostic_contract": {
+    "task_key": "fault_diagnosis:v1",
+    "input_token_limit": 3000,
+    "output_token_limit": 1000,
+    "total_token_limit": 4000,
+    "deadline_seconds": 60.0,
+    "first_attempt_seconds": 45.0,
+    "retry_seconds": 15.0,
+    "max_attempts": 2,
+    "max_hypotheses": 3
+  },
+  "budget_contract": {
+    "parent_token_limit": 20000,
+    "parent_retry_limit": 3,
+    "external_search_limit": 0,
+    "task_max_attempts": 3,
+    "task_identity": ["run_id", "task_key"],
+    "operation_key_unique": true
+  },
+  "checkpoint_contract": {
+    "thread_id": "run_id",
+    "durability": "sync",
+    "resume_input": null
+  }
+}
