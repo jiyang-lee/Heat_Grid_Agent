@@ -351,6 +351,35 @@ async def test_empty_rationale_does_not_fail_completed_public_run() -> None:
     assert lifecycle.complete_calls == 1
 
 
+@pytest.mark.anyio
+async def test_empty_rationale_marks_internal_review_capture_failure() -> None:
+    lifecycle = CountingLifecyclePort()
+    external_data = FakeExternalDataPort()
+    runtime = replace(
+        _runtime(external_data),
+        chat_model=EmptyRationaleChatModelPort(),
+    )
+    context = AgentGraphContext(
+        runtime=runtime,
+        inputs=FakeInputPort(),
+        lifecycle=lifecycle,
+        audit=FakeAuditPort(),
+        reviews=FakeReviewPort(),
+        artifacts=FakeArtifactPort(),
+    )
+
+    execution = await execute_agent_graph_with_capture(
+        context,
+        AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1"),
+    )
+
+    assert execution.result.status == "completed"
+    assert execution.review_capture_source is None
+    assert execution.review_capture_failure is not None
+    assert execution.review_capture_failure.error_type == "ValidationError"
+    assert lifecycle.complete_calls == 1
+
+
 async def run_fake_graph() -> None:
     external_data = FakeExternalDataPort()
     runtime = _runtime(external_data)

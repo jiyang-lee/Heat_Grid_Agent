@@ -104,6 +104,109 @@ def test_policy_proposal_rejects_invalid_scope() -> None:
         AgentPolicyProposal.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    ("payload"),
+    [
+        {
+            "scope": "evidence_threshold",
+            "operation": "set",
+            "target": "force_human_review",
+            "value": 0.75,
+        },
+        {
+            "scope": "evidence_threshold",
+            "operation": "set",
+            "target": "minimum_evidence_score",
+            "value": True,
+        },
+        {
+            "scope": "evidence_threshold",
+            "operation": "increase",
+            "target": "minimum_evidence_score",
+            "value": 1.01,
+        },
+        {
+            "scope": "diagnostic_trigger",
+            "operation": "increase",
+            "target": "diagnostic_priority_trigger",
+            "value": "urgent",
+        },
+        {
+            "scope": "diagnostic_trigger",
+            "operation": "set",
+            "target": "diagnostic_priority_trigger",
+            "value": "critical",
+        },
+        {
+            "scope": "human_review_route",
+            "operation": "decrease",
+            "target": "force_human_review",
+            "value": True,
+        },
+        {
+            "scope": "human_review_route",
+            "operation": "set",
+            "target": "force_human_review",
+            "value": 1.0,
+        },
+    ],
+)
+def test_policy_proposal_rejects_unsupported_combinations(payload: dict) -> None:
+    with pytest.raises(ValidationError):
+        AgentPolicyProposal.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "proposal",
+    [
+        {
+            "scope": "evidence_threshold",
+            "operation": "decrease",
+            "target": "minimum_evidence_score",
+            "value": 0.1,
+        },
+        {
+            "scope": "diagnostic_trigger",
+            "operation": "set",
+            "target": "diagnostic_priority_trigger",
+            "value": "high",
+        },
+        {
+            "scope": "human_review_route",
+            "operation": "set",
+            "target": "force_human_review",
+            "value": False,
+        },
+    ],
+)
+def test_policy_proposal_accepts_allowlisted_combinations(proposal: dict) -> None:
+    assert AgentPolicyProposal.model_validate(proposal).model_dump() == proposal
+
+
+def test_reviewer_names_are_stripped_and_nonblank() -> None:
+    review = _review_record().model_copy(update={"reviewer": "  operator  "})
+    decision = _policy_candidate().decision_history[0].model_copy(
+        update={"reviewer": "  system  "}
+    )
+
+    parsed_review = AgentRunReviewRecord.model_validate(review.model_dump())
+    parsed_decision = PolicyCandidateDecision.model_validate(decision.model_dump())
+
+    assert parsed_review.reviewer == "operator"
+    assert parsed_decision.reviewer == "system"
+    with pytest.raises(ValidationError):
+        AgentRunReviewRecord.model_validate(
+            {**_review_record().model_dump(), "reviewer": "   "}
+        )
+    with pytest.raises(ValidationError):
+        PolicyCandidateDecision.model_validate(
+            {
+                **_policy_candidate().decision_history[0].model_dump(),
+                "reviewer": "   ",
+            }
+        )
+
+
 def _snapshot() -> AgentRunReviewSnapshotV1:
     return AgentRunReviewSnapshotV1(
         run_id="run-1",

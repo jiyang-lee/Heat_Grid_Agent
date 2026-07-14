@@ -98,6 +98,24 @@ async def record_review_snapshot_unavailable(
         )
 
 
+async def record_review_snapshot_pending(
+    engine: AsyncEngine,
+    *,
+    run_id: str,
+) -> None:
+    async with engine.begin() as connection:
+        await insert_agent_run_event(
+            connection,
+            AgentRunEventRecord(
+                run_id=run_id,
+                event_type="review_snapshot_pending",
+                message="review snapshot capture pending",
+                payload={},
+                operation_key=f"review-snapshot-pending:{run_id}",
+            ),
+        )
+
+
 async def get_review_snapshot(
     engine: AsyncEngine,
     run_id: str,
@@ -105,7 +123,8 @@ async def get_review_snapshot(
     query = text(
         "SELECT runs.run_id, runs.status AS run_status, snapshot.schema_version, "
         "snapshot.snapshot_hash, CAST(snapshot.snapshot AS text) AS snapshot, "
-        "snapshot.created_at, unavailable.payload ->> 'reason' AS unavailable_reason "
+        "snapshot.created_at, unavailable.payload ->> 'reason' AS unavailable_reason, "
+        "runs.review_snapshot_expected "
         "FROM agent_runs runs "
         "LEFT JOIN agent_run_review_snapshots snapshot ON snapshot.run_id = runs.run_id "
         "LEFT JOIN LATERAL ("
@@ -138,11 +157,18 @@ async def get_review_snapshot(
             status="unavailable",
             unavailable_reason=str(row["unavailable_reason"]),
         )
+    if str(row["run_status"]) in {"queued", "running"}:
+        return AgentRunReviewSnapshotResponse(
+            run_id=str(row["run_id"]),
+            status="pending",
+        )
+    if row["review_snapshot_expected"] is True:
+        return AgentRunReviewSnapshotResponse(
+            run_id=str(row["run_id"]),
+            status="unavailable",
+            unavailable_reason="review_snapshot_missing_after_terminal_run",
+        )
     return AgentRunReviewSnapshotResponse(
         run_id=str(row["run_id"]),
-        status=(
-            "pending"
-            if str(row["run_status"]) in {"queued", "running"}
-            else "legacy_unavailable"
-        ),
+        status="legacy_unavailable",
     )

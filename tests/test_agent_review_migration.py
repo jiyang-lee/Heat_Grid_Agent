@@ -31,6 +31,9 @@ def test_agent_review_migration_contract() -> None:
     assert "version integer not null default 1" in sql
     assert "agent_run_review_snapshots_run_id_fkey" in sql
     assert "agent_run_reviews_run_id_fkey" in sql
+    assert "add column if not exists review_snapshot_expected boolean" in sql
+    assert "alter column review_snapshot_expected set default true" in sql
+    assert "review_snapshot_expected boolean default true" not in sql
 
 
 def test_agent_review_migration_defers_agent_run_foreign_keys() -> None:

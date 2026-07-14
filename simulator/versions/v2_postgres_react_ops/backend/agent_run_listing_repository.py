@@ -85,7 +85,6 @@ async def list_agent_runs(
     page_limit = min(max(filters.limit, 1), LIST_LIMIT_MAX)
     params: dict[str, str | int | datetime] = {
         "limit": page_limit + 1,
-        "worker_task_key": "fault_diagnosis:v1",
     }
     if filters.status is not None:
         where.append("run_status = :run_status")
@@ -155,18 +154,33 @@ _LIST_SOURCE_SQL: Final = (
     "WHEN 'approve' THEN 'approved' WHEN 'correct' THEN 'corrected' "
     "WHEN 'keep_human_review' THEN 'keep_human_review' ELSE 'pending' "
     "END AS operator_review_status, "
-    "COALESCE(worker.status, 'not_triggered') AS worker_status, CASE "
+    "CASE "
+    "WHEN snapshot.snapshot -> 'diagnostic' ->> 'status' IN ("
+    "'not_triggered', 'completed', 'failed', 'timeout', 'invalid', "
+    "'budget_exceeded') THEN snapshot.snapshot -> 'diagnostic' ->> 'status' "
+    "WHEN diagnostic_event.status IN ("
+    "'completed', 'failed', 'timeout', 'invalid', 'budget_exceeded') "
+    "THEN diagnostic_event.status "
+    "WHEN diagnostic_ledger.ledger_id IS NOT NULL THEN 'running' "
+    "ELSE 'not_triggered' END AS worker_status, CASE "
     "WHEN snapshot.run_id IS NOT NULL THEN 'available' "
     "WHEN unavailable.event_id IS NOT NULL THEN 'unavailable' "
     "WHEN runs.status IN ('queued', 'running') THEN 'pending' "
+    "WHEN runs.review_snapshot_expected IS TRUE THEN 'unavailable' "
     "ELSE 'legacy_unavailable' END AS review_snapshot_status, "
     "runs.created_at, runs.updated_at FROM agent_runs runs "
     "LEFT JOIN ops_alert_queue alerts ON alerts.alert_id = runs.alert_id "
     "LEFT JOIN agent_run_review_snapshots snapshot ON snapshot.run_id = runs.run_id "
     "LEFT JOIN LATERAL (SELECT reviews.decision FROM agent_run_reviews reviews "
     "WHERE reviews.run_id = runs.run_id ORDER BY reviews.review_version DESC LIMIT 1"
-    ") latest_review ON TRUE LEFT JOIN agent_run_tasks worker "
-    "ON worker.run_id = runs.run_id AND worker.task_key = :worker_task_key "
+    ") latest_review ON TRUE "
+    "LEFT JOIN LATERAL (SELECT events.payload ->> 'status' AS status "
+    "FROM agent_run_events events WHERE events.run_id = runs.run_id "
+    "AND events.event_type = 'diagnostic_worker_completed' "
+    "ORDER BY events.event_id DESC LIMIT 1) diagnostic_event ON TRUE "
+    "LEFT JOIN agent_budget_ledger diagnostic_ledger "
+    "ON diagnostic_ledger.operation_key = "
+    "'diagnostic-budget:' || runs.run_id::text || ':fault_diagnosis:v1' "
     "LEFT JOIN LATERAL (SELECT events.event_id FROM agent_run_events events "
     "WHERE events.run_id = runs.run_id "
     "AND events.event_type = 'review_snapshot_unavailable' "

@@ -119,6 +119,14 @@ async def test_production_runner_persists_review_snapshot_after_task_completion(
             card_id=fixture.card_id,
             force_new=True,
         )
+        async with fixture.engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE agent_runs SET review_snapshot_expected = NULL "
+                    "WHERE run_id = :run_id"
+                ),
+                {"run_id": fixture.legacy_run_id},
+            )
         legacy = await agent_runner.run_reserved_agent_graph(
             fixture.engine,
             fixture.request(fixture.legacy_run_id),

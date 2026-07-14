@@ -13,6 +13,7 @@ from heatgrid_ops.agent.graph import AgentGraphExecution
 from heatgrid_ops.agent.models import OpsAgentOutput, TokenUsage
 from heatgrid_ops.agent.review_models import (
     AgentRunReviewCaptureSource,
+    ReviewCaptureFailure,
     ReviewBudgetLineage,
     ReviewCaptureSourceCardSnapshot,
     ReviewCheckpointLineage,
@@ -66,10 +67,61 @@ async def test_runner_completes_task_before_capturing_snapshot(
     async def capture(*_args, **_kwargs) -> None:
         events.append("snapshot_captured")
 
+    adapter = AsyncMock()
+
+    async def mark_pending(_run_id: str) -> None:
+        events.append("snapshot_pending")
+
+    adapter.mark_pending.side_effect = mark_pending
+
     monkeypatch.setattr(agent_runner, "claim_agent_graph_task", claim)
     monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
     monkeypatch.setattr(agent_runner, "complete_agent_graph_task", complete)
     monkeypatch.setattr(agent_runner, "_capture_completed_review_snapshot", capture)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
+    monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
+
+    response = await agent_runner.run_reserved_agent_graph(
+        AsyncMock(),
+        agent_runner.AgentRunRequest(
+            run_id="run-1", alert_id="alert-1", card_id="card-1"
+        ),
+        runtime=AsyncMock(),
+    )
+
+    assert response.status == "completed"
+    assert events == ["snapshot_pending", "task_completed", "snapshot_captured"]
+
+
+@pytest.mark.anyio
+async def test_pending_marker_failure_does_not_prevent_task_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    adapter = AsyncMock()
+    adapter.mark_pending.side_effect = RuntimeError("secret=do-not-log")
+
+    async def claim(*_args, **_kwargs) -> FakeTaskClaim:
+        return FakeTaskClaim(claimed=True, lease_owner="lease-1")
+
+    async def execute(*_args, **_kwargs) -> AgentGraphExecution:
+        return AgentGraphExecution(result=_result(), review_capture_source=_source())
+
+    async def complete(*_args, **_kwargs) -> None:
+        events.append("task_completed")
+
+    async def capture(*_args, **_kwargs) -> None:
+        events.append("snapshot_captured")
+
+    monkeypatch.setattr(agent_runner, "claim_agent_graph_task", claim)
+    monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
+    monkeypatch.setattr(agent_runner, "complete_agent_graph_task", complete)
+    monkeypatch.setattr(agent_runner, "_capture_completed_review_snapshot", capture)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
     monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
 
     response = await agent_runner.run_reserved_agent_graph(
@@ -82,6 +134,7 @@ async def test_runner_completes_task_before_capturing_snapshot(
 
     assert response.status == "completed"
     assert events == ["task_completed", "snapshot_captured"]
+    assert adapter.mark_pending.await_count == 2
 
 
 @pytest.mark.anyio
@@ -114,6 +167,7 @@ async def test_runner_does_not_fabricate_snapshot_without_capture_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     capture = AsyncMock()
+    adapter = AsyncMock()
 
     async def claim(*_args, **_kwargs) -> FakeTaskClaim:
         return FakeTaskClaim(claimed=True, lease_owner="lease-1")
@@ -125,6 +179,9 @@ async def test_runner_does_not_fabricate_snapshot_without_capture_source(
     monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
     monkeypatch.setattr(agent_runner, "complete_agent_graph_task", AsyncMock())
     monkeypatch.setattr(agent_runner, "_capture_completed_review_snapshot", capture)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
     monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
 
     response = await agent_runner.run_reserved_agent_graph(
@@ -137,6 +194,99 @@ async def test_runner_does_not_fabricate_snapshot_without_capture_source(
 
     assert response.status == "completed"
     capture.assert_not_awaited()
+    adapter.mark_pending.assert_not_awaited()
+    adapter.mark_unavailable.assert_not_awaited()
+
+
+@pytest.mark.anyio
+async def test_runner_marks_capture_build_failure_unavailable_after_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    adapter = AsyncMock()
+
+    async def claim(*_args, **_kwargs) -> FakeTaskClaim:
+        return FakeTaskClaim(claimed=True, lease_owner="lease-1")
+
+    async def execute(*_args, **_kwargs) -> AgentGraphExecution:
+        return AgentGraphExecution(
+            result=_result(),
+            review_capture_source=None,
+            review_capture_failure=ReviewCaptureFailure(
+                error_type="ValidationError",
+                message="secret=do-not-store",
+            ),
+        )
+
+    async def complete(*_args, **_kwargs) -> None:
+        events.append("task_completed")
+
+    async def mark_unavailable(_run_id: str, reason: str) -> None:
+        events.append("snapshot_unavailable")
+        assert reason == "ValidationError: review snapshot source unavailable"
+
+    adapter.mark_unavailable.side_effect = mark_unavailable
+    monkeypatch.setattr(agent_runner, "claim_agent_graph_task", claim)
+    monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
+    monkeypatch.setattr(agent_runner, "complete_agent_graph_task", complete)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
+    monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
+
+    response = await agent_runner.run_reserved_agent_graph(
+        AsyncMock(),
+        agent_runner.AgentRunRequest(
+            run_id="run-1", alert_id="alert-1", card_id="card-1"
+        ),
+        runtime=AsyncMock(),
+    )
+
+    assert response.status == "completed"
+    assert events == ["snapshot_unavailable", "task_completed"]
+    adapter.mark_pending.assert_not_awaited()
+
+
+@pytest.mark.anyio
+async def test_unavailable_marker_failure_does_not_prevent_task_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    complete = AsyncMock()
+    adapter = AsyncMock()
+    adapter.mark_unavailable.side_effect = RuntimeError("secret=do-not-log")
+
+    async def claim(*_args, **_kwargs) -> FakeTaskClaim:
+        return FakeTaskClaim(claimed=True, lease_owner="lease-1")
+
+    async def execute(*_args, **_kwargs) -> AgentGraphExecution:
+        return AgentGraphExecution(
+            result=_result(),
+            review_capture_source=None,
+            review_capture_failure=ReviewCaptureFailure(
+                error_type="RuntimeError",
+                message="secret=do-not-store",
+            ),
+        )
+
+    monkeypatch.setattr(agent_runner, "claim_agent_graph_task", claim)
+    monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
+    monkeypatch.setattr(agent_runner, "complete_agent_graph_task", complete)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
+    monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
+
+    response = await agent_runner.run_reserved_agent_graph(
+        AsyncMock(),
+        agent_runner.AgentRunRequest(
+            run_id="run-1", alert_id="alert-1", card_id="card-1"
+        ),
+        runtime=AsyncMock(),
+    )
+
+    assert response.status == "completed"
+    complete.assert_awaited_once()
+    assert adapter.mark_unavailable.await_count == 2
 
 
 @pytest.mark.anyio
@@ -155,6 +305,7 @@ async def test_completed_task_reclaim_does_not_capture_snapshot_twice(
         )
     )
     capture = AsyncMock()
+    adapter = AsyncMock()
     existing = agent_runner.AgentRunResponse.model_validate(
         _result().model_dump(mode="json")
     )
@@ -166,6 +317,9 @@ async def test_completed_task_reclaim_does_not_capture_snapshot_twice(
     monkeypatch.setattr(agent_runner, "execute_agent_graph_with_capture", execute)
     monkeypatch.setattr(agent_runner, "complete_agent_graph_task", AsyncMock())
     monkeypatch.setattr(agent_runner, "_capture_completed_review_snapshot", capture)
+    monkeypatch.setattr(
+        agent_runner, "PostgresReviewSnapshotAdapter", lambda _engine: adapter
+    )
     monkeypatch.setattr(agent_runner, "get_agent_run", AsyncMock(return_value=existing))
     monkeypatch.setattr(agent_runner, "create_agent_graph_context", lambda *_: None)
     request = agent_runner.AgentRunRequest(
@@ -183,6 +337,7 @@ async def test_completed_task_reclaim_does_not_capture_snapshot_twice(
     assert reclaimed.status == "completed"
     execute.assert_awaited_once()
     capture.assert_awaited_once()
+    adapter.mark_pending.assert_awaited_once()
 
 
 def test_snapshot_assembly_maps_db_lineage_and_graph_evidence() -> None:

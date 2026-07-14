@@ -26,6 +26,8 @@ from heatgrid_ops.agent.state import (
     OutputState,
     RequestState,
 )
+from heatgrid_weather.client import KmaAsosClient
+from heatgrid_weather.context import build_weather_context
 
 
 def test_capture_source_is_deterministic_when_input_mapping_order_changes() -> None:
@@ -111,6 +113,82 @@ def test_capture_source_preserves_typed_graph_evidence_without_db_lineage() -> N
     assert not hasattr(capture, "decisions")
     assert not hasattr(capture, "budget")
     assert not hasattr(capture, "checkpoint")
+
+
+def test_capture_compacts_real_kma_weather_context_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "tm": "2026-07-13 00:00",
+            "stnNm": "Sejong",
+            "ta": "8.0",
+            "hm": "70.0",
+            "rn": "0.0",
+            "ws": "1.0",
+        },
+        {
+            "tm": "2026-07-14 00:00",
+            "stnNm": "Sejong",
+            "ta": "2.0",
+            "hm": "60.0",
+            "rn": "0.5",
+            "ws": "3.0",
+        },
+        {
+            "tm": "2026-07-14 01:00",
+            "stnNm": "Sejong",
+            "ta": "4.0",
+            "hm": "50.0",
+            "rn": "1.0",
+            "ws": "5.0",
+        },
+    ]
+
+    monkeypatch.setattr(KmaAsosClient, "fetch_hourly", lambda *_args: rows)
+    weather = build_weather_context(
+        "2026-07-14 00:00:00",
+        "2026-07-14 01:00:00",
+        client=KmaAsosClient(service_key="test"),
+    )
+    weather["status"] = "available"
+    external_context = _external_context()
+    external_context["weather"] = weather
+
+    capture = build_review_capture_source(
+        _state(_source_input(), external_context), _result()
+    )
+
+    assert capture.weather is not None
+    assert capture.weather.provenance.source == "KMA APIHub ASOS hourly observations"
+    assert capture.weather.temperature_c == pytest.approx(3.0)
+    assert capture.weather.humidity_percent == pytest.approx(55.0)
+    assert capture.weather.precipitation_mm == pytest.approx(1.5)
+    assert capture.weather.wind_speed_mps == pytest.approx(5.0)
+
+
+def test_capture_preserves_structured_weather_failure_provenance() -> None:
+    external_context = _external_context()
+    external_context["weather"] = {
+        "status": "unavailable",
+        "source": "structured_weather_snapshot",
+        "window_start": "2026-07-14T00:00:00Z",
+        "window_end": "2026-07-14T01:00:00Z",
+        "provenance": {
+            "error_type": "RuntimeError",
+            "message": "weather provider unavailable",
+        },
+    }
+
+    capture = build_review_capture_source(
+        _state(_source_input(), external_context), _result()
+    )
+
+    assert capture.weather is not None
+    assert capture.weather.status == "unavailable"
+    assert capture.weather.provenance.source == "structured_weather_snapshot"
+    assert capture.weather.provenance.error_type == "RuntimeError"
+    assert capture.weather.provenance.message == "weather provider unavailable"
 
 
 def test_capture_normalizes_pgstore_and_search_provenance_shape() -> None:

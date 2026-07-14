@@ -19,6 +19,7 @@ from heatgrid_ops.agent.review_models import (
     ReviewDiagnosticHypothesis,
     ReviewDiagnosticSnapshot,
     ReviewCaptureEvidenceSnapshot,
+    ReviewCaptureFailure,
     ReviewCaptureSourceCardSnapshot,
     ReviewFinalResultSnapshot,
     ReviewModelVerificationSnapshot,
@@ -60,11 +61,16 @@ def build_review_capture_source(
 def try_build_review_capture_source(
     state: AgentState,
     result: AgentRunResult,
-) -> AgentRunReviewCaptureSource | None:
+) -> AgentRunReviewCaptureSource | ReviewCaptureFailure:
     try:
         return build_review_capture_source(state, result)
-    except (RuntimeError, ValidationError):
-        return None
+    except RuntimeError as exc:
+        return ReviewCaptureFailure(error_type="RuntimeError", message=str(exc)[:1000])
+    except ValidationError:
+        return ReviewCaptureFailure(
+            error_type="ValidationError",
+            message="review capture source failed validation",
+        )
 
 
 def canonical_review_json(
@@ -157,11 +163,36 @@ def _model_verification(state: AgentState) -> ReviewModelVerificationSnapshot | 
 
 def _weather(external_context: JsonObject) -> ReviewWeatherSnapshot | None:
     weather = _mapping(external_context.get("weather"))
-    provenance = _provenance(weather.get("provenance"))
+    raw_provenance = _mapping(weather.get("provenance"))
+    top_level_source = _string(weather.get("source"))
+    provenance = _provenance(
+        {
+            **raw_provenance,
+            "source": _string(
+                raw_provenance.get("source") or raw_provenance.get("source_path")
+            )
+            or top_level_source,
+        }
+    )
     status = _string(weather.get("status"))
-    humidity = _number(_first(weather, "humidity_percent", "humidity"))
-    precipitation = _number(weather.get("precipitation_mm"))
-    wind_speed = _number(_first(weather, "wind_speed_mps", "wind_speed"))
+    metrics = _mapping(weather.get("metrics"))
+    temperature_value = _first(weather, "temperature_c", "temperature")
+    humidity_value = _first(weather, "humidity_percent", "humidity")
+    precipitation_value = weather.get("precipitation_mm")
+    wind_speed_value = _first(weather, "wind_speed_mps", "wind_speed")
+    humidity = _number(
+        metrics.get("avg_humidity_pct") if humidity_value is None else humidity_value
+    )
+    precipitation = _number(
+        metrics.get("precipitation_mm")
+        if precipitation_value is None
+        else precipitation_value
+    )
+    wind_speed = _number(
+        metrics.get("max_wind_speed_mps")
+        if wind_speed_value is None
+        else wind_speed_value
+    )
     if (
         status is None
         or provenance is None
@@ -173,9 +204,18 @@ def _weather(external_context: JsonObject) -> ReviewWeatherSnapshot | None:
     return ReviewWeatherSnapshot(
         status=status[:120],
         observed_at=_bounded(
-            _string(weather.get("observed_at") or weather.get("base_time")), 120
+            _string(
+                weather.get("observed_at")
+                or weather.get("base_time")
+                or weather.get("window_end")
+            ),
+            120,
         ),
-        temperature_c=_number(_first(weather, "temperature_c", "temperature")),
+        temperature_c=_number(
+            metrics.get("avg_temperature_c")
+            if temperature_value is None
+            else temperature_value
+        ),
         humidity_percent=humidity,
         precipitation_mm=precipitation,
         wind_speed_mps=wind_speed,
@@ -278,6 +318,8 @@ def _provenance(value: JsonValue | None) -> ReviewProvenanceSnapshot | None:
         retrieval_id=_bounded(_string(raw.get("retrieval_id")), 200),
         document_id=_bounded(_string(raw.get("document_id")), 200),
         chunk_id=_bounded(_string(raw.get("chunk_id")), 200),
+        error_type=_bounded(_string(raw.get("error_type")), 200),
+        message=_bounded(_string(raw.get("message")), 500),
     )
 
 

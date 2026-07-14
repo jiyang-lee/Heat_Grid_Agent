@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal, Self, assert_never
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictFloat,
+    StringConstraints,
+    model_validator,
+)
+
+
+ReviewerName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
+]
 
 
 class FrozenReviewModel(BaseModel):
@@ -85,6 +99,8 @@ class ReviewProvenanceSnapshot(FrozenReviewModel):
     retrieval_id: str | None = Field(default=None, max_length=200)
     document_id: str | None = Field(default=None, max_length=200)
     chunk_id: str | None = Field(default=None, max_length=200)
+    error_type: str | None = Field(default=None, max_length=200)
+    message: str | None = Field(default=None, max_length=500)
 
 
 class ReviewWeatherSnapshot(FrozenReviewModel):
@@ -156,6 +172,11 @@ class AgentRunReviewCaptureSource(FrozenReviewCaptureModel):
     source_card: ReviewCaptureSourceCardSnapshot
 
 
+class ReviewCaptureFailure(FrozenReviewCaptureModel):
+    error_type: Literal["RuntimeError", "ValidationError"]
+    message: str = Field(min_length=1, max_length=1000)
+
+
 class ReviewBudgetLineage(FrozenReviewModel):
     parent_token_limit: int = Field(ge=1)
     parent_tokens_used: int = Field(ge=0)
@@ -199,7 +220,7 @@ class AgentRunReviewRecord(FrozenReviewModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
     request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     decision: Literal["approve", "correct", "keep_human_review"]
-    reviewer: str = Field(min_length=1, max_length=120)
+    reviewer: ReviewerName
     reason: str = Field(min_length=1, max_length=2000)
     disposition: str | None = Field(default=None, max_length=500)
     correction: ReviewOpsAgentOutput | None = None
@@ -220,13 +241,41 @@ class AgentPolicyProposal(FrozenReviewModel):
         "diagnostic_priority_trigger",
         "force_human_review",
     ]
-    value: bool | float | str
+    value: StrictBool | StrictFloat | Literal["urgent", "high"]
+
+    @model_validator(mode="after")
+    def validate_allowlisted_combination(self) -> Self:
+        match self.scope:
+            case "evidence_threshold":
+                valid = (
+                    self.target == "minimum_evidence_score"
+                    and self.operation in {"set", "increase", "decrease"}
+                    and isinstance(self.value, float)
+                    and 0.0 <= self.value <= 1.0
+                )
+            case "diagnostic_trigger":
+                valid = (
+                    self.target == "diagnostic_priority_trigger"
+                    and self.operation == "set"
+                    and self.value in {"urgent", "high"}
+                )
+            case "human_review_route":
+                valid = (
+                    self.target == "force_human_review"
+                    and self.operation == "set"
+                    and isinstance(self.value, bool)
+                )
+            case unreachable:
+                assert_never(unreachable)
+        if not valid:
+            raise ValueError("unsupported policy proposal combination")
+        return self
 
 
 class PolicyCandidateDecision(FrozenReviewModel):
     version: int = Field(ge=1)
     decision: Literal["created", "approved", "rejected"]
-    reviewer: str = Field(min_length=1, max_length=120)
+    reviewer: ReviewerName
     reason: str = Field(min_length=1, max_length=2000)
     created_at: datetime
 

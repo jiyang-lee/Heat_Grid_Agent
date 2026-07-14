@@ -69,6 +69,13 @@ ON agent_policy_candidates(status, created_at DESC, candidate_id DESC);
 
 DO $agent_review$
 BEGIN
+    IF to_regclass('public.agent_runs') IS NOT NULL THEN
+        ALTER TABLE agent_runs
+        ADD COLUMN IF NOT EXISTS review_snapshot_expected boolean;
+        ALTER TABLE agent_runs
+        ALTER COLUMN review_snapshot_expected SET DEFAULT true;
+    END IF;
+
     IF to_regclass('public.agent_runs') IS NOT NULL
        AND to_regclass('public.agent_run_review_snapshots') IS NOT NULL
        AND NOT EXISTS (

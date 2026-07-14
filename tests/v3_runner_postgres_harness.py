@@ -70,6 +70,9 @@ class FailingSnapshotAdapter:
     async def mark_unavailable(self, run_id: str, reason: str) -> None:
         await self.real.mark_unavailable(run_id, reason)
 
+    async def mark_pending(self, run_id: str) -> None:
+        await self.real.mark_pending(run_id)
+
 
 @dataclass(frozen=True, slots=True)
 class RunnerPostgresHarness:

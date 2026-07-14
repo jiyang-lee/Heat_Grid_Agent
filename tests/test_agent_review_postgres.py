@@ -30,12 +30,17 @@ sys.path.insert(0, str(BACKEND_DIR))
 DATABASE_URL: Final = os.getenv("HEATGRID_V3_REVIEW_TEST_DATABASE_URL")
 
 RUN_AVAILABLE: Final = "00000000-0000-0000-0000-000000000103"
+RUN_HARD_STOP: Final = "00000000-0000-0000-0000-000000000101"
+RUN_INTERRUPTED: Final = "00000000-0000-0000-0000-000000000102"
 RUN_LEGACY: Final = "00000000-0000-0000-0000-000000000104"
 RUN_UNAVAILABLE: Final = "00000000-0000-0000-0000-000000000105"
 ALERT_ID: Final = "00000000-0000-0000-0000-000000000201"
 CARD_ID: Final = "00000000-0000-0000-0000-000000000301"
 DECISION_ID: Final = "00000000-0000-0000-0000-000000000401"
 WINDOW_ID: Final = "00000000-0000-0000-0000-000000000501"
+PARENT_TASK_ID: Final = "00000000-0000-0000-0000-000000000601"
+PARENT_LEDGER_ID: Final = "00000000-0000-0000-0000-000000000701"
+DIAGNOSTIC_LEDGER_ID: Final = "00000000-0000-0000-0000-000000000702"
 
 
 pytestmark = pytest.mark.skipif(
@@ -66,6 +71,8 @@ async def test_review_repository_and_api_against_postgres() -> None:
             )
         )
         await adapter.mark_unavailable(RUN_UNAVAILABLE, "capture dependency failed")
+        await adapter.mark_pending(RUN_INTERRUPTED)
+        await adapter.mark_pending(RUN_INTERRUPTED)
 
         app = FastAPI()
         app.include_router(make_agent_review_router(engine))
@@ -77,11 +84,16 @@ async def test_review_repository_and_api_against_postgres() -> None:
             second_page = await client.get(
                 "/api/agent-runs", params={"limit": 1, "cursor": cursor}
             )
+            all_runs = await client.get("/api/agent-runs")
             available = await client.get(f"/api/agent-runs/{RUN_AVAILABLE}/review")
             legacy = await client.get(f"/api/agent-runs/{RUN_LEGACY}/review")
             unavailable = await client.get(
                 f"/api/agent-runs/{RUN_UNAVAILABLE}/review"
             )
+            interrupted = await client.get(
+                f"/api/agent-runs/{RUN_INTERRUPTED}/review"
+            )
+            hard_stop = await client.get(f"/api/agent-runs/{RUN_HARD_STOP}/review")
             missing = await client.get(
                 "/api/agent-runs/00000000-0000-0000-0000-000000000999/review"
             )
@@ -107,10 +119,31 @@ async def test_review_repository_and_api_against_postgres() -> None:
         assert second_page.status_code == 200
         assert first_page.json()["items"][0]["run_id"] == RUN_UNAVAILABLE
         assert second_page.json()["items"][0]["run_id"] == RUN_LEGACY
+        worker_statuses = {
+            item["run_id"]: item["worker_status"]
+            for item in all_runs.json()["items"]
+        }
+        assert worker_statuses == {
+            RUN_UNAVAILABLE: "running",
+            RUN_LEGACY: "timeout",
+            RUN_AVAILABLE: "completed",
+            RUN_INTERRUPTED: "not_triggered",
+            RUN_HARD_STOP: "not_triggered",
+        }
         assert available.json()["status"] == "available"
         assert available.json()["snapshot"]["handling_reason"] == "operator review"
         assert legacy.json()["status"] == "legacy_unavailable"
         assert unavailable.json()["status"] == "unavailable"
+        assert interrupted.json()["status"] == "unavailable"
+        assert (
+            interrupted.json()["unavailable_reason"]
+            == "review_snapshot_missing_after_terminal_run"
+        )
+        assert hard_stop.json()["status"] == "unavailable"
+        assert (
+            hard_stop.json()["unavailable_reason"]
+            == "review_snapshot_missing_after_terminal_run"
+        )
         assert missing.status_code == 404
         assert malformed.status_code == 422
         assert [item["run_id"] for item in filtered.json()["items"]] == [
@@ -125,7 +158,16 @@ async def test_review_repository_and_api_against_postgres() -> None:
                 ),
                 {"run_id": RUN_AVAILABLE},
             )
+            pending_count = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM agent_run_events "
+                    "WHERE run_id = :run_id "
+                    "AND event_type = 'review_snapshot_pending'"
+                ),
+                {"run_id": RUN_INTERRUPTED},
+            )
         assert conflict_count == 1
+        assert pending_count == 1
     finally:
         await _cleanup(engine)
         await engine.dispose()
@@ -163,19 +205,29 @@ async def _seed(engine: AsyncEngine) -> None:
             ),
             {"alert_id": ALERT_ID, "card_id": CARD_ID},
         )
-        for run_id in (RUN_AVAILABLE, RUN_LEGACY, RUN_UNAVAILABLE):
+        for run_id in (
+            RUN_HARD_STOP,
+            RUN_INTERRUPTED,
+            RUN_AVAILABLE,
+            RUN_LEGACY,
+            RUN_UNAVAILABLE,
+        ):
             await connection.execute(
                 text(
                     "INSERT INTO agent_runs ("
-                    "run_id, alert_id, card_id, status, created_at, updated_at"
+                    "run_id, alert_id, card_id, status, review_snapshot_expected, "
+                    "created_at, updated_at"
                     ") VALUES ("
-                    ":run_id, :alert_id, :card_id, 'completed', :created_at, :created_at"
+                    ":run_id, :alert_id, :card_id, :status, :expected, "
+                    ":created_at, :created_at"
                     ")"
                 ),
                 {
                     "run_id": run_id,
                     "alert_id": ALERT_ID,
                     "card_id": CARD_ID,
+                    "status": "running" if run_id == RUN_UNAVAILABLE else "completed",
+                    "expected": None if run_id == RUN_LEGACY else True,
                     "created_at": datetime(2026, 7, 14, tzinfo=UTC),
                 },
             )
@@ -191,14 +243,54 @@ async def _seed(engine: AsyncEngine) -> None:
         )
         await connection.execute(
             text(
+                "INSERT INTO agent_run_events ("
+                "run_id, event_type, message, payload, operation_key"
+                ") VALUES ("
+                "CAST(:run_id AS uuid), 'diagnostic_worker_completed', "
+                "'read-only diagnostic worker completed', "
+                "CAST('{\"status\":\"timeout\"}' AS jsonb), "
+                "'review-test-diagnostic-event')"
+            ),
+            {"run_id": RUN_LEGACY},
+        )
+        await connection.execute(
+            text(
                 "INSERT INTO agent_run_tasks ("
                 "task_id, run_id, task_key, operation_key, status, checkpoint_thread_id"
                 ") VALUES ("
-                "'00000000-0000-0000-0000-000000000601', CAST(:run_id AS uuid), "
-                "'fault_diagnosis:v1', 'review-test-worker', 'completed', "
-                "CAST(:run_id AS text))"
+                ":task_id, CAST(:run_id AS uuid), 'agent_graph:v1', "
+                "'agent-graph:' || :run_id, 'running', :run_id)"
             ),
-            {"run_id": RUN_AVAILABLE},
+            {"task_id": PARENT_TASK_ID, "run_id": RUN_UNAVAILABLE},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO agent_budget_ledger ("
+                "ledger_id, run_id, task_id, operation_key, token_limit, retry_limit"
+                ") VALUES ("
+                ":ledger_id, CAST(:run_id AS uuid), :task_id, "
+                "'agent-budget:' || :run_id, 20000, 3)"
+            ),
+            {
+                "ledger_id": PARENT_LEDGER_ID,
+                "run_id": RUN_UNAVAILABLE,
+                "task_id": PARENT_TASK_ID,
+            },
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO agent_budget_ledger ("
+                "ledger_id, run_id, task_id, parent_ledger_id, operation_key, "
+                "token_limit, retry_limit) VALUES ("
+                ":ledger_id, CAST(:run_id AS uuid), :task_id, :parent_ledger_id, "
+                "'diagnostic-budget:' || :run_id || ':fault_diagnosis:v1', 4000, 1)"
+            ),
+            {
+                "ledger_id": DIAGNOSTIC_LEDGER_ID,
+                "run_id": RUN_UNAVAILABLE,
+                "task_id": PARENT_TASK_ID,
+                "parent_ledger_id": PARENT_LEDGER_ID,
+            },
         )
 
 
@@ -224,7 +316,7 @@ def _snapshot(run_id: str) -> AgentRunReviewSnapshotV1:
         ),
         loop_count=1,
         handling_reason="operator review",
-        diagnostic=ReviewDiagnosticSnapshot(status="not_triggered"),
+        diagnostic=ReviewDiagnosticSnapshot(status="completed", attempts=1),
         source_card=ReviewSourceCardSnapshot(
             card_id=CARD_ID,
             substation_id=31,

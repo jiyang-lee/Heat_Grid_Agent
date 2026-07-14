@@ -16,10 +16,12 @@ OperatorReviewStatus: TypeAlias = Literal[
 ]
 WorkerStatus: TypeAlias = Literal[
     "not_triggered",
-    "queued",
     "running",
     "completed",
     "failed",
+    "timeout",
+    "invalid",
+    "budget_exceeded",
 ]
 ReviewSnapshotStatus: TypeAlias = Literal[
     "pending",

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agent_review_snapshot_repository import (
     SnapshotStoreResult,
     SnapshotWrite,
+    record_review_snapshot_pending,
     record_review_snapshot_unavailable,
     store_review_snapshot,
 )
@@ -39,3 +40,6 @@ class PostgresReviewSnapshotAdapter:
             run_id=run_id,
             reason=reason,
         )
+
+    async def mark_pending(self, run_id: str) -> None:
+        await record_review_snapshot_pending(self.engine, run_id=run_id)

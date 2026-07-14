@@ -87,6 +87,36 @@ async def test_agent_run_list_rejects_malformed_cursor_without_querying_db(
 
 
 @pytest.mark.anyio
+async def test_agent_run_list_rejects_naive_period_without_querying_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
+
+    async def fail_list_agent_runs(_engine, _filters):
+        raise AssertionError("repository must not be called")
+
+    monkeypatch.setattr(agent_review_routes, "list_agent_runs", fail_list_agent_runs)
+    app = FastAPI()
+    engine = create_async_engine("postgresql+asyncpg://test:test@127.0.0.1:1/test")
+    app.include_router(agent_review_routes.make_agent_review_router(engine))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/agent-runs",
+            params={
+                "created_from": "2026-07-14T00:00:00",
+                "created_to": "2026-07-15T00:00:00Z",
+            },
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "created_from and created_to must include UTC offsets"
+    await engine.dispose()
+
+
+@pytest.mark.anyio
 async def test_agent_run_review_returns_404_only_for_unknown_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -112,4 +142,31 @@ async def test_agent_run_review_returns_404_only_for_unknown_run(
         )
 
     assert response.status_code == 404
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_agent_run_review_rejects_malformed_uuid_without_querying_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simulator.versions.v2_postgres_react_ops.backend import agent_review_routes
+
+    async def fail_get_review_snapshot(_engine, _run_id):
+        raise AssertionError("repository must not be called")
+
+    monkeypatch.setattr(
+        agent_review_routes,
+        "get_review_snapshot",
+        fail_get_review_snapshot,
+    )
+    app = FastAPI()
+    engine = create_async_engine("postgresql+asyncpg://test:test@127.0.0.1:1/test")
+    app.include_router(agent_review_routes.make_agent_review_router(engine))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/agent-runs/not-a-uuid/review")
+
+    assert response.status_code == 422
     await engine.dispose()

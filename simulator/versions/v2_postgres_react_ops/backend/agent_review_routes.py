@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -35,10 +36,22 @@ def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
         cursor: str | None = Query(default=None, min_length=1, max_length=1000),
         limit: int = Query(default=50, ge=1, le=100),
     ) -> AgentRunListPage:
+        if any(
+            value is not None and value.utcoffset() is None
+            for value in (created_from, created_to)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="created_from and created_to must include UTC offsets",
+            )
+        normalized_from = (
+            None if created_from is None else created_from.astimezone(UTC)
+        )
+        normalized_to = None if created_to is None else created_to.astimezone(UTC)
         if (
-            created_from is not None
-            and created_to is not None
-            and created_from > created_to
+            normalized_from is not None
+            and normalized_to is not None
+            and normalized_from > normalized_to
         ):
             raise HTTPException(
                 status_code=422,
@@ -55,8 +68,8 @@ def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
                 operator_review_status=operator_review_status,
                 worker_status=worker_status,
                 priority=priority,
-                created_from=created_from,
-                created_to=created_to,
+                created_from=normalized_from,
+                created_to=normalized_to,
                 cursor=parsed_cursor,
                 limit=limit,
             ),
@@ -66,8 +79,8 @@ def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
         "/agent-runs/{run_id}/review",
         response_model=AgentRunReviewSnapshotResponse,
     )
-    async def agent_run_review(run_id: str) -> AgentRunReviewSnapshotResponse:
-        review = await get_review_snapshot(engine, run_id)
+    async def agent_run_review(run_id: UUID) -> AgentRunReviewSnapshotResponse:
+        review = await get_review_snapshot(engine, str(run_id))
         if review is None:
             raise HTTPException(status_code=404, detail="run_id was not found")
         return review

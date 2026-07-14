@@ -97,6 +97,18 @@ async def run_reserved_agent_graph(
         else:
             result = execution.result
             usage = result.token_usage
+            marker_recorded = True
+            if execution.review_capture_source is not None:
+                marker_recorded = await _record_review_snapshot_pending(
+                    engine,
+                    execution.review_capture_source.run_id
+                )
+            elif execution.review_capture_failure is not None:
+                marker_recorded = await _record_review_capture_build_failure(
+                    engine,
+                    request.run_id,
+                    execution.review_capture_failure.error_type,
+                )
             await complete_agent_graph_task(
                 engine,
                 run_id=request.run_id,
@@ -105,9 +117,23 @@ async def run_reserved_agent_graph(
                 tokens_used=0 if usage is None else usage.total_tokens,
             )
             if execution.review_capture_source is not None:
+                if not marker_recorded:
+                    await _record_review_snapshot_pending(
+                        engine,
+                        execution.review_capture_source.run_id,
+                    )
                 await _capture_completed_review_snapshot(
                     engine,
                     execution.review_capture_source,
+                )
+            elif (
+                execution.review_capture_failure is not None
+                and not marker_recorded
+            ):
+                await _record_review_capture_build_failure(
+                    engine,
+                    request.run_id,
+                    execution.review_capture_failure.error_type,
                 )
             return AgentRunResponse.model_validate(result.model_dump(mode="json"))
         retryable = await release_agent_graph_task(
@@ -223,3 +249,37 @@ async def _capture_completed_review_snapshot(
                 "review snapshot unavailable event failed for run %s",
                 source.run_id,
             )
+
+
+async def _record_review_capture_build_failure(
+    engine: AsyncEngine,
+    run_id: str,
+    error_type: str,
+) -> bool:
+    try:
+        await PostgresReviewSnapshotAdapter(engine).mark_unavailable(
+            run_id,
+            f"{error_type}: review snapshot source unavailable",
+        )
+    except Exception:  # noqa: BLE001 - run completion must remain durable
+        logger.warning(
+            "review snapshot build failure event failed for run %s",
+            run_id,
+        )
+        return False
+    return True
+
+
+async def _record_review_snapshot_pending(
+    engine: AsyncEngine,
+    run_id: str,
+) -> bool:
+    try:
+        await PostgresReviewSnapshotAdapter(engine).mark_pending(run_id)
+    except Exception:  # noqa: BLE001 - run completion must remain durable
+        logger.warning(
+            "review snapshot pending event failed for run %s",
+            run_id,
+        )
+        return False
+    return True
