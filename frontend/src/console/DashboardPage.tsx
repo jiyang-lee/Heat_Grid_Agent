@@ -74,7 +74,7 @@ export function DashboardPage({ onNavigate }: Props) {
         title="설비 위치 지도"
       >
         <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
-          <MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} />
+          <MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} theme="light" />
           <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
         </div>
       </SurfaceCard>
