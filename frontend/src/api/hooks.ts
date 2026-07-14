@@ -26,7 +26,9 @@ import type {
 export const qk = {
   alerts: (q?: AlertListQuery) => ['alerts', q?.status ?? 'open', q?.priority_level ?? 'all'] as const,
   artifacts: (id: string) => ['artifacts', id] as const,
+  runs: ['agent-runs'] as const,
   run: (id: string) => ['agent-run', id] as const,
+  reviewSnapshot: (id: string) => ['agent-run-review-snapshot', id] as const,
   result: (id: string) => ['agent-run-result', id] as const,
   iterations: (id: string) => ['agent-run-iterations', id] as const,
   reviews: (status: string) => ['review-tasks', status] as const,
@@ -88,6 +90,14 @@ export function useCreateAgentRun() {
   })
 }
 
+export function useAgentRuns() {
+  return useQuery({
+    queryKey: qk.runs,
+    queryFn: () => agentRunsApi.list(),
+    refetchInterval: 5000,
+  })
+}
+
 export function useGenerateDailyReport() {
   const qc = useQueryClient()
   return useMutation({
@@ -115,6 +125,17 @@ export function useAgentRun(runId: string | null) {
       const status = query.state.data?.status
       return status === 'queued' || status === 'running' ? 1000 : false
     },
+  })
+}
+
+export function useAgentRunReviewSnapshot(runId: string | null) {
+  return useQuery({
+    queryKey: qk.reviewSnapshot(runId ?? ''),
+    queryFn: () => {
+      if (runId == null) throw new Error('run_id가 없습니다.')
+      return agentRunsApi.review(runId)
+    },
+    enabled: runId != null,
   })
 }
 

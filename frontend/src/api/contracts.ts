@@ -203,6 +203,55 @@ export interface AgentRunResponse {
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'corrected'
+export type OperatorReviewStatus = 'pending' | 'approved' | 'corrected' | 'keep_human_review'
+export type WorkerStatus =
+  | 'not_triggered'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'timeout'
+  | 'invalid'
+  | 'budget_exceeded'
+export type ReviewSnapshotStatus = 'pending' | 'available' | 'unavailable' | 'legacy_unavailable'
+
+export interface AgentRunListItem {
+  readonly run_id: string
+  readonly status: AgentRunStatus
+  readonly alert_id: string
+  readonly card_id: string
+  readonly priority: string | null
+  readonly operator_review_status: OperatorReviewStatus
+  readonly worker_status: WorkerStatus
+  readonly review_snapshot_status: ReviewSnapshotStatus
+  readonly created_at: string
+  readonly updated_at: string
+}
+
+export interface AgentRunListPage {
+  readonly items: readonly AgentRunListItem[]
+  readonly next_cursor: string | null
+}
+
+export interface AgentReviewDiagnostic {
+  readonly status: WorkerStatus
+}
+
+export interface AgentRunReviewSnapshot {
+  readonly handling_reason: string | null
+  readonly loop_count: number
+  readonly diagnostic: AgentReviewDiagnostic
+  readonly evidence: readonly OpsAgentEvidenceItem[]
+}
+
+export interface AgentRunReviewSnapshotResponse {
+  readonly run_id: string
+  readonly status: ReviewSnapshotStatus
+  readonly schema_version: 'agent_run_review.v1' | null
+  readonly snapshot_hash: string | null
+  readonly snapshot: AgentRunReviewSnapshot | null
+  readonly created_at: string | null
+  readonly unavailable_reason: string | null
+}
 
 export interface ModelVerificationResult {
   status: 'verified' | 'partial' | 'unavailable' | 'error'
