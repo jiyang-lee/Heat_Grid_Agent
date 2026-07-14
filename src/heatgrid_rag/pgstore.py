@@ -165,6 +165,24 @@ class PgVectorStore:
                     join rag_documents documents
                       on documents.document_id = chunks.document_id
                     where chunks.is_active and documents.is_active
+                      and lower(coalesce(documents.document_type, ''))
+                          not in ('external_search', 'web')
+                      and lower(coalesce(documents.metadata->>'source_type', ''))
+                          not in ('external_search', 'web')
+                      and lower(coalesce(documents.metadata->>'origin', ''))
+                          <> 'external_search'
+                      and not (
+                          documents.metadata ? 'query'
+                          and documents.metadata->'query' <> 'null'::jsonb
+                      )
+                      and lower(coalesce(chunks.metadata->>'source_type', ''))
+                          not in ('external_search', 'web')
+                      and lower(coalesce(chunks.metadata->>'origin', ''))
+                          <> 'external_search'
+                      and not (
+                          chunks.metadata ? 'query'
+                          and chunks.metadata->'query' <> 'null'::jsonb
+                      )
                     order by chunks.embedding <=> %s::vector
                     limit %s
                     """,

@@ -60,6 +60,25 @@ def _get_path(data: dict[str, Any], dotted_path: str) -> Any:
     return current
 
 
+def _is_historical_external_chunk(chunk: dict[str, Any]) -> bool:
+    metadata = chunk.get("metadata")
+    metadata = metadata if isinstance(metadata, dict) else {}
+    document_type = str(chunk.get("document_type") or "").strip().lower()
+    source_type = str(
+        chunk.get("source_type") or metadata.get("source_type") or ""
+    ).strip().lower()
+    origin = str(chunk.get("origin") or metadata.get("origin") or "").strip().lower()
+    query = chunk.get("query")
+    if query is None:
+        query = metadata.get("query")
+    return bool(
+        document_type in {"external_search", "web"}
+        or source_type in {"external_search", "web"}
+        or origin == "external_search"
+        or query is not None
+    )
+
+
 @dataclass(frozen=True)
 class ScoredChunk:
     chunk: dict[str, Any]
@@ -257,6 +276,7 @@ class RagSearcher:
         scored = [
             self.score_chunk(chunk, terms, evidence=evidence)
             for chunk in self.chunks
+            if not _is_historical_external_chunk(chunk)
         ]
         selected = sorted(
             [item for item in scored if item.score > 0],
