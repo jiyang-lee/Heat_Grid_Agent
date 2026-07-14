@@ -40,8 +40,6 @@ async def get_agent_operations_metrics(
                 "AS corrected_review_count, "
                 "count(*) FILTER (WHERE latest_review.decision = 'keep_human_review') "
                 "AS keep_human_review_count, "
-                # worker.worker_status로 한정 — diagnostic_event.worker_status와
-                # 이름이 겹쳐 bare 참조는 Postgres에서 ambiguous 오류가 난다.
                 "count(*) FILTER (WHERE worker.worker_status = 'completed') "
                 "AS diagnostic_completed_count, "
                 "count(*) FILTER (WHERE worker.worker_status = 'timeout') "

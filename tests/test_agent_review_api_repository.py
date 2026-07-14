@@ -72,3 +72,20 @@ def test_agent_review_migration_adds_run_list_indexes_conditionally() -> None:
     assert "agent_run_tasks_v3_worker_idx" in source
     assert "agent_run_events_v3_snapshot_idx" in source
     assert "to_regclass('public.agent_runs') is not null" in source
+
+
+def test_operations_metrics_query_qualifies_worker_status_filters() -> None:
+    source = (
+        ROOT
+        / "simulator"
+        / "versions"
+        / "v2_postgres_react_ops"
+        / "backend"
+        / "agent_operations_metrics_repository.py"
+    ).read_text(encoding="utf-8")
+
+    assert "WHERE worker.worker_status = 'completed'" in source
+    assert "WHERE worker.worker_status = 'timeout'" in source
+    assert "WHERE worker.worker_status = 'invalid'" in source
+    assert "WHERE worker.worker_status = 'budget_exceeded'" in source
+    assert "WHERE worker_status =" not in source
