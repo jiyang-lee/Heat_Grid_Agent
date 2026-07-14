@@ -400,7 +400,7 @@ def _lineage() -> FakeSnapshotLineage:
             ),
         ),
         budget=ReviewBudgetLineage(
-            parent_token_limit=20_000,
+            parent_token_limit=60_000,
             parent_tokens_used=900,
             diagnostic_token_limit=4_000,
             diagnostic_tokens_used=120,

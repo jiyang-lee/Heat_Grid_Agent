@@ -275,7 +275,7 @@ def _snapshot() -> AgentRunReviewSnapshotV1:
             reason="temperature-flow mismatch",
         ),
         budget=ReviewBudgetLineage(
-            parent_token_limit=20_000,
+            parent_token_limit=60_000,
             parent_tokens_used=1_200,
             diagnostic_token_limit=4_000,
             diagnostic_tokens_used=600,
