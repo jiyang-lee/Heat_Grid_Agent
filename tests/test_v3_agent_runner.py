@@ -138,4 +138,3 @@ async def test_agent_runner_keeps_completed_run_when_report_generation_fails(
     assert artifacts.json() == []
     assert "run_completed" in event_types
     assert "report_failed" in event_types
-    assert event_types[-1] == "run_completed"

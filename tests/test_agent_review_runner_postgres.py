@@ -255,6 +255,22 @@ async def _cleanup(harness: RunnerPostgresHarness) -> None:
                 params,
             )
             await connection.execute(
+                text(
+                    "DELETE FROM agent_policy_candidates "
+                    f"WHERE source_review_id IN (SELECT review_id FROM agent_run_reviews "
+                    f"WHERE run_id {run_filter})"
+                ),
+                params,
+            )
+            await connection.execute(
+                text(f"DELETE FROM agent_run_reviews WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
+                text(f"DELETE FROM agent_run_review_snapshots WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
                 text("DELETE FROM windows WHERE window_id = :window_id"),
                 {"window_id": harness.window_id},
             )

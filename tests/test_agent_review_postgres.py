@@ -297,6 +297,14 @@ async def _seed(engine: AsyncEngine) -> None:
 async def _cleanup(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(
+            text(
+                "TRUNCATE TABLE agent_policy_candidates, agent_run_reviews, "
+                "agent_run_review_snapshots, agent_budget_ledger, agent_run_tasks, "
+                "agent_run_actions, agent_run_artifacts, agent_run_events, "
+                "agent_runs CASCADE"
+            )
+        )
+        await connection.execute(
             text("DELETE FROM windows WHERE window_id = :window_id"),
             {"window_id": WINDOW_ID},
         )

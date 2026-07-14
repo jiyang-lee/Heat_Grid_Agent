@@ -53,6 +53,15 @@ def test_backend_applies_004_then_005_under_one_lock() -> None:
     assert source.index('"004_agent_execution.sql"') < source.index(
         '"005_agent_review.sql"'
     )
+    assert source.index('"005_agent_review.sql"') < source.index(
+        '"006_referential_integrity.sql"'
+    )
     assert executor_source.count("pg_advisory_xact_lock") == 1
     assert "pg_advisory_unlock" not in executor_source
     assert "connection.transaction()" in executor_source
+
+def test_agent_review_constraints_default_to_restrict() -> None:
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert sql.count("on delete restrict") == 3
+    assert "on delete cascade" not in sql

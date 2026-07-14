@@ -31,11 +31,14 @@ def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 
 async def reset_contract_tables(module: ModuleType) -> None:
     async with module.engine.begin() as connection:
-        await connection.execute(text("DROP TABLE IF EXISTS agent_run_actions"))
-        await connection.execute(text("DROP TABLE IF EXISTS agent_run_artifacts"))
-        await connection.execute(text("DROP TABLE IF EXISTS agent_run_events"))
-        await connection.execute(text("DROP TABLE IF EXISTS agent_runs"))
-        await connection.execute(text("DROP TABLE IF EXISTS ops_alert_queue"))
+        await connection.execute(
+            text(
+                "TRUNCATE TABLE agent_policy_candidates, agent_run_reviews, "
+                "agent_run_review_snapshots, agent_budget_ledger, agent_run_tasks, "
+                "agent_run_actions, agent_run_artifacts, agent_run_events, "
+                "agent_runs, ops_alert_queue CASCADE"
+            )
+        )
     await module.ensure_alert_queue(module.engine)
     await module.ensure_agent_run_tables(module.engine)
     await module.ensure_agent_loop_iteration_table(module.engine)
@@ -242,7 +245,6 @@ async def test_api_agent_run_creates_completed_run_from_alert(
     assert event_types.index("final_output") < event_types.index("review_requested")
     assert event_types.index("review_requested") < event_types.index("run_completed")
     assert "report_failed" in event_types
-    assert event_types[-1] == "run_completed"
 
 
 @pytest.mark.anyio

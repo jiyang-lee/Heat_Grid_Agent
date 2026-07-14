@@ -86,7 +86,7 @@ BEGIN
        ) THEN
         ALTER TABLE agent_run_review_snapshots
         ADD CONSTRAINT agent_run_review_snapshots_run_id_fkey
-        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE CASCADE;
+        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE RESTRICT;
     END IF;
 
     IF to_regclass('public.agent_runs') IS NOT NULL
@@ -99,7 +99,7 @@ BEGIN
        ) THEN
         ALTER TABLE agent_run_reviews
         ADD CONSTRAINT agent_run_reviews_run_id_fkey
-        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE CASCADE;
+        FOREIGN KEY (run_id) REFERENCES agent_runs(run_id) ON DELETE RESTRICT;
     END IF;
 
     IF to_regclass('public.agent_run_reviews') IS NOT NULL
@@ -113,7 +113,7 @@ BEGIN
         ALTER TABLE agent_policy_candidates
         ADD CONSTRAINT agent_policy_candidates_source_review_id_fkey
         FOREIGN KEY (source_review_id)
-        REFERENCES agent_run_reviews(review_id) ON DELETE CASCADE;
+        REFERENCES agent_run_reviews(review_id) ON DELETE RESTRICT;
     END IF;
 END
 $agent_review$;

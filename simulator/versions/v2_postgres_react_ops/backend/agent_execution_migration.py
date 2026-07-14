@@ -14,6 +14,7 @@ ROOT: Final = Path(__file__).resolve().parents[4]
 MIGRATION_PATHS: Final = (
     ROOT / "docker" / "postgres" / "init" / "004_agent_execution.sql",
     ROOT / "docker" / "postgres" / "init" / "005_agent_review.sql",
+    ROOT / "docker" / "postgres" / "init" / "006_referential_integrity.sql",
 )
 async def apply_agent_execution_migration(
     pool: AsyncConnectionPool[AsyncConnection[DictRow]],
