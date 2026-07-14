@@ -83,7 +83,7 @@
 .tone-violet { color: #7c3aed; background: #f3e8ff; }
 
 /* ===== 시안 개편: 지도 + 주요 알림 2열 ===== */
-.home-grid { display: grid; grid-template-columns: minmax(430px, 1.15fr) minmax(360px, 1fr); gap: var(--space-3); align-items: stretch; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: var(--space-3); align-items: stretch; }
 .map-card { display: flex; flex-direction: column; }
 .map-card .map-live { flex: 1; min-height: 330px; }
 .map-legend { display: flex; gap: var(--space-3); color: var(--ops-text-muted); font-size: 11px; }
@@ -102,11 +102,15 @@
 .home-alert-row strong, .home-alert-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-alert-row strong { color: var(--ops-text); font-size: 12px; }
 .home-alert-row small { margin-top: 2px; color: var(--ops-text-muted); font-size: 10px; }
-.home-alert-side { display: grid; flex: 0 0 auto; justify-items: end; gap: 4px; }
-.home-alert-side time { color: var(--ops-text-muted); font-size: 10px; }
+.home-alert-side { display: flex; flex: 0 0 auto; align-items: center; gap: var(--space-2); }
+.home-alert-side time { color: var(--ops-text-muted); font-size: 10px; white-space: nowrap; }
 
 /* ===== 시안 개편: 실시간 센서 흐름(DEMO 시뮬레이션) ===== */
+.sf-head { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end; }
 .sf-meta { display: flex; align-items: center; gap: var(--space-2); color: var(--ops-text-muted); font-size: 11px; }
+.sf-range { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); }
+.sf-range button { min-height: 26px; padding: 0 var(--space-3); border: 0; border-radius: 6px; color: var(--ops-text-muted); background: transparent; font-size: 11px; font-weight: 600; }
+.sf-range button.active { color: #fff; background: var(--ops-primary); }
 .demo-badge { padding: 2px 8px; border-radius: 5px; color: #fff; background: var(--ops-critical); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; }
 .sensor-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); padding: var(--space-4); }
 .sensor-tile { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--ops-border); border-radius: 9px; background: var(--ops-surface-muted); }

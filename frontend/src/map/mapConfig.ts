@@ -34,3 +34,10 @@ export function mapStyleFor(
     encodeURIComponent(mapTilerKey)
   )
 }
+
+/** 항공샷 기본 스타일(MapTiler hybrid = 위성사진 + 라벨). 키 미설정 시 빈 라이트 배경. */
+export function satelliteStyle(): string | StyleSpecification {
+  if (configuredStyleUrl != null) return configuredStyleUrl
+  if (mapTilerKey.length === 0) return emptyStyle('light')
+  return 'https://api.maptiler.com/maps/hybrid/style.json?key=' + encodeURIComponent(mapTilerKey)
+}

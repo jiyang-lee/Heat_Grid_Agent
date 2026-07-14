@@ -1,7 +1,8 @@
 /**
  * 실시간 센서 흐름 카드 — 클라이언트 시뮬레이션(DEMO).
  * 백엔드에 원시 센서 시계열 API가 없어(evidence의 sensor_summaries는 모델 피처 요약)
- * 권장범위 내 가상값을 5초 틱으로 생성한다. 실계약이 생기면 이 카드만 교체하면 된다.
+ * 권장범위 내 가상값을 생성한다. 실계약이 생기면 이 카드만 교체하면 된다.
+ * 기간 버튼: 실시간(5초 틱 라이브) / 6시간 / 일주일 / 한달 (정적 스냅샷).
  */
 
 import { useEffect, useState } from 'react'
@@ -28,56 +29,100 @@ const SERIES: readonly SeriesDef[] = [
   { key: 'flow', label: '유량', tile: '유량', unit: 'm³/h', icon: 'flow', min: 100, max: 160, base: 128.4, decimals: 1, className: 'sf-flow' },
 ]
 
+type RangeKey = 'live' | '6h' | '7d' | '30d'
+
+interface RangeDef {
+  readonly key: RangeKey
+  readonly label: string
+  /** 포인트 간 간격(ms). 차트는 항상 POINTS개 포인트로 그린다. */
+  readonly stepMs: number
+  /** 지터 크기 — 긴 구간일수록 변동 폭을 키워 자연스럽게. */
+  readonly jitter: number
+  readonly live: boolean
+}
+
 const POINTS = 30
 const TICK_MS = 5_000
+const RANGES: readonly RangeDef[] = [
+  { key: 'live', label: '실시간', stepMs: TICK_MS, jitter: 0.12, live: true },
+  { key: '6h', label: '6시간', stepMs: (6 * 3_600_000) / (POINTS - 1), jitter: 0.22, live: false },
+  { key: '7d', label: '일주일', stepMs: (7 * 86_400_000) / (POINTS - 1), jitter: 0.3, live: false },
+  { key: '30d', label: '한달', stepMs: (30 * 86_400_000) / (POINTS - 1), jitter: 0.35, live: false },
+]
+
 const CHART_W = 720
 const BAND_H = 44
 const BAND_GAP = 14
 const CHART_H = SERIES.length * (BAND_H + BAND_GAP) + BAND_GAP
 
 /** 평균회귀 + 소폭 지터로 권장범위 안에서 자연스럽게 흔들리는 다음 값. */
-function nextValue(def: SeriesDef, prev: number): number {
+function nextValue(def: SeriesDef, prev: number, jitter: number): number {
   const span = def.max - def.min
-  const drift = (Math.random() - 0.5) * span * 0.12
+  const drift = (Math.random() - 0.5) * span * jitter
   const pull = (def.base - prev) * 0.18
   return Math.min(def.max, Math.max(def.min, prev + drift + pull))
 }
 
-function seedSeries(def: SeriesDef): number[] {
+function seedSeries(def: SeriesDef, jitter: number): number[] {
   let value = def.base
-  return Array.from({ length: POINTS }, () => (value = nextValue(def, value)))
+  return Array.from({ length: POINTS }, () => (value = nextValue(def, value, jitter)))
 }
 
 function formatValue(def: SeriesDef, value: number): string {
   return value.toFixed(def.decimals)
 }
 
-function formatTime(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
+const pad2 = (value: number) => String(value).padStart(2, '0')
+
+function formatClock(date: Date): string {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+}
+
+/** 축 라벨 — 기간에 따라 시각/일자 표기를 바꾼다. */
+function formatAxis(date: Date, range: RangeDef): string {
+  if (range.key === 'live') return formatClock(date)
+  if (range.key === '6h') return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
 export default function SensorFlowCard() {
-  const [data, setData] = useState<readonly number[][]>(() => SERIES.map(seedSeries))
+  const [rangeKey, setRangeKey] = useState<RangeKey>('live')
+  const range = RANGES.find((item) => item.key === rangeKey) ?? RANGES[0]
+  const [data, setData] = useState<readonly number[][]>(() => SERIES.map((def) => seedSeries(def, RANGES[0].jitter)))
   const [updatedAt, setUpdatedAt] = useState(() => new Date())
 
+  // 기간 전환 시 해당 구간 시뮬레이션을 다시 시드하고, 실시간에서만 5초 틱을 돌린다.
   useEffect(() => {
+    setData(SERIES.map((def) => seedSeries(def, range.jitter)))
+    setUpdatedAt(new Date())
+    if (!range.live) return
     const timer = window.setInterval(() => {
-      setData((prev) => prev.map((values, index) => [...values.slice(1), nextValue(SERIES[index], values[values.length - 1])]))
+      setData((prev) => prev.map((values, index) => [...values.slice(1), nextValue(SERIES[index], values[values.length - 1], range.jitter)]))
       setUpdatedAt(new Date())
     }, TICK_MS)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [range])
 
   const xAt = (index: number) => (index / (POINTS - 1)) * CHART_W
   const axisIndexes = [0, Math.floor(POINTS / 2), POINTS - 1]
   const axisLabels = axisIndexes.map((index) => {
-    const at = new Date(updatedAt.getTime() - (POINTS - 1 - index) * TICK_MS)
-    return index === POINTS - 1 ? `${formatTime(at)} (현재)` : formatTime(at)
+    const at = new Date(updatedAt.getTime() - (POINTS - 1 - index) * range.stepMs)
+    return index === POINTS - 1 ? `${formatAxis(at, range)} (현재)` : formatAxis(at, range)
   })
+  const metaText = range.live
+    ? `시뮬레이션 데이터 · 5초 간격 · 마지막 갱신 ${formatClock(updatedAt)}`
+    : `시뮬레이션 데이터 · 최근 ${range.label}`
 
   return (
     <SurfaceCard
-      action={<div className="sf-meta"><span className="demo-badge">DEMO</span><span>시뮬레이션 데이터 · 5초 간격 · 마지막 갱신 {formatTime(updatedAt)}</span></div>}
+      action={
+        <div className="sf-head">
+          <div aria-label="조회 기간" className="sf-range" role="tablist">
+            {RANGES.map((item) => <button aria-selected={item.key === rangeKey} className={item.key === rangeKey ? 'active' : ''} key={item.key} onClick={() => setRangeKey(item.key)} role="tab" type="button">{item.label}</button>)}
+          </div>
+          <div className="sf-meta"><span className="demo-badge">DEMO</span><span>{metaText}</span></div>
+        </div>
+      }
       className="sensor-flow"
       title="실시간 센서 흐름"
     >
