@@ -97,8 +97,10 @@
 .map-expand { position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 5; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 34px; padding: 0 var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; color: var(--ops-text); background: #fff; box-shadow: 0 2px 8px rgb(15 23 42 / 12%); font-size: 12px; font-weight: 600; }
 .map-expand svg { width: 14px; height: 14px; }
 .map-live:fullscreen { background: #fff; }
-.home-alerts .home-alert-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--ops-border); }
+.home-alerts .home-alert-row { display: flex; align-items: center; width: 100%; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 0; border-top: 1px solid var(--ops-border); background: transparent; text-align: left; font: inherit; cursor: pointer; transition: background 120ms ease-out; }
 .home-alert-row:first-of-type { border-top: 0; }
+.home-alert-row:hover { background: var(--ops-surface-muted); }
+.home-alert-row.selected { background: var(--ops-primary-soft); box-shadow: inset 3px 0 0 var(--ops-primary); }
 .home-alert-row > div:not(.home-alert-side) { flex: 1; min-width: 0; }
 .home-alert-row strong, .home-alert-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-alert-row strong { color: var(--ops-text); font-size: 12px; }

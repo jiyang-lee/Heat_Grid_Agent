@@ -1,13 +1,23 @@
 /**
  * 실시간 센서 흐름 카드 — 클라이언트 시뮬레이션(DEMO).
  * 백엔드에 원시 센서 시계열 API가 없어(evidence의 sensor_summaries는 모델 피처 요약)
- * 권장범위 내 가상값을 생성한다. 실계약이 생기면 이 카드만 교체하면 된다.
+ * 권장범위 내 가상값을 생성한다.
+ *
+ * facility prop: 홈 '주요 알림'에서 선택한 설비. 설비별 결정적 시드로 서로 다른
+ * 곡선을 보여준다(여전히 가상). 실 센서 시계열 계약이 생기면 이 prop을 키로
+ * fetch하도록 seedSeries/tick 부분만 교체하면 된다.
+ *
  * 기간 버튼: 실시간(5초 틱 라이브) / 6시간 / 일주일 / 한달 (정적 스냅샷).
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './icons'
 import { SurfaceCard } from './ui'
+
+export interface SensorFacility {
+  readonly id: number
+  readonly name: string
+}
 
 interface SeriesDef {
   readonly key: string
@@ -39,15 +49,17 @@ interface RangeDef {
   /** 지터 크기 — 긴 구간일수록 변동 폭을 키워 자연스럽게. */
   readonly jitter: number
   readonly live: boolean
+  /** 설비 시드와 조합할 기간별 시드 소금값. */
+  readonly seedSalt: number
 }
 
 const POINTS = 30
 const TICK_MS = 5_000
 const RANGES: readonly RangeDef[] = [
-  { key: 'live', label: '실시간', stepMs: TICK_MS, jitter: 0.12, live: true },
-  { key: '6h', label: '6시간', stepMs: (6 * 3_600_000) / (POINTS - 1), jitter: 0.22, live: false },
-  { key: '7d', label: '일주일', stepMs: (7 * 86_400_000) / (POINTS - 1), jitter: 0.3, live: false },
-  { key: '30d', label: '한달', stepMs: (30 * 86_400_000) / (POINTS - 1), jitter: 0.35, live: false },
+  { key: 'live', label: '실시간', stepMs: TICK_MS, jitter: 0.12, live: true, seedSalt: 1 },
+  { key: '6h', label: '6시간', stepMs: (6 * 3_600_000) / (POINTS - 1), jitter: 0.22, live: false, seedSalt: 2 },
+  { key: '7d', label: '일주일', stepMs: (7 * 86_400_000) / (POINTS - 1), jitter: 0.3, live: false, seedSalt: 3 },
+  { key: '30d', label: '한달', stepMs: (30 * 86_400_000) / (POINTS - 1), jitter: 0.35, live: false, seedSalt: 4 },
 ]
 
 const CHART_W = 720
@@ -55,17 +67,36 @@ const BAND_H = 44
 const BAND_GAP = 14
 const CHART_H = SERIES.length * (BAND_H + BAND_GAP) + BAND_GAP
 
-/** 평균회귀 + 소폭 지터로 권장범위 안에서 자연스럽게 흔들리는 다음 값. */
-function nextValue(def: SeriesDef, prev: number, jitter: number): number {
+/** 결정적 PRNG(mulberry32) — 같은 설비·기간이면 항상 같은 곡선이 나오게. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** 설비별 앵커값 — 기준값을 설비 id에 따라 권장범위 안에서 소폭 이동. */
+function anchorFor(def: SeriesDef, facilityId: number): number {
   const span = def.max - def.min
-  const drift = (Math.random() - 0.5) * span * jitter
-  const pull = (def.base - prev) * 0.18
+  const shift = (((facilityId % 9) - 4) / 4) * span * 0.18
+  return Math.min(def.max - span * 0.1, Math.max(def.min + span * 0.1, def.base + shift))
+}
+
+/** 평균회귀 + 소폭 지터로 권장범위 안에서 자연스럽게 흔들리는 다음 값. */
+function nextValue(def: SeriesDef, prev: number, jitter: number, anchor: number, rand: () => number): number {
+  const span = def.max - def.min
+  const drift = (rand() - 0.5) * span * jitter
+  const pull = (anchor - prev) * 0.18
   return Math.min(def.max, Math.max(def.min, prev + drift + pull))
 }
 
-function seedSeries(def: SeriesDef, jitter: number): number[] {
-  let value = def.base
-  return Array.from({ length: POINTS }, () => (value = nextValue(def, value, jitter)))
+function seedSeries(def: SeriesDef, jitter: number, anchor: number, rand: () => number): number[] {
+  let value = anchor
+  return Array.from({ length: POINTS }, () => (value = nextValue(def, value, jitter, anchor, rand)))
 }
 
 function formatValue(def: SeriesDef, value: number): string {
@@ -85,23 +116,31 @@ function formatAxis(date: Date, range: RangeDef): string {
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
-export default function SensorFlowCard() {
+interface Props {
+  readonly facility?: SensorFacility | null
+}
+
+export default function SensorFlowCard({ facility = null }: Props) {
   const [rangeKey, setRangeKey] = useState<RangeKey>('live')
   const range = RANGES.find((item) => item.key === rangeKey) ?? RANGES[0]
-  const [data, setData] = useState<readonly number[][]>(() => SERIES.map((def) => seedSeries(def, RANGES[0].jitter)))
+  const facilityId = facility?.id ?? 0
+  const randRef = useRef<() => number>(Math.random)
+  const [data, setData] = useState<readonly number[][]>(() => SERIES.map((def) => seedSeries(def, RANGES[0].jitter, anchorFor(def, facilityId), mulberry32(facilityId * 1000 + RANGES[0].seedSalt))))
   const [updatedAt, setUpdatedAt] = useState(() => new Date())
 
-  // 기간 전환 시 해당 구간 시뮬레이션을 다시 시드하고, 실시간에서만 5초 틱을 돌린다.
+  // 설비/기간 전환 시 해당 조합의 결정적 시드로 다시 생성하고, 실시간에서만 5초 틱을 돌린다.
   useEffect(() => {
-    setData(SERIES.map((def) => seedSeries(def, range.jitter)))
+    const rand = mulberry32(facilityId * 1000 + range.seedSalt)
+    randRef.current = rand
+    setData(SERIES.map((def) => seedSeries(def, range.jitter, anchorFor(def, facilityId), rand)))
     setUpdatedAt(new Date())
     if (!range.live) return
     const timer = window.setInterval(() => {
-      setData((prev) => prev.map((values, index) => [...values.slice(1), nextValue(SERIES[index], values[values.length - 1], range.jitter)]))
+      setData((prev) => prev.map((values, index) => [...values.slice(1), nextValue(SERIES[index], values[values.length - 1], range.jitter, anchorFor(SERIES[index], facilityId), randRef.current)]))
       setUpdatedAt(new Date())
     }, TICK_MS)
     return () => window.clearInterval(timer)
-  }, [range])
+  }, [range, facilityId])
 
   const xAt = (index: number) => (index / (POINTS - 1)) * CHART_W
   const axisIndexes = [0, Math.floor(POINTS / 2), POINTS - 1]
@@ -112,6 +151,7 @@ export default function SensorFlowCard() {
   const metaText = range.live
     ? `시뮬레이션 데이터 · 5초 간격 · 마지막 갱신 ${formatClock(updatedAt)}`
     : `시뮬레이션 데이터 · 최근 ${range.label}`
+  const title = facility ? `실시간 센서 흐름 — ${facility.name} (기계실 ${facility.id})` : '실시간 센서 흐름'
 
   return (
     <SurfaceCard
@@ -124,7 +164,7 @@ export default function SensorFlowCard() {
         </div>
       }
       className="sensor-flow"
-      title="실시간 센서 흐름"
+      title={title}
     >
       <div className="sensor-tiles">
         {SERIES.map((def, index) => <article className={`sensor-tile ${def.className}`} key={def.key}><Icon name={def.icon} /><div><p>{def.tile}</p><strong>{formatValue(def, data[index][POINTS - 1])} <em>{def.unit}</em></strong></div></article>)}

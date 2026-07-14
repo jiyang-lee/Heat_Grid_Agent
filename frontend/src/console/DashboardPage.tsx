@@ -1,9 +1,9 @@
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
 import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
 import { Icon, type IconName } from './icons'
-import SensorFlowCard from './SensorFlowCard'
+import SensorFlowCard, { type SensorFacility } from './SensorFlowCard'
 import { ApiState, StatusBadge, SurfaceCard } from './ui'
 
 /** 알림 발생 시각의 상대 표기("n분 전"). 기한(SLA) 계약이 없어 발생 경과로 대체한다. */
@@ -38,6 +38,7 @@ export function DashboardPage({ onOpenAlerts }: Props) {
   const alerts = useAlerts({ status: 'open' })
   const reviews = useReviewTasks('pending')
   const mapWrapRef = useRef<HTMLDivElement>(null)
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
 
   const rows = priority.data?.results ?? []
   // 위험=urgent, 주의=high (fresh 기준), 정상=나머지(지연·누락 포함).
@@ -46,6 +47,13 @@ export function DashboardPage({ onOpenAlerts }: Props) {
   const normal = Math.max(0, rows.length - urgent - high)
   const openAlerts = alerts.data ?? []
   const pendingDocs = reviews.data?.length ?? 0
+
+  // 주요 알림 선택 → 센서 카드 컨텍스트. 미선택/선택 소멸 시 첫 알림으로 폴백.
+  const shownAlerts = openAlerts.slice(0, 5)
+  const selectedAlert = shownAlerts.find((alert) => alert.alert_id === selectedAlertId) ?? shownAlerts[0] ?? null
+  const sensorFacility: SensorFacility | null = selectedAlert && selectedAlert.substation_id != null
+    ? { id: selectedAlert.substation_id, name: complexById.get(selectedAlert.substation_id)?.name ?? selectedAlert.manufacturer_id ?? '미상 설비' }
+    : null
 
   const openFullMap = () => {
     void mapWrapRef.current?.requestFullscreen?.()
@@ -80,20 +88,21 @@ export function DashboardPage({ onOpenAlerts }: Props) {
 
       <SurfaceCard action={<button className="text-link" onClick={onOpenAlerts} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
         <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
-        {openAlerts.slice(0, 5).map((alert) => {
+        {shownAlerts.map((alert) => {
           const urgentAlert = alert.priority_level === 'urgent'
           const complexName = alert.substation_id != null ? complexById.get(alert.substation_id)?.name : undefined
+          const selected = selectedAlert?.alert_id === alert.alert_id
           return (
-            <div className="home-alert-row" key={alert.alert_id}>
+            <button aria-pressed={selected} className={`home-alert-row ${selected ? 'selected' : ''}`.trim()} key={alert.alert_id} onClick={() => setSelectedAlertId(alert.alert_id)} type="button">
               <span className={`alert-symbol tone-${urgentAlert ? 'critical' : 'warning'}`}><Icon name={urgentAlert ? 'alert' : 'warning'} /></span>
               <div><strong>{complexName ?? alert.manufacturer_id} (substation {alert.substation_id ?? '-'})</strong><small>{alert.enqueue_reason}</small></div>
               <div className="home-alert-side"><StatusBadge tone={urgentAlert ? 'critical' : 'warning'}>{urgentAlert ? '긴급' : '경고'}</StatusBadge><time>{relativeTime(alert.created_at)}</time></div>
-            </div>
+            </button>
           )
         })}
       </SurfaceCard>
     </div>
 
-    <SensorFlowCard />
+    <SensorFlowCard facility={sensorFacility} />
   </div>
 }
