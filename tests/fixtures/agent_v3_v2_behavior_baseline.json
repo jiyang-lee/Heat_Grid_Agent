@@ -29,6 +29,7 @@
       "alert_id",
       "card_id",
       "evaluation_run_id",
+      "substation_uid",
       "manufacturer_id",
       "substation_id",
       "parent_run_id",

@@ -104,8 +104,9 @@ async def _evaluation_context(
     if alert is None:
         return None
     evaluation_run_id = _text(alert.get("evaluation_run_id"))
+    substation_uid = _text(alert.get("substation_uid"))
     substation_id = _integer(alert.get("substation_id"))
-    if evaluation_run_id is None or substation_id is None:
+    if evaluation_run_id is None or (substation_uid is None and substation_id is None):
         return None
     try:
         return await get_priority_evaluation_result(
@@ -113,6 +114,7 @@ async def _evaluation_context(
             evaluation_run_id,
             substation_id,
             manufacturer_id=_text(alert.get("manufacturer_id")),
+            substation_uid=substation_uid,
         )
     except (TypeError, ValueError):
         return None
@@ -125,6 +127,9 @@ def _source_identity(source_input: JsonObject) -> JsonObject:
     window = _mapping(raw_context.get("window"))
     substation = _mapping(raw_context.get("substation"))
     return {
+        "substation_uid": evaluation_result.get("substation_uid")
+        or window.get("substation_uid")
+        or substation.get("substation_uid"),
         "manufacturer_id": evaluation_result.get("manufacturer_id")
         or window.get("manufacturer_id")
         or window.get("manufacturer"),

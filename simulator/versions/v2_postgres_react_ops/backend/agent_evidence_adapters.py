@@ -88,6 +88,7 @@ def _external_snapshot(
     evidence = {
         "raw_context": {
             "window": {
+                "substation_uid": request.substation_uid,
                 "substation_id": request.substation_id,
                 "window_start": request.window_start,
                 "window_end": request.window_end,

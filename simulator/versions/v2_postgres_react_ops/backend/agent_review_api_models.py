@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from heatgrid_ops.agent.review_models import AgentRunReviewSnapshotV1
 
@@ -106,6 +106,7 @@ class OperatorReviewSubmitRequest(FrozenApiModel):
     decision: Literal["approve", "correct", "keep_human_review"]
     reviewer: str
     reason: str
+    reason_category: str | None = None
     disposition: Literal[
         "normal_observation",
         "inspection_recommended",
@@ -115,16 +116,27 @@ class OperatorReviewSubmitRequest(FrozenApiModel):
     evidence_annotations: tuple[dict[str, str | None], ...] = ()
     operator_labels: tuple[str, ...] = ()
 
+    @model_validator(mode="after")
+    def validate_reason_category(self) -> OperatorReviewSubmitRequest:
+        if self.decision == "keep_human_review" and not self.reason_category:
+            raise ValueError("reason_category is required for keep_human_review")
+        return self
+
 
 class OperatorReviewRecordResponse(FrozenApiModel):
     review_id: str
-    run_id: str
+    review_task_id: str
+    run_id: str | None
+    subject_type: str
+    subject_key: str
+    review_contract_version: int
     review_version: int
     idempotency_key: str
     request_hash: str
-    decision: Literal["approve", "correct", "keep_human_review"]
+    decision: Literal["approve", "correct", "reject", "keep_human_review"]
     reviewer: str
     reason: str
+    reason_category: str | None = None
     disposition: str | None = None
     correction: dict[str, str] | None = None
     evidence_annotations: tuple[dict[str, str | None], ...] = ()

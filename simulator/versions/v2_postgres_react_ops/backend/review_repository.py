@@ -10,7 +10,11 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from agent_operator_review_repository import ReviewRecordInput, record_review
+from agent_operator_review_repository import (
+    ReviewRecordInput,
+    record_review,
+    record_subject_review,
+)
 from heatgrid_rag.embedding import hash_embedding, vector_literal
 from schemas import (
     AutomationPolicy,
@@ -109,6 +113,8 @@ async def review_evidence_candidate(
 ) -> EvidenceCandidate | None:
     await ensure_review_tables(engine)
     existing = await get_evidence_candidate(engine, candidate_id)
+    if existing is None:
+        return None
     if existing is not None and _is_historical_external_candidate(existing):
         raise ValueError("외부 검색 근거는 과거 기록 조회만 허용됩니다.")
     status = "approved" if payload.decision == "approve" else "rejected"
@@ -119,6 +125,16 @@ async def review_evidence_candidate(
         "RETURNING " + _candidate_select_columns()
     )
     async with engine.begin() as connection:
+        await record_subject_review(
+            connection,
+            subject_type="evidence_candidate",
+            subject_key=candidate_id,
+            decision=payload.decision,
+            reviewer=payload.reviewer,
+            reason=payload.reason,
+            request_payload=payload.model_dump(mode="json"),
+            idempotency_key=f"evidence-candidate-review:{candidate_id}",
+        )
         result = await connection.execute(
             query,
             {
@@ -130,21 +146,6 @@ async def review_evidence_candidate(
             },
         )
         row = result.mappings().one_or_none()
-        if row is not None:
-            await connection.execute(
-                text(
-                    "UPDATE human_review_tasks SET status = :task_status, "
-                    "reviewed_by = :reviewer, reviewed_at = now(), "
-                    "resolution = CAST(:resolution AS jsonb) "
-                    "WHERE candidate_id = :candidate_id AND status = 'pending'"
-                ),
-                {
-                    "candidate_id": candidate_id,
-                    "task_status": status,
-                    "reviewer": payload.reviewer,
-                    "resolution": _json(payload.model_dump(mode="json")),
-                },
-            )
     if row is None:
         return None
     if status == "approved":
@@ -269,15 +270,22 @@ async def create_review_task(
         raise ValueError("외부 검색 승인 작업은 새로 만들 수 없습니다.")
     await ensure_review_tables(engine)
     task_id = task_id or str(uuid4())
+    subject_type, subject_key = _review_task_subject(
+        task_id=task_id,
+        run_id=run_id,
+        candidate_id=candidate_id,
+        retrain_job_id=retrain_job_id,
+        model_candidate_id=model_candidate_id,
+    )
     query = text(
         "INSERT INTO human_review_tasks ("
         "task_id, task_type, status, risk_level, title, run_id, candidate_id, "
         "retrain_job_id, model_candidate_id, payload, assigned_to, reviewed_by, reviewed_at, "
-        "operation_key"
+        "operation_key, subject_type, subject_key"
         ") VALUES ("
         ":task_id, :task_type, :status, :risk_level, :title, :run_id, :candidate_id, "
         ":retrain_job_id, :model_candidate_id, CAST(:payload AS jsonb), :assigned_to, "
-        ":reviewed_by, :reviewed_at, :operation_key"
+        ":reviewed_by, :reviewed_at, :operation_key, :subject_type, :subject_key"
         ") ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL DO UPDATE SET "
         "operation_key = EXCLUDED.operation_key RETURNING " + _review_select_columns()
     )
@@ -301,9 +309,30 @@ async def create_review_task(
                 if reviewed_by is None
                 else datetime.now(timezone.utc),
                 "operation_key": operation_key,
+                "subject_type": subject_type,
+                "subject_key": subject_key,
             },
         )
     return _review_from_row(result.mappings().one())
+
+
+def _review_task_subject(
+    *,
+    task_id: str,
+    run_id: str | None,
+    candidate_id: str | None,
+    retrain_job_id: str | None,
+    model_candidate_id: str | None,
+) -> tuple[str, str]:
+    if run_id is not None:
+        return "agent_run", run_id
+    if candidate_id is not None:
+        return "evidence_candidate", candidate_id
+    if retrain_job_id is not None:
+        return "retrain_job", retrain_job_id
+    if model_candidate_id is not None:
+        return "model_candidate", model_candidate_id
+    return "review_task", task_id
 
 
 async def list_review_tasks(
@@ -344,9 +373,12 @@ async def get_review_task(
 async def _get_review_task(
     connection: AsyncConnection,
     task_id: str,
+    *,
+    for_update: bool = False,
 ) -> HumanReviewTask | None:
     query = text(
         f"SELECT {_review_select_columns()} FROM human_review_tasks WHERE task_id = :task_id"
+        + (" FOR UPDATE" if for_update else "")
     )
     result = await connection.execute(query, {"task_id": task_id})
     row = result.mappings().one_or_none()
@@ -359,75 +391,36 @@ async def submit_review_task(
     payload: ReviewTaskSubmitRequest,
 ) -> ReviewSubmitResponse | None:
     await ensure_review_tables(engine)
-    task = await get_review_task(engine, task_id)
-    if task is None:
-        return None
-    if task.task_type == "external_search":
-        raise ValueError("외부 검색 승인 작업은 과거 기록 조회만 허용됩니다.")
-    if task.status != "pending":
-        raise ValueError("이미 처리된 검수 작업입니다.")
-    status = {
-        "approve": "approved",
-        "reject": "rejected",
-        "correct": "corrected",
-    }[payload.decision]
-    resolution = payload.model_dump(mode="json")
-    query = text(
-        "UPDATE human_review_tasks SET status = :status, reviewed_by = :reviewer, "
-        "resolution = CAST(:resolution AS jsonb), reviewed_at = now() "
-        "WHERE task_id = :task_id RETURNING " + _review_select_columns()
-    )
     async with engine.begin() as connection:
         task = await _get_review_task(connection, task_id)
         if task is None:
             return None
         if task.task_type == "external_search":
-            raise ValueError("?몃? 寃???뱀씤 ?묒뾽? 怨쇨굅 湲곕줉 議고쉶留??덉슜?⑸땲??")
+            raise ValueError("external search tasks are read-only historical records")
         if task.status != "pending":
-            raise ValueError("?대? 泥섎━??寃???묒뾽?낅땲??")
-        result = await connection.execute(
-            query,
-            {
-                "task_id": task_id,
-                "status": status,
-                "reviewer": payload.reviewer,
-                "resolution": _json(resolution),
-            },
+            raise ValueError("review task was already submitted")
+        corrected_output = (
+            payload.corrected_output.model_dump(mode="json")
+            if payload.corrected_output is not None
+            else None
         )
-        updated = _review_from_row(result.mappings().one())
-        feedback = await _insert_feedback(connection, updated, payload)
-        if updated.run_id and updated.task_type == "final_output":
-            corrected_output = (
-                {
-                    "summary": payload.corrected_output.summary,
-                    "action_plan": payload.corrected_output.action_plan,
-                    "caution": payload.corrected_output.caution,
-                }
-                if payload.corrected_output is not None
-                else None
-            )
-            await connection.execute(
-                text(
-                    "UPDATE agent_runs SET "
-                    "ops_output = COALESCE(CAST(:corrected_output AS jsonb), ops_output), "
-                    "updated_at = now() "
-                    "WHERE run_id = :run_id"
-                ),
-                {
-                    "run_id": updated.run_id,
-                    "corrected_output": None
-                    if corrected_output is None
-                    else _json(corrected_output),
-                },
-            )
-            await record_review(
-                connection,
-                _legacy_review_record_input(
-                    task=updated,
-                    payload=payload,
-                    corrected_output=corrected_output,
-                ),
-            )
+        review = await record_review(
+            connection,
+            _legacy_review_record_input(
+                task=task,
+                payload=payload,
+                corrected_output=corrected_output,
+            ),
+        )
+        updated = await _get_review_task(connection, task_id, for_update=True)
+        if updated is None:
+            raise RuntimeError("review task disappeared during submission")
+        feedback = await _insert_feedback(
+            connection,
+            updated,
+            payload,
+            source_review_id=review.review_id,
+        )
     return ReviewSubmitResponse(task=updated, feedback=feedback)
 
 
@@ -447,14 +440,23 @@ def _legacy_review_record_input(
             legacy_status_override = None
             operator_labels = ()
         case "reject":
-            decision = "keep_human_review"
-            legacy_status_override = "rejected"
-            operator_labels = ("legacy_reject",)
+            if task.run_id is None:
+                decision = "reject"
+                legacy_status_override = None
+                operator_labels = ()
+            else:
+                decision = "keep_human_review"
+                legacy_status_override = "rejected"
+                operator_labels = ("legacy_reject",)
     return ReviewRecordInput(
-        run_id=task.run_id or "",
+        run_id=task.run_id,
+        review_task_id=task.task_id,
+        subject_type=task.subject_type,
+        subject_key=task.subject_key,
         decision=decision,
         reviewer=payload.reviewer,
         reason=payload.reason or "legacy review task submission",
+        reason_category="legacy_reject" if payload.decision == "reject" else None,
         idempotency_key=f"legacy-task:{task.task_id}",
         request_hash=_legacy_request_hash(payload),
         disposition=None,
@@ -587,6 +589,8 @@ async def _insert_feedback(
     connection: AsyncConnection,
     task: HumanReviewTask,
     payload: ReviewTaskSubmitRequest,
+    *,
+    source_review_id: str,
 ) -> TrainingFeedback | None:
     if task.task_type not in {"final_output", "model_disagreement", "label_correction"}:
         return None
@@ -610,10 +614,11 @@ async def _insert_feedback(
             card_id = str(row["card_id"])
     query = text(
         "INSERT INTO training_feedback ("
-        "feedback_id, task_id, run_id, card_id, reviewer, decision, original_output, "
+        "feedback_id, task_id, source_review_id, run_id, card_id, reviewer, decision, "
+        "original_output, "
         "corrected_output, corrected_label, metadata"
         ") VALUES ("
-        ":feedback_id, :task_id, :run_id, :card_id, :reviewer, :decision, "
+        ":feedback_id, :task_id, :source_review_id, :run_id, :card_id, :reviewer, :decision, "
         "CAST(:original_output AS jsonb), CAST(:corrected_output AS jsonb), "
         ":corrected_label, CAST(:metadata AS jsonb)"
         ") RETURNING " + _feedback_select_columns()
@@ -623,6 +628,7 @@ async def _insert_feedback(
         {
             "feedback_id": feedback_id,
             "task_id": task.task_id,
+            "source_review_id": source_review_id,
             "run_id": task.run_id,
             "card_id": card_id,
             "reviewer": payload.reviewer,
@@ -659,7 +665,8 @@ def _candidate_select_columns() -> str:
 
 def _review_select_columns() -> str:
     return (
-        "task_id, task_type, status, risk_level, title, run_id, candidate_id, "
+        "task_id, task_type, status, risk_level, title, subject_type, subject_key, "
+        "run_id, candidate_id, "
         "retrain_job_id, model_candidate_id, CAST(payload AS text) AS payload, "
         "CAST(resolution AS text) AS resolution, assigned_to, reviewed_by, "
         "created_at, reviewed_at"
@@ -668,7 +675,7 @@ def _review_select_columns() -> str:
 
 def _feedback_select_columns() -> str:
     return (
-        "feedback_id, task_id, run_id, card_id, reviewer, decision, "
+        "feedback_id, task_id, source_review_id, run_id, card_id, reviewer, decision, "
         "CAST(original_output AS text) AS original_output, "
         "CAST(corrected_output AS text) AS corrected_output, corrected_label, "
         "CAST(metadata AS text) AS metadata, created_at"
@@ -710,6 +717,8 @@ def _review_from_row(row: RowMapping) -> HumanReviewTask:
             "status": str(row["status"]),
             "risk_level": str(row["risk_level"]),
             "title": str(row["title"]),
+            "subject_type": str(row["subject_type"]),
+            "subject_key": str(row["subject_key"]),
             "run_id": None if row["run_id"] is None else str(row["run_id"]),
             "candidate_id": None
             if row["candidate_id"] is None
@@ -736,6 +745,7 @@ def _feedback_from_row(row: RowMapping) -> TrainingFeedback:
     return TrainingFeedback(
         feedback_id=str(row["feedback_id"]),
         task_id=str(row["task_id"]),
+        source_review_id=str(row["source_review_id"]),
         run_id=None if row["run_id"] is None else str(row["run_id"]),
         card_id=None if row["card_id"] is None else str(row["card_id"]),
         reviewer=str(row["reviewer"]),

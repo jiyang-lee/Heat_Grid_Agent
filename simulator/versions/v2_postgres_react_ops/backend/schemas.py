@@ -204,6 +204,7 @@ class AgentRunResponse(BaseModel):
     alert_id: str
     card_id: str
     evaluation_run_id: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     parent_run_id: str | None = None
@@ -297,6 +298,8 @@ class HumanReviewTask(BaseModel):
     status: ReviewTaskStatus
     risk_level: Literal["low", "medium", "high", "critical"]
     title: str
+    subject_type: str
+    subject_key: str
     run_id: str | None = None
     candidate_id: str | None = None
     retrain_job_id: str | None = None
@@ -321,6 +324,7 @@ class ReviewTaskSubmitRequest(BaseModel):
 class TrainingFeedback(BaseModel):
     feedback_id: str
     task_id: str
+    source_review_id: str
     run_id: str | None = None
     card_id: str | None = None
     reviewer: str
@@ -452,6 +456,7 @@ class PriorityEvaluationRun(BaseModel):
 class PriorityEvaluationResult(BaseModel):
     evaluation_result_id: str
     evaluation_run_id: str
+    substation_uid: str
     manufacturer_id: str
     substation_id: int
     source_window_id: str | None = None
@@ -513,6 +518,7 @@ class AlertSummary(BaseModel):
     card_id: str
     evaluation_run_id: str | None = None
     as_of_time: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     priority_rank: int | None = None

@@ -172,6 +172,7 @@ async def test_weather_snapshot_failure_keeps_provenance(
 
     snapshot = await adapter.snapshot(
         ExternalDataRequest(
+            substation_uid="00000000-0000-0000-0000-000000000031",
             substation_id=31,
             window_start="2026-07-14T00:00:00Z",
             window_end="2026-07-14T01:00:00Z",

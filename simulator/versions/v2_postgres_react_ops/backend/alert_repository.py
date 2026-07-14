@@ -24,10 +24,11 @@ candidates AS (
     SELECT
         md5(
             'ops_alert|' || result.evaluation_run_id::text || '|' ||
-            result.manufacturer_id || '|' || result.substation_id::text
+            result.substation_uid::text
         )::uuid AS alert_id,
         result.source_card_id AS card_id,
         result.evaluation_run_id,
+        result.substation_uid,
         result.manufacturer_id,
         result.substation_id,
         result.priority_rank,
@@ -48,14 +49,14 @@ existing AS (
     FROM candidates c
     JOIN ops_alert_queue q
       ON q.evaluation_run_id = c.evaluation_run_id
-     AND q.manufacturer_id = c.manufacturer_id
-     AND q.substation_id = c.substation_id
+     AND q.substation_uid = c.substation_uid
 ),
 inserted AS (
     INSERT INTO ops_alert_queue (
         alert_id,
         card_id,
         evaluation_run_id,
+        substation_uid,
         manufacturer_id,
         substation_id,
         priority_rank,
@@ -160,7 +161,7 @@ async def list_alerts(
     where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
     query = text(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "
-        "q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
+        "q.substation_uid, q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
         "q.priority_level, q.priority_score, q.status, q.enqueue_reason, "
         "q.created_at, q.acked_at, q.acked_by "
         "FROM ops_alert_queue q "
@@ -221,7 +222,7 @@ async def get_alert(
     await ensure_alert_queue(engine)
     query = text(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "
-        "q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
+        "q.substation_uid, q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
         "q.priority_level, q.priority_score, q.status, q.enqueue_reason, "
         "q.created_at, q.acked_at, q.acked_by "
         "FROM ops_alert_queue q "
@@ -243,6 +244,7 @@ def _alert_from_row(row: RowMapping) -> dict[str, JsonValue]:
         "evaluation_run_id": None
         if row["evaluation_run_id"] is None
         else str(row["evaluation_run_id"]),
+        "substation_uid": str(row["substation_uid"]),
         "as_of_time": None
         if row["as_of_time"] is None
         else row["as_of_time"].isoformat(),

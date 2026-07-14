@@ -40,6 +40,7 @@ class AgentRunResult(BaseModel):
     alert_id: str
     card_id: str
     evaluation_run_id: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     parent_run_id: str | None = None
@@ -108,6 +109,7 @@ class ModelInferenceSnapshot(BaseModel):
 class ExternalDataRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    substation_uid: str
     substation_id: int
     window_start: str
     window_end: str

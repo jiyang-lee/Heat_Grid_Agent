@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from collections.abc import Sequence
 from typing import Any, Final
 from uuid import uuid4
 import asyncio
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 LATEST_WINDOW_CANDIDATES_SQL: Final = """
 SELECT
+    s.substation_uid,
     s.manufacturer_id,
     s.substation_id,
     s.configuration_type,
@@ -53,8 +55,7 @@ FROM substations s
 LEFT JOIN LATERAL (
     SELECT selected.*
     FROM windows selected
-    WHERE selected.manufacturer_id = s.manufacturer_id
-      AND selected.substation_id = s.substation_id
+    WHERE selected.substation_uid = s.substation_uid
       AND selected.window_end <= :as_of_time
     ORDER BY selected.window_end DESC, selected.window_start DESC, selected.window_id DESC
     LIMIT 1
@@ -79,14 +80,14 @@ ORDER BY s.manufacturer_id, s.substation_id
 
 INSERT_RESULT_SQL: Final = """
 INSERT INTO priority_evaluation_results (
-    evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id,
+    evaluation_result_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,
     source_window_id, source_window_start, source_window_end, source_card_id,
     source_priority_decision_id, priority_score, priority_rank, rank_included,
     priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket,
     leadtime_urgency_score, leadtime_hours, freshness_status, data_age_seconds,
     model_components
 ) VALUES (
-    :evaluation_result_id, :evaluation_run_id, :manufacturer_id, :substation_id,
+    :evaluation_result_id, :evaluation_run_id, :substation_uid, :manufacturer_id, :substation_id,
     :source_window_id, :source_window_start, :source_window_end, :source_card_id,
     :source_priority_decision_id, :priority_score, :priority_rank, :rank_included,
     :priority_level, :risk_score, :anomaly_score, :anomaly_label, :leadtime_bucket,
@@ -343,7 +344,7 @@ async def model_inputs_changed_after(
 
 
 def build_evaluation_results(
-    candidates: list[RowMapping] | list[dict[str, Any]],
+    candidates: Sequence[RowMapping | dict[str, Any]],
     *,
     inferences: list[dict[str, Any]],
     evaluation_run_id: str,
@@ -432,6 +433,7 @@ def build_evaluation_results(
             {
                 "evaluation_result_id": str(uuid4()),
                 "evaluation_run_id": evaluation_run_id,
+                "substation_uid": str(candidate["substation_uid"]),
                 "manufacturer_id": str(candidate["manufacturer_id"]),
                 "substation_id": int(candidate["substation_id"]),
                 "source_window_id": _optional_str(candidate.get("source_window_id")),
@@ -542,32 +544,69 @@ async def get_latest_substation_result(
     latest = await get_latest_priority_evaluation(engine)
     if latest is None:
         return None
-    for result in latest["results"]:
-        if int(result["substation_id"]) != substation_id:
-            continue
-        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
-            continue
-        return {"evaluation": latest["evaluation"], "result": result}
-    return None
+    result = _resolve_substation_result(
+        latest["results"],
+        substation_id=substation_id,
+        manufacturer_id=manufacturer_id,
+    )
+    return None if result is None else {"evaluation": latest["evaluation"], "result": result}
 
 
 async def get_priority_evaluation_result(
     engine: AsyncEngine,
     evaluation_run_id: str,
-    substation_id: int,
+    substation_id: int | None = None,
     *,
     manufacturer_id: str | None = None,
+    substation_uid: str | None = None,
 ) -> dict[str, Any] | None:
     snapshot = await get_priority_evaluation(engine, evaluation_run_id)
     if snapshot is None:
         return None
-    for result in snapshot["results"]:
-        if int(result["substation_id"]) != substation_id:
-            continue
-        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
-            continue
-        return {"evaluation": snapshot["evaluation"], "result": result}
-    return None
+    if substation_uid is not None:
+        result = next(
+            (
+                item
+                for item in snapshot["results"]
+                if str(item.get("substation_uid")) == substation_uid
+            ),
+            None,
+        )
+    elif substation_id is not None:
+        result = _resolve_substation_result(
+            snapshot["results"],
+            substation_id=substation_id,
+            manufacturer_id=manufacturer_id,
+        )
+    else:
+        raise ValueError("substation_uid or substation_id is required")
+    return None if result is None else {"evaluation": snapshot["evaluation"], "result": result}
+
+
+class AmbiguousSubstationError(ValueError):
+    pass
+
+
+def _resolve_substation_result(
+    results: list[dict[str, Any]],
+    *,
+    substation_id: int,
+    manufacturer_id: str | None,
+) -> dict[str, Any] | None:
+    matches = [
+        result
+        for result in results
+        if int(result["substation_id"]) == substation_id
+        and (
+            manufacturer_id is None
+            or result["manufacturer_id"] == manufacturer_id
+        )
+    ]
+    if manufacturer_id is None and len(matches) > 1:
+        raise AmbiguousSubstationError(
+            "manufacturer_id is required because substation_id is ambiguous"
+        )
+    return matches[0] if matches else None
 
 
 def latest_alert_results(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
@@ -590,7 +629,7 @@ def _run_columns() -> str:
 
 def _result_columns() -> str:
     return (
-        "evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id, "
+        "evaluation_result_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id, "
         "source_window_id, source_window_start, source_window_end, source_card_id, "
         "source_priority_decision_id, priority_score, priority_rank, rank_included, "
         "priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket, "
@@ -622,6 +661,7 @@ def _result_from_row(row: RowMapping) -> dict[str, Any]:
     return {
         "evaluation_result_id": str(row["evaluation_result_id"]),
         "evaluation_run_id": str(row["evaluation_run_id"]),
+        "substation_uid": str(row["substation_uid"]),
         "manufacturer_id": str(row["manufacturer_id"]),
         "substation_id": int(row["substation_id"]),
         "source_window_id": _optional_str(row["source_window_id"]),

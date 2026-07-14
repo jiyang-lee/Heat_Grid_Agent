@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(7))
+    assert [migration.version for migration in migrations] == list(range(8))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "006_referential_integrity.sql"
+    assert migrations[-1].path.name == "007_database_normalization.sql"
     assert len(migration_manifest_hash(migrations)) == 64
 
 

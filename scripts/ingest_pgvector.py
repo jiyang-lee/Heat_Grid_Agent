@@ -265,9 +265,20 @@ def ingest_site_context(conn: psycopg.Connection, path: Path) -> int:
             if substation_id is None:
                 continue
             cur.execute(
+                "select substation_uid from substations where substation_id = %s",
+                (substation_id,),
+            )
+            uid_rows = cur.fetchall()
+            if len(uid_rows) != 1:
+                raise SystemExit(
+                    f"substation_id {substation_id} maps to {len(uid_rows)} substations; "
+                    "site context ingestion requires an unambiguous UID"
+                )
+            substation_uid = uid_rows[0][0]
+            cur.execute(
                 """
                 insert into substation_building_context (
-                    substation_id, apartment_name, kapt_code, life_zone, dong, village,
+                    substation_uid, substation_id, apartment_name, kapt_code, life_zone, dong, village,
                     road_address, jibun_address, latitude, longitude, heating_type,
                     household_count, building_count, gross_floor_area_m2,
                     private_usage_cost_latest_month_krw,
@@ -283,7 +294,7 @@ def ingest_site_context(conn: psycopg.Connection, path: Path) -> int:
                     mapping_note, metadata
                 )
                 values (
-                    %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s,
                     %s, %s, %s,
                     %s, %s,
@@ -292,7 +303,7 @@ def ingest_site_context(conn: psycopg.Connection, path: Path) -> int:
                     %s, %s, %s, %s, %s, %s,
                     %s, %s::jsonb
                 )
-                on conflict (substation_id) do update set
+                on conflict (substation_uid) do update set
                     apartment_name = excluded.apartment_name,
                     road_address = excluded.road_address,
                     latitude = excluded.latitude,
@@ -306,6 +317,7 @@ def ingest_site_context(conn: psycopg.Connection, path: Path) -> int:
                     updated_at = now()
                 """,
                 (
+                    substation_uid,
                     substation_id,
                     row.get("matched_name"),
                     row.get("kapt_code"),

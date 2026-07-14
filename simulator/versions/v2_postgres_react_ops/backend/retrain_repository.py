@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_operator_review_repository import record_subject_review
 from schemas import (
     ModelCandidate,
     ModelDeployment,
@@ -132,7 +133,18 @@ async def review_retrain_job(
                 "reason": payload.reason,
             },
         )
-    row = result.mappings().one_or_none()
+        row = result.mappings().one_or_none()
+        if row is not None:
+            await record_subject_review(
+                connection,
+                subject_type="retrain_job",
+                subject_key=job_id,
+                decision="approve" if approve else "reject",
+                reviewer=payload.reviewer,
+                reason=payload.reason,
+                request_payload={**payload.model_dump(mode="json"), "approve": approve},
+                idempotency_key=f"retrain-job-review:{job_id}",
+            )
     return None if row is None else _job_from_row(row)
 
 
@@ -268,6 +280,16 @@ async def review_model_candidate(
                     "reason": payload.reason,
                 },
             )
+            await record_subject_review(
+                connection,
+                subject_type="model_candidate",
+                subject_key=candidate_id,
+                decision="reject",
+                reviewer=payload.reviewer,
+                reason=payload.reason,
+                request_payload=payload.model_dump(mode="json"),
+                idempotency_key=f"model-candidate-review:{candidate_id}",
+            )
         return _candidate_from_row(result.mappings().one()), None
 
     deployment_id = str(uuid4())
@@ -301,6 +323,16 @@ async def review_model_candidate(
                 "artifact_uri": candidate.artifact_uri,
                 "promoted_by": payload.reviewer,
             },
+        )
+        await record_subject_review(
+            connection,
+            subject_type="model_candidate",
+            subject_key=candidate_id,
+            decision="approve",
+            reviewer=payload.reviewer,
+            reason=payload.reason,
+            request_payload=payload.model_dump(mode="json"),
+            idempotency_key=f"model-candidate-review:{candidate_id}",
         )
     return (
         _candidate_from_row(candidate_result.mappings().one()),
@@ -391,40 +423,44 @@ def _candidate_columns() -> str:
 
 
 def _job_from_row(row: RowMapping) -> RetrainJob:
-    return RetrainJob(
-        job_id=str(row["job_id"]),
-        status=str(row["status"]),
-        requested_by=str(row["requested_by"]),
-        reason=str(row["reason"]),
-        feedback_ids=orjson.loads(row["feedback_ids"]),
-        dataset_snapshot=orjson.loads(row["dataset_snapshot"]),
-        execution_metadata=orjson.loads(row["execution_metadata"]),
-        approved_by=row["approved_by"],
-        error=row["error"],
-        model_candidate_id=None
-        if row["model_candidate_id"] is None
-        else str(row["model_candidate_id"]),
-        created_at=row["created_at"].isoformat(),
-        approved_at=_iso(row["approved_at"]),
-        started_at=_iso(row["started_at"]),
-        completed_at=_iso(row["completed_at"]),
+    return RetrainJob.model_validate(
+        {
+            "job_id": str(row["job_id"]),
+            "status": str(row["status"]),
+            "requested_by": str(row["requested_by"]),
+            "reason": str(row["reason"]),
+            "feedback_ids": orjson.loads(row["feedback_ids"]),
+            "dataset_snapshot": orjson.loads(row["dataset_snapshot"]),
+            "execution_metadata": orjson.loads(row["execution_metadata"]),
+            "approved_by": row["approved_by"],
+            "error": row["error"],
+            "model_candidate_id": None
+            if row["model_candidate_id"] is None
+            else str(row["model_candidate_id"]),
+            "created_at": row["created_at"].isoformat(),
+            "approved_at": _iso(row["approved_at"]),
+            "started_at": _iso(row["started_at"]),
+            "completed_at": _iso(row["completed_at"]),
+        }
     )
 
 
 def _candidate_from_row(row: RowMapping) -> ModelCandidate:
-    return ModelCandidate(
-        candidate_id=str(row["candidate_id"]),
-        job_id=str(row["job_id"]),
-        version=str(row["version"]),
-        artifact_uri=str(row["artifact_uri"]),
-        status=str(row["status"]),
-        baseline_metrics=orjson.loads(row["baseline_metrics"]),
-        candidate_metrics=orjson.loads(row["candidate_metrics"]),
-        validation_summary=orjson.loads(row["validation_summary"]),
-        promoted_by=row["promoted_by"],
-        promotion_reason=row["promotion_reason"],
-        created_at=row["created_at"].isoformat(),
-        promoted_at=_iso(row["promoted_at"]),
+    return ModelCandidate.model_validate(
+        {
+            "candidate_id": str(row["candidate_id"]),
+            "job_id": str(row["job_id"]),
+            "version": str(row["version"]),
+            "artifact_uri": str(row["artifact_uri"]),
+            "status": str(row["status"]),
+            "baseline_metrics": orjson.loads(row["baseline_metrics"]),
+            "candidate_metrics": orjson.loads(row["candidate_metrics"]),
+            "validation_summary": orjson.loads(row["validation_summary"]),
+            "promoted_by": row["promoted_by"],
+            "promotion_reason": row["promotion_reason"],
+            "created_at": row["created_at"].isoformat(),
+            "promoted_at": _iso(row["promoted_at"]),
+        }
     )
 
 

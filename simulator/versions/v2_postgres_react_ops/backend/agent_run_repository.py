@@ -22,11 +22,13 @@ from schemas import (
 ACTIVE_AGENT_RUN_STALE_AFTER_SECONDS: Final = 600
 
 AGENT_RUN_SELECT: Final = (
-    "SELECT run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+    "SELECT run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
     "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-    "approved_action_task_id, "
+    "NULL::uuid AS approved_action_task_id, "
     "status, agent_mode, "
-    "CAST(ops_output AS text) AS ops_output, "
+    "CAST(COALESCE((SELECT correction FROM agent_run_reviews review "
+    "WHERE review.run_id = agent_runs.run_id AND correction IS NOT NULL "
+    "ORDER BY review.review_version DESC LIMIT 1), ops_output) AS text) AS ops_output, "
     "CAST(token_usage AS text) AS token_usage, "
     "CAST(loop_summary AS text) AS loop_summary, "
     "review_status, review_task_id, error "
@@ -127,20 +129,20 @@ async def _insert_queued_agent_run(
 ) -> RowMapping:
     query = text(
         "INSERT INTO agent_runs ("
-        "run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "approved_action_task_id, status"
+        "status"
         ") VALUES ("
         ":run_id, :alert_id, :card_id, "
         "(SELECT evaluation_run_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
+        "(SELECT substation_uid FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT manufacturer_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT substation_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
-        ":parent_run_id, :trigger_type, :requested_by, :trigger_reason, "
-        ":approved_action_task_id, 'queued'"
+        ":parent_run_id, :trigger_type, :requested_by, :trigger_reason, 'queued'"
         ") "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "approved_action_task_id, "
+        "NULL::uuid AS approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -157,7 +159,6 @@ async def _insert_queued_agent_run(
             "trigger_type": trigger_type,
             "requested_by": requested_by,
             "trigger_reason": trigger_reason,
-            "approved_action_task_id": approved_action_task_id,
         },
     )
     run_row = result.mappings().one()
@@ -285,9 +286,9 @@ async def complete_agent_run(
         "review_status = 'pending', review_task_id = :review_task_id, "
         "error = NULL, updated_at = now() "
         "WHERE run_id = :run_id AND status IN ('queued', 'running') "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "approved_action_task_id, "
+        "NULL::uuid AS approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -345,9 +346,9 @@ async def fail_agent_run(
         "UPDATE agent_runs SET "
         "status = 'failed', error = :error, updated_at = now() "
         "WHERE run_id = :run_id "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "approved_action_task_id, "
+        "NULL::uuid AS approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -405,9 +406,9 @@ async def _set_agent_run_status(
     query = text(
         "UPDATE agent_runs SET status = :status, updated_at = now() "
         "WHERE run_id = :run_id "
-        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
         "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
-        "approved_action_task_id, "
+        "NULL::uuid AS approved_action_task_id, "
         "status, agent_mode, "
         "CAST(ops_output AS text) AS ops_output, "
         "CAST(token_usage AS text) AS token_usage, "
@@ -436,6 +437,9 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         evaluation_run_id=None
         if row["evaluation_run_id"] is None
         else str(row["evaluation_run_id"]),
+        substation_uid=None
+        if row["substation_uid"] is None
+        else str(row["substation_uid"]),
         manufacturer_id=row["manufacturer_id"],
         substation_id=row["substation_id"],
         parent_run_id=None

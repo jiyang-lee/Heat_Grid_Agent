@@ -238,14 +238,16 @@ def _external_data_request(source_input: JsonObject) -> ExternalDataRequest | No
     window = raw_context.get("window")
     if not isinstance(window, dict):
         return None
+    substation_uid = window.get("substation_uid")
     substation_id = window.get("substation_id")
     window_start = window.get("window_start")
     window_end = window.get("window_end")
-    if not isinstance(substation_id, int):
+    if not isinstance(substation_uid, str) or not isinstance(substation_id, int):
         return None
     if not isinstance(window_start, str) or not isinstance(window_end, str):
         return None
     return ExternalDataRequest(
+        substation_uid=substation_uid,
         substation_id=substation_id,
         window_start=window_start,
         window_end=window_end,

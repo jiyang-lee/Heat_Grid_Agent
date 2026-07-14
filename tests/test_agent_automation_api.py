@@ -129,12 +129,40 @@ async def test_review_feedback_evidence_and_policy_api_flow(
             },
         )
 
+    async with module.engine.connect() as connection:
+        lineage = (
+            await connection.execute(
+                text(
+                    "SELECT run.ops_output ->> 'summary' AS original_summary, "
+                    "review.correction ->> 'summary' AS corrected_summary, "
+                    "feedback.source_review_id = review.review_id AS feedback_linked "
+                    "FROM agent_runs run "
+                    "JOIN agent_run_reviews review ON review.run_id = run.run_id "
+                    "JOIN training_feedback feedback "
+                    "ON feedback.source_review_id = review.review_id "
+                    "WHERE run.run_id = :run_id"
+                ),
+                {"run_id": run["run_id"]},
+            )
+        ).mappings().one()
+        evidence_review_count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM agent_run_reviews "
+                "WHERE subject_type = 'evidence_candidate' AND subject_key = :subject_key"
+            ),
+            {"subject_key": candidate_id},
+        )
+
     assert reviewed.status_code == 200
     assert reviewed.json()["task"]["status"] == "corrected"
     assert reviewed.json()["feedback"]["corrected_label"] == "pre_fault"
     assert feedback.json()[0]["task_id"] == final_task["task_id"]
     assert updated_run.json()["review_status"] == "corrected"
     assert updated_run.json()["ops_output"]["summary"] == "사람이 교정한 상황 요약"
+    assert lineage["original_summary"] != "사람이 교정한 상황 요약"
+    assert lineage["corrected_summary"] == "사람이 교정한 상황 요약"
+    assert lineage["feedback_linked"] is True
+    assert evidence_review_count == 1
     assert candidate.status_code == 200
     assert candidate_review.status_code == 200
     assert candidate_review.json()["status"] in {"approved", "ingest_failed"}
@@ -208,12 +236,13 @@ async def test_guarded_auto_starts_one_retrain_and_blocks_duplicate(
             await connection.execute(
                 text(
                     "INSERT INTO ops_alert_queue ("
-                    "alert_id, card_id, evaluation_run_id, manufacturer_id, "
+                    "alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
                     "substation_id, priority_rank, freshness_status, priority_level, "
                     "priority_score, enqueue_reason"
                     ") "
                     "SELECT md5('pytest-retrain|' || result.evaluation_result_id::text)::uuid, "
-                    "result.source_card_id, result.evaluation_run_id, result.manufacturer_id, "
+                    "result.source_card_id, result.evaluation_run_id, result.substation_uid, "
+                    "result.manufacturer_id, "
                     "result.substation_id, result.priority_rank, result.freshness_status, "
                     "'high', result.priority_score, 'pytest guarded-auto retrain' "
                     "FROM priority_evaluation_results result "
@@ -355,6 +384,7 @@ async def test_legacy_review_submission_records_v3_reject_state_once(
         item for item in listed.json()["items"] if item["run_id"] == run["run_id"]
     )
     assert submitted.status_code == 200
+    assert submitted.json()["task"]["resolution"]["decision"] == "keep_human_review"
     assert duplicate.status_code == 409
     assert detail.json()["review_status"] == "rejected"
     assert listed_run["operator_review_status"] == "keep_human_review"

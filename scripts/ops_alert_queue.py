@@ -18,10 +18,11 @@ candidates AS (
     SELECT
         md5(
             'ops_alert|' || result.evaluation_run_id::text || '|' ||
-            result.manufacturer_id || '|' || result.substation_id::text
+            result.substation_uid::text
         )::uuid AS alert_id,
         result.source_card_id AS card_id,
         result.evaluation_run_id,
+        result.substation_uid,
         result.manufacturer_id,
         result.substation_id,
         result.priority_rank,
@@ -42,14 +43,14 @@ existing AS (
     FROM candidates c
     JOIN ops_alert_queue q
       ON q.evaluation_run_id = c.evaluation_run_id
-     AND q.manufacturer_id = c.manufacturer_id
-     AND q.substation_id = c.substation_id
+     AND q.substation_uid = c.substation_uid
 ),
 inserted AS (
     INSERT INTO ops_alert_queue (
         alert_id,
         card_id,
         evaluation_run_id,
+        substation_uid,
         manufacturer_id,
         substation_id,
         priority_rank,
@@ -97,7 +98,7 @@ async def collect_source_diagnostics(
     windows_rows: int,
 ) -> dict[str, object]:
     sensor_readings = await source_table_status(conn, "sensor_readings")
-    window_features = await source_table_status(conn, "window_features")
+    window_features = await source_table_status(conn, "model_feature_snapshots")
     raw_ready = (
         sensor_readings["status"] == "available"
         and window_features["status"] == "available"
@@ -106,7 +107,7 @@ async def collect_source_diagnostics(
         "fallback_source": "raw_db" if raw_ready else "csv_windows",
         "sources": {
             "sensor_readings": sensor_readings,
-            "window_features": window_features,
+            "model_feature_snapshots": window_features,
             "agent_priority_card_csv": {
                 "status": "available" if agent_rows > 0 else "empty",
                 "row_count": agent_rows,

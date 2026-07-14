@@ -433,7 +433,11 @@ def _source_input() -> dict:
             "explanation": {"why_reason": "temperature-flow mismatch"},
         },
         "raw_context": {
-            "window": {"substation_id": 31, "manufacturer_id": "maker-1"}
+            "window": {
+                "substation_uid": "00000000-0000-0000-0000-000000000031",
+                "substation_id": 31,
+                "manufacturer_id": "maker-1",
+            }
         },
     }
 

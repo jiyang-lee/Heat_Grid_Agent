@@ -19,14 +19,13 @@ def card_query():
         "pd.m1_specialist_priority_score, pd.m1_specialist_priority_level, "
         "pd.current_best_weight, pd.m1_specialist_weight, "
         "pd.m1_specialist_primary_state, pd.m1_specialist_fault_group, "
-        "w.window_id, w.manufacturer_id, w.substation_id, "
+        "w.window_id, w.substation_uid, w.manufacturer_id, w.substation_id, "
         "w.window_start, w.window_end, s.configuration_type "
         "from priority_cards pc "
         "join priority_decisions pd on pd.priority_decision_id = pc.priority_decision_id "
         "join windows w on w.window_id = pd.window_id "
         "left join substations s "
-        "on s.manufacturer_id = w.manufacturer_id "
-        "and s.substation_id = w.substation_id "
+        "on s.substation_uid = w.substation_uid "
         "where pc.card_id = :card_id"
     )
 

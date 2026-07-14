@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from math import isfinite
+from typing import Literal
 
 from heatgrid_ops.agent.models import JsonObject, JsonValue, ModelVerificationResult
 from heatgrid_ops.agent.run_models import ModelInferenceSnapshot
@@ -95,7 +96,10 @@ def verify_models(
     )
 
 
-def _verification_status(usable: bool, checks: dict[str, bool]) -> str:
+def _verification_status(
+    usable: bool,
+    checks: dict[str, bool],
+) -> Literal["verified", "partial", "unavailable", "error"]:
     if usable and len(checks) >= 3:
         return "verified"
     if usable:

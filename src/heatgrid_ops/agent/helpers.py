@@ -3,16 +3,14 @@ from __future__ import annotations
 import orjson
 
 from heatgrid_ops.agent.errors import AgentInputContractError
-from heatgrid_ops.agent.models import JsonValue, OpsAgentOutput, TokenCall
+from heatgrid_ops.agent.models import JsonObject, JsonValue, OpsAgentOutput, TokenCall
 
 
 def card_id_from_input(source_input: dict[str, JsonValue]) -> str:
     priority_context = source_input["priority_context"]
     if not isinstance(priority_context, dict):
         raise AgentInputContractError(detail="priority_context 형식 오류")
-    card = priority_context["card"]
-    if not isinstance(card, dict):
-        raise AgentInputContractError(detail="card 형식 오류")
+    card = _required_mapping(priority_context.get("card"), "card")
     return str(card["card_id"])
 
 
@@ -34,12 +32,16 @@ def fallback_note(
     raw_context = source_input["raw_context"]
     if not isinstance(priority_context, dict) or not isinstance(raw_context, dict):
         raise AgentInputContractError(detail="PostgreSQL 입력 형식 오류")
-    card = priority_context["card"]
-    priority = priority_context["priority"]
-    explanation = priority_context["explanation"]
-    window = raw_context["window"]
-    if not all(isinstance(item, dict) for item in [card, priority, explanation, window]):
-        raise AgentInputContractError(detail="PostgreSQL 입력 세부 형식 오류")
+    _required_mapping(priority_context.get("card"), "priority_context.card")
+    priority = _required_mapping(
+        priority_context.get("priority"),
+        "priority_context.priority",
+    )
+    explanation = _required_mapping(
+        priority_context.get("explanation"),
+        "priority_context.explanation",
+    )
+    window = _required_mapping(raw_context.get("window"), "raw_context.window")
     site = (external_context or {}).get("site")
     apartment_name = None
     if isinstance(site, dict) and site.get("status") == "mapped":
@@ -64,6 +66,12 @@ def fallback_note(
             "기상 요인과 운영 참고자료는 보조 맥락이며 고장 원인 확정 근거가 아닙니다."
         ),
     )
+
+
+def _required_mapping(value: JsonValue | None, field: str) -> JsonObject:
+    if not isinstance(value, dict):
+        raise AgentInputContractError(detail=f"{field} must be an object")
+    return value
 
 
 def _token_call_from_usage_metadata(usage_metadata: object) -> TokenCall:

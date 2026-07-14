@@ -27,6 +27,7 @@ from agent_operations_metrics_repository import (
     get_agent_operations_metrics,
 )
 from agent_operator_review_repository import (
+    IdempotencyConflictError,
     StaleReviewVersionError,
     UnknownRunError,
     list_operator_reviews,
@@ -134,6 +135,8 @@ def make_agent_review_router(engine: AsyncEngine) -> APIRouter:
         except UnknownRunError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except StaleReviewVersionError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except IdempotencyConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @router.get(
