@@ -36,17 +36,11 @@ interface HomeMetricProps {
   readonly label: string
   readonly value: string
   readonly unit: string
-  /** 시안: 첫 카드만 좌측 정렬, 나머지는 중앙 정렬 */
-  readonly centered?: boolean
-  /** 시안: 단색 배경+흰 글리프(solid) vs 연한 배경(soft) */
-  readonly iconStyle?: 'solid' | 'soft'
-  readonly iconShape?: 'square' | 'circle'
   readonly children: ReactNode
 }
 
-function HomeMetric({ icon, tone, label, value, unit, centered = false, iconStyle = 'soft', iconShape = 'square', children }: HomeMetricProps) {
-  const iconClass = `metric-icon tone-${tone}${iconStyle === 'solid' ? ' solid' : ''}${iconShape === 'circle' ? ' round' : ''}`
-  return <article className={`metric-card home-metric${centered ? ' centered' : ''}`}><header><span className={iconClass}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
+function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProps) {
+  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
 }
 
 interface Props {
@@ -83,16 +77,16 @@ export function DashboardPage({ onOpenAlerts }: Props) {
     <header className="page-title"><div><h1>홈</h1><p>현재 시스템 요약과 주요 현황을 한눈에 확인하세요.</p></div></header>
 
     <div className="metric-grid metric-grid-five">
-      <HomeMetric icon="building" iconStyle="solid" label="전체 관리 건물 수" tone="primary" unit="개소" value={String(rows.length)}>
+      <HomeMetric icon="building" label="전체 관리 건물 수" tone="primary" unit="개소" value={String(rows.length)}>
         <span className="dot-stat ok">정상 <b>{normal}</b></span>
         <span className="dot-stat warn">주의 <b>{high}</b></span>
         <span className="dot-stat danger">위험 <b>{urgent}</b></span>
       </HomeMetric>
       {/* 전일 대비 증감 계약이 없어 시안과 동일한 고정 문구로 표시한다(데모). */}
-      <HomeMetric centered icon="alert" iconShape="circle" iconStyle="solid" label="긴급" tone="critical" unit="개소" value={String(urgent)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
-      <HomeMetric centered icon="warning" iconShape="circle" iconStyle="solid" label="주의" tone="warning" unit="개소" value={String(high)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
-      <HomeMetric centered icon="wrench" iconStyle="solid" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>전일 대비 <b className="metric-delta">▲ 2</b></HomeMetric>
-      <HomeMetric centered icon="document" label="대기 서류" tone="violet" unit="건" value={String(pendingDocs)}>운영자 검토 필요</HomeMetric>
+      <HomeMetric icon="alert" label="긴급" tone="critical" unit="개소" value={String(urgent)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
+      <HomeMetric icon="warning" label="주의" tone="warning" unit="개소" value={String(high)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
+      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>전일 대비 <b className="metric-delta">▲ 2</b></HomeMetric>
+      <HomeMetric icon="document" label="대기 서류" tone="violet" unit="건" value={String(pendingDocs)}>운영자 검토 필요</HomeMetric>
     </div>
 
     <div className="home-grid">
