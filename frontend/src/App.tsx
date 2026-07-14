@@ -14,11 +14,17 @@ function isShowcase(): boolean {
 
 function App() {
   const [page, setPage] = useState<ConsolePage>('dashboard')
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(() => window.localStorage.getItem('heatgrid:last-agent-run'))
+  const openRun = (runId: string) => {
+    window.localStorage.setItem('heatgrid:last-agent-run', runId)
+    setSelectedRunId(runId)
+    setPage('reports')
+  }
   if (isShowcase()) return <ShowcasePage />
   return <AppShell onPageChange={setPage} page={page}>
-    {page === 'dashboard' && <DashboardPage onNavigate={setPage} />}
-    {page === 'alerts' && <AlertsPage />}
-    {page === 'reports' && <ReportsPage />}
+    {page === 'dashboard' && <DashboardPage onOpenAlerts={() => setPage('alerts')} />}
+    {page === 'alerts' && <AlertsPage onRunCreated={openRun} />}
+    {page === 'reports' && <ReportsPage onOpenAlerts={() => setPage('alerts')} onSelectRun={openRun} runId={selectedRunId} />}
     {page === 'settings' && <SettingsPage />}
     {page === 'admin' && <AdminPage />}
   </AppShell>

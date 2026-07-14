@@ -2,7 +2,6 @@ import { useRef, type ReactNode } from 'react'
 import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
 import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
-import type { ConsolePage } from './AppShell'
 import { Icon, type IconName } from './icons'
 import SensorFlowCard from './SensorFlowCard'
 import { ApiState, StatusBadge, SurfaceCard } from './ui'
@@ -31,10 +30,10 @@ function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProp
 }
 
 interface Props {
-  readonly onNavigate: (page: ConsolePage) => void
+  readonly onOpenAlerts: () => void
 }
 
-export function DashboardPage({ onNavigate }: Props) {
+export function DashboardPage({ onOpenAlerts }: Props) {
   const priority = usePrioritySnapshot()
   const alerts = useAlerts({ status: 'open' })
   const reviews = useReviewTasks('pending')
@@ -79,7 +78,7 @@ export function DashboardPage({ onNavigate }: Props) {
         </div>
       </SurfaceCard>
 
-      <SurfaceCard action={<button className="text-link" onClick={() => onNavigate('alerts')} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
+      <SurfaceCard action={<button className="text-link" onClick={onOpenAlerts} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
         <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
         {openAlerts.slice(0, 5).map((alert) => {
           const urgentAlert = alert.priority_level === 'urgent'

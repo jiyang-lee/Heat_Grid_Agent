@@ -8,6 +8,8 @@ import type {
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
+  AgentRunListPage,
+  AgentRunReviewSnapshotResponse,
   AgentRunResponse,
   AlertAckRequest,
   AlertEnqueueResponse,
@@ -185,6 +187,24 @@ export const priorityEvaluationsApi = {
 }
 
 export const agentRunsApi = {
+  async list(): Promise<AgentRunListPage> {
+    await delay(100)
+    return {
+      items: [...store.runs.values()].map((run) => ({
+        run_id: run.run_id,
+        status: run.status,
+        alert_id: run.alert_id,
+        card_id: run.card_id,
+        priority: run.review_status === 'pending' ? 'critical' : 'high',
+        operator_review_status: run.review_status === 'rejected' ? 'keep_human_review' : run.review_status,
+        worker_status: run.status === 'completed' ? 'completed' : run.status === 'failed' ? 'failed' : 'running',
+        review_snapshot_status: run.status === 'completed' ? 'available' : 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })),
+      next_cursor: null,
+    }
+  },
   async create(body: AgentRunCreateRequest): Promise<AgentRunResponse> {
     const existing = [...store.runs.values()].find(
       (run) => run.alert_id === body.alert_id && run.status !== 'failed',
@@ -287,6 +307,27 @@ export const agentRunsApi = {
     const r = store.runs.get(runId)
     if (!r) throw new ApiError(404, `/agent-runs/${runId}`, 'run_id를 찾을 수 없습니다.')
     return r
+  },
+  async review(runId: string): Promise<AgentRunReviewSnapshotResponse> {
+    await delay(100)
+    const r = store.runs.get(runId)
+    if (!r) throw new ApiError(404, `/agent-runs/${runId}/review`, 'run_id를 찾을 수 없습니다.')
+    return {
+      run_id: runId,
+      status: r.status === 'completed' ? 'available' : 'pending',
+      schema_version: r.status === 'completed' ? 'agent_run_review.v1' : null,
+      snapshot_hash: r.status === 'completed' ? `mock-${runId}` : null,
+      snapshot: r.status === 'completed'
+        ? {
+          handling_reason: r.ops_output?.summary ?? null,
+          loop_count: r.loop_summary?.iterations ?? 0,
+          diagnostic: { status: 'completed' },
+          evidence: [{ label: '운영 근거', content: 'mock priority card evidence', source: 'manual' }],
+        }
+        : null,
+      created_at: r.status === 'completed' ? new Date().toISOString() : null,
+      unavailable_reason: r.status === 'completed' ? null : '실행이 아직 완료되지 않았습니다.',
+    }
   },
   async result(runId: string): Promise<OpsAgentResultV4> {
     await delay(160)

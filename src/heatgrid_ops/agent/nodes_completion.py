@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, assert_never
 
 from heatgrid_ops.agent.contracts import AgentRunCompletion
 from heatgrid_ops.agent.models import OpsAgentOutput, SimulationResponse, TokenUsage
 from heatgrid_ops.agent.node_context import AgentNodeContext
 from heatgrid_ops.agent.run_models import AgentLoopSummary
+from heatgrid_ops.agent.review_capture import try_build_review_capture_source
+from heatgrid_ops.agent.review_models import (
+    AgentRunReviewCaptureSource,
+    ReviewCaptureFailure,
+)
 from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
 from heatgrid_ops.agent.usage import usage_with_totals
 
@@ -45,8 +50,24 @@ async def complete_run(
             review_task_id=state.loop.review_task_id,
         ),
     )
+    capture_outcome = try_build_review_capture_source(state, result)
+    match capture_outcome:
+        case AgentRunReviewCaptureSource():
+            capture_update = {
+                "review_capture_source": capture_outcome,
+                "review_capture_failure": None,
+            }
+        case ReviewCaptureFailure():
+            capture_update = {
+                "review_capture_source": None,
+                "review_capture_failure": capture_outcome,
+            }
+        case unreachable:
+            assert_never(unreachable)
     return {
-        "result": state.result.model_copy(update={"value": result}),
+        "result": state.result.model_copy(
+            update={"value": result, **capture_update}
+        ),
         "output": state.output.model_copy(update={"token_usage": usage}),
     }
 

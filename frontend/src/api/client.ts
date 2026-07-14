@@ -14,6 +14,8 @@ import type {
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
+  AgentRunListPage,
+  AgentRunReviewSnapshotResponse,
   AgentRunResponse,
   OpsAgentResultV4,
   SimulationResponse,
@@ -161,12 +163,15 @@ export const simulationsApi = {
 }
 
 export const agentRunsApi = {
+  list: () => apiFetch<AgentRunListPage>('/agent-runs?limit=20'),
   create: (body: AgentRunCreateRequest) =>
     apiFetch<AgentRunResponse>('/agent-runs', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
   get: (runId: string) => apiFetch<AgentRunResponse>(`/agent-runs/${runId}`),
+  review: (runId: string) =>
+    apiFetch<AgentRunReviewSnapshotResponse>(`/agent-runs/${runId}/review`),
   result: (runId: string) => apiFetch<OpsAgentResultV4>(`/agent-runs/${runId}/result`),
   artifacts: (runId: string) =>
     apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),

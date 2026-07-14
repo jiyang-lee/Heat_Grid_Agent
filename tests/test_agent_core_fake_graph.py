@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from dataclasses import replace
 
 import pytest
 
@@ -16,7 +17,11 @@ from heatgrid_ops.agent.contracts import (
     ReportWriteRequest,
 )
 from heatgrid_ops.agent.errors import AgentDependencyError
-from heatgrid_ops.agent.graph import AgentGraphContext, execute_agent_graph
+from heatgrid_ops.agent.graph import (
+    AgentGraphContext,
+    execute_agent_graph,
+    execute_agent_graph_with_capture,
+)
 from heatgrid_ops.agent.diagnostics import (
     DiagnosticBudgetReservation,
     DiagnosticHypothesis,
@@ -71,6 +76,19 @@ class FakeLifecyclePort:
 
     async def fail(self, run_id: str, error: str) -> AgentRunResult:
         raise AssertionError((run_id, error))
+
+
+class CountingLifecyclePort(FakeLifecyclePort):
+    def __init__(self) -> None:
+        self.complete_calls = 0
+
+    async def complete(
+        self,
+        run_id: str,
+        completion: AgentRunCompletion,
+    ) -> AgentRunResult:
+        self.complete_calls += 1
+        return await super().complete(run_id, completion)
 
 
 class FakeAuditPort:
@@ -158,6 +176,14 @@ class FakeChatModelPort:
     ) -> AsyncIterator[AgentStreamEvent]:
         if False:
             yield AgentStreamEvent(kind="llm", message="unused")
+
+
+class EmptyRationaleChatModelPort(FakeChatModelPort):
+    async def assess(
+        self,
+        request: EvidenceAssessmentRequest,
+    ) -> EvidenceAssessment | None:
+        return request.deterministic.model_copy(update={"rationale": ""})
 
 
 class FakeModelVerificationPort:
@@ -274,6 +300,84 @@ async def test_graph_runs_read_only_diagnostic_once_then_requests_review() -> No
     assert diagnostic_model.calls == 1
     assert budget.reserved == 4_000
     assert 0 < budget.settled <= 4_000
+
+
+@pytest.mark.anyio
+async def test_internal_graph_execution_exposes_capture_without_changing_result() -> None:
+    external_data = FakeExternalDataPort()
+    context = AgentGraphContext(
+        runtime=_runtime(external_data),
+        inputs=FakeInputPort(),
+        lifecycle=FakeLifecyclePort(),
+        audit=FakeAuditPort(),
+        reviews=FakeReviewPort(),
+        artifacts=FakeArtifactPort(),
+    )
+
+    execution = await execute_agent_graph_with_capture(
+        context,
+        AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1"),
+    )
+
+    assert isinstance(execution.result, AgentRunResult)
+    assert execution.result.status == "completed"
+    assert execution.review_capture_source is not None
+    assert execution.review_capture_source.run_id == execution.result.run_id
+
+
+@pytest.mark.anyio
+async def test_empty_rationale_does_not_fail_completed_public_run() -> None:
+    lifecycle = CountingLifecyclePort()
+    external_data = FakeExternalDataPort()
+    runtime = replace(
+        _runtime(external_data),
+        chat_model=EmptyRationaleChatModelPort(),
+    )
+    context = AgentGraphContext(
+        runtime=runtime,
+        inputs=FakeInputPort(),
+        lifecycle=lifecycle,
+        audit=FakeAuditPort(),
+        reviews=FakeReviewPort(),
+        artifacts=FakeArtifactPort(),
+    )
+
+    result = await execute_agent_graph(
+        context,
+        AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1"),
+    )
+
+    assert result.status == "completed"
+    assert lifecycle.complete_calls == 1
+
+
+@pytest.mark.anyio
+async def test_empty_rationale_marks_internal_review_capture_failure() -> None:
+    lifecycle = CountingLifecyclePort()
+    external_data = FakeExternalDataPort()
+    runtime = replace(
+        _runtime(external_data),
+        chat_model=EmptyRationaleChatModelPort(),
+    )
+    context = AgentGraphContext(
+        runtime=runtime,
+        inputs=FakeInputPort(),
+        lifecycle=lifecycle,
+        audit=FakeAuditPort(),
+        reviews=FakeReviewPort(),
+        artifacts=FakeArtifactPort(),
+    )
+
+    execution = await execute_agent_graph_with_capture(
+        context,
+        AgentRunRequest(run_id="run-1", alert_id="alert-1", card_id="card-1"),
+    )
+
+    assert execution.result.status == "completed"
+    assert execution.review_capture_source is None
+    assert execution.review_capture_failure is not None
+    assert execution.review_capture_failure.error_type == "ValidationError"
+    assert lifecycle.complete_calls == 1
 
 
 async def run_fake_graph() -> None:
