@@ -166,7 +166,10 @@ async def _insert_review(
             "reviewer": request.reviewer,
             "reason": request.reason,
             "disposition": request.disposition,
-            "correction": _json(request.correction),
+            # correction이 없으면 SQL NULL로 보내야 한다 — orjson의 'null' 문자열을
+            # jsonb로 캐스팅하면 jsonb null이 되어 CHECK(correction IS NULL OR
+            # jsonb_typeof(correction)='object') 제약을 위반한다.
+            "correction": None if request.correction is None else _json(request.correction),
             "evidence_annotations": _json(request.evidence_annotations),
             "operator_labels": _json(request.operator_labels),
         },
