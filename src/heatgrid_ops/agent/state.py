@@ -40,6 +40,7 @@ class EvidenceState(FrozenStateModel):
     active_model_artifact_uri: str | None = None
     diagnostic_summary: DiagnosticSummary | None = None
     diagnostic_calls: list[TokenCall] = Field(default_factory=list)
+    assessment_calls: list[TokenCall] = Field(default_factory=list)
 
 
 class LoopState(FrozenStateModel):

@@ -21,7 +21,11 @@ from heatgrid_ops.agent.diagnostics import (
 from heatgrid_ops.agent.errors import AgentDependencyError, MissingApiKeyError
 from heatgrid_ops.agent.helpers import to_json, token_calls_from_messages
 from heatgrid_ops.agent.models import OpsAgentOutput, TokenCall
-from heatgrid_ops.agent.run_models import AgentStreamEvent, ChatModelResult
+from heatgrid_ops.agent.run_models import (
+    AgentStreamEvent,
+    ChatModelAssessmentResult,
+    ChatModelResult,
+)
 from heatgrid_ops.agent.tools import make_operational_tools
 
 
@@ -55,7 +59,7 @@ class OpenAIChatModelAdapter:
     async def assess(
         self,
         request: EvidenceAssessmentRequest,
-    ) -> EvidenceAssessment | None:
+    ) -> ChatModelAssessmentResult | None:
         if self.api_key is None:
             return None
         compact = {
@@ -68,9 +72,12 @@ class OpenAIChatModelAdapter:
             else request.model_verification.model_dump(mode="json"),
             "retrieval_status": request.evidence_context.get("status"),
         }
-        model = self._model().with_structured_output(EvidenceAssessment)
+        model = self._model().with_structured_output(
+            EvidenceAssessment,
+            include_raw=True,
+        )
         try:
-            candidate = await model.ainvoke(
+            result = await model.ainvoke(
                 [
                     (
                         "system",
@@ -79,8 +86,12 @@ class OpenAIChatModelAdapter:
                     ("human", to_json(compact)),
                 ]
             )
-            return EvidenceAssessment.model_validate(candidate).model_copy(
-                update={"decision_source": "llm_guarded"}
+            candidate = EvidenceAssessment.model_validate(result.get("parsed"))
+            return ChatModelAssessmentResult(
+                assessment=candidate.model_copy(
+                    update={"decision_source": "llm_guarded"}
+                ),
+                calls=token_calls_from_messages([result.get("raw")]),
             )
         except (OpenAIError, ValidationError, ValueError, TypeError):
             return None

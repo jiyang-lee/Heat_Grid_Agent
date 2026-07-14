@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from heatgrid_ops.agent.assessment import EvidenceAssessment
 from heatgrid_ops.agent.models import (
     JsonObject,
     JsonValue,
@@ -140,6 +141,13 @@ class ChatModelResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     output: OpsAgentOutput
+    calls: list[TokenCall] = Field(default_factory=list)
+
+
+class ChatModelAssessmentResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    assessment: EvidenceAssessment
     calls: list[TokenCall] = Field(default_factory=list)
 
 

@@ -24,6 +24,7 @@ from heatgrid_ops.agent.models import (
     ModelVerificationResult,
     OpsAgentOutput,
     TokenUsage,
+    TokenCall,
 )
 from heatgrid_ops.agent.ports import (
     ChatModelPort,
@@ -33,6 +34,7 @@ from heatgrid_ops.agent.ports import (
     ReportWriterPort,
 )
 from heatgrid_ops.agent.run_models import (
+    ChatModelAssessmentResult,
     ExternalDataRequest,
     ExternalDataSnapshot,
     ModelVerificationRequest,
@@ -132,6 +134,7 @@ class AgentRuntime:
         max_iterations: int,
         diagnostic_available: bool = False,
         force_review: bool = False,
+        calls: list[TokenCall] | None = None,
     ) -> EvidenceAssessment:
         deterministic = assess_evidence(
             source_input=source_input,
@@ -155,6 +158,10 @@ class AgentRuntime:
         )
         if candidate is None:
             return deterministic
+        if isinstance(candidate, ChatModelAssessmentResult):
+            if calls is not None:
+                calls.extend(candidate.calls)
+            candidate = candidate.assessment
         return guard_llm_assessment(
             candidate,
             deterministic,

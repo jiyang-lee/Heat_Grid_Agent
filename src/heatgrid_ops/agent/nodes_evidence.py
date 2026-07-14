@@ -43,6 +43,7 @@ async def assess_collected_evidence(
     context: AgentNodeContext,
     state: AgentState,
 ) -> AgentStateUpdate:
+    assessment_calls = list(state.evidence.assessment_calls)
     assessment = await context.runtime.assess_evidence(
         source_input=state.request.source_input,
         evidence_context=state.evidence.external_context,
@@ -55,6 +56,7 @@ async def assess_collected_evidence(
             and not state.loop.diagnostic_attempted
         ),
         force_review=state.loop.force_review,
+        calls=assessment_calls,
     )
     await context.audit.record_loop_iteration(
         AgentLoopIterationRecord(
@@ -104,6 +106,9 @@ async def assess_collected_evidence(
         )
         model_review_task_id = task.task_id
     return {
+        "evidence": state.evidence.model_copy(
+            update={"assessment_calls": assessment_calls}
+        ),
         "loop": state.loop.model_copy(
             update={
                 "assessment": assessment,
