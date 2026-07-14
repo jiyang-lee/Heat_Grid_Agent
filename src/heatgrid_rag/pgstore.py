@@ -60,6 +60,10 @@ def _parse_usage(usage: dict[str, Any] | None) -> dict[str, int | None]:
     }
 
 
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 class PgVectorStore:
     def __init__(self, database_url: str | None = None) -> None:
         self.database_url = normalize_database_url(database_url) if database_url else database_url_from_env()
@@ -78,7 +82,10 @@ class PgVectorStore:
                         "select to_regclass('public.rag_chunks'), "
                         "to_regclass('public.substation_building_context')"
                     )
-                    rag_chunks, site_context = cur.fetchone()
+                    schema_row = cur.fetchone()
+                    if schema_row is None:
+                        return False
+                    rag_chunks, site_context = schema_row
                     return rag_chunks is not None and site_context is not None
         except Exception:
             return False
@@ -93,7 +100,8 @@ class PgVectorStore:
             with self._psycopg.connect(self.database_url, connect_timeout=2) as conn:
                 with conn.cursor() as cur:
                     cur.execute("select count(*) from rag_chunks where is_active")
-                    chunk_count = int(cur.fetchone()[0])
+                    chunk_row = cur.fetchone()
+                    chunk_count = 0 if chunk_row is None else int(chunk_row[0])
                     cur.execute(
                         """
                         select coalesce(rag_role, 'unknown'), count(*)
@@ -105,9 +113,11 @@ class PgVectorStore:
                     )
                     roles = {str(role): int(count) for role, count in cur.fetchall()}
                     cur.execute("select count(*) from substation_building_context")
-                    site_count = int(cur.fetchone()[0])
+                    site_row = cur.fetchone()
+                    site_count = 0 if site_row is None else int(site_row[0])
                     cur.execute("select count(*) from ops_agent_runs")
-                    run_count = int(cur.fetchone()[0])
+                    run_row = cur.fetchone()
+                    run_count = 0 if run_row is None else int(run_row[0])
             return {
                 "status": "ok",
                 "chunk_count": chunk_count,
@@ -130,24 +140,32 @@ class PgVectorStore:
                 cur.execute(
                     """
                     select
-                        chunk_id,
-                        document_id,
-                        chunk_text,
-                        section_title,
-                        rag_role,
-                        language,
-                        source_file,
-                        curated_file,
-                        page_start,
-                        page_end,
-                        download_url,
-                        equipment_type,
-                        fault_type,
-                        risk_level,
-                        1 - (embedding <=> %s::vector) as similarity
-                    from rag_chunks
-                    where is_active
-                    order by embedding <=> %s::vector
+                        chunks.chunk_id,
+                        chunks.document_id,
+                        chunks.chunk_text,
+                        chunks.section_title,
+                        chunks.rag_role,
+                        chunks.language,
+                        chunks.source_file,
+                        chunks.curated_file,
+                        chunks.page_start,
+                        chunks.page_end,
+                        chunks.download_url,
+                        chunks.equipment_type,
+                        chunks.fault_type,
+                        chunks.risk_level,
+                        documents.title,
+                        documents.document_type,
+                        documents.source_path,
+                        documents.source_owner,
+                        documents.version,
+                        documents.trust_level,
+                        1 - (chunks.embedding <=> %s::vector) as similarity
+                    from rag_chunks chunks
+                    join rag_documents documents
+                      on documents.document_id = chunks.document_id
+                    where chunks.is_active and documents.is_active
+                    order by chunks.embedding <=> %s::vector
                     limit %s
                     """,
                     (embedding, embedding, max(1, min(int(top_k or 5), 20))),
@@ -171,13 +189,26 @@ class PgVectorStore:
                 equipment_type,
                 fault_type,
                 risk_level,
+                document_title,
+                source_document_type,
+                source_path,
+                source_owner,
+                document_version,
+                trust_level,
                 similarity,
             ) = row
+            document_type = (
+                "operator_manual_evidence"
+                if source_document_type == "operator_manual_evidence"
+                else "internal_rag"
+            )
             chunks.append(
                 {
                     "chunk_id": chunk_id,
                     "document_id": document_id,
-                    "document_title": document_id,
+                    "document_title": document_title,
+                    "document_type": document_type,
+                    "source_owner": source_owner,
                     "source_file": source_file,
                     "curated_file": curated_file,
                     "rag_role": rag_role,
@@ -192,6 +223,16 @@ class PgVectorStore:
                     "score": round(float(similarity or 0) * 1000, 3),
                     "matched_terms": [],
                     "text": truncate_text(text),
+                    "provenance": {
+                        "backend": "pgvector",
+                        "document_id": document_id,
+                        "chunk_id": chunk_id,
+                        "document_type": source_document_type,
+                        "source_path": source_path,
+                        "source_owner": source_owner,
+                        "document_version": document_version,
+                        "trust_level": trust_level,
+                    },
                 }
             )
         return {
@@ -207,16 +248,16 @@ class PgVectorStore:
         if self._psycopg is None:
             return {"status": "missing_dependency", "message": "psycopg is not installed"}
 
-        output = payload.get("output") if isinstance(payload.get("output"), dict) else {}
-        external_context = payload.get("external_context") if isinstance(payload.get("external_context"), dict) else {}
-        evidence = payload.get("ops_evidence") if isinstance(payload.get("ops_evidence"), dict) else {}
-        row_identifier = payload.get("row_identifier") if isinstance(payload.get("row_identifier"), dict) else {}
-        usage_payload = payload.get("openai_usage") if isinstance(payload.get("openai_usage"), dict) else {}
-        usage = _parse_usage(usage_payload.get("usage") if isinstance(usage_payload.get("usage"), dict) else None)
-        site = external_context.get("site") if isinstance(external_context.get("site"), dict) else {}
-        decision = output.get("decision") if isinstance(output.get("decision"), dict) else {}
-        output_evidence = output.get("evidence") if isinstance(output.get("evidence"), dict) else {}
-        validation = payload.get("validation") if isinstance(payload.get("validation"), dict) else {}
+        output = _mapping(payload.get("output"))
+        external_context = _mapping(payload.get("external_context"))
+        row_identifier = _mapping(payload.get("row_identifier"))
+        usage_payload = _mapping(payload.get("openai_usage"))
+        usage = _parse_usage(_mapping(usage_payload.get("usage")))
+        site = _mapping(external_context.get("site"))
+        decision = _mapping(output.get("decision"))
+        output_evidence = _mapping(output.get("evidence"))
+        validation = _mapping(payload.get("validation"))
+        retrieval = _mapping(external_context.get("retrieval"))
         run_id = str(payload.get("run_id") or uuid.uuid4())
         substation_id = _to_int(row_identifier.get("substation_id") or site.get("substation_id"))
 
@@ -273,7 +314,7 @@ class PgVectorStore:
                     ),
                 )
 
-                for rank, chunk in enumerate(external_context.get("retrieval", {}).get("chunks", []) or [], start=1):
+                for rank, chunk in enumerate(retrieval.get("chunks") or [], start=1):
                     cur.execute(
                         """
                         insert into ops_retrieval_hits (

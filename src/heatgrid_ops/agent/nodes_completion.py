@@ -6,6 +6,7 @@ from heatgrid_ops.agent.contracts import AgentRunCompletion
 from heatgrid_ops.agent.models import OpsAgentOutput, SimulationResponse, TokenUsage
 from heatgrid_ops.agent.node_context import AgentNodeContext
 from heatgrid_ops.agent.run_models import AgentLoopSummary
+from heatgrid_ops.agent.review_capture import try_build_review_capture_source
 from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
 from heatgrid_ops.agent.usage import usage_with_totals
 
@@ -45,8 +46,11 @@ async def complete_run(
             review_task_id=state.loop.review_task_id,
         ),
     )
+    capture_source = try_build_review_capture_source(state, result)
     return {
-        "result": state.result.model_copy(update={"value": result}),
+        "result": state.result.model_copy(
+            update={"value": result, "review_capture_source": capture_source}
+        ),
         "output": state.output.model_copy(update={"token_usage": usage}),
     }
 

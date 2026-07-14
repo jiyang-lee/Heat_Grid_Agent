@@ -15,6 +15,7 @@ from heatgrid_ops.agent.models import (
     TokenUsage,
 )
 from heatgrid_ops.agent.run_models import AgentRunResult
+from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 
 
 class FrozenStateModel(BaseModel):
@@ -66,6 +67,7 @@ class AuditState(FrozenStateModel):
 
 class ResultState(FrozenStateModel):
     value: AgentRunResult | None = None
+    review_capture_source: AgentRunReviewCaptureSource | None = None
     error: str | None = None
 
 

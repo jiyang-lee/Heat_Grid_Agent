@@ -110,3 +110,22 @@ BEGIN
     END IF;
 END
 $agent_review$;
+
+DO $agent_review_list_indexes$
+BEGIN
+    IF to_regclass('public.agent_runs') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS agent_runs_v3_list_idx
+        ON agent_runs(created_at DESC, run_id DESC);
+    END IF;
+
+    IF to_regclass('public.agent_run_tasks') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS agent_run_tasks_v3_worker_idx
+        ON agent_run_tasks(run_id, task_key, status);
+    END IF;
+
+    IF to_regclass('public.agent_run_events') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS agent_run_events_v3_snapshot_idx
+        ON agent_run_events(run_id, event_type, event_id DESC);
+    END IF;
+END
+$agent_review_list_indexes$;

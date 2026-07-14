@@ -41,6 +41,7 @@ from heatgrid_ops.agent.ports import (
 )
 from heatgrid_ops.agent.report_nodes import write_anomaly_report
 from heatgrid_ops.agent.run_models import AgentRunResult
+from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 from heatgrid_ops.agent.services import AgentRuntime
 from heatgrid_ops.agent.state import (
     AgentGraphInput,
@@ -112,6 +113,12 @@ class CompiledAgentGraph:
         return TypeAdapter(AgentGraphOutput).validate_python(output)
 
 
+@dataclass(frozen=True, slots=True)
+class AgentGraphExecution:
+    result: AgentRunResult
+    review_capture_source: AgentRunReviewCaptureSource | None
+
+
 async def execute_agent_graph(
     context: AgentGraphContext | None,
     request: AgentRunRequest,
@@ -119,6 +126,22 @@ async def execute_agent_graph(
     graph: AgentGraphInvoker | None = None,
     resume: bool = False,
 ) -> AgentRunResult:
+    execution = await execute_agent_graph_with_capture(
+        context,
+        request,
+        graph=graph,
+        resume=resume,
+    )
+    return execution.result
+
+
+async def execute_agent_graph_with_capture(
+    context: AgentGraphContext | None,
+    request: AgentRunRequest,
+    *,
+    graph: AgentGraphInvoker | None = None,
+    resume: bool = False,
+) -> AgentGraphExecution:
     if graph is None:
         if context is None:
             raise ValueError("context is required when graph is not precompiled")
@@ -155,7 +178,10 @@ async def execute_agent_graph(
     result = ResultState.model_validate(state["result"])
     if result.value is None:
         raise RuntimeError("agent graph completed without a result")
-    return result.value
+    return AgentGraphExecution(
+        result=result.value,
+        review_capture_source=result.review_capture_source,
+    )
 
 
 def build_agent_graph(

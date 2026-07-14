@@ -10,6 +10,10 @@ class FrozenReviewModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
+class FrozenReviewCaptureModel(FrozenReviewModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False)
+
+
 class ReviewOpsAgentOutput(FrozenReviewModel):
     summary: str
     action_plan: str
@@ -113,6 +117,43 @@ class ReviewSourceCardSnapshot(FrozenReviewModel):
     status: str | None = Field(default=None, max_length=120)
     review_required: bool
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class ReviewCaptureEvidenceSnapshot(FrozenReviewCaptureModel):
+    evidence_id: str = Field(min_length=1, max_length=200)
+    document_type: Literal["internal_rag", "operator_manual_evidence"]
+    source_owner: str | None = Field(default=None, max_length=200)
+    source: str = Field(min_length=1, max_length=500)
+    title: str = Field(min_length=1, max_length=500)
+    section: str | None = Field(default=None, max_length=500)
+    score: float = Field(ge=0.0)
+    excerpt: str = Field(min_length=1, max_length=4000)
+    provenance: ReviewProvenanceSnapshot | None = None
+
+
+class ReviewCaptureSourceCardSnapshot(FrozenReviewCaptureModel):
+    card_id: str = Field(min_length=1)
+    substation_id: int | None = None
+    manufacturer_id: str | None = None
+    priority_level: str | None = Field(default=None, max_length=120)
+    status: str | None = Field(default=None, max_length=120)
+    review_required: bool
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class AgentRunReviewCaptureSource(FrozenReviewCaptureModel):
+    schema_version: Literal["agent_run_review_capture.v1"] = (
+        "agent_run_review_capture.v1"
+    )
+    run_id: str = Field(min_length=1)
+    result: ReviewFinalResultSnapshot
+    loop_count: int = Field(ge=0)
+    handling_reason: str = Field(min_length=1, max_length=1000)
+    diagnostic: ReviewDiagnosticSnapshot
+    model_verification: ReviewModelVerificationSnapshot | None = None
+    weather: ReviewWeatherSnapshot | None = None
+    evidence: tuple[ReviewCaptureEvidenceSnapshot, ...] = ()
+    source_card: ReviewCaptureSourceCardSnapshot
 
 
 class ReviewBudgetLineage(FrozenReviewModel):

@@ -391,7 +391,14 @@ class RagSearcher:
         chunk = item.chunk
         return {
             "chunk_id": chunk.get("chunk_id"),
+            "document_id": chunk.get("document_id"),
             "document_title": chunk.get("document_title"),
+            "document_type": (
+                "operator_manual_evidence"
+                if chunk.get("document_type") == "operator_manual_evidence"
+                else "internal_rag"
+            ),
+            "source_owner": chunk.get("source_owner"),
             "source_file": chunk.get("source_file"),
             "curated_file": chunk.get("curated_file"),
             "rag_role": chunk.get("rag_role"),
@@ -403,6 +410,14 @@ class RagSearcher:
             "score": item.score,
             "matched_terms": item.matched_terms,
             "text": truncate_text(chunk.get("text")),
+            "provenance": {
+                "backend": "jsonl",
+                "document_id": chunk.get("document_id"),
+                "chunk_id": chunk.get("chunk_id"),
+                "document_type": chunk.get("document_type"),
+                "source_path": chunk.get("source_path") or chunk.get("source_file"),
+                "source_owner": chunk.get("source_owner"),
+            },
         }
 
 

@@ -12,11 +12,20 @@ from agent_execution_repository import (
     list_reclaimable_agent_runs,
     release_agent_graph_task,
 )
+from agent_review_snapshot_adapter import PostgresReviewSnapshotAdapter
+from agent_review_snapshot_lineage import (
+    assemble_review_snapshot,
+    load_review_snapshot_lineage,
+)
 from agent_run_repository import fail_agent_run, get_agent_run, reserve_agent_run
 from agent_runtime_factory import create_agent_graph_context, create_agent_runtime
 from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
 from heatgrid_ops.agent.errors import AgentCoreError
-from heatgrid_ops.agent.graph import AgentGraphInvoker, execute_agent_graph
+from heatgrid_ops.agent.graph import (
+    AgentGraphInvoker,
+    execute_agent_graph_with_capture,
+)
+from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.services import AgentRuntime
 from schemas import AgentRunResponse
@@ -73,7 +82,7 @@ async def run_reserved_agent_graph(
                 raise RuntimeError("reserved agent run no longer exists")
             return existing
         try:
-            result = await execute_agent_graph(
+            execution = await execute_agent_graph_with_capture(
                 context,
                 request,
                 graph=graph,
@@ -86,6 +95,7 @@ async def run_reserved_agent_graph(
         except Exception as exc:
             error = str(exc)
         else:
+            result = execution.result
             usage = result.token_usage
             await complete_agent_graph_task(
                 engine,
@@ -94,6 +104,11 @@ async def run_reserved_agent_graph(
                 output_snapshot=_result_snapshot(result.status),
                 tokens_used=0 if usage is None else usage.total_tokens,
             )
+            if execution.review_capture_source is not None:
+                await _capture_completed_review_snapshot(
+                    engine,
+                    execution.review_capture_source,
+                )
             return AgentRunResponse.model_validate(result.model_dump(mode="json"))
         retryable = await release_agent_graph_task(
             engine,
@@ -188,3 +203,23 @@ def _request_snapshot(request: AgentRunRequest) -> JsonObject:
 
 def _result_snapshot(status: str) -> JsonObject:
     return {"status": status}
+
+
+async def _capture_completed_review_snapshot(
+    engine: AsyncEngine,
+    source: AgentRunReviewCaptureSource,
+) -> None:
+    adapter = PostgresReviewSnapshotAdapter(engine)
+    try:
+        lineage = await load_review_snapshot_lineage(engine, source.run_id)
+        await adapter.capture(assemble_review_snapshot(source, lineage))
+    except Exception as exc:  # noqa: BLE001 - completion boundary isolates review capture
+        reason = f"{type(exc).__name__}: review snapshot capture failed"[:1000]
+        logger.warning("review snapshot unavailable for run %s", source.run_id)
+        try:
+            await adapter.mark_unavailable(source.run_id, reason)
+        except Exception:  # noqa: BLE001 - run completion must remain durable
+            logger.exception(
+                "review snapshot unavailable event failed for run %s",
+                source.run_id,
+            )
