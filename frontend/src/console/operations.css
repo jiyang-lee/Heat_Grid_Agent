@@ -80,7 +80,7 @@
 .home-metric header .metric-icon.tone-warning { color: var(--ops-warning); }
 .home-metric header .metric-icon.tone-violet { color: #7c3aed; }
 .home-metric header p { margin: 0; color: var(--ops-text-muted); font-size: 20px; font-weight: 600; }
-.home-metric > strong { color: var(--ops-text); font-size: 57px; line-height: 1; text-align: right; }
+.home-metric > strong { color: var(--ops-text); font-size: 45px; line-height: 1; text-align: right; }
 .home-metric > strong em { margin-left: 4px; color: var(--ops-text-muted); font-size: 22px; font-style: normal; font-weight: 600; }
 .home-metric footer { display: flex; align-items: center; gap: var(--space-3); min-height: 16px; color: var(--ops-text-muted); font-size: 18px; }
 .dot-stat { display: inline-flex; align-items: center; gap: 4px; }
