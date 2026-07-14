@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useAlerts, useHealth, usePrioritySnapshot } from '../api/hooks'
+import MapView from '../map/MapView'
 import { Icon } from './icons'
 import { ApiState, MetricCard, Sparkline, StatusBadge, SurfaceCard, type Tone } from './ui'
 
@@ -40,7 +41,8 @@ export function DashboardPage() {
         </SurfaceCard>
       </div>
       <div className="dashboard-center">
-        <SurfaceCard title="수도권 설비 현황"><div className="mock-map" aria-label="수도권 설비 분포 모형"><div className="map-title">서울특별시</div>{rows.slice(0, 14).map((row, index) => <button aria-label={`${row.manufacturer_id} ${row.substation_id}`} className={`map-marker tone-${priorityTone(row.priority_level)}`} key={row.evaluation_result_id} style={{ left: `${14 + (index * 19) % 74}%`, top: `${18 + (index * 29) % 64}%` }} type="button" />)}<div className="map-note">API 좌표 계약이 없어 운영 위치는 모형으로 표시합니다.</div></div></SurfaceCard>
+        {/* 세종 1생활권 31개 단지 실좌표 3D 지도(MapLibre). 새 콘솔에는 기계실 뷰가 없어 단지 클릭 선택은 아직 미연결. */}
+        <SurfaceCard title="설비 현황"><div aria-label="설비 현황 지도" className="map-live"><MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} theme="light" /></div></SurfaceCard>
         <SurfaceCard title="AI 추천 조치"><ol className="recommendation-list">{openAlerts.slice(0, 4).map((alert, index) => <li key={alert.alert_id}><b>{index + 1}</b><div><strong>{alert.manufacturer_id} #{alert.substation_id} 현장 상태 확인</strong><span>{alert.enqueue_reason}</span></div><StatusBadge tone={alert.priority_level === 'urgent' ? 'critical' : 'warning'}>{alert.priority_level === 'urgent' ? '긴급' : '권장'}</StatusBadge></li>)}{openAlerts.length === 0 && <li><b>1</b><div><strong>활성 알림이 없습니다.</strong><span>백엔드 연결 상태를 확인해 주세요.</span></div></li>}</ol></SurfaceCard>
       </div>
       <div className="dashboard-right">
