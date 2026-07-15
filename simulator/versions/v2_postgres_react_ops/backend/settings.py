@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Final
 
 from pydantic import Field, SecretStr
@@ -18,6 +19,7 @@ GPT_5_4_MINI_OUTPUT_USD_PER_1M: Final = 4.50
 GPT_5_4_MINI_PRICING_SOURCE: Final = (
     "https://developers.openai.com/api/docs/models/gpt-5.4-mini"
 )
+PROJECT_ROOT: Final = Path(__file__).resolve().parents[4]
 
 
 class Settings(BaseSettings):
@@ -42,3 +44,6 @@ class Settings(BaseSettings):
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)
     priority_model_version: str = "active-priority-contract-v1"
+    replay_enabled: bool = True
+    replay_dataset_root: Path = PROJECT_ROOT / "data" / "demo_replay" / "current"
+    replay_tick_seconds: float | None = Field(default=None, gt=0.0)

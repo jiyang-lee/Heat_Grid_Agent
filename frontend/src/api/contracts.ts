@@ -525,6 +525,103 @@ export interface ModelDeployment {
 }
 
 // ---------------------------------------------------------------------------
+// Demo replay
+// ---------------------------------------------------------------------------
+
+export type DemoReplayState =
+  | 'disabled'
+  | 'ready'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'error'
+
+export interface ReplaySensorDefinition {
+  sensor_key: string
+  source_column: string
+  label_ko: string
+  unit: string
+  display_order: number
+  sensor_type: string
+  model_feature_prefix: string
+  nullable: boolean
+}
+
+export interface DemoReplayStatus {
+  state: DemoReplayState
+  dataset_version: string | null
+  current_simulated_at: string | null
+  window_progress: number
+  total_progress: number
+  sensors: ReplaySensorDefinition[]
+  has_scored_window: boolean
+  error?: string | null
+}
+
+export interface ReplaySensorReading {
+  substation_id: number
+  manufacturer_id: string
+  simulated_at: string
+  values: Record<string, number | null>
+  quality: Record<string, string>
+}
+
+export interface DemoReplaySnapshot extends DemoReplayStatus {
+  readings: ReplaySensorReading[]
+}
+
+export type DemoReplayControlAction = 'start' | 'pause' | 'resume' | 'reset' | 'seek'
+
+export interface DemoReplayControlRequest {
+  action: DemoReplayControlAction
+  simulated_at?: string
+}
+
+export interface ReplaySensorTickEvent {
+  type: 'sensor_tick'
+  run_id: string
+  dataset_version: string
+  simulated_at: string
+  window_progress: number
+  total_progress: number
+  readings: ReplaySensorReading[]
+}
+
+export interface ReplayWindowResult {
+  manufacturer_id: string
+  substation_id: number
+  priority_score: number | null
+  priority_level: string | null
+  risk_score: number | null
+  anomaly_score: number | null
+  anomaly_label: boolean | null
+  leadtime_bucket: string | null
+}
+
+export interface ReplayWindowScoredEvent {
+  type: 'window_scored'
+  run_id: string
+  dataset_version: string
+  window_start: string
+  window_end: string
+  result_count: number
+  results: ReplayWindowResult[]
+}
+
+export type ReplayStateEvent = DemoReplayStatus & { type: 'replay_state' }
+
+export interface ReplayErrorEvent {
+  type: 'error'
+  message: string
+}
+
+export type DemoReplayEvent =
+  | ReplaySensorTickEvent
+  | ReplayWindowScoredEvent
+  | ReplayStateEvent
+  | ReplayErrorEvent
+
+// ---------------------------------------------------------------------------
 // SSE 이벤트 (GET /api/alerts/events, /api/agent-runs/{run_id}/events)
 // data: {"type", "message", "payload"}\n\n
 // ---------------------------------------------------------------------------

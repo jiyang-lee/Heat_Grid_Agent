@@ -32,14 +32,15 @@ from heatgrid_ops.agent.usage import usage_with_totals as core_usage_with_totals
 from heatgrid_rag.search import RagSearcher
 from heatgrid_ops.priority.evaluation import (
     ensure_latest_priority_evaluation,
-    ensure_priority_evaluation_tables,
+    ensure_priority_evaluation_tables,  # noqa: F401 - legacy server import contract
 )
+from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
 from agent_run_repository import ensure_agent_run_tables
 from agent_loop_repository import ensure_agent_loop_iteration_table
 from agent_run_routes import make_agent_run_router
 from automation_routes import make_automation_router
-from alert_repository import ensure_alert_queue, get_alert
+from alert_repository import ensure_alert_queue, get_alert  # noqa: F401 - legacy server import contract
 from alert_routes import make_alert_router
 from repository import (
     check_database,
@@ -49,6 +50,10 @@ from repository import (
     make_engine,
 )
 from priority_evaluation_routes import make_priority_evaluation_router
+from replay_dataset import CsvReplayDataset
+from replay_repository import PostgresReplayStore, prepare_replay_database
+from replay_routes import make_replay_router
+from replay_service import ReplayService
 from retrain_routes import make_retrain_router
 from retrain_repository import ensure_retrain_tables
 from review_repository import ensure_review_tables
@@ -66,6 +71,7 @@ settings = Settings()
 engine = make_engine(settings.database_url)
 rag_searcher = RagSearcher()
 agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
+replay_service = ReplayService.disabled()
 
 
 @dataclass(slots=True)
@@ -87,14 +93,34 @@ def _psycopg_database_url(database_url: str) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await ensure_priority_evaluation_tables(engine)
-    await ensure_latest_priority_evaluation(
-        engine,
-        stale_after_hours=settings.priority_stale_after_hours,
-        model_version=settings.priority_model_version,
-        expected_substations=settings.priority_expected_substations,
-    )
-    await ensure_alert_queue(engine)
+    await prepare_replay_database(engine)
+    replay_restored = False
+    if settings.replay_enabled:
+        try:
+            replay_dataset = CsvReplayDataset(settings.replay_dataset_root)
+            replay_runtime = PriorityInferenceRuntime(
+                deployment_version=settings.priority_model_version,
+            )
+            replay_service.configure(
+                dataset=replay_dataset,
+                runtime=replay_runtime,
+                store=PostgresReplayStore(
+                    engine,
+                    expected_substations=replay_dataset.manifest.expected_substations,
+                ),
+                tick_seconds=settings.replay_tick_seconds,
+            )
+            replay_restored = await replay_service.restore()
+        except (OSError, ValueError, RuntimeError) as exc:
+            replay_service.state = "disabled"
+            replay_service.error = f"{type(exc).__name__}: {exc}"
+    if not replay_restored:
+        await ensure_latest_priority_evaluation(
+            engine,
+            stale_after_hours=settings.priority_stale_after_hours,
+            model_version=settings.priority_model_version,
+            expected_substations=settings.priority_expected_substations,
+        )
     await ensure_agent_run_tables(engine)
     await ensure_agent_loop_iteration_table(engine)
     await ensure_review_tables(engine)
@@ -128,6 +154,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         )
         yield
     finally:
+        await replay_service.shutdown()
         agent_resources.graph = None
         agent_resources.checkpoint_pool = None
         await checkpoint_pool.close()
@@ -138,6 +165,7 @@ install_agent_error_handlers(app)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))
+app.include_router(make_replay_router(lambda: replay_service))
 
 
 @app.get("/", include_in_schema=False)
@@ -154,6 +182,10 @@ async def index() -> ApiMetadata:
             "/api/evidence-candidates",
             "/api/retrain-jobs",
             "/api/model-candidates",
+            "/api/demo-replay/status",
+            "/api/demo-replay/snapshot",
+            "/api/demo-replay/events",
+            "/api/demo-replay/control",
         ],
     )
 

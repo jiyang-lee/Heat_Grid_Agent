@@ -1,0 +1,11 @@
+sensor_key,source_column,label_ko,unit,display_order,sensor_type,model_feature_prefix,nullable,enabled
+outdoor_temperature,outdoor_temperature,외기온도,degC,1,temperature,outdoor_temperature__,true,true
+p_net_supply_temperature,p_net_supply_temperature,1차 공급온도,degC,2,temperature,p_net_supply_temperature__,true,true
+p_net_return_temperature,p_net_return_temperature,1차 환수온도,degC,3,temperature,p_net_return_temperature__,true,true
+p_net_meter_flow,p_net_meter_flow,1차 유량,L/h,4,flow,p_net_meter_flow__,true,true
+p_hc1_return_temperature,p_hc1_return_temperature,난방 1차 환수온도,degC,5,temperature,p_hc1_return_temperature__,false,false
+s_hc1_supply_temperature,s_hc1_supply_temperature,난방 2차 공급온도,degC,6,temperature,s_hc1_supply_temperature__,false,false
+p_net_meter_heat_power,p_net_meter_heat_power,1차 열출력,kW,7,heat_power,p_net_meter_heat_power__,true,false
+p_net_meter_energy,p_net_meter_energy,1차 누적 열에너지,kWh,8,cumulative_energy,p_net_meter_energy__,true,false
+p_net_meter_volume,p_net_meter_volume,1차 누적 유량,m3,9,cumulative_volume,p_net_meter_volume__,true,false
+s_dhw_supply_temperature,s_dhw_supply_temperature,급탕 공급온도,degC,10,temperature,s_dhw_supply_temperature__,true,false

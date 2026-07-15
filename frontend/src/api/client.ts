@@ -41,6 +41,9 @@ import type {
   PriorityEvaluationResult,
   PriorityEvaluationSnapshot,
   PrioritySubstationSnapshot,
+  DemoReplayControlRequest,
+  DemoReplaySnapshot,
+  DemoReplayStatus,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -151,6 +154,16 @@ export const priorityEvaluationsApi = {
     apiFetch<PrioritySubstationSnapshot>(
       `/priority-evaluations/latest/substations/${substationId}${toQueryString({ manufacturer_id: manufacturerId })}`,
     ),
+}
+
+export const demoReplayApi = {
+  status: () => apiFetch<DemoReplayStatus>('/demo-replay/status'),
+  snapshot: () => apiFetch<DemoReplaySnapshot>('/demo-replay/snapshot'),
+  control: (body: DemoReplayControlRequest) =>
+    apiFetch<DemoReplayStatus>('/demo-replay/control', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }
 
 export const simulationsApi = {
@@ -281,3 +294,4 @@ export function subscribeSse(
 
 export const alertEventsPath = '/alerts/events'
 export const agentRunEventsPath = (runId: string) => `/agent-runs/${runId}/events`
+export const demoReplayEventsPath = '/demo-replay/events'

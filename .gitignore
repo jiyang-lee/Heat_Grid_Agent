@@ -32,3 +32,6 @@ output/ops_agent/ops_agent_output_*.json
 # Local manufacturer datasets (not tracked in repo)
 data/manufacturer 1/
 data/manufacturer 2/
+
+# Generated PreDist replay shards (manifests/configs are tracked separately)
+data/demo_replay/current/

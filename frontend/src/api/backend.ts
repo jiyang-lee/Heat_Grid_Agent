@@ -20,3 +20,8 @@ export const modelCandidatesApi = USE_MOCK ? mock.modelCandidatesApi : real.mode
 export const subscribeSse = USE_MOCK ? mock.subscribeSse : real.subscribeSse
 export const alertEventsPath = real.alertEventsPath
 export const agentRunEventsPath = real.agentRunEventsPath
+
+// Demo replay is a live data transport even when the rest of the UI uses mock data.
+export const demoReplayApi = real.demoReplayApi
+export const subscribeDemoReplaySse = real.subscribeSse
+export const demoReplayEventsPath = real.demoReplayEventsPath

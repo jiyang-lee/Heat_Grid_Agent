@@ -59,6 +59,14 @@ OpsAgentEvidenceSource: TypeAlias = Literal[
     "fallback",
     "manual",
 ]
+ReplayState: TypeAlias = Literal[
+    "disabled",
+    "ready",
+    "running",
+    "paused",
+    "completed",
+    "error",
+]
 
 
 class OpsAgentOutput(BaseModel):
@@ -541,3 +549,44 @@ class AlertAckRequest(BaseModel):
 
 class AlertAckResponse(AlertSummary):
     pass
+
+
+class ReplaySensorDefinition(BaseModel):
+    sensor_key: str
+    source_column: str
+    label_ko: str
+    unit: str
+    display_order: int
+    sensor_type: str
+    model_feature_prefix: str
+    nullable: bool
+
+
+class ReplayReading(BaseModel):
+    manufacturer_id: str
+    substation_id: int
+    simulated_at: datetime
+    values: dict[str, float | None]
+    quality: dict[str, str]
+
+
+class ReplayStatus(BaseModel):
+    state: ReplayState
+    dataset_version: str | None = None
+    current_simulated_at: datetime | None = None
+    window_progress: int = Field(ge=0, le=36)
+    total_progress: float = Field(ge=0.0, le=1.0)
+    sensors: list[ReplaySensorDefinition] = Field(default_factory=list)
+    has_scored_window: bool = False
+    error: str | None = None
+
+
+class ReplaySnapshot(ReplayStatus):
+    readings: list[ReplayReading] = Field(default_factory=list)
+
+
+class ReplayControlRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["start", "pause", "resume", "reset", "seek"]
+    simulated_at: datetime | None = None
