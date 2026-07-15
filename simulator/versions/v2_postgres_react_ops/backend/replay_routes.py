@@ -46,11 +46,14 @@ def make_replay_router(
     engine: AsyncEngine,
     *,
     storage_root: str,
+    replay_enabled: bool = False,
+    replay_import_enabled: bool = False,
 ) -> APIRouter:
     router = APIRouter(prefix="/api", tags=["replay"])
 
     @router.get("/replay-datasets")
     async def list_datasets() -> list[dict[str, Any]]:
+        _require_enabled(replay_enabled)
         async with engine.connect() as connection:
             result = await connection.execute(
                 text(
@@ -63,6 +66,7 @@ def make_replay_router(
 
     @router.post("/replay-datasets/import", status_code=201)
     async def import_dataset(request: ReplayImportRequest) -> dict[str, Any]:
+        _require_enabled(replay_enabled and replay_import_enabled)
         try:
             package = await asyncio.to_thread(
                 import_replay_package,
@@ -80,6 +84,7 @@ def make_replay_router(
 
     @router.post("/replay-runs", status_code=201)
     async def create_run(request: ReplayRunRequest) -> dict[str, Any]:
+        _require_enabled(replay_enabled)
         run_id = str(uuid4())
         async with engine.begin() as connection:
             dataset = await connection.execute(
@@ -106,6 +111,7 @@ def make_replay_router(
 
     @router.get("/replay-runs/{run_id}/snapshot")
     async def snapshot(run_id: str) -> dict[str, Any]:
+        _require_enabled(replay_enabled)
         async with engine.connect() as connection:
             run = await connection.execute(
                 text(
@@ -145,6 +151,7 @@ def make_replay_router(
 
     @router.post("/replay-runs/{run_id}/commands", status_code=202)
     async def enqueue_command(run_id: str, request: ReplayCommandRequest) -> dict[str, Any]:
+        _require_enabled(replay_enabled)
         valid = {"start", "pause", "resume", "reset", "seek", "set_speed", "cancel"}
         if request.command_type not in valid:
             raise HTTPException(status_code=422, detail="unsupported replay command")
@@ -180,6 +187,7 @@ def make_replay_router(
         request: Request,
         last_event_id: int | None = Header(default=None, alias="Last-Event-ID"),
     ) -> StreamingResponse:
+        _require_enabled(replay_enabled)
         return StreamingResponse(
             _event_stream(engine, run_id, request, last_event_id or 0),
             media_type="text/event-stream",
@@ -219,3 +227,8 @@ def _row(row: Any) -> dict[str, Any]:
         key: value.isoformat() if isinstance(value, datetime) else str(value) if key.endswith("_id") and value is not None else value
         for key, value in dict(row).items()
     }
+
+
+def _require_enabled(enabled: bool) -> None:
+    if not enabled:
+        raise HTTPException(status_code=503, detail="replay feature is disabled")

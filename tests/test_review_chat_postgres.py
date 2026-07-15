@@ -7,12 +7,17 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 DATABASE_URL = os.getenv("HEATGRID_REVIEW_CHAT_TEST_DATABASE_URL")
 sys.path.insert(0, str(BACKEND))
+
+RUN_ID = "00000000-0000-0000-0000-000000002101"
+ALERT_ID = "00000000-0000-0000-0000-000000002201"
+CARD_ID = "00000000-0000-0000-0000-000000002301"
+DECISION_ID = "00000000-0000-0000-0000-000000002401"
 
 pytestmark = pytest.mark.skipif(
     DATABASE_URL is None,
@@ -36,11 +41,13 @@ async def test_proposal_does_not_write_a_review_until_confirmation() -> None:
     engine = create_async_engine(str(DATABASE_URL))
     suffix = str(uuid4())
     try:
+        await _seed_chat_run(engine)
         async with engine.connect() as connection:
             run_id = await connection.scalar(
-                text("SELECT run_id::text FROM agent_runs ORDER BY created_at LIMIT 1")
+                text("SELECT run_id::text FROM agent_runs WHERE run_id = :run_id"),
+                {"run_id": RUN_ID},
             )
-            assert isinstance(run_id, str)
+            assert run_id == RUN_ID
             before = await connection.scalar(
                 text("SELECT count(*) FROM agent_run_reviews WHERE run_id = :run_id"),
                 {"run_id": run_id},
@@ -115,3 +122,52 @@ async def test_proposal_does_not_write_a_review_until_confirmation() -> None:
         assert after == before + 1
     finally:
         await engine.dispose()
+
+
+async def _seed_chat_run(engine: AsyncEngine) -> None:
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO priority_decisions (priority_decision_id, window_id, priority_level) "
+                "VALUES (:decision_id, (SELECT window_id FROM windows "
+                "ORDER BY window_end DESC, window_id LIMIT 1), 'high') "
+                "ON CONFLICT (priority_decision_id) DO NOTHING"
+            ),
+            {"decision_id": DECISION_ID},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO priority_cards (card_id, priority_decision_id, review_required) "
+                "VALUES (:card_id, :decision_id, true) "
+                "ON CONFLICT (card_id) DO NOTHING"
+            ),
+            {"card_id": CARD_ID, "decision_id": DECISION_ID},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO ops_alert_queue ("
+                "alert_id, card_id, substation_uid, manufacturer_id, substation_id, "
+                "priority_level, enqueue_reason"
+                ") SELECT :alert_id, :card_id, windows.substation_uid, windows.manufacturer_id, "
+                "windows.substation_id, 'high', 'review chat test' "
+                "FROM priority_cards JOIN priority_decisions USING (priority_decision_id) "
+                "JOIN windows USING (window_id) WHERE card_id = :card_id "
+                "ON CONFLICT (alert_id) DO NOTHING"
+            ),
+            {"alert_id": ALERT_ID, "card_id": CARD_ID},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO agent_runs ("
+                "run_id, alert_id, card_id, substation_uid, manufacturer_id, substation_id, "
+                "root_run_id, lineage_depth, status, ops_output, input_snapshot_origin, "
+                "input_snapshot_status"
+                ") SELECT :run_id, :alert_id, :card_id, windows.substation_uid, "
+                "windows.manufacturer_id, windows.substation_id, :run_id, 0, 'completed', "
+                "CAST('{\"summary\":\"review chat parent\"}' AS jsonb), 'native_v2', 'unavailable'"
+                " FROM priority_cards JOIN priority_decisions USING (priority_decision_id) "
+                "JOIN windows USING (window_id) WHERE card_id = :card_id "
+                "ON CONFLICT (run_id) DO NOTHING"
+            ),
+            {"run_id": RUN_ID, "alert_id": ALERT_ID, "card_id": CARD_ID},
+        )

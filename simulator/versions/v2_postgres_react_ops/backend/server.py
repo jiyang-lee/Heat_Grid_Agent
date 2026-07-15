@@ -317,7 +317,14 @@ app.include_router(
 app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
-app.include_router(make_replay_router(engine, storage_root=settings.replay_storage_root))
+app.include_router(
+    make_replay_router(
+        engine,
+        storage_root=settings.replay_storage_root,
+        replay_enabled=settings.replay_enabled,
+        replay_import_enabled=settings.replay_import_enabled,
+    )
+)
 
 
 if __name__ == "__main__":

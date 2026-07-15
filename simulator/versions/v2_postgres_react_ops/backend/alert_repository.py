@@ -16,7 +16,7 @@ ENQUEUE_ALERTS_SQL: Final = """
 WITH latest AS (
     SELECT evaluation_run_id, as_of_time
     FROM priority_evaluation_runs
-    WHERE status = 'completed'
+    WHERE stream_key = 'default' AND status = 'completed' AND success_count > 0
     ORDER BY is_active DESC, as_of_time DESC, completed_at DESC
     LIMIT 1
 ),
@@ -100,9 +100,9 @@ async def enqueue_priority_alerts(
             text(
                 "UPDATE ops_alert_queue SET status = 'resolved', acked_at = now(), "
                 "acked_by = 'snapshot-rollover' "
-                "WHERE status = 'open' AND evaluation_run_id IS DISTINCT FROM ("
+                "WHERE stream_key = 'default' AND status = 'open' AND evaluation_run_id IS DISTINCT FROM ("
                 "SELECT evaluation_run_id FROM priority_evaluation_runs "
-                "WHERE status = 'completed' "
+                "WHERE stream_key = 'default' AND status = 'completed' AND success_count > 0 "
                 "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
                 ")"
             )
@@ -154,7 +154,7 @@ async def list_alerts(
     filters.append(
         "q.evaluation_run_id = ("
         "SELECT evaluation_run_id FROM priority_evaluation_runs "
-        "WHERE status = 'completed' "
+        "WHERE stream_key = 'default' AND status = 'completed' AND success_count > 0 "
         "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
         ")"
     )

@@ -150,10 +150,10 @@ async def create_priority_evaluation(
                 text(
                     "INSERT INTO priority_evaluation_runs ("
                     "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
-                    "status, target_count"
+                    "status, target_count, stream_key, source_kind"
                     ") VALUES ("
                     ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
-                    ":model_version, 'running', :target_count"
+                    ":model_version, 'running', :target_count, 'default', 'batch'"
                     ")"
                 ),
                 {
@@ -190,7 +190,7 @@ async def create_priority_evaluation(
             active_result = await connection.execute(
                 text(
                     "SELECT as_of_time FROM priority_evaluation_runs "
-                    "WHERE is_active FOR UPDATE"
+                    "WHERE stream_key = 'default' AND is_active FOR UPDATE"
                 )
             )
             active_row = active_result.mappings().one_or_none()
@@ -199,7 +199,7 @@ async def create_priority_evaluation(
                 await connection.execute(
                     text(
                         "UPDATE priority_evaluation_runs SET is_active = false "
-                        "WHERE is_active"
+                        "WHERE stream_key = 'default' AND is_active"
                     )
                 )
             await connection.execute(
@@ -257,10 +257,10 @@ async def _record_failed_priority_evaluation(
             text(
                 "INSERT INTO priority_evaluation_runs ("
                 "evaluation_run_id, as_of_time, stale_after_seconds, model_version, "
-                "status, is_active, target_count, error, completed_at"
+                "status, is_active, target_count, error, completed_at, stream_key, source_kind"
                 ") VALUES ("
                 ":evaluation_run_id, :as_of_time, :stale_after_seconds, "
-                ":model_version, 'failed', false, :target_count, :error, now()"
+                ":model_version, 'failed', false, :target_count, :error, now(), 'default', 'batch'"
                 ") ON CONFLICT (evaluation_run_id) DO UPDATE SET "
                 "status = 'failed', is_active = false, target_count = :target_count, "
                 "error = :error, completed_at = now()"
@@ -492,7 +492,7 @@ async def get_latest_priority_evaluation(engine: AsyncEngine) -> dict[str, Any] 
     await ensure_priority_evaluation_tables(engine)
     query = text(
         f"SELECT {_run_columns()} FROM priority_evaluation_runs "
-        "WHERE status = 'completed' "
+        "WHERE stream_key = 'default' AND status = 'completed' AND success_count > 0 "
         "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC, evaluation_run_id "
         "LIMIT 1"
     )
@@ -513,7 +513,7 @@ async def get_priority_evaluation(
         run_result = await connection.execute(
             text(
                 f"SELECT {_run_columns()} FROM priority_evaluation_runs "
-                "WHERE evaluation_run_id = :evaluation_run_id"
+                "WHERE stream_key = 'default' AND evaluation_run_id = :evaluation_run_id"
             ),
             {"evaluation_run_id": evaluation_run_id},
         )
