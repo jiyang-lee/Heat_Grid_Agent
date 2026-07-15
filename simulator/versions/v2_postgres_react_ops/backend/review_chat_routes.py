@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+from collections.abc import AsyncIterator, Callable
+from uuid import UUID
+
+import orjson
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
+from agent_operator_review_repository import IdempotencyConflictError
+from agent_rerun_repository import TargetedChildRun, mark_rerun_scheduled
+from agent_runner import schedule_reserved_agent_graph
+from agent_runtime_factory import create_agent_runtime
+from heatgrid_ops.agent.contracts import AgentRunRequest
+from heatgrid_ops.agent.graph import AgentGraphInvoker
+from heatgrid_ops.agent.services import AgentRuntime
+from review_chat_api_models import (
+    ReviewChatCancelRequest,
+    ReviewChatConfirmRequest,
+    ReviewChatConfirmationResponse,
+    ReviewChatMessagePage,
+    ReviewChatMessageRequest,
+    ReviewChatOpenRequest,
+    ReviewChatSubmissionResponse,
+    ReviewChatThreadResponse,
+)
+from review_chat_service import (
+    ReviewChatConflictError,
+    ReviewChatNotFoundError,
+    cancel_review_chat_proposal,
+    confirm_review_chat_proposal,
+    list_review_chat_events,
+    list_review_chat_messages,
+    open_review_chat,
+    submit_review_chat_message,
+)
+from settings import Settings
+
+
+def make_review_chat_router(
+    engine: AsyncEngine,
+    settings: Settings | None = None,
+    runtime: AgentRuntime | None = None,
+    graph_provider: Callable[[], AgentGraphInvoker | None] | None = None,
+) -> APIRouter:
+    router = APIRouter(prefix="/api")
+    active_settings = settings or Settings()
+    active_runtime = runtime or create_agent_runtime(active_settings, engine)
+
+    def schedule_child(child: TargetedChildRun) -> None:
+        schedule_reserved_agent_graph(
+            engine,
+            AgentRunRequest(
+                run_id=child.run_id,
+                alert_id=child.alert_id,
+                card_id=child.card_id,
+            ),
+            runtime=active_runtime,
+            graph=None if graph_provider is None else graph_provider(),
+            task_key=AGENT_GRAPH_TASK_KEY_V2,
+        )
+
+    @router.post(
+        "/agent-runs/{run_id}/review-chat/threads",
+        response_model=ReviewChatThreadResponse,
+    )
+    async def open_thread(
+        run_id: UUID,
+        request: ReviewChatOpenRequest,
+    ) -> ReviewChatThreadResponse:
+        return await _map_errors(open_review_chat(engine, str(run_id), request))
+
+    @router.get(
+        "/review-chat/threads/{thread_id}/messages",
+        response_model=ReviewChatMessagePage,
+    )
+    async def messages(
+        thread_id: UUID,
+        after_sequence: int = Query(default=0, ge=0),
+        limit: int = Query(default=100, ge=1, le=100),
+    ) -> ReviewChatMessagePage:
+        return await _map_errors(
+            list_review_chat_messages(
+                engine,
+                str(thread_id),
+                after_sequence=after_sequence,
+                limit=limit,
+            )
+        )
+
+    @router.post(
+        "/review-chat/threads/{thread_id}/messages",
+        response_model=ReviewChatSubmissionResponse,
+        status_code=202,
+    )
+    async def submit_message(
+        thread_id: UUID,
+        request: ReviewChatMessageRequest,
+    ) -> ReviewChatSubmissionResponse:
+        return await _map_errors(submit_review_chat_message(engine, str(thread_id), request))
+
+    @router.get("/review-chat/threads/{thread_id}/events")
+    async def events(
+        thread_id: UUID,
+        after_event_id: int = Query(default=0, ge=0),
+    ) -> StreamingResponse:
+        async def stream() -> AsyncIterator[str]:
+            records = await _map_errors(
+                list_review_chat_events(
+                    engine,
+                    str(thread_id),
+                    after_event_id=after_event_id,
+                )
+            )
+            for record in records:
+                yield (
+                    f"id: {record['event_id']}\n"
+                    f"event: {record['event_type']}\n"
+                    f"data: {orjson.dumps(record['payload']).decode('utf-8')}\n\n"
+                )
+            yield ": heartbeat\n\n"
+
+        return StreamingResponse(stream(), media_type="text/event-stream")
+
+    @router.post(
+        "/review-chat/proposals/{proposal_id}/confirm",
+        response_model=ReviewChatConfirmationResponse,
+    )
+    async def confirm(
+        proposal_id: UUID,
+        request: ReviewChatConfirmRequest,
+    ) -> ReviewChatConfirmationResponse:
+        result, child = await _map_errors(
+            confirm_review_chat_proposal(
+                engine,
+                str(proposal_id),
+                request,
+                rag_quality_enabled=active_settings.rag_quality_enabled,
+            )
+        )
+        if child is not None:
+            try:
+                schedule_child(child)
+            except (LookupError, RuntimeError, TypeError, ValueError):
+                await mark_rerun_scheduled(engine, child, scheduled=False)
+            else:
+                await mark_rerun_scheduled(engine, child, scheduled=True)
+        return result
+
+    @router.post(
+        "/review-chat/proposals/{proposal_id}/cancel",
+        response_model=ReviewChatConfirmationResponse,
+    )
+    async def cancel(
+        proposal_id: UUID,
+        request: ReviewChatCancelRequest,
+    ) -> ReviewChatConfirmationResponse:
+        return await _map_errors(cancel_review_chat_proposal(engine, str(proposal_id), request))
+
+    return router
+
+
+async def _map_errors(awaitable):
+    try:
+        return await awaitable
+    except ReviewChatNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (IdempotencyConflictError, ReviewChatConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

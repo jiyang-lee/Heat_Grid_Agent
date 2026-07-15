@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(10))
+    assert [migration.version for migration in migrations] == list(range(11))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "009_agent_stage_trace.sql"
+    assert migrations[-1].path.name == "010_review_chat.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 
@@ -84,3 +84,13 @@ def test_agent_stage_trace_migration_preserves_append_only_audit_contract() -> N
     assert "operation_key text not null unique" in sql
     assert "foreign key (stage_snapshot_id)" in sql
     assert "unique (model_call_id, call_sequence)" in sql
+
+
+def test_review_chat_migration_requires_proposal_confirmation_contract() -> None:
+    sql = (ROOT / "migrations" / "010_review_chat.sql").read_text().lower()
+
+    assert "create table public.review_chat_threads" in sql
+    assert "create table public.review_chat_action_proposals" in sql
+    assert "review_chat_threads_one_open_per_run" in sql
+    assert "executed_review_id" in sql
+    assert "decision <> 'reject' or reason_category is not null" in sql

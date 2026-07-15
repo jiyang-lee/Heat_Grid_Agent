@@ -104,10 +104,16 @@ class AgentRunEvaluationPage(FrozenApiModel):
 class OperatorReviewSubmitRequest(FrozenApiModel):
     expected_review_version: int
     idempotency_key: str
-    decision: Literal["approve", "correct", "keep_human_review"]
+    decision: Literal["approve", "reject", "correct", "keep_human_review"]
     reviewer: str
     reason: str
     reason_category: ReasonCategory | None = None
+    next_action: Literal[
+        "none",
+        "targeted_rerun",
+        "manual_investigation",
+        "close_without_rerun",
+    ] = "none"
     disposition: Literal[
         "normal_observation",
         "inspection_recommended",
@@ -119,8 +125,10 @@ class OperatorReviewSubmitRequest(FrozenApiModel):
 
     @model_validator(mode="after")
     def validate_reason_category(self) -> OperatorReviewSubmitRequest:
-        if self.decision == "keep_human_review" and not self.reason_category:
-            raise ValueError("reason_category is required for keep_human_review")
+        if self.decision in {"reject", "keep_human_review"} and not self.reason_category:
+            raise ValueError("reason_category is required for this decision")
+        if self.next_action == "targeted_rerun" and not self.reason_category:
+            raise ValueError("reason_category is required for targeted rerun")
         return self
 
 
@@ -138,6 +146,7 @@ class OperatorReviewRecordResponse(FrozenApiModel):
     reviewer: str
     reason: str
     reason_category: str | None = None
+    next_action: str = "none"
     disposition: str | None = None
     correction: dict[str, str] | None = None
     evidence_annotations: tuple[dict[str, str | None], ...] = ()

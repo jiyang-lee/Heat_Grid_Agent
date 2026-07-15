@@ -462,6 +462,7 @@ def _legacy_review_record_input(
         reviewer=payload.reviewer,
         reason=payload.reason or "legacy review task submission",
         reason_category=reason_category,
+        next_action="none",
         idempotency_key=f"legacy-task:{task.task_id}",
         request_hash=_legacy_request_hash(payload),
         disposition=None,

@@ -34,6 +34,7 @@ from heatgrid_rag.search import RagSearcher
 from heatgrid_ops.priority.evaluation import ensure_latest_priority_evaluation
 
 from agent_review_routes import make_agent_review_router
+from review_chat_routes import make_review_chat_router
 from agent_quality_routes import make_agent_quality_router
 from agent_run_routes import make_agent_run_router
 from automation_routes import make_automation_router
@@ -296,6 +297,14 @@ app.include_router(
 )
 app.include_router(
     make_agent_review_router(
+        engine,
+        settings,
+        agent_runtime,
+        _agent_graph,
+    )
+)
+app.include_router(
+    make_review_chat_router(
         engine,
         settings,
         agent_runtime,

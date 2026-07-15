@@ -62,6 +62,9 @@ class ReviewRecordInput:
     reviewer: str
     reason: str
     reason_category: str | None
+    next_action: Literal[
+        "none", "targeted_rerun", "manual_investigation", "close_without_rerun"
+    ]
     idempotency_key: str
     request_hash: str
     disposition: str | None
@@ -96,6 +99,7 @@ async def submit_operator_review(
                 reviewer=request.reviewer,
                 reason=request.reason,
                 reason_category=request.reason_category,
+                next_action=request.next_action,
                 idempotency_key=request.idempotency_key,
                 request_hash=_request_hash(request),
                 disposition=request.disposition,
@@ -105,11 +109,12 @@ async def submit_operator_review(
                 expected_review_version=request.expected_review_version,
             ),
         )
-        child = await create_targeted_child_run(
-            connection,
-            review=review,
-            rag_quality_enabled=rag_quality_enabled,
-        )
+        if request.next_action == "targeted_rerun":
+            child = await create_targeted_child_run(
+                connection,
+                review=review,
+                rag_quality_enabled=rag_quality_enabled,
+            )
     routing_status = "policy_candidate_created" if request.reason_category == "operational_policy_issue" else (
         "queued" if child is not None else "not_routable"
     )
@@ -167,6 +172,7 @@ async def record_subject_review(
             reviewer=reviewer,
             reason=reason or "operator review",
             reason_category="operator_reject" if decision == "reject" else None,
+            next_action="none",
             idempotency_key=idempotency_key,
             request_hash=request_hash,
             disposition=None,
@@ -466,11 +472,11 @@ async def _insert_review(
             "INSERT INTO agent_run_reviews ("
             "review_task_id, run_id, subject_type, subject_key, review_contract_version, "
             "review_version, idempotency_key, request_hash, decision, reviewer, reason, "
-            "reason_category, disposition, correction, evidence_annotations, operator_labels"
+            "reason_category, next_action, disposition, correction, evidence_annotations, operator_labels"
             ") VALUES ("
             ":review_task_id, :run_id, :subject_type, :subject_key, :review_contract_version, "
             ":review_version, :idempotency_key, :request_hash, :decision, :reviewer, "
-            ":reason, :reason_category, :disposition, CAST(:correction AS jsonb), "
+            ":reason, :reason_category, :next_action, :disposition, CAST(:correction AS jsonb), "
             "CAST(:evidence_annotations AS jsonb), CAST(:operator_labels AS jsonb)"
             ") RETURNING "
             + _review_columns()
@@ -488,6 +494,7 @@ async def _insert_review(
             "reviewer": request.reviewer,
             "reason": request.reason,
             "reason_category": request.reason_category,
+            "next_action": request.next_action,
             "disposition": request.disposition,
             "correction": None
             if request.correction is None
@@ -582,7 +589,7 @@ def _review_columns() -> str:
     return (
         "review_id, review_task_id, run_id, subject_type, subject_key, "
         "review_contract_version, review_version, idempotency_key, request_hash, decision, "
-        "reviewer, reason, reason_category, disposition, CAST(correction AS text) AS correction, "
+        "reviewer, reason, reason_category, next_action, disposition, CAST(correction AS text) AS correction, "
         "CAST(evidence_annotations AS text) AS evidence_annotations, "
         "CAST(operator_labels AS text) AS operator_labels, created_at"
     )
@@ -603,6 +610,7 @@ def _review_from_row(row: RowMapping) -> OperatorReviewRecordResponse:
         reviewer=str(row["reviewer"]),
         reason=str(row["reason"]),
         reason_category=row["reason_category"],
+        next_action=str(row["next_action"]),
         disposition=row["disposition"],
         correction=orjson.loads(row["correction"]) if row["correction"] else None,
         evidence_annotations=tuple(orjson.loads(row["evidence_annotations"])),
