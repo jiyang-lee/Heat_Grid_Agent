@@ -1,11 +1,11 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
 import type { AlertSummary } from '../api/contracts'
 import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
 import { Icon, type IconName } from './icons'
 import SensorFlowCard, { type SensorFacility } from './SensorFlowCard'
-import { ApiState, StatusBadge, SurfaceCard, type Tone } from './ui'
+import { ApiState, HomeMetric, StatusBadge, SurfaceCard, type Tone } from './ui'
 
 type AlertDisplayTone = Extract<Tone, 'critical' | 'warning' | 'primary'>
 
@@ -28,19 +28,6 @@ function ackDeadlineLabel(tone: AlertDisplayTone, warningIndex: number): string 
   if (tone === 'critical') return '5분 내 확인'
   if (tone === 'primary') return '2시간 내 확인'
   return `${WARNING_SLA_MINUTES[Math.min(warningIndex, WARNING_SLA_MINUTES.length - 1)]}분 내 확인`
-}
-
-interface HomeMetricProps {
-  readonly icon: IconName
-  readonly tone: string
-  readonly label: string
-  readonly value: string
-  readonly unit: string
-  readonly children: ReactNode
-}
-
-function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProps) {
-  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
 }
 
 interface Props {

@@ -31,6 +31,21 @@ export function MetricCard({ label, value, hint, icon, tone = 'primary' }: Metri
   return <article className="metric-card"><div className={`metric-icon tone-${tone}`}><Icon name={icon} /></div><div><p>{label}</p><strong>{value}</strong><span>{hint}</span></div></article>
 }
 
+interface HomeMetricProps {
+  readonly icon: IconName
+  /** Tone 외 홈 전용 'violet' 톤도 허용한다(.tone-violet). */
+  readonly tone: string
+  readonly label: string
+  readonly value: string
+  readonly unit: string
+  readonly children: ReactNode
+}
+
+/** 홈 요약 카드 — 헤더(아이콘+라벨), 우측 정렬 수치, 푸터 문구. 알림 페이지와 공용. */
+export function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProps) {
+  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
+}
+
 export function StatusBadge({ tone, children }: { readonly tone: Tone; readonly children: ReactNode }) {
   return <span className={`status-badge tone-${tone}`}>{children}</span>
 }

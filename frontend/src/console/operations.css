@@ -69,7 +69,7 @@
 /* ===== 시안 개편: 홈 메트릭 카드 ===== */
 /* 1536×1024에서 세로 스크롤 없이 들어가도록 홈만 밀도를 시안 기준으로 압축 */
 .dashboard-home { gap: var(--space-3); }
-.dashboard-home .metric-card { min-height: 111px; padding: var(--space-2) var(--space-4); }
+.metric-card.home-metric { min-height: 111px; padding: var(--space-2) var(--space-4); }
 .dashboard-home .page-title { padding: 8px 0; }
 .dashboard-home .surface-heading h2 { font-size: 21px; }
 .home-alerts .surface-heading { min-height: 45px; }
