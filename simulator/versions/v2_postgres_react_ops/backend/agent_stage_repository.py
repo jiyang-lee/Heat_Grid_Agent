@@ -56,6 +56,8 @@ class StageSnapshotDraft:
     thresholds: JsonObject
     attempt: int = 1
     reused_from_snapshot_id: str | None = None
+    state_schema_version: str = "agent_v2_state.v1"
+    envelope: JsonObject | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +75,7 @@ class StageSnapshotRecord:
     contract_version: str
     component_versions: JsonObject
     reused_from_snapshot_id: str | None
+    state_schema_version: str | None
 
 
 async def record_stage_snapshot(
@@ -87,7 +90,23 @@ async def insert_stage_snapshot(
     connection: AsyncConnection,
     draft: StageSnapshotDraft,
 ) -> StageSnapshotRecord:
-    output_hash = canonical_json_hash(draft.output_snapshot)
+    envelope = draft.envelope or {
+        "schema_version": "agent_stage_snapshot.v2",
+        "state_schema_version": draft.state_schema_version,
+        "stage_name": draft.stage_name,
+        "data": draft.output_snapshot,
+        "quality": {
+            "threshold": draft.thresholds.get("threshold"),
+            "reasons": [],
+            "retry_exhausted": False,
+        },
+        "control": {
+            "force_review": draft.quality_status == "unavailable",
+            "suggested_query": None,
+            "broaden": False,
+        },
+    }
+    output_hash = canonical_json_hash(envelope)
     if draft.reused_from_snapshot_id is not None:
         source = await resolve_original_stage_snapshot(
             connection,
@@ -103,6 +122,8 @@ async def insert_stage_snapshot(
         component_versions=draft.component_versions,
         feature_flags=draft.feature_flags,
         thresholds=draft.thresholds,
+        stage_name=draft.stage_name,
+        state_schema_version=draft.state_schema_version,
     )
     result = await connection.execute(
         text(
@@ -128,7 +149,7 @@ async def insert_stage_snapshot(
             "quality_status": draft.quality_status,
             "score": draft.score,
             "stage_input_hash": input_hash,
-            "output_snapshot": _json(draft.output_snapshot),
+            "output_snapshot": _json(envelope),
             "output_hash": output_hash,
             "contract_version": draft.contract_version,
             "component_versions": _json(draft.component_versions),
@@ -221,6 +242,9 @@ def _record(row: RowMapping) -> StageSnapshotRecord:
         reused_from_snapshot_id=None
         if row["reused_from_snapshot_id"] is None
         else str(row["reused_from_snapshot_id"]),
+        state_schema_version=orjson.loads(row["output_snapshot"]).get(
+            "state_schema_version"
+        ),
     )
 
 

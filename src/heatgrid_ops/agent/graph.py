@@ -10,7 +10,12 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Checkpointer, Durability
 from pydantic import TypeAdapter
 
-from heatgrid_ops.agent.contracts import AgentRunRequest, SimulateCard
+from heatgrid_ops.agent.contracts import (
+    AgentInputSnapshot,
+    AgentRunRequest,
+    SimulateCard,
+    validate_agent_input,
+)
 from heatgrid_ops.agent.nodes import (
     assess_collected_evidence,
     complete_run,
@@ -165,6 +170,72 @@ async def execute_agent_graph_with_capture(
             "loop": LoopState(
                 max_iterations=active_graph.max_iterations,
             ),
+            "output": OutputState(),
+            "audit": AuditState(),
+            "result": ResultState(),
+        }
+    )
+    config: RunnableConfig = {
+        "configurable": {"thread_id": request.run_id},
+        "recursion_limit": 64,
+    }
+    state = await active_graph.ainvoke(
+        initial,
+        config,
+        durability="sync" if active_graph.checkpointer_enabled else None,
+    )
+    result = ResultState.model_validate(state["result"])
+    if result.value is None:
+        raise RuntimeError("agent graph completed without a result")
+    return AgentGraphExecution(
+        result=result.value,
+        review_capture_source=result.review_capture_source,
+        review_capture_failure=result.review_capture_failure,
+    )
+
+
+async def execute_agent_graph_v1_with_capture(
+    context: AgentGraphContext | None,
+    request: AgentRunRequest,
+    *,
+    graph: AgentGraphInvoker | None = None,
+    resume: bool = False,
+) -> AgentGraphExecution:
+    return await execute_agent_graph_with_capture(
+        context,
+        request,
+        graph=graph,
+        resume=resume,
+    )
+
+
+async def execute_agent_graph_v2_with_capture(
+    context: AgentGraphContext | None,
+    request: AgentRunRequest,
+    prepared_input: AgentInputSnapshot,
+    *,
+    graph: AgentGraphInvoker | None = None,
+    resume: bool = False,
+) -> AgentGraphExecution:
+    validated_input = validate_agent_input(prepared_input, request)
+    if graph is None:
+        if context is None:
+            raise ValueError("context is required when graph is not precompiled")
+        active_graph = build_agent_graph(context)
+    else:
+        active_graph = graph
+    initial: AgentGraphInput | None = (
+        None
+        if resume
+        else {
+            "request": RequestState(
+                run_id=request.run_id,
+                alert_id=request.alert_id,
+                card_id=request.card_id,
+                source_input=validated_input,
+            ),
+            "evidence": EvidenceState(),
+            "loop": LoopState(max_iterations=active_graph.max_iterations),
             "output": OutputState(),
             "audit": AuditState(),
             "result": ResultState(),

@@ -20,6 +20,7 @@ from heatgrid_ops.agent.graph import AgentGraphInvoker
 from heatgrid_ops.agent.lineage import canonical_json_hash, stage_input_hash
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput, ResultState
+from heatgrid_ops.agent.v2_models import STATE_SCHEMA_VERSION
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,8 +173,12 @@ async def _reuse_parent_stages(
                 component_versions=component_versions,
                 feature_flags=feature_flags,
                 thresholds=thresholds,
+                stage_name=stage_name,
+                state_schema_version=STATE_SCHEMA_VERSION,
             )
             if source.contract_version != contract_version:
+                return
+            if source.state_schema_version != STATE_SCHEMA_VERSION:
                 return
             if source.stage_input_hash != expected_input_hash:
                 return
@@ -204,6 +209,8 @@ async def _reuse_parent_stages(
                     feature_flags=feature_flags,
                     thresholds=thresholds,
                     reused_from_snapshot_id=original.stage_snapshot_id,
+                    state_schema_version=STATE_SCHEMA_VERSION,
+                    envelope=source.output_snapshot,
                 ),
             )
             upstream_hashes.append(reused.output_hash)

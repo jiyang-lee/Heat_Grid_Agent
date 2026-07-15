@@ -195,6 +195,13 @@ class AgentLoopSummary(BaseModel):
     model_verification: ModelVerificationResult | None = None
     review_required: bool = True
     review_task_id: str | None = None
+    disposition: Literal[
+        "urgent_review",
+        "inspection_recommended",
+        "normal_observation",
+    ] | None = None
+    blocking_retry_exhausted: list[str] = Field(default_factory=list)
+    graph_contract_version: str | None = None
 
 
 class AgentRunResponse(BaseModel):

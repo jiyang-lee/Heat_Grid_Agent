@@ -32,12 +32,16 @@ def stage_input_hash(
     component_versions: Mapping[str, JsonValue],
     feature_flags: Mapping[str, JsonValue],
     thresholds: Mapping[str, JsonValue],
+    stage_name: str = "legacy",
+    state_schema_version: str = "agent_v2_state.v1",
 ) -> str:
     sorted_upstream_hashes: list[JsonValue] = []
     for upstream_hash in sorted(upstream_output_hashes):
         sorted_upstream_hashes.append(upstream_hash)
     payload: JsonObject = {
         "run_input_hash": run_input_hash,
+        "stage_name": stage_name,
+        "state_schema_version": state_schema_version,
         "upstream_output_hashes": sorted_upstream_hashes,
         "stage_contract_version": contract_version,
         "policy_version": policy_version,

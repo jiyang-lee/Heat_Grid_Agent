@@ -81,28 +81,56 @@ def test_stage_input_hash_includes_upstream_and_component_versions() -> None:
     )
 
 
+def test_stage_input_hash_includes_stage_name_and_state_schema_version() -> None:
+    retrieval = stage_input_hash(
+        run_input_hash="a" * 64,
+        upstream_output_hashes=("b" * 64,),
+        contract_version="rag_retrieval.v2",
+        policy_version="agent_graph_v2.v2",
+        component_versions={"rag": "rag-v1"},
+        feature_flags={"rag_quality": True},
+        thresholds={"retrieval": 60},
+        stage_name="rag_retrieval",
+        state_schema_version="agent_v2_state.v1",
+    )
+    interpretation = stage_input_hash(
+        run_input_hash="a" * 64,
+        upstream_output_hashes=("b" * 64,),
+        contract_version="rag_interpretation.v2",
+        policy_version="agent_graph_v2.v2",
+        component_versions={"rag": "rag-v1"},
+        feature_flags={"rag_quality": True},
+        thresholds={"retrieval": 60},
+        stage_name="rag_interpretation",
+        state_schema_version="agent_v2_state.v1",
+    )
+
+    assert retrieval != interpretation
+
+
 @pytest.mark.parametrize(
-    ("status", "agreement", "quality_status", "score"),
+    ("status", "agreement", "execution_status", "quality_status", "score"),
     [
-        ("verified", True, "passed", 100.0),
-        ("verified", None, "partial", 60.0),
-        ("verified", False, "insufficient", 25.0),
-        ("partial", True, "partial", 60.0),
-        ("partial", None, "partial", 40.0),
-        ("partial", False, "insufficient", 25.0),
-        ("unavailable", None, "unavailable", None),
-        ("error", None, "unavailable", None),
+        ("verified", True, "passed", "passed", 100.0),
+        ("verified", None, "passed", "partial", 50.0),
+        ("verified", False, "passed", "insufficient", 25.0),
+        ("partial", True, "passed", "partial", 60.0),
+        ("partial", None, "passed", "partial", 40.0),
+        ("partial", False, "passed", "insufficient", 25.0),
+        ("unavailable", None, "unavailable", "unavailable", None),
+        ("error", None, "failed", "insufficient", 0.0),
     ],
 )
 def test_ml_quality_decision_table_is_complete(
     status: str,
     agreement: bool | None,
+    execution_status: str,
     quality_status: str,
     score: float | None,
 ) -> None:
     result = ml_quality_result(status=status, agreement=agreement)
 
-    assert result.execution_status == "passed"
+    assert result.execution_status == execution_status
     assert result.quality_status == quality_status
     assert result.score == score
 

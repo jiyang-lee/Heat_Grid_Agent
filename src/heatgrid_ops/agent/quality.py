@@ -23,14 +23,16 @@ class StageQualityResult:
 
 
 def ml_quality_result(*, status: str, agreement: bool | None) -> StageQualityResult:
-    if status in {"unavailable", "error"}:
-        return StageQualityResult("passed", "unavailable", None)
+    if status == "unavailable":
+        return StageQualityResult("unavailable", "unavailable", None)
+    if status == "error":
+        return StageQualityResult("failed", "insufficient", 0.0)
     if status == "verified":
         if agreement is True:
             return StageQualityResult("passed", "passed", 100.0)
         if agreement is False:
             return StageQualityResult("passed", "insufficient", 25.0)
-        return StageQualityResult("passed", "partial", 60.0)
+        return StageQualityResult("passed", "partial", 50.0)
     if status == "partial":
         if agreement is True:
             return StageQualityResult("passed", "partial", 60.0)
