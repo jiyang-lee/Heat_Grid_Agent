@@ -749,6 +749,244 @@ export interface StageProjectionResponse {
   readonly items: readonly StageProjection[]
 }
 
+export type ReviewChatRole = 'system_event' | 'operator' | 'assistant'
+export type ReviewChatMessageKind =
+  | 'question'
+  | 'explanation'
+  | 'action_request'
+  | 'action_proposal'
+  | 'confirmation'
+  | 'execution_result'
+  | 'error'
+
+export type ReviewChatProposalStatus =
+  | 'draft'
+  | 'awaiting_confirmation'
+  | 'confirmed'
+  | 'executing'
+  | 'executed'
+  | 'cancelled'
+  | 'expired'
+  | 'stale'
+  | 'conflict'
+  | 'failed'
+
+export type ReviewChatDecision = 'approve' | 'reject' | 'correct' | 'keep_human_review'
+export type ReviewChatNextAction = 'none' | 'targeted_rerun' | 'manual_investigation' | 'close_without_rerun'
+
+export interface ReviewChatOpenRequest {
+  readonly created_by: string
+  readonly idempotency_key: string
+}
+
+export interface ReviewChatThreadResponse {
+  readonly thread_id: string
+  readonly run_id: string
+  readonly status: 'open' | 'closed' | 'archived'
+  readonly context_hash: string
+  readonly base_review_version: number
+  readonly created_at: string
+}
+
+export interface ReviewChatMessageRequest {
+  readonly content: string
+  readonly created_by: string
+  readonly idempotency_key: string
+}
+
+export interface ReviewChatMessageResponse {
+  readonly message_id: string
+  readonly thread_id: string
+  readonly sequence: number
+  readonly role: ReviewChatRole
+  readonly message_kind: ReviewChatMessageKind
+  readonly content: string
+  readonly structured_payload: Record<string, unknown>
+  readonly citations: readonly Record<string, string>[]
+  readonly context_hash: string
+  readonly created_at: string
+}
+
+export interface ReviewChatMessagePage {
+  readonly items: readonly ReviewChatMessageResponse[]
+}
+
+export interface ReviewChatProposalResponse {
+  readonly proposal_id: string
+  readonly thread_id: string
+  readonly run_id: string
+  readonly expected_review_version: number
+  readonly context_hash: string
+  readonly status: ReviewChatProposalStatus
+  readonly decision: ReviewChatDecision
+  readonly next_action: ReviewChatNextAction
+  readonly reason: string
+  readonly reason_category: string | null
+  readonly disposition: string | null
+  readonly correction: Record<string, string> | null
+  readonly target_stage: string | null
+  readonly expires_at: string
+}
+
+export interface ReviewChatSubmissionResponse {
+  readonly operator_message: ReviewChatMessageResponse
+  readonly assistant_message: ReviewChatMessageResponse
+  readonly proposal: ReviewChatProposalResponse | null
+}
+
+export interface ReviewChatConfirmRequest {
+  readonly confirmed_by: string
+  readonly idempotency_key: string
+  readonly expected_proposal_status: 'awaiting_confirmation'
+  readonly expected_review_version: number
+}
+
+export interface ReviewChatConfirmationResponse {
+  readonly proposal_id: string
+  readonly status: ReviewChatProposalStatus
+  readonly review_id: string | null
+  readonly child_run_id: string | null
+  readonly target_stage: string | null
+}
+
+export interface ReviewChatCancelRequest {
+  readonly cancelled_by: string
+  readonly idempotency_key: string
+}
+
+export interface ReplayDataset {
+  readonly dataset_id: string
+  readonly dataset_version: string
+  readonly status: 'available' | 'processing' | 'failed' | 'imported'
+  readonly expected_substations: readonly number[]
+  readonly source_interval_seconds: number
+  readonly window_ticks: number
+  readonly replay_start: string
+  readonly replay_end: string
+  readonly validated_at: string | null
+}
+
+export interface ReplayImportRequest {
+  readonly package_path: string
+  readonly imported_by: string
+}
+
+export interface ReplayRunCreateRequest {
+  readonly dataset_id: string
+  readonly start_at: string
+  readonly tick_seconds: number
+  readonly requested_by: string
+}
+
+export interface ReplayRunCreateResponse {
+  readonly run_id: string
+  readonly stream_key: string
+  readonly state: string
+  readonly version: number
+}
+
+export interface ReplayReading {
+  readonly manufacturer_id: string | null
+  readonly substation_id: number | null
+  readonly sequence: number | null
+  readonly simulated_at: string | null
+  readonly values: Record<string, unknown>
+  readonly quality: unknown | null
+}
+
+export interface ReplayRunSnapshot {
+  readonly run_id: string
+  readonly stream_key: string
+  readonly state: string
+  readonly version: number
+  readonly current_simulated_at: string | null
+  readonly last_emitted_sequence: number | null
+  readonly last_scored_window_end: string | null
+  readonly last_evaluation_run_id: string | null
+  readonly speed_multiplier: number | null
+  readonly tick_seconds: number
+  readonly dataset_version: string
+  readonly window_ticks: number
+  readonly last_event_id: number
+  readonly window_progress: number
+  readonly synthetic: boolean
+  readonly readings: readonly ReplayReading[]
+}
+
+export type ReplayCommandType = 'start' | 'pause' | 'resume' | 'reset' | 'seek' | 'set_speed' | 'cancel'
+
+export interface ReplayRunCommandRequest {
+  readonly command_type: ReplayCommandType
+  readonly expected_run_version: number
+  readonly payload: Record<string, unknown>
+  readonly requested_by: string
+  readonly idempotency_key: string
+}
+
+export interface ReplayRunCommandResponse {
+  readonly command_id: string
+  readonly status: string
+}
+
+export interface ModelCallProjection {
+  readonly model_call_id: string
+  readonly stage_name: string
+  readonly stage_attempt: number
+  readonly execution_profile: string
+  readonly status: string
+  readonly snapshot_bundle_hash: string | null
+  readonly allowed_tools: readonly string[]
+  readonly actual_tool_calls: number
+  readonly actual_model_turns: number
+  readonly input_tokens: number
+  readonly output_tokens: number
+  readonly total_tokens: number
+}
+
+export interface ToolCallProjection {
+  readonly tool_call_id: string
+  readonly model_call_id: string
+  readonly stage_name: string
+  readonly tool_name: string
+  readonly status: string
+  readonly call_sequence: number
+}
+
+export interface CostBreakdownProjection {
+  readonly run_id: string
+  readonly model_call_count: number
+  readonly tool_call_count: number
+  readonly input_tokens: number
+  readonly output_tokens: number
+  readonly total_tokens: number
+}
+
+export interface RunLineageProjection {
+  readonly run_id: string
+  readonly parent_run_id: string | null
+  readonly root_run_id: string | null
+  readonly lineage_depth: number
+  readonly status: string
+  readonly target_stage: string | null
+}
+
+export interface RunRerunRequestProjection {
+  readonly rerun_request_id: string
+  readonly source_run_id: string
+  readonly child_run_id: string | null
+  readonly target_stage: string
+  readonly status: string
+  readonly created_at: string
+}
+
+export interface RunLineageResponse {
+  readonly root_run_id: string
+  readonly current_run_id: string
+  readonly depth: number
+  readonly ancestors: readonly RunLineageProjection[]
+  readonly children: readonly RunLineageProjection[]
+  readonly requests: readonly RunRerunRequestProjection[]
+}
 /** GET /api/work-orders, /api/agent-reports 공통 쿼리 */
 export interface ActivityProjectionQuery {
   readonly operator_review_status?: OperatorReviewStatus

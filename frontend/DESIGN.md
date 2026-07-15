@@ -26,6 +26,10 @@
 | Warning | `--ops-warning` | `#ff7a00` | Warning state |
 | Notice | `--ops-notice` | `#f5b400` | Notice state |
 | Success | `--ops-success` | `#16a34a` | Confirmed state |
+| Critical soft | `--ops-critical-soft` | `#fff1ef` | Critical sensor and document inset |
+| Warning soft | `--ops-warning-soft` | `#fff6e8` | High-priority sensor and document inset |
+| Sensor return | `--ops-sensor-return` | `#2563eb` | Return-temperature series |
+| Sensor flow | `--ops-sensor-flow` | `#0f9f6e` | Flow series |
 
 Rules: status colors never become a large background; every interactive blue has a visible focus ring; no raw non-token color is used outside this file.
 
@@ -66,6 +70,30 @@ Base unit: 4px. Use `--space-1` through `--space-8` (4–32px). Desktop uses a 2
 ### Sparkline
 - Structure: labelled SVG polyline and tooltip text.
 - Motion: a new point fades in only; reduced motion disables it.
+
+### EntryGate and ScenarioCard
+- Structure: full-page version selector, mode cards, scenario cards, persistent safety note.
+- States: default, hover, focus-visible, active scenario, disabled/upcoming scenario.
+- Accessibility: every selectable card is a button; upcoming scenarios expose `aria-disabled` and remain non-interactive.
+
+### ScenarioWorkspace and ScenarioToast
+
+- Structure: fixed viewport shell; a page never scrolls the document. Long lists, documents and mobile work areas scroll inside their own bordered surface.
+- States: monitoring before an incident, incident-active, selected alert, analysis running, action-ready toast, report draft, report issued.
+- Priority language: use `urgent` and `high`; never show A/B grades in the scenario UI.
+- Motion: only the affected live sensor may pulse to signal an active incident. Reduced-motion users receive a static high-contrast outline and explicit status text.
+- Accessibility: toast is polite `role=status`, does not steal focus, and exposes both dismiss and navigation actions.
+
+### SensorStream and ReviewChat
+- Sensor states: connecting, live, reconnecting, paused, offline fallback; source is always visible.
+- Chat states: empty guidance, operator/assistant/system messages, proposal confirmation, rerun progress, evaluation required.
+- Safety: simulated or fallback data is explicitly labelled and never presented as live field telemetry.
+
+### WorkOrderVersionRail
+
+- Structure: narrow, content-sized version rail with selected version, revision status and the review conversation that produced each revision.
+- Behavior: version selection changes the central document only; review history stays visible and uses compact operator, AI-review and execution-result rows.
+- Input: Enter submits a review; Shift+Enter inserts a line break; IME composition is never submitted early.
 
 ## 6. Motion & Interaction
 

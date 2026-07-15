@@ -6,157 +6,70 @@ import { AppShell, type ConsolePage } from './console/AppShell'
 import { DashboardPage } from './console/DashboardPage'
 import { SettingsPage } from './console/SettingsPage'
 import { ShowcasePage } from './console/ShowcasePage'
+import { EntryGate } from './scenario/EntryGate'
+import { ScenarioAiPage } from './scenario/ScenarioAiPage'
+import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
+import { ScenarioProvider } from './scenario/ScenarioContext'
+import { useScenario } from './scenario/useScenario'
+import { useThemePreference } from './console/useThemePreference'
 import './console/operations.css'
+import './scenario/scenario.css'
 
-import { useEffect, useState } from 'react'
-import './theme.css'
-import Header, { type AppView } from './components/Header'
-import MapView from './map/MapView'
-import PriorityAside from './components/PriorityAside'
-import DetailAside from './components/DetailAside'
-import RoomSchematic from './room/RoomSchematic'
-import OpsConsole from './ops/OpsConsole'
-import { complexById } from './domain/model'
-import { useAlerts, usePrioritySnapshot } from './api/hooks'
+function isShowcase(): boolean {
+  return new URLSearchParams(window.location.search).get('showcase') === '1'
+}
 
-type View = 'city' | 'room'
-type Theme = 'dark' | 'light'
+function ConsoleApp() {
+  const scenario = useScenario()
+  const theme = useThemePreference()
+  const [page, setPage] = useState<ConsolePage>('dashboard')
+  const [initialScenarioAlertId, setInitialScenarioAlertId] = useState<string | null>(null)
+  // 알림에서 새 실행을 만든 직후에만 쓰는 1회성 딥링크.
+  // localStorage 과거 run으로 상세를 자동 복원하지 않는다(기본 진입은 목록 전용).
+  const [pendingRunId, setPendingRunId] = useState<string | null>(null)
+  const openRun = (runId: string) => {
+    window.localStorage.setItem('heatgrid:last-agent-run', runId) // 최근 실행 기록용(자동 복원에는 미사용)
+    setPendingRunId(runId)
+    setPage('reports')
+  }
+  const navigate = (next: ConsolePage) => {
+    // 사이드바/벨로 AI 활동에 들어오는 경로는 항상 목록 전용으로 시작한다.
+    if (next === 'reports') {
+      setPendingRunId(null)
+      if (scenario.state.mode === 'fault') scenario.setAiEntry('overview')
+    }
+    if (next === 'alerts') setInitialScenarioAlertId(null)
+    setPage(next)
+  }
+  const consumePendingRun = useCallback(() => setPendingRunId(null), [])
+  const exitConsole = () => {
+    setPage('dashboard')
+    setPendingRunId(null)
+    scenario.exitConsole()
+  }
+
+  if (scenario.state.entryStep !== 'console' || scenario.state.mode == null) return <EntryGate />
+  const faultMode = scenario.state.mode === 'fault'
+
+  return <AppShell
+    alertCount={faultMode ? (scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0) : undefined}
+    mode={scenario.state.mode}
+    onExit={exitConsole}
+    onPageChange={navigate}
+    page={page}
+    simulatedAt={faultMode ? scenario.sensor.state.simulatedAt : null}
+  >
+    {page === 'dashboard' && <DashboardPage onOpenAlerts={(alertId) => { if (faultMode && alertId != null) scenario.selectAlert(alertId); setInitialScenarioAlertId(alertId ?? null); setPage('alerts') }} theme={theme.resolvedTheme} />}
+    {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} onOpenAiAction={() => { scenario.setAiEntry('detail'); setPage('reports') }} /> : <AlertsPage onRunCreated={openRun} />)}
+    {page === 'reports' && (faultMode ? <ScenarioAiPage /> : <AiActivityPage initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />)}
+    {page === 'settings' && <SettingsPage onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
+    {page === 'admin' && <AdminPage />}
+  </AppShell>
+}
 
 function App() {
-  const [appView, setAppView] = useState<AppView>('map')
-  const [view, setView] = useState<View>('city')
-  const [selBld, setSelBld] = useState<number | null>(null)
-  const [selMachine, setSelMachine] = useState<string | null>(null)
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') === 'light' ? 'light' : 'dark'))
-  const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
-  const prioritySnapshot = usePrioritySnapshot()
-  const alerts = useAlerts({ status: 'all' })
-  const evaluation = prioritySnapshot.data?.evaluation ?? null
-  const priorityResults = prioritySnapshot.data?.results ?? []
-  const prioritySummary = {
-    urgent: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'urgent').length,
-    high: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'high').length,
-    unavailable: priorityResults.filter((item) => item.freshness_status !== 'fresh').length,
-  }
-
-  // 테마를 <html data-theme>에 반영 + localStorage 저장.
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
-
-  const enterBuilding = (id: number) => {
-    setSelBld(id)
-    setSelMachine(null)
-    setView('room')
-  }
-  const selectBuilding = (id: number) => {
-    setSelBld(id)
-    setSelMachine(null)
-  }
-  const openOps = (alertId: string) => {
-    setInitialAlertId(alertId)
-    setAppView('ops')
-  }
-  const backToCity = () => {
-    setSelMachine(null)
-    setView('city')
-  }
-  const selectMachine = (key: string) => setSelMachine((prev) => (prev === key ? null : key))
-
-  const city = view === 'city'
-  const sel = selBld != null ? complexById.get(selBld) ?? null : null
-
-  return (
-    <div className="app">
-      <Header
-        appView={appView}
-        onAppView={setAppView}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        prioritySummary={prioritySummary}
-      />
-      {appView === 'ops' && <OpsConsole initialAlertId={initialAlertId} />}
-      {appView === 'map' && (
-      <div className="wrap">
-        {/* 메인 패널 */}
-        <section className="panel">
-          <div className="panel-head">
-            <span>{city ? '단지 관제 · CITY MAP' : '기계실 관제 · MACHINE ROOM'}</span>
-            <span className="tag">{city ? '31 SITES' : '7 UNITS'}</span>
-            {!city && (
-              <button type="button" className="btn-back" onClick={backToCity}>
-                ← 지도로
-              </button>
-            )}
-          </div>
-          <div className={`stage ${city ? '' : 'room'}`.trim()}>
-            {city ? (
-              <MapView
-                onSelectComplex={selectBuilding}
-                theme={theme}
-                results={priorityResults}
-                loading={prioritySnapshot.isLoading}
-                error={prioritySnapshot.isError}
-              />
-            ) : sel ? (
-              <RoomSchematic complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
-            ) : null}
-          </div>
-          <div className="legend">
-            <span>
-              <i className="dot u" />
-              긴급
-            </span>
-            <span>
-              <i className="dot c" />
-              높음
-            </span>
-            <span>
-              <i className="dot n" />
-              중간·낮음
-            </span>
-            <span>
-              <i className="dot stale" />
-              지연·누락
-            </span>
-            <span className="note">
-              {city
-                ? `· 모델 평가 ${evaluation ? new Date(evaluation.as_of_time).toLocaleString('ko-KR') : '조회 중'} · 위치=정적 메타데이터`
-                : '· 회색=해당 PreDist 센서 미탑재(감시 불가)'}
-            </span>
-          </div>
-        </section>
-
-        {/* 보조 패널 */}
-        <aside className="panel">
-          <div className="panel-head">
-            <span>{city ? '전체 Priority 순위' : '단지 · 설비 상세'}</span>
-            <span className="tag">{city ? 'PRIORITY' : 'DETAIL'}</span>
-          </div>
-          {city ? (
-            <div className="aside-body">
-              <PriorityAside
-                selectedId={selBld}
-                onSelect={selectBuilding}
-                onOpenRoom={enterBuilding}
-                onOpenOps={openOps}
-                evaluation={evaluation}
-                results={priorityResults}
-                alerts={alerts.data ?? []}
-                loading={prioritySnapshot.isLoading}
-                error={prioritySnapshot.isError}
-              />
-            </div>
-          ) : sel ? (
-            <DetailAside complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
-          ) : null}
-        </aside>
-      </div>
-      )}
-    </div>
-  )
+  if (isShowcase()) return <ShowcasePage />
+  return <ScenarioProvider><ConsoleApp /></ScenarioProvider>
 }
 
 export default App

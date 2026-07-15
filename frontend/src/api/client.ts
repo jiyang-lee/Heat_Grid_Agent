@@ -56,6 +56,26 @@ import type {
   PriorityEvaluationResult,
   PriorityEvaluationSnapshot,
   PrioritySubstationSnapshot,
+  ReviewChatConfirmRequest,
+  ReviewChatMessagePage,
+  ReviewChatMessageRequest,
+  ReviewChatCancelRequest,
+  ReviewChatOpenRequest,
+  ReviewChatConfirmationResponse,
+  ReviewChatProposalResponse,
+  ReviewChatSubmissionResponse,
+  ReviewChatThreadResponse,
+  ReplayDataset,
+  ReplayImportRequest,
+  ReplayRunCommandRequest,
+  ReplayRunCommandResponse,
+  ReplayRunCreateRequest,
+  ReplayRunCreateResponse,
+  ReplayRunSnapshot,
+  RunLineageResponse,
+  CostBreakdownProjection,
+  ModelCallProjection,
+  ToolCallProjection,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -97,6 +117,19 @@ export async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(res.status, path, body || res.statusText)
   }
   return res.json() as Promise<T>
+}
+
+export async function rawText(path: string, init?: RequestInit): Promise<string> {
+  const url = `${API_BASE}${path}`
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'text/plain', ...(init?.headers ?? {}) },
+    ...init,
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new ApiError(res.status, url, body || res.statusText)
+  }
+  return res.text()
 }
 
 function toQueryString(
@@ -193,6 +226,11 @@ export const agentRunsApi = {
   result: (runId: string) => apiFetch<OpsAgentResultV4>(`/agent-runs/${runId}/result`),
   artifacts: (runId: string) =>
     apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),
+  artifactContent: (runId: string, artifactId: string) =>
+    rawText(`/agent-runs/${runId}/artifacts/${artifactId}/content`),
+  /** 커밋 402482a 신설 — 9단계 stage snapshot projection */
+  stages: (runId: string) =>
+    apiFetch<StageProjectionResponse>(`/agent-runs/${runId}/stages`),
   dailyReport: (runId: string, body: AgentReportCreateRequest) =>
     apiFetch<AgentRunArtifact>(`/agent-runs/${runId}/reports/daily`, {
       method: 'POST',
@@ -200,6 +238,114 @@ export const agentRunsApi = {
     }),
   iterations: (runId: string) =>
     apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
+}
+
+export const reviewChatApi = {
+  open: (runId: string, body: ReviewChatOpenRequest) =>
+    apiFetch<ReviewChatThreadResponse>(`/agent-runs/${runId}/review-chat/threads`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  messages: (threadId: string) =>
+    apiFetch<ReviewChatMessagePage>(`/review-chat/threads/${threadId}/messages`),
+  postMessage: (threadId: string, body: ReviewChatMessageRequest) =>
+    apiFetch<ReviewChatSubmissionResponse>(`/review-chat/threads/${threadId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  confirmProposal: (proposalId: string, body: ReviewChatConfirmRequest) =>
+    apiFetch<ReviewChatConfirmationResponse>(`/review-chat/proposals/${proposalId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  cancelProposal: (proposalId: string, body: ReviewChatCancelRequest) =>
+    apiFetch<ReviewChatProposalResponse>(`/review-chat/proposals/${proposalId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const replayApi = {
+  listDatasets: () => apiFetch<ReplayDataset[]>('/replay-datasets'),
+  importDataset: (body: ReplayImportRequest) =>
+    apiFetch<ReplayDataset>('/replay-datasets/import', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  createRun: (body: ReplayRunCreateRequest) =>
+    apiFetch<ReplayRunCreateResponse>('/replay-runs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  snapshot: (runId: string) => apiFetch<ReplayRunSnapshot>(`/replay-runs/${runId}/snapshot`),
+  command: (runId: string, body: ReplayRunCommandRequest) =>
+    apiFetch<ReplayRunCommandResponse>(`/replay-runs/${runId}/commands`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const agentQualityApi = {
+  lineage: (runId: string) => apiFetch<RunLineageResponse>(`/agent-runs/${runId}/rerun-lineage`),
+  modelCalls: (runId: string) => apiFetch<ModelCallProjection[]>(`/agent-runs/${runId}/model-calls`),
+  toolCalls: (runId: string) => apiFetch<ToolCallProjection[]>(`/agent-runs/${runId}/tool-calls`),
+  cost: (runId: string) => apiFetch<CostBreakdownProjection>(`/agent-runs/${runId}/cost-breakdown`),
+}
+
+/** AI 활동 — 작업지시서/보고서 read-only projection */
+export const workOrdersApi = {
+  list: (query?: ActivityProjectionQuery) =>
+    apiFetch<WorkOrderListPage>(
+      `/work-orders${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
+    ),
+}
+
+export const agentReportsApi = {
+  list: (query?: ActivityProjectionQuery) =>
+    apiFetch<AgentReportListPage>(
+      `/agent-reports${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
+    ),
+}
+
+/* ===== v3-02 신규 계약 (docs/report/06_agent_v3_backend_completion_ko.md) ===== */
+
+/** snapshot 기준 parent/worker 결정적 평가 projection */
+export const agentRunEvaluationsApi = {
+  list: (query?: { run_id?: string; limit?: number }) =>
+    apiFetch<AgentRunEvaluationPage>(
+      `/agent-run-evaluations${toQueryString({ run_id: query?.run_id, limit: query?.limit != null ? String(query.limit) : undefined })}`,
+    ),
+}
+
+/** 운영자 검토 append(낙관적 버전, 초과 시 409) + 이력 조회 */
+export const operatorReviewsApi = {
+  history: (runId: string) =>
+    apiFetch<OperatorReviewHistory>(`/agent-runs/${runId}/reviews`),
+  submit: (runId: string, body: OperatorReviewSubmitRequest) =>
+    apiFetch<OperatorReviewRecord>(`/agent-runs/${runId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+/** 교정 검토 기반 정책 후보 조회/결정 */
+export const policyCandidatesApi = {
+  list: () => apiFetch<PolicyCandidatePage>('/agent-policy-candidates'),
+  approve: (candidateId: string, body: PolicyCandidateDecisionRequest) =>
+    apiFetch<PolicyCandidate>(`/agent-policy-candidates/${candidateId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  reject: (candidateId: string, body: PolicyCandidateDecisionRequest) =>
+    apiFetch<PolicyCandidate>(`/agent-policy-candidates/${candidateId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+/** review/worker/정책 후보 운영 지표 */
+export const operationsMetricsApi = {
+  get: () => apiFetch<AgentOperationsMetrics>('/agent-operations/metrics'),
 }
 
 export const reviewTasksApi = {

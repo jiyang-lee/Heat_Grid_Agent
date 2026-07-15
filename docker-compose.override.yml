@@ -5,26 +5,8 @@ services:
       HEATGRID_REPLAY_IMPORT_ENABLED: "true"
       HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
     volumes:
-      - C:/Users/Admin/Downloads:/var/lib/heatgrid/incoming:ro
+      - C:/Users/flfkr/Downloads:/var/lib/heatgrid/incoming:ro
       - heatgrid_replay_storage:/var/lib/heatgrid/replay
 
-  heatgrid-frontend:
-    image: node:22-alpine
-    working_dir: /workspace/frontend
-    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173"
-    environment:
-      VITE_BACKEND_URL: http://heatgrid-backend:8003
-      VITE_USE_MOCK: "false"
-    volumes:
-      - ./frontend:/workspace/frontend
-      - heatgrid_frontend_node_modules:/workspace/frontend/node_modules
-    ports:
-      - "5173:5173"
-    depends_on:
-      heatgrid-backend:
-        condition: service_started
-    restart: unless-stopped
-
 volumes:
-  heatgrid_frontend_node_modules:
   heatgrid_replay_storage:

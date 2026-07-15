@@ -8,6 +8,9 @@ export type MachineStatus = Record<string, Tier>
 
 export const complexById: Map<number, Complex> = new Map(complexes.map((c) => [c.id, c]))
 
+export const complexNameOf = (substationId: number, _manufacturerId?: string): string =>
+  complexById.get(substationId)?.name ?? `단지 ${substationId}`
+
 /** 설비별 실시간 모델 출력은 아직 없으므로 기계실 상태를 임의로 만들지 않는다. */
 const stById: Map<number, MachineStatus> = (() => {
   const map = new Map<number, MachineStatus>()

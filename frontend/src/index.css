@@ -20,4 +20,5 @@ body,
 body {
   background: var(--body-bg, #0b0f17);
   color: var(--app-text, #e5e7eb);
+  overflow: hidden;
 }

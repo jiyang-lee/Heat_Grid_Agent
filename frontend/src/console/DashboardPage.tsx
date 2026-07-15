@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
-import { useAlerts, usePrioritySnapshot, useReviewTasks } from '../api/hooks'
-import type { AlertSummary } from '../api/contracts'
+import { useAlerts, usePrioritySnapshot } from '../api/hooks'
+import type { AlertSummary, PriorityEvaluationResult } from '../api/contracts'
 import { complexById } from '../domain/model'
 import MapView from '../map/MapView'
+import { SCENARIO_PRIORITY_ROWS } from '../scenario/scenarioData'
+import { useScenario } from '../scenario/useScenario'
+import type { ResolvedTheme } from './useThemePreference'
 import { Icon, type IconName } from './icons'
-import SensorFlowCard, { type SensorFacility } from './SensorFlowCard'
+import SensorFlowCard from './SensorFlowCard'
 import { ApiState, HomeMetric, StatusBadge, SurfaceCard, type Tone } from './ui'
 
 type AlertDisplayTone = Extract<Tone, 'critical' | 'warning' | 'primary'>
@@ -31,49 +34,52 @@ function ackDeadlineLabel(tone: AlertDisplayTone, warningIndex: number): string 
 }
 
 interface Props {
-  readonly onOpenAlerts: () => void
+  readonly onOpenAlerts: (alertId?: string) => void
+  readonly theme: ResolvedTheme
 }
 
-export function DashboardPage({ onOpenAlerts }: Props) {
+export function DashboardPage({ onOpenAlerts, theme }: Props) {
+  const scenario = useScenario()
   const priority = usePrioritySnapshot()
   const alerts = useAlerts({ status: 'open' })
-  const reviews = useReviewTasks('pending')
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
 
-  const rows = priority.data?.results ?? []
-  // 위험=urgent, 주의=high (fresh 기준), 정상=나머지(지연·누락 포함).
-  const urgent = rows.filter((row) => row.freshness_status === 'fresh' && row.priority_level === 'urgent').length
-  const high = rows.filter((row) => row.freshness_status === 'fresh' && row.priority_level === 'high').length
-  const normal = Math.max(0, rows.length - urgent - high)
+  const faultMode = scenario.state.mode === 'fault'
+  const incidentActive = faultMode && scenario.state.incidentState === 'incident-active'
+  const apiRows = priority.data?.results ?? []
+  const rows = faultMode ? (incidentActive ? SCENARIO_PRIORITY_ROWS : []) : apiRows
+  const urgent = rows.filter((row: PriorityEvaluationResult) => row.freshness_status === 'fresh' && row.priority_level === 'urgent').length
+  const high = rows.filter((row: PriorityEvaluationResult) => row.freshness_status === 'fresh' && row.priority_level === 'high').length
+  const buildingCount = faultMode ? 31 : rows.length
+  const normal = Math.max(0, buildingCount - urgent - high)
   const openAlerts = alerts.data ?? []
-  const pendingDocs = reviews.data?.length ?? 0
+  const alertCount = faultMode ? (incidentActive ? scenario.alerts.length : 0) : openAlerts.length
+  const scenarioAlert = scenario.alerts.find((alert) => alert.id === scenario.state.selectedAlertId) ?? scenario.alerts[0]
+  const priorityAlert = scenario.alerts[0]
 
-  // 주요 알림 선택 → 센서 카드 컨텍스트. 미선택이면 카드가 전체(기계실 12) 기준을 보여준다.
   const shownAlerts = openAlerts.slice(0, 5)
-  const selectedAlert = shownAlerts.find((alert) => alert.alert_id === selectedAlertId) ?? null
-  const sensorFacility: SensorFacility | null = selectedAlert && selectedAlert.substation_id != null
-    ? { id: selectedAlert.substation_id, name: complexById.get(selectedAlert.substation_id)?.name ?? selectedAlert.manufacturer_id ?? '미상 설비' }
-    : null
+  const selectedAlert = shownAlerts.find((alert: AlertSummary) => alert.alert_id === selectedAlertId) ?? null
 
   const openFullMap = () => {
     void mapWrapRef.current?.requestFullscreen?.()
   }
+  const selectMapComplex = (substationId: number) => {
+    const matchedAlert = scenario.alerts.find((alert) => alert.substationId === substationId)
+    if (matchedAlert) scenario.selectAlert(matchedAlert.id)
+  }
+  const popupComplex = priorityAlert ? complexById.get(priorityAlert.substationId) : null
 
   return <div className="page-stack dashboard-home">
-    <header className="page-title"><div><h1>홈</h1><p>현재 시스템 요약과 주요 현황을 한눈에 확인하세요.</p></div></header>
-
-    <div className="metric-grid metric-grid-five">
-      <HomeMetric icon="building" label="전체 관리 건물 수" tone="primary" unit="개소" value={String(rows.length)}>
+    <div className="metric-grid metric-grid-four">
+      <HomeMetric icon="building" label="전체 관리 건물 수" tone="primary" unit="개소" value={String(buildingCount)}>
         <span className="dot-stat ok">정상 <b>{normal}</b></span>
         <span className="dot-stat warn">주의 <b>{high}</b></span>
         <span className="dot-stat danger">위험 <b>{urgent}</b></span>
       </HomeMetric>
-      {/* 전일 대비 증감 계약이 없어 시안과 동일한 고정 문구로 표시한다(데모). */}
       <HomeMetric icon="alert" label="긴급" tone="critical" unit="개소" value={String(urgent)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
       <HomeMetric icon="warning" label="주의" tone="warning" unit="개소" value={String(high)}>전일 대비 <b className="metric-delta">▲ 1</b></HomeMetric>
-      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(openAlerts.length)}>전일 대비 <b className="metric-delta">▲ 2</b></HomeMetric>
-      <HomeMetric icon="document" label="대기 서류" tone="violet" unit="건" value={String(pendingDocs)}>운영자 검토 필요</HomeMetric>
+      <HomeMetric icon="wrench" label="조치 필요" tone="primary" unit="건" value={String(alertCount)}>전일 대비 <b className="metric-delta">▲ 2</b></HomeMetric>
     </div>
 
     <div className="home-grid">
@@ -83,16 +89,24 @@ export function DashboardPage({ onOpenAlerts }: Props) {
         title="설비 위치 지도"
       >
         <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
-          <MapView error={priority.isError} loading={priority.isLoading} onSelectComplex={() => {}} results={rows} />
+          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
+          {incidentActive && scenarioAlert && <div className="scenario-map-alert"><StatusBadge tone={scenarioAlert.priority === 'urgent' ? 'critical' : 'warning'}>{scenarioAlert.priority}</StatusBadge><div><strong>{scenarioAlert.facility} 이상</strong><span>경보 3건 동시 감지 · 최단 리드타임 4.9시간</span></div></div>}
           <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
         </div>
       </SurfaceCard>
 
-      <SurfaceCard action={<button className="text-link" onClick={onOpenAlerts} type="button">전체 보기</button>} className="home-alerts" title="주요 알림">
-        <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
-        {(() => {
+      <SurfaceCard action={<button className="text-link" onClick={() => onOpenAlerts()} type="button">자세히 보기</button>} className="home-alerts" title="주요 알림">
+        {!faultMode && <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />}
+        {faultMode && !incidentActive && <div className="home-alert-empty"><Icon name="shield" /><div><strong>운영 알림 없음</strong><span>센서 흐름을 정상 수신 중입니다.</span></div></div>}
+        {faultMode && incidentActive ? scenario.alerts.map((alert) => (
+          <button aria-pressed={scenario.state.selectedAlertId === alert.id} className={`home-alert-row ${scenario.state.selectedAlertId === alert.id ? 'selected' : ''}`.trim()} key={alert.id} onClick={() => scenario.selectAlert(alert.id)} type="button">
+            <span className={`alert-symbol tone-${alert.priority === 'urgent' ? 'critical' : 'warning'}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span>
+            <div><strong>{alert.facility}</strong><small>{alert.title}</small></div>
+            <div className="home-alert-side"><StatusBadge tone={alert.priority === 'urgent' ? 'critical' : 'warning'}>{alert.priority}</StatusBadge><span className="ack-deadline">{alert.leadTimeHours}시간</span></div>
+          </button>
+        )) : !faultMode && (() => {
           let warningIndex = -1
-          return shownAlerts.map((alert) => {
+          return shownAlerts.map((alert: AlertSummary) => {
             const tone = alertDisplayTone(alert)
             if (tone === 'warning') warningIndex += 1
             const complexName = alert.substation_id != null ? complexById.get(alert.substation_id)?.name : undefined
@@ -109,6 +123,12 @@ export function DashboardPage({ onOpenAlerts }: Props) {
       </SurfaceCard>
     </div>
 
-    <SensorFlowCard facility={sensorFacility} />
+    <SensorFlowCard />
+    {faultMode && incidentActive && priorityAlert && scenario.state.incidentPopupVisible && <aside aria-label="우선순위 경보" aria-modal="false" className="scenario-incident-popup" role="dialog">
+      <header><div><StatusBadge tone="critical">우선순위 1 · urgent</StatusBadge><strong>출동 판단이 필요한 이상 징후</strong></div><button aria-label="경보 팝업 닫기" onClick={scenario.dismissIncidentPopup} type="button"><Icon name="x" /></button></header>
+      <div className="scenario-incident-location"><span>{popupComplex?.village ?? '세종시'} · {popupComplex?.name ?? `기계실 ${priorityAlert.substationId}`}</span><strong>{priorityAlert.facility}</strong></div>
+      <p>{priorityAlert.title}</p>
+      <footer><span>출동 제한 <b>{priorityAlert.leadTimeHours}시간</b></span><button onClick={() => { scenario.selectAlert(priorityAlert.id); scenario.dismissIncidentPopup(); onOpenAlerts(priorityAlert.id) }} type="button">알림 바로가기 <Icon name="arrow" /></button></footer>
+    </aside>}
   </div>
 }
