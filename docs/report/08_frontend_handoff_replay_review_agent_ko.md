@@ -12,6 +12,7 @@
 | Proposal Confirm | 운영자 확정 버튼에서 `POST /api/review-chat/proposals/{proposal_id}/confirm`을 호출한다. |
 | Child Run | confirm 응답에 `child_run_id`가 있으면 child agent run 상세/상태를 표시한다. |
 | Replay | replay feature flag가 꺼져 API가 503을 반환하면 비활성 상태로 표시한다. 활성 환경에서는 tick, window, alert delta를 표시한다. |
+| Sensor View | Replay tick은 운영 `sensor_readings`에도 `source_file='synthetic-replay:<run_id>'`로 투영된다. 기존 센서 화면은 운영 조회 흐름을 그대로 사용하면 된다. |
 | Stage Snapshot | parent/child 모두 9개 stage snapshot이 정상이다. `reused_from_snapshot_id`가 있으면 이전 snapshot 재사용으로 표시한다. |
 
 ## Review Chat Confirm 요청

@@ -66,6 +66,17 @@ class PostgresReplayStore:
                 )
                 return int(event.scalar_one())
             for item in readings:
+                substation = await connection.execute(
+                    text(
+                        "INSERT INTO substations (manufacturer_id, substation_id) "
+                        "VALUES (:manufacturer_id, :substation_id) "
+                        "ON CONFLICT (manufacturer_id, substation_id) DO UPDATE SET "
+                        "manufacturer_id = EXCLUDED.manufacturer_id "
+                        "RETURNING substation_uid"
+                    ),
+                    {"manufacturer_id": item["manufacturer_id"], "substation_id": item["substation_id"]},
+                )
+                substation_uid = str(substation.scalar_one())
                 await connection.execute(
                     text(
                         "INSERT INTO replay_latest_readings (run_id, manufacturer_id, substation_id, "
@@ -85,6 +96,46 @@ class PostgresReplayStore:
                         "quality": _json(item["quality"]),
                     },
                 )
+                operational_rows = [
+                    {
+                        "sensor_reading_id": str(
+                            uuid5(
+                                NAMESPACE_URL,
+                                "|".join(
+                                    (
+                                        "heatgrid-replay-sensor",
+                                        run_id,
+                                        str(tick.sequence),
+                                        str(item["manufacturer_id"]),
+                                        str(item["substation_id"]),
+                                        source_sensor,
+                                    )
+                                ),
+                            )
+                        ),
+                        "manufacturer_id": item["manufacturer_id"],
+                        "substation_id": item["substation_id"],
+                        "substation_uid": substation_uid,
+                        "reading_time": tick.simulated_at,
+                        "source_sensor": source_sensor,
+                        "sensor_value": sensor_value,
+                        "source_file": f"synthetic-replay:{run_id}",
+                    }
+                    for source_sensor, sensor_value in item["values"].items()
+                    if isinstance(sensor_value, int | float) and not isinstance(sensor_value, bool)
+                ]
+                if operational_rows:
+                    await connection.execute(
+                        text(
+                            "INSERT INTO sensor_readings (sensor_reading_id, manufacturer_id, "
+                            "substation_id, substation_uid, reading_time, source_sensor, "
+                            "sensor_value, source_file) VALUES (:sensor_reading_id, :manufacturer_id, "
+                            ":substation_id, :substation_uid, :reading_time, :source_sensor, "
+                            ":sensor_value, :source_file) ON CONFLICT (sensor_reading_id) DO UPDATE "
+                            "SET sensor_value = EXCLUDED.sensor_value, source_file = EXCLUDED.source_file"
+                        ),
+                        operational_rows,
+                    )
             event = await connection.execute(
                 text(
                     "INSERT INTO replay_stream_events (run_id, event_type, sequence, simulated_at, "

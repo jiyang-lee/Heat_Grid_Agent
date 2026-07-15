@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from hashlib import sha256
 from importlib.util import module_from_spec, spec_from_file_location
-from importlib.metadata import version as package_version
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 from typing import Final, Literal
 
 import orjson
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg import AsyncConnection, sql
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -85,12 +85,29 @@ APPLICATION_TABLES_V011: Final = frozenset(
         "windows",
     }
 )
-ROOT: Final = Path(__file__).resolve().parents[3]
-MIGRATIONS_DIR: Final = ROOT / "migrations"
-
 
 class MigrationContractError(RuntimeError):
     pass
+
+
+def _find_migrations_dir() -> Path:
+    explicit = os.getenv("HEATGRID_MIGRATIONS_DIR")
+    if explicit:
+        candidate = Path(explicit).resolve()
+        if candidate.is_dir() and list(candidate.glob("[0-9][0-9][0-9]_*.sql")):
+            return candidate
+    base_dir = Path(__file__).resolve().parent
+    for ancestor in base_dir.parents:
+        candidate = ancestor / "migrations"
+        if candidate.is_dir() and list(candidate.glob("[0-9][0-9][0-9]_*.sql")):
+            return candidate
+    fallback = Path("/app") / "migrations"
+    if fallback.is_dir() and list(fallback.glob("[0-9][0-9][0-9]_*.sql")):
+        return fallback
+    raise MigrationContractError("migration directory not found")
+
+
+MIGRATIONS_DIR: Final = _find_migrations_dir()
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +147,8 @@ def load_migrations(directory: Path = MIGRATIONS_DIR) -> tuple[Migration, ...]:
             )
         )
     expected = list(range(len(migrations)))
+    if not migrations:
+        raise MigrationContractError(f"no migration files found in {directory}")
     actual = [migration.version for migration in migrations]
     if actual != expected:
         raise MigrationContractError(
@@ -391,7 +410,7 @@ async def _apply_checkpoint_migration(
 ) -> None:
     async with connection.transaction():
         await connection.execute(migration.path.read_bytes(), prepare=False)
-    checkpointer = AsyncPostgresSaver(connection)
+    checkpointer = _checkpoint_saver()(connection)
     await checkpointer.setup()
     await _verify_checkpoint_catalog(connection)
     signatures = await calculate_schema_signatures(connection)
@@ -439,7 +458,7 @@ async def _baseline_legacy_schema(
                 f"baseline preflight failed for {migration.version:03d}: missing {missing}"
             )
         if migration.version == 4:
-            checkpointer = AsyncPostgresSaver(connection)
+            checkpointer = _checkpoint_saver()(connection)
             await checkpointer.setup()
             await _verify_checkpoint_catalog(connection)
         async with connection.transaction():
@@ -528,7 +547,12 @@ async def _assert_runtime_versions(connection: AsyncConnection[DictRow]) -> None
         raise MigrationContractError(
             f"PostgreSQL {POSTGRESQL_MAJOR} required; connected to {major}"
         )
-    installed = package_version(CHECKPOINT_PACKAGE)
+    try:
+        installed = package_version(CHECKPOINT_PACKAGE)
+    except PackageNotFoundError as exc:
+        raise MigrationContractError(
+            f"{CHECKPOINT_PACKAGE} package is not installed"
+        ) from exc
     if installed != CHECKPOINT_PACKAGE_VERSION:
         raise MigrationContractError(
             f"{CHECKPOINT_PACKAGE} {CHECKPOINT_PACKAGE_VERSION} required; installed {installed}"
@@ -673,3 +697,13 @@ async def _is_applied(connection: AsyncConnection[DictRow], version: int) -> boo
 
 def _psycopg_url(database_url: str) -> str:
     return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
+def _checkpoint_saver():
+    try:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    except (ImportError, ModuleNotFoundError) as exc:
+        raise MigrationContractError(
+            f"{CHECKPOINT_PACKAGE} package is not installed"
+        ) from exc
+    return AsyncPostgresSaver

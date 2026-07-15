@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(14))
+    assert [migration.version for migration in migrations] == list(range(15))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "013_agent_stage_unavailable_score_contract.sql"
+    assert migrations[-1].path.name == "014_replay_legacy_priority_index_cleanup.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 
@@ -37,7 +37,7 @@ def test_checkpoint_setup_is_outside_application_ddl_transaction() -> None:
     source = (ROOT / "src" / "heatgrid_ops" / "db" / "migrations.py").read_text()
     function = source[source.index("async def _apply_checkpoint_migration") :]
 
-    transaction_end = function.index("checkpointer = AsyncPostgresSaver")
+    transaction_end = function.index("checkpointer = _checkpoint_saver()(connection)")
     assert "async with connection.transaction()" in function[:transaction_end]
     assert "await checkpointer.setup()" in function[transaction_end:]
     assert function.index("await checkpointer.setup()") < function.index(

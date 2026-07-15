@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import orjson
@@ -11,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
 from agent_operator_review_repository import IdempotencyConflictError
 from agent_rerun_repository import TargetedChildRun, mark_rerun_scheduled
-from agent_runner import schedule_reserved_agent_graph
-from agent_runtime_factory import create_agent_runtime
-from heatgrid_ops.agent.contracts import AgentRunRequest
-from heatgrid_ops.agent.graph import AgentGraphInvoker
-from heatgrid_ops.agent.services import AgentRuntime
+
+if TYPE_CHECKING:
+    from settings import Settings
+    from heatgrid_ops.agent.graph import AgentGraphInvoker
+    from heatgrid_ops.agent.services import AgentRuntime
 from review_chat_api_models import (
     ReviewChatCancelRequest,
     ReviewChatConfirmRequest,
@@ -36,20 +37,34 @@ from review_chat_service import (
     open_review_chat,
     submit_review_chat_message,
 )
-from settings import Settings
 
 
 def make_review_chat_router(
     engine: AsyncEngine,
-    settings: Settings | None = None,
-    runtime: AgentRuntime | None = None,
-    graph_provider: Callable[[], AgentGraphInvoker | None] | None = None,
+    settings: "Settings | None" = None,
+    runtime: "AgentRuntime | None" = None,
+    graph_provider: Callable[[], "AgentGraphInvoker | None"] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
-    active_settings = settings or Settings()
-    active_runtime = runtime or create_agent_runtime(active_settings, engine)
+    if settings is None:
+        from settings import Settings
+
+        settings = Settings()
+    active_settings = settings
+    active_runtime = runtime
+
+    def _runtime() -> "AgentRuntime":
+        nonlocal active_runtime
+        if active_runtime is None:
+            from agent_runtime_factory import create_agent_runtime
+
+            active_runtime = create_agent_runtime(active_settings, engine)
+        return active_runtime
 
     def schedule_child(child: TargetedChildRun) -> None:
+        from agent_runner import schedule_reserved_agent_graph
+        from heatgrid_ops.agent.contracts import AgentRunRequest
+
         schedule_reserved_agent_graph(
             engine,
             AgentRunRequest(
@@ -57,7 +72,7 @@ def make_review_chat_router(
                 alert_id=child.alert_id,
                 card_id=child.card_id,
             ),
-            runtime=active_runtime,
+            runtime=_runtime(),
             graph=None if graph_provider is None else graph_provider(),
             task_key=AGENT_GRAPH_TASK_KEY_V2,
         )
