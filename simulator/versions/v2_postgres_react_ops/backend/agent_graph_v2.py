@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import orjson
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Checkpointer, Durability
 from pydantic import TypeAdapter
@@ -27,6 +28,13 @@ from heatgrid_ops.agent.graph_v2 import (
 from heatgrid_ops.agent.lineage import canonical_json_hash
 from heatgrid_ops.agent.models import OpsAgentOutput, TokenUsage
 from heatgrid_ops.agent.run_models import AgentLoopSummary, AgentRunResult
+from heatgrid_ops.agent.review_models import (
+    AgentRunReviewCaptureSource,
+    ReviewDiagnosticSnapshot,
+    ReviewFinalResultSnapshot,
+    ReviewOpsAgentOutput,
+    ReviewCaptureSourceCardSnapshot,
+)
 from heatgrid_ops.agent.state import (
     AgentGraphInput,
     AgentGraphOutput,
@@ -86,7 +94,9 @@ class ExplicitV2AgentGraph:
                 config,
                 durability=durability,
             )
-        return _to_legacy_output(result)
+        output = _to_legacy_output(result)
+        await _persist_completed_run(self.engine, output)
+        return output
 
 
 def build_agent_graph_v2(
@@ -161,7 +171,28 @@ def _to_legacy_output(result: object) -> AgentGraphOutput:
         loop_summary=loop_summary,
         review_status="pending" if not raw_state.routing.force_review else "pending",
     )
-    return {"result": ResultState(value=result_model)}
+    capture = AgentRunReviewCaptureSource(
+        run_id=raw_state.request.run_id,
+        result=ReviewFinalResultSnapshot(
+            status="completed",
+            agent_mode="fallback",
+            ops_output=ReviewOpsAgentOutput(
+                summary=output.summary,
+                action_plan=output.action_plan,
+                caution=output.caution,
+            ),
+        ),
+        loop_count=iteration_count,
+        handling_reason="explicit graph v2 completed",
+        diagnostic=ReviewDiagnosticSnapshot(status="not_triggered"),
+        source_card=ReviewCaptureSourceCardSnapshot(
+            card_id=raw_state.request.card_id,
+            review_required=raw_state.routing.force_review,
+        ),
+    )
+    return {
+        "result": ResultState(value=result_model, review_capture_source=capture),
+    }
 
 
 def _target_stage(config: RunnableConfig) -> StageName | None:
@@ -170,6 +201,44 @@ def _target_stage(config: RunnableConfig) -> StageName | None:
     if not isinstance(value, str) or value not in STAGE_ORDER:
         return None
     return value
+
+
+async def _persist_completed_run(
+    engine: AsyncEngine,
+    output: AgentGraphOutput,
+) -> None:
+    result = output["result"].value
+    if result is None:
+        raise RuntimeError("v2 graph completed without result")
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "UPDATE agent_runs SET status = 'completed', agent_mode = :agent_mode, "
+                "ops_output = CAST(:ops_output AS jsonb), "
+                "token_usage = CAST(:token_usage AS jsonb), "
+                "loop_summary = CAST(:loop_summary AS jsonb), error = NULL, "
+                "updated_at = now() WHERE run_id = :run_id"
+            ),
+            {
+                "run_id": result.run_id,
+                "agent_mode": result.agent_mode,
+                "ops_output": orjson.dumps(
+                    result.ops_output.model_dump(mode="json")
+                    if result.ops_output is not None
+                    else None
+                ).decode("utf-8"),
+                "token_usage": orjson.dumps(
+                    result.token_usage.model_dump(mode="json")
+                    if result.token_usage is not None
+                    else None
+                ).decode("utf-8"),
+                "loop_summary": orjson.dumps(
+                    result.loop_summary.model_dump(mode="json")
+                    if result.loop_summary is not None
+                    else None
+                ).decode("utf-8"),
+            },
+        )
 
 
 async def _hydrate_parent_prefix(

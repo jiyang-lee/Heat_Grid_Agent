@@ -132,7 +132,12 @@ def _fidelity() -> StageAdapter:
                 "judge": "unavailable",
             }
         )
-        updated = state.model_copy(update={"report": current})
+        updated = state.model_copy(
+            update={
+                "report": current,
+                "routing": state.routing.model_copy(update={"force_review": True}),
+            }
+        )
         return StageSnapshotEnvelope(
             stage_name="report_fidelity",
             data=updated.model_dump(mode="json"),

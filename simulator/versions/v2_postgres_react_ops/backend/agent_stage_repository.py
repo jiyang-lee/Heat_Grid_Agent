@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 from uuid import uuid4
 
@@ -79,6 +80,7 @@ class StageSnapshotRecord:
     component_versions: JsonObject
     reused_from_snapshot_id: str | None
     state_schema_version: str | None
+    created_at: datetime
 
 
 async def record_stage_snapshot(
@@ -227,7 +229,8 @@ def _columns() -> str:
         "stage_snapshot_id, run_id, stage_name, stage_kind, attempt, execution_status, "
         "quality_status, score, stage_input_hash, CAST(output_snapshot AS text) "
         "AS output_snapshot, output_hash, contract_version, "
-        "CAST(component_versions AS text) AS component_versions, reused_from_snapshot_id"
+        "CAST(component_versions AS text) AS component_versions, reused_from_snapshot_id, "
+        "created_at"
     )
 
 
@@ -252,6 +255,7 @@ def _record(row: RowMapping) -> StageSnapshotRecord:
         state_schema_version=orjson.loads(row["output_snapshot"]).get(
             "state_schema_version"
         ),
+        created_at=row["created_at"],
     )
 
 

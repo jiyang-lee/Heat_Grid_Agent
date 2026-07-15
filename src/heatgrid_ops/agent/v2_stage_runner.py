@@ -5,7 +5,11 @@ from dataclasses import dataclass
 
 from heatgrid_ops.agent.lineage import canonical_json_hash
 from heatgrid_ops.agent.models import JsonValue
-from heatgrid_ops.agent.v2_models import StageName, StageSnapshotEnvelope
+from heatgrid_ops.agent.v2_models import (
+    StageControlEnvelope,
+    StageName,
+    StageSnapshotEnvelope,
+)
 from heatgrid_ops.agent.v2_policy import v2_stage_input_hash
 from heatgrid_ops.agent.v2_state import AgentV2State
 from heatgrid_ops.agent.v2_stage_contracts import (
@@ -75,6 +79,29 @@ class StageRunner:
             envelope.data,
             request.stage_name,
         )
+        threshold = next(
+            (
+                value
+                for value in request.thresholds.values()
+                if isinstance(value, float | int)
+            ),
+            None,
+        )
+        quality = envelope.quality.model_copy(
+            update={
+                "threshold": envelope.quality.threshold
+                if envelope.quality.threshold is not None
+                else threshold,
+            }
+        )
+        control = envelope.control
+        if quality_status == "unavailable" and not control.force_review:
+            control = StageControlEnvelope(
+                force_review=True,
+                suggested_query=control.suggested_query,
+                broaden=control.broaden,
+            )
+        envelope = envelope.model_copy(update={"quality": quality, "control": control})
         record = StageSnapshotWrite(
             run_id=request.run_id,
             stage_name=request.stage_name,
@@ -116,6 +143,8 @@ def _stage_quality(
     execution = value.get("execution_status", "passed")
     quality = value.get("quality_status", "passed")
     score = value.get("score")
+    if stage_name == "parent_disposition" and score is None:
+        score = 100.0
     return (
         execution if isinstance(execution, str) else "passed",
         quality if isinstance(quality, str) else "passed",
