@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(14))
+    assert [migration.version for migration in migrations] == list(range(15))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "013_agent_stage_unavailable_score_contract.sql"
+    assert migrations[-1].path.name == "014_replay_legacy_priority_index_cleanup.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 

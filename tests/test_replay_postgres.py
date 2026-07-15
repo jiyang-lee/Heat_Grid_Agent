@@ -24,6 +24,92 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.anyio
+async def test_replay_tick_projects_into_operational_sensor_readings() -> None:
+    from replay_dataset import SensorTick
+    from replay_repository import PostgresReplayStore
+
+    engine = create_async_engine(str(DATABASE_URL))
+    cleanup_engine = create_async_engine(str(ADMIN_DATABASE_URL))
+    dataset_id = str(uuid4())
+    run_id = str(uuid4())
+    now = datetime.now(UTC).replace(second=0, microsecond=0)
+    package_sha = hashlib.sha256(dataset_id.encode()).hexdigest()
+    try:
+        async with cleanup_engine.begin() as connection:
+            await connection.execute(text("DROP INDEX IF EXISTS public.priority_evaluation_one_active_idx"))
+            legacy_index = await connection.scalar(text("SELECT to_regclass('public.priority_evaluation_one_active_idx')::text"))
+            assert legacy_index is None
+        async with engine.begin() as connection:
+            manufacturer_id = await connection.scalar(
+                text("SELECT manufacturer_id FROM substations ORDER BY manufacturer_id, substation_id LIMIT 1")
+            )
+            assert isinstance(manufacturer_id, str)
+            await connection.execute(
+                text(
+                    "INSERT INTO replay_datasets (dataset_id, dataset_version, package_sha256, "
+                    "package_uri, extracted_root, manifest, status, expected_substations, "
+                    "source_interval_seconds, window_ticks, replay_start, replay_end, imported_by) "
+                    "VALUES (:dataset_id, :dataset_version, :package_sha256, 'test://replay', "
+                    "'C:/test/replay', '{}'::jsonb, 'available', 31, 600, 36, :replay_start, "
+                    ":replay_end, 'test')"
+                ),
+                {"dataset_id": dataset_id, "dataset_version": f"test-{dataset_id}", "package_sha256": package_sha, "replay_start": now - timedelta(days=1), "replay_end": now + timedelta(days=1)},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO replay_runs (run_id, dataset_id, stream_key, state, start_at, "
+                    "tick_seconds, lease_owner, requested_by) VALUES (:run_id, :dataset_id, :stream_key, "
+                    "'running', :start_at, 1.0, 'test-worker', 'test')"
+                ),
+                {"run_id": run_id, "dataset_id": dataset_id, "stream_key": f"replay:{run_id}", "start_at": now},
+            )
+        tick = SensorTick(
+            sequence=0,
+            phase="replay",
+            simulated_at=now,
+            readings=tuple(
+                {
+                    "manufacturer_id": manufacturer_id,
+                    "substation_id": substation_id,
+                    "values": {"outdoor_temperature": 11.0, "s_hc1_supply_temperature": 44.5},
+                    "quality": {"outdoor_temperature": "synthetic", "s_hc1_supply_temperature": "synthetic"},
+                }
+                for substation_id in range(1, 32)
+            ),
+        )
+
+        await PostgresReplayStore(engine, lease_owner="test-worker").persist_tick(run_id=run_id, tick=tick)
+
+        async with engine.connect() as connection:
+            projected = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM sensor_readings WHERE source_file = :source_file "
+                    "AND reading_time = :reading_time"
+                ),
+                {"source_file": f"synthetic-replay:{run_id}", "reading_time": now},
+            )
+            latest_value = await connection.scalar(
+                text(
+                    "SELECT sensor_value FROM sensor_readings WHERE source_file = :source_file "
+                    "AND substation_id = 1 AND source_sensor = 'outdoor_temperature'"
+                ),
+                {"source_file": f"synthetic-replay:{run_id}"},
+            )
+        assert projected == 62
+        assert latest_value == 11.0
+    finally:
+        async with cleanup_engine.begin() as connection:
+            await connection.execute(text("DELETE FROM sensor_readings WHERE source_file = :source_file"), {"source_file": f"synthetic-replay:{run_id}"})
+            await connection.execute(text("DELETE FROM replay_stream_events WHERE run_id = :run_id"), {"run_id": run_id})
+            await connection.execute(text("DELETE FROM replay_tick_batches WHERE run_id = :run_id"), {"run_id": run_id})
+            await connection.execute(text("DELETE FROM replay_latest_readings WHERE run_id = :run_id"), {"run_id": run_id})
+            await connection.execute(text("DELETE FROM replay_runs WHERE run_id = :run_id"), {"run_id": run_id})
+            await connection.execute(text("DELETE FROM replay_datasets WHERE dataset_id = :dataset_id"), {"dataset_id": dataset_id})
+        await cleanup_engine.dispose()
+        await engine.dispose()
+
+
+@pytest.mark.anyio
 async def test_replay_window_creates_scoped_synthetic_alerts() -> None:
     from replay_dataset import WindowBatch
     from replay_repository import PostgresReplayStore
@@ -35,6 +121,10 @@ async def test_replay_window_creates_scoped_synthetic_alerts() -> None:
     now = datetime.now(UTC).replace(second=0, microsecond=0)
     package_sha = hashlib.sha256(dataset_id.encode()).hexdigest()
     try:
+        async with cleanup_engine.begin() as connection:
+            await connection.execute(text("DROP INDEX IF EXISTS public.priority_evaluation_one_active_idx"))
+            legacy_index = await connection.scalar(text("SELECT to_regclass('public.priority_evaluation_one_active_idx')::text"))
+            assert legacy_index is None
         async with engine.begin() as connection:
             manufacturer_id = await connection.scalar(
                 text("SELECT manufacturer_id FROM substations ORDER BY manufacturer_id, substation_id LIMIT 1")

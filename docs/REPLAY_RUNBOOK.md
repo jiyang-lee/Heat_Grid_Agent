@@ -20,7 +20,7 @@
 
 ## 롤백과 안전 경계
 
-- Replay 원시 Tick은 `replay_*` 테이블에만 기록하고 canonical `sensor_readings`는 쓰지 않는다. Window·Priority·Alert 투영값은 `synthetic=true` 또는 `source_file='synthetic-replay:<run_id>'`로 표식한다.
+- Replay 원시 Tick은 `replay_*` 테이블에 원본 배치로 보존하고, 시연 UI가 기존 운영 센서 흐름을 그대로 사용할 수 있도록 `sensor_readings`에도 센서별 row로 투영한다. Replay 투영값은 `source_file='synthetic-replay:<run_id>'`로 표식한다.
 - 기본 운영 평가/Alert는 `stream_key='default'`, Replay는 `replay:<run_id>`로 분리된다.
 - Replay Alert는 `synthetic=true`이며 자동 재학습·자동 승인 대상이 아니다.
 - migration은 roll-forward만 허용하며, 적용된 SQL 파일을 수정하지 않는다.
