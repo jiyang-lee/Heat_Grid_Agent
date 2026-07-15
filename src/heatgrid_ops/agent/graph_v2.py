@@ -162,9 +162,10 @@ async def hydrate_v2_prefix(
         if snapshot.component_versions != dict(context.component_versions):
             break
         try:
-            current = AgentV2State.model_validate(snapshot.envelope.data)
+            hydrated = AgentV2State.model_validate(snapshot.envelope.data)
         except ValueError:
             break
+        current = hydrated.model_copy(update={"request": state.request})
         hashes[stage_name] = snapshot.output_hash
         completed.append(stage_name)
     start_stage = (

@@ -82,12 +82,52 @@ def build_v2_graph_output(
         loop_count=iteration_count,
         handling_reason="explicit graph v2 completed",
         diagnostic=ReviewDiagnosticSnapshot(status="not_triggered"),
-        source_card=ReviewCaptureSourceCardSnapshot(
-            card_id=raw_state.request.card_id,
-            review_required=raw_state.parent_disposition.force_review,
-        ),
+        source_card=_source_card(raw_state),
     )
     return {"result": ResultState(value=result_model, review_capture_source=capture)}
+
+
+def _source_card(state: AgentV2State) -> ReviewCaptureSourceCardSnapshot:
+    source = state.request.source_input
+    priority_context = _mapping(source.get("priority_context"))
+    card = _mapping(priority_context.get("card"))
+    priority = _mapping(priority_context.get("priority"))
+    explanation = _mapping(priority_context.get("explanation"))
+    window = _mapping(_mapping(source.get("raw_context")).get("window"))
+    priority_level = _bounded(_string(priority.get("priority_level")), 120)
+    return ReviewCaptureSourceCardSnapshot(
+        card_id=state.request.card_id,
+        substation_id=_integer(window.get("substation_id")),
+        manufacturer_id=_bounded(_string(window.get("manufacturer_id")), 200),
+        priority_level=priority_level,
+        status=_bounded(_string(card.get("status")), 120),
+        review_required=state.parent_disposition.force_review,
+        reason=_bounded(
+            _string(
+                explanation.get("why_reason")
+                or card.get("why_reason")
+                or card.get("reason")
+                or (f"priority_level={priority_level}" if priority_level else None)
+            ),
+            1000,
+        ),
+    )
+
+
+def _mapping(value: object) -> dict[str, object]:
+    return value if isinstance(value, dict) else {}
+
+
+def _string(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _integer(value: object) -> int | None:
+    return value if isinstance(value, int) else None
+
+
+def _bounded(value: str, limit: int) -> str | None:
+    return value[:limit] if value else None
 
 
 def v2_state_from_graph_result(result: object) -> AgentV2State:

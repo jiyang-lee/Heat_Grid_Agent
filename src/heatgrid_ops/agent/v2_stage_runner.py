@@ -121,12 +121,14 @@ def _stage_quality(
 ) -> tuple[str, str | None, float | None]:
     value = data.get(stage_name)
     if not isinstance(value, dict):
-        return "passed", "passed", None
+        return "passed", "passed", 100.0
     execution = value.get("execution_status", "passed")
     quality = value.get("quality_status", "passed")
     score = value.get("score")
-    return (
-        execution if isinstance(execution, str) else "passed",
-        quality if isinstance(quality, str) else "passed",
-        score if isinstance(score, float | int) else None,
-    )
+    execution_status = execution if isinstance(execution, str) else "passed"
+    quality_status = quality if isinstance(quality, str) else "passed"
+    if isinstance(score, float | int):
+        return execution_status, quality_status, score
+    if execution_status == "passed" and quality_status == "passed":
+        return execution_status, quality_status, 100.0
+    return execution_status, quality_status, None

@@ -604,7 +604,8 @@ async def test_quality_review_creates_targeted_v2_child_with_stage_lineage(
                     "decision": "keep_human_review",
                     "reviewer": "pytest",
                     "reason": "fault analysis requires reassessment",
-                    "reason_category": "fault_analysis_insufficient",
+                    "reason_category": "fault_analysis_issue",
+                    "next_action": "targeted_rerun",
                     "disposition": "urgent_review",
                 },
             )
