@@ -8,6 +8,11 @@ export type MachineStatus = Record<string, Tier>
 
 export const complexById: Map<number, Complex> = new Map(complexes.map((c) => [c.id, c]))
 
+/** substation_id → 단지명. 매핑이 없으면 fallback(manufacturer_id 등), 그것도 없으면 '미상 설비'. */
+export function complexNameOf(substationId: number | null | undefined, fallback?: string | null): string {
+  return (substationId != null ? complexById.get(substationId)?.name : undefined) ?? fallback ?? '미상 설비'
+}
+
 /** 설비별 실시간 모델 출력은 아직 없으므로 기계실 상태를 임의로 만들지 않는다. */
 const stById: Map<number, MachineStatus> = (() => {
   const map = new Map<number, MachineStatus>()
