@@ -15,7 +15,7 @@ async def list_agent_run_artifacts(
     run_id: str,
 ) -> list[AgentRunArtifact]:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri "
+        "SELECT artifact_id, run_id, kind, name, uri, created_at "
         "FROM agent_run_artifacts "
         "WHERE run_id = :run_id "
         "ORDER BY created_at, artifact_id"
@@ -33,7 +33,7 @@ async def get_agent_run_artifact(
     source_output_hash: str | None = None,
 ) -> AgentRunArtifact | None:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri "
+        "SELECT artifact_id, run_id, kind, name, uri, created_at "
         "FROM agent_run_artifacts WHERE run_id = :run_id AND name = :name "
         "AND source_output_hash IS NOT DISTINCT FROM :source_output_hash "
         "ORDER BY created_at LIMIT 1"
@@ -58,7 +58,7 @@ async def get_agent_run_artifact_by_id(
     artifact_id: str,
 ) -> AgentRunArtifact | None:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri "
+        "SELECT artifact_id, run_id, kind, name, uri, created_at "
         "FROM agent_run_artifacts "
         "WHERE run_id = :run_id AND artifact_id = :artifact_id"
     )
@@ -176,7 +176,7 @@ async def insert_agent_run_artifact(
         ":source_review_id, :contract_version) "
         "ON CONFLICT (run_id, name, source_output_hash) DO UPDATE SET "
         "kind = EXCLUDED.kind, uri = EXCLUDED.uri "
-        "RETURNING artifact_id, run_id, kind, name, uri"
+        "RETURNING artifact_id, run_id, kind, name, uri, created_at"
     )
     async with engine.begin() as connection:
         result = await connection.execute(
@@ -207,4 +207,5 @@ def _artifact_from_row(row: RowMapping) -> AgentRunArtifact:
         kind=str(row["kind"]),
         name=str(row["name"]),
         uri=str(row["uri"]),
+        created_at=row.get("created_at"),
     )

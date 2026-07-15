@@ -63,11 +63,62 @@ class AgentRunListItem(FrozenApiModel):
     review_snapshot_status: ReviewSnapshotStatus
     created_at: datetime
     updated_at: datetime
+    # AI 활동 목록 additive enrichment(기본값 유지로 기존 소비자 하위 호환).
+    manufacturer_id: str | None = None
+    substation_id: int | None = None
+    substation_uid: str | None = None
+    alert_reason: str | None = None
+    current_stage: str | None = None
+    has_result: bool = False
+    report_artifact_count: int = 0
+    latest_report_name: str | None = None
 
 
 class AgentRunListPage(FrozenApiModel):
     items: tuple[AgentRunListItem, ...]
     next_cursor: str | None = None
+    total_count: int | None = None
+
+
+class WorkOrderListItem(FrozenApiModel):
+    """완료(result 보유) agent run의 작업지시서 read-only projection."""
+
+    run_id: str
+    priority: str | None = None
+    alert_reason: str | None = None
+    manufacturer_id: str | None = None
+    substation_id: int | None = None
+    substation_uid: str | None = None
+    operator_review_status: OperatorReviewStatus
+    created_at: datetime
+
+
+class WorkOrderListPage(FrozenApiModel):
+    items: tuple[WorkOrderListItem, ...]
+    next_cursor: str | None = None
+    total_count: int | None = None
+
+
+class AgentReportListItem(FrozenApiModel):
+    """report kind artifact(anomaly_report/daily_report)의 read-only projection."""
+
+    artifact_id: str
+    run_id: str
+    kind: str
+    name: str
+    uri: str
+    priority: str | None = None
+    manufacturer_id: str | None = None
+    substation_id: int | None = None
+    substation_uid: str | None = None
+    operator_review_status: OperatorReviewStatus
+    created_at: datetime
+
+
+class AgentReportListPage(FrozenApiModel):
+    items: tuple[AgentReportListItem, ...]
+    next_cursor: str | None = None
+    total_count: int | None = None
 
 
 class AgentRunReviewSnapshotResponse(FrozenApiModel):

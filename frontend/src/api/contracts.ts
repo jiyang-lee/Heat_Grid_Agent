@@ -200,6 +200,10 @@ export interface AgentRunResponse {
   review_status: ReviewStatus
   review_task_id: string | null
   error: string | null
+  /** additive: 백엔드 substations 정규화 uid */
+  substation_uid: string | null
+  /** additive: DB agent_runs.created_at — 상세 헤더 시작 시간 */
+  created_at: string | null
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'corrected'
@@ -214,6 +218,18 @@ export type WorkerStatus =
   | 'budget_exceeded'
 export type ReviewSnapshotStatus = 'pending' | 'available' | 'unavailable' | 'legacy_unavailable'
 
+/** 내부 9단계 stage 이름 (agent_stage_repository.STAGE_ORDER와 1:1) */
+export type StageName =
+  | 'ml_validation'
+  | 'weather_context'
+  | 'rag_retrieval'
+  | 'rag_interpretation'
+  | 'fault_analysis'
+  | 'higher_model_reassessment'
+  | 'parent_disposition'
+  | 'report_draft'
+  | 'report_fidelity'
+
 export interface AgentRunListItem {
   readonly run_id: string
   readonly status: AgentRunStatus
@@ -225,22 +241,160 @@ export interface AgentRunListItem {
   readonly review_snapshot_status: ReviewSnapshotStatus
   readonly created_at: string
   readonly updated_at: string
+  /* additive enrichment — AI 활동 목록 표시용 */
+  readonly manufacturer_id: string | null
+  readonly substation_id: number | null
+  readonly substation_uid: string | null
+  readonly alert_reason: string | null
+  readonly current_stage: StageName | null
+  readonly has_result: boolean
+  readonly report_artifact_count: number
+  readonly latest_report_name: string | null
 }
 
 export interface AgentRunListPage {
   readonly items: readonly AgentRunListItem[]
   readonly next_cursor: string | null
+  /** 커서 조건 제외 필터 전체 건수 */
+  readonly total_count: number | null
+}
+
+/** GET /api/agent-runs 쿼리 — 백엔드 agent_review_routes와 1:1 */
+export interface AgentRunListQuery {
+  readonly status?: AgentRunStatus
+  readonly operator_review_status?: OperatorReviewStatus
+  readonly worker_status?: WorkerStatus
+  readonly priority?: string
+  readonly substation_id?: number
+  readonly search?: string
+  readonly created_from?: string
+  readonly created_to?: string
+  readonly cursor?: string
+  readonly limit?: number
+}
+
+/* ===== 검토 스냅샷 v1 (heatgrid_ops.agent.review_models.AgentRunReviewSnapshotV1) ===== */
+
+export interface ReviewFinalResultSnapshot {
+  readonly status: 'completed' | 'failed'
+  readonly agent_mode: AgentMode | null
+  readonly ops_output: OpsAgentOutput | null
+  readonly error: string | null
+}
+
+export interface ReviewDecisionStep {
+  readonly sequence: number
+  readonly decision: string
+  readonly reason: string
+}
+
+export interface ReviewDiagnosticHypothesis {
+  readonly hypothesis_id: string
+  readonly title: string
+  readonly rationale: string
+  readonly evidence_ids: readonly string[]
+  readonly confidence: number
 }
 
 export interface AgentReviewDiagnostic {
+  readonly trigger: string | null
   readonly status: WorkerStatus
+  readonly hypotheses: readonly ReviewDiagnosticHypothesis[]
+  readonly attempts: number
+  readonly input_tokens: number
+  readonly output_tokens: number
+  readonly input_token_limit: number
+  readonly output_token_limit: number
+  readonly deadline_seconds: number
+  readonly fallback_reason: string | null
+}
+
+export interface ReviewComponentResult {
+  readonly component: string
+  readonly agreement: boolean
+}
+
+export interface ReviewModelVerificationSnapshot {
+  readonly status: 'verified' | 'partial' | 'unavailable' | 'error'
+  readonly agreement: boolean | null
+  readonly component_results: readonly ReviewComponentResult[]
+  readonly stored_score: number | null
+  readonly current_score: number | null
+  readonly score_delta: number | null
+  readonly reason: string
+}
+
+export interface ReviewProvenance {
+  readonly source: string
+  readonly source_owner: string | null
+  readonly snapshot_id: string | null
+  readonly retrieval_id: string | null
+  readonly document_id: string | null
+  readonly chunk_id: string | null
+  readonly error_type: string | null
+  readonly message: string | null
+}
+
+export interface ReviewWeatherSnapshot {
+  readonly status: string
+  readonly observed_at: string | null
+  readonly temperature_c: number | null
+  readonly humidity_percent: number | null
+  readonly precipitation_mm: number | null
+  readonly wind_speed_mps: number | null
+  readonly provenance: ReviewProvenance
+}
+
+export interface ReviewEvidenceSnapshot {
+  readonly evidence_id: string
+  readonly document_type: 'internal_rag' | 'operator_manual_evidence'
+  readonly source_owner: string | null
+  readonly source: string
+  readonly title: string
+  readonly section: string | null
+  readonly score: number
+  readonly excerpt: string
+  readonly provenance: ReviewProvenance
+}
+
+export interface ReviewSourceCardSnapshot {
+  readonly card_id: string
+  readonly substation_id: number | null
+  readonly manufacturer_id: string | null
+  readonly priority_level: string
+  readonly status: string | null
+  readonly review_required: boolean
+  readonly reason: string
+}
+
+export interface ReviewBudgetLineage {
+  readonly parent_token_limit: number
+  readonly parent_tokens_used: number
+  readonly diagnostic_token_limit: number
+  readonly diagnostic_tokens_used: number
+}
+
+export interface ReviewCheckpointLineage {
+  readonly thread_id: string
+  readonly namespace: string
+  readonly checkpoint_id: string | null
+  readonly durability: 'sync'
 }
 
 export interface AgentRunReviewSnapshot {
-  readonly handling_reason: string | null
+  readonly schema_version: 'agent_run_review.v1'
+  readonly run_id: string
+  readonly result: ReviewFinalResultSnapshot
+  readonly decisions: readonly ReviewDecisionStep[]
   readonly loop_count: number
+  readonly handling_reason: string
   readonly diagnostic: AgentReviewDiagnostic
-  readonly evidence: readonly OpsAgentEvidenceItem[]
+  readonly model_verification: ReviewModelVerificationSnapshot | null
+  readonly weather: ReviewWeatherSnapshot | null
+  readonly evidence: readonly ReviewEvidenceSnapshot[]
+  readonly source_card: ReviewSourceCardSnapshot
+  readonly budget: ReviewBudgetLineage
+  readonly checkpoint: ReviewCheckpointLineage
 }
 
 export interface AgentRunReviewSnapshotResponse {
@@ -260,8 +414,24 @@ export type CitationCoverage = 'complete' | 'partial' | 'missing' | 'not_applica
 export type InputValidity = 'valid' | 'invalid' | 'unavailable'
 export type ParentHandling = 'used_as_support' | 'invalid' | 'unavailable' | 'fallback_to_human'
 export type EvidenceCompleteness = 'complete' | 'partial' | 'missing'
-export type OperatorReviewDecision = 'approve' | 'correct' | 'keep_human_review'
+export type OperatorReviewDecision = 'approve' | 'reject' | 'correct' | 'keep_human_review'
 export type OperatorReviewDisposition = 'normal_observation' | 'inspection_recommended' | 'urgent_review'
+/** reject/keep_human_review/targeted_rerun 시 필수 */
+export type ReasonCategory =
+  | 'ml_prediction_issue'
+  | 'weather_context_issue'
+  | 'rag_retrieval_issue'
+  | 'rag_interpretation_issue'
+  | 'fault_analysis_issue'
+  | 'escalation_issue'
+  | 'report_draft_issue'
+  | 'insufficient_evidence'
+  | 'operational_policy_issue'
+export type OperatorReviewNextAction =
+  | 'none'
+  | 'targeted_rerun'
+  | 'manual_investigation'
+  | 'close_without_rerun'
 export type PolicyCandidateStatus = 'pending' | 'approved' | 'rejected'
 
 /** GET /api/agent-run-evaluations 항목 — snapshot 기준 parent/worker 결정적 평가 */
@@ -294,6 +464,9 @@ export interface OperatorReviewSubmitRequest {
   readonly reviewer: string
   readonly reason: string
   readonly disposition: OperatorReviewDisposition
+  /** reject/keep_human_review(및 targeted_rerun) 시 필수 — 빠지면 422 */
+  readonly reason_category?: ReasonCategory | null
+  readonly next_action?: OperatorReviewNextAction
   readonly correction?: Record<string, string> | null
   readonly evidence_annotations?: readonly Record<string, string | null>[]
   readonly operator_labels?: readonly string[]
@@ -301,7 +474,7 @@ export interface OperatorReviewSubmitRequest {
 
 export interface OperatorReviewRecord {
   readonly review_id: string
-  readonly run_id: string
+  readonly run_id: string | null
   readonly review_version: number
   readonly idempotency_key: string
   readonly request_hash: string
@@ -313,6 +486,16 @@ export interface OperatorReviewRecord {
   readonly evidence_annotations: readonly Record<string, string | null>[]
   readonly operator_labels: readonly string[]
   readonly created_at: string
+  /* additive — v2 rerun/subject 확장(백엔드 OperatorReviewRecordResponse) */
+  readonly review_task_id?: string
+  readonly subject_type?: string
+  readonly subject_key?: string
+  readonly review_contract_version?: number
+  readonly reason_category?: string | null
+  readonly next_action?: string
+  readonly child_run_id?: string | null
+  readonly routing_status?: string | null
+  readonly target_stage?: string | null
 }
 
 export interface OperatorReviewHistory {
@@ -465,6 +648,90 @@ export interface AgentRunArtifact {
   kind: string
   name: string
   uri: string
+  /** additive: DB agent_run_artifacts.created_at */
+  created_at: string | null
+}
+
+/* ===== AI 활동 stage/projection 계약 (agent_quality_routes·agent_review_routes) ===== */
+
+/** GET /api/agent-runs/{run_id}/stages 항목 */
+export interface StageProjection {
+  readonly stage_snapshot_id: string
+  readonly stage_name: StageName
+  readonly attempt: number
+  readonly execution_status: 'passed' | 'failed' | 'unavailable' | 'skipped' | 'reused'
+  readonly quality_status:
+    | 'passed'
+    | 'partial'
+    | 'retry'
+    | 'insufficient'
+    | 'unavailable'
+    | 'skipped'
+    | null
+  readonly score: number | null
+  readonly threshold: number | null
+  readonly reasons: readonly string[]
+  readonly retry_exhausted: boolean
+  readonly force_review: boolean
+  readonly contract_version: string
+  readonly reused_from_snapshot_id: string | null
+  readonly created_at: string
+}
+
+export interface StageProjectionResponse {
+  readonly run_id: string
+  readonly graph_contract_version: string
+  readonly items: readonly StageProjection[]
+}
+
+/** GET /api/work-orders, /api/agent-reports 공통 쿼리 */
+export interface ActivityProjectionQuery {
+  readonly operator_review_status?: OperatorReviewStatus
+  readonly substation_id?: number
+  readonly search?: string
+  readonly created_from?: string
+  readonly created_to?: string
+  readonly cursor?: string
+  readonly limit?: number
+}
+
+/** GET /api/work-orders 항목 — result 보유 완료 run projection */
+export interface WorkOrderListItem {
+  readonly run_id: string
+  readonly priority: string | null
+  readonly alert_reason: string | null
+  readonly manufacturer_id: string | null
+  readonly substation_id: number | null
+  readonly substation_uid: string | null
+  readonly operator_review_status: OperatorReviewStatus
+  readonly created_at: string
+}
+
+export interface WorkOrderListPage {
+  readonly items: readonly WorkOrderListItem[]
+  readonly next_cursor: string | null
+  readonly total_count: number | null
+}
+
+/** GET /api/agent-reports 항목 — anomaly_report/daily_report artifact projection */
+export interface AgentReportListItem {
+  readonly artifact_id: string
+  readonly run_id: string
+  readonly kind: string
+  readonly name: string
+  readonly uri: string
+  readonly priority: string | null
+  readonly manufacturer_id: string | null
+  readonly substation_id: number | null
+  readonly substation_uid: string | null
+  readonly operator_review_status: OperatorReviewStatus
+  readonly created_at: string
+}
+
+export interface AgentReportListPage {
+  readonly items: readonly AgentReportListItem[]
+  readonly next_cursor: string | null
+  readonly total_count: number | null
 }
 
 // ---------------------------------------------------------------------------

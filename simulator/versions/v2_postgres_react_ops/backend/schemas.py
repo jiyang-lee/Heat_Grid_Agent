@@ -226,6 +226,8 @@ class AgentRunResponse(BaseModel):
     review_status: ReviewStatus = "pending"
     review_task_id: str | None = None
     error: str | None = None
+    # additive: DB agent_runs.created_at (상세 헤더 시작 시간 표시용)
+    created_at: datetime | None = None
 
 
 class AgentRunArtifact(BaseModel):
@@ -234,6 +236,8 @@ class AgentRunArtifact(BaseModel):
     kind: str
     name: str
     uri: str
+    # additive: DB agent_run_artifacts.created_at (보고서 생성 시간 표시용)
+    created_at: datetime | None = None
 
 
 class AgentRunEvent(BaseModel):

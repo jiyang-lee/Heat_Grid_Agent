@@ -15,7 +15,7 @@ interface NavigationItem {
 const navigation: readonly NavigationItem[] = [
   { page: 'dashboard', label: '홈', icon: 'home' },
   { page: 'alerts', label: '알림', icon: 'bell' },
-  { page: 'reports', label: '보고서', icon: 'document' },
+  { page: 'reports', label: 'AI 활동', icon: 'activity' },
   { page: 'settings', label: '설정', icon: 'settings' },
 ]
 
