@@ -16,11 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(9))
+    assert [migration.version for migration in migrations] == list(range(10))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "008_agent_quality_rerun.sql"
-    assert migrations[-1].hook_path is not None
-    assert migrations[-1].hook_path.name == "008.py"
+    assert migrations[-1].path.name == "009_agent_stage_trace.sql"
+    assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 
 
@@ -75,3 +74,13 @@ def test_runtime_versions_are_pinned() -> None:
     assert "pgvector/pgvector:pg16" in compose
     assert 'LANGGRAPH_STRICT_MSGPACK: "true"' in compose
     assert "condition: service_completed_successfully" in compose
+
+
+def test_agent_stage_trace_migration_preserves_append_only_audit_contract() -> None:
+    sql = (ROOT / "migrations" / "009_agent_stage_trace.sql").read_text().lower()
+
+    assert "create table public.agent_model_calls" in sql
+    assert "create table public.agent_tool_calls" in sql
+    assert "operation_key text not null unique" in sql
+    assert "foreign key (stage_snapshot_id)" in sql
+    assert "unique (model_call_id, call_sequence)" in sql

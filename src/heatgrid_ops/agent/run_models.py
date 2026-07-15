@@ -36,6 +36,7 @@ class AgentLoopSummary(BaseModel):
     ] | None = None
     blocking_retry_exhausted: list[str] = Field(default_factory=list)
     graph_contract_version: str | None = None
+    execution_duration_ms: int | None = None
 
 
 class AgentRunResult(BaseModel):

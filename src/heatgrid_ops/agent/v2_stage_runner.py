@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from heatgrid_ops.agent.lineage import canonical_json_hash
 from heatgrid_ops.agent.models import JsonValue
 from heatgrid_ops.agent.v2_models import (
-    StageControlEnvelope,
     StageName,
     StageSnapshotEnvelope,
 )
@@ -95,12 +94,6 @@ class StageRunner:
             }
         )
         control = envelope.control
-        if quality_status == "unavailable" and not control.force_review:
-            control = StageControlEnvelope(
-                force_review=True,
-                suggested_query=control.suggested_query,
-                broaden=control.broaden,
-            )
         envelope = envelope.model_copy(update={"quality": quality, "control": control})
         record = StageSnapshotWrite(
             run_id=request.run_id,
@@ -126,25 +119,12 @@ def _stage_quality(
     data: Mapping[str, JsonValue],
     stage_name: StageName,
 ) -> tuple[str, str | None, float | None]:
-    field = {
-        "ml_validation": "ml",
-        "weather_context": "weather",
-        "rag_retrieval": "rag",
-        "rag_interpretation": "rag",
-        "fault_analysis": "fault",
-        "higher_model_reassessment": "escalation",
-        "parent_disposition": "routing",
-        "report_draft": "report",
-        "report_fidelity": "report",
-    }[stage_name]
-    value = data.get(field)
+    value = data.get(stage_name)
     if not isinstance(value, dict):
         return "passed", "passed", None
     execution = value.get("execution_status", "passed")
     quality = value.get("quality_status", "passed")
     score = value.get("score")
-    if stage_name == "parent_disposition" and score is None:
-        score = 100.0
     return (
         execution if isinstance(execution, str) else "passed",
         quality if isinstance(quality, str) else "passed",

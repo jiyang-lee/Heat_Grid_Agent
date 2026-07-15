@@ -42,7 +42,7 @@ STAGE_ORDER: Final[tuple[StageName, ...]] = (
     "report_draft",
     "report_fidelity",
 )
-STATE_SCHEMA_VERSION: Final = "agent_v2_state.v1"
+STATE_SCHEMA_VERSION: Final = "agent_v2_state.v2"
 SNAPSHOT_SCHEMA_VERSION: Final = "agent_stage_snapshot.v2"
 
 

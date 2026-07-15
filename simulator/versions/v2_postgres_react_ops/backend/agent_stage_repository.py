@@ -57,9 +57,9 @@ class StageSnapshotDraft:
     thresholds: JsonObject
     attempt: int = 1
     reused_from_snapshot_id: str | None = None
-    state_schema_version: str = "agent_v2_state.v1"
+    state_schema_version: str = "agent_v2_state.v2"
     envelope: JsonObject | None = None
-    policy_version: str = "agent_graph_v2.v1"
+    policy_version: str = "agent_graph_v2.v3"
     attempt_parameters: JsonObject | None = None
 
 

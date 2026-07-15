@@ -30,10 +30,11 @@ CHECKPOINT_INDEXES: Final = frozenset(
         "checkpoint_writes_thread_id_idx",
     }
 )
-APPLICATION_TABLES_V008: Final = frozenset(
+APPLICATION_TABLES_V009: Final = frozenset(
     {
         "agent_budget_ledger",
         "agent_loop_iterations",
+        "agent_model_calls",
         "agent_policy_candidates",
         "agent_rerun_requests",
         "agent_run_actions",
@@ -44,6 +45,7 @@ APPLICATION_TABLES_V008: Final = frozenset(
         "agent_run_tasks",
         "agent_runs",
         "agent_stage_snapshots",
+        "agent_tool_calls",
         "automation_policy",
         "evidence_candidates",
         "fault_events",
@@ -557,7 +559,7 @@ async def _verify_application_catalog(
     connection: AsyncConnection[DictRow],
     version: int,
 ) -> None:
-    if version < 8:
+    if version < 9:
         return
     result = await connection.execute(
         "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
@@ -565,10 +567,10 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    if actual != APPLICATION_TABLES_V008:
+    if actual != APPLICATION_TABLES_V009:
         raise MigrationContractError(
             "application tables mismatch: "
-            f"expected={sorted(APPLICATION_TABLES_V008)}, actual={sorted(actual)}"
+            f"expected={sorted(APPLICATION_TABLES_V009)}, actual={sorted(actual)}"
         )
 
 

@@ -29,7 +29,7 @@ class StageSnapshotWrite:
     feature_flags: JsonObject = dataclass_field(default_factory=dict)
     thresholds: JsonObject = dataclass_field(default_factory=dict)
     attempt_parameters: JsonObject = dataclass_field(default_factory=dict)
-    policy_version: str = "agent_graph_v2.v2"
+    policy_version: str = "agent_graph_v2.v3"
     upstream_output_hashes: tuple[str, ...] = ()
 
 
@@ -94,7 +94,7 @@ class ReportFidelityPort(Protocol):
 
 
 def stage_contract_version(stage_name: StageName) -> str:
-    return f"{stage_name}.v2"
+    return f"{stage_name}.v3"
 
 
 def reason_category_values() -> tuple[ReasonCategory, ...]:

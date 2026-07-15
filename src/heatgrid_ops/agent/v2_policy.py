@@ -25,7 +25,7 @@ def v2_stage_input_hash(
         run_input_hash=run_input_hash,
         upstream_output_hashes=upstream_output_hashes,
         contract_version=stage_contract_version(stage_name),
-        policy_version="agent_graph_v2.v2",
+        policy_version="agent_graph_v2.v3",
         component_versions=versions,
         feature_flags=feature_flags,
         thresholds=thresholds,

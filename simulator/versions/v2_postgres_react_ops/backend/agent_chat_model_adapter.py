@@ -35,9 +35,57 @@ class OpenAIChatModelAdapter:
     model: str
 
     async def generate(self, request: ChatModelRequest) -> ChatModelResult:
+        if request.execution_profile in {
+            "report_snapshot_only",
+            "report_revision_only",
+        }:
+            return await self._generate_without_tools(request)
+        return await self._generate_with_policy_tools(request)
+
+    async def _generate_without_tools(
+        self,
+        request: ChatModelRequest,
+    ) -> ChatModelResult:
+        if request.tool_policy.max_total_tool_calls != 0:
+            raise AgentDependencyError(
+                service="llm",
+                detail="snapshot-only report profile must prohibit tools",
+            )
+        if request.snapshot_bundle is None:
+            raise AgentDependencyError(
+                service="llm",
+                detail="insufficient_snapshot_bundle",
+            )
+        model = self._model().with_structured_output(OpsAgentOutput, include_raw=True)
+        try:
+            result = await model.ainvoke(
+                [
+                    ("system", SYSTEM_PROMPT),
+                    ("human", request.snapshot_bundle.model_dump_json()),
+                ]
+            )
+            output = OpsAgentOutput.model_validate(result.get("parsed"))
+        except (OpenAIError, ValidationError, ValueError, TypeError) as exc:
+            raise AgentDependencyError(service="llm", detail=str(exc)) from exc
+        return ChatModelResult(
+            output=output,
+            calls=token_calls_from_messages([result.get("raw")]),
+        )
+
+    async def _generate_with_policy_tools(
+        self,
+        request: ChatModelRequest,
+    ) -> ChatModelResult:
         agent = create_agent(
             self._model(),
-            make_operational_tools(request.source_input, request.evidence_context),
+            [
+                tool
+                for tool in make_operational_tools(
+                    request.source_input,
+                    request.evidence_context,
+                )
+                if tool.name in request.tool_policy.allowed_tools
+            ],
             system_prompt=SYSTEM_PROMPT,
             response_format=ToolStrategy(OpsAgentOutput),
         )
@@ -123,7 +171,14 @@ class OpenAIChatModelAdapter:
     ) -> AsyncIterator[AgentStreamEvent]:
         agent = create_agent(
             self._model(),
-            make_operational_tools(request.source_input, request.evidence_context),
+            [
+                tool
+                for tool in make_operational_tools(
+                    request.source_input,
+                    request.evidence_context,
+                )
+                if tool.name in request.tool_policy.allowed_tools
+            ],
             system_prompt=SYSTEM_PROMPT,
             response_format=ToolStrategy(OpsAgentOutput),
         )

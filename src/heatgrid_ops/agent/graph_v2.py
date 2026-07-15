@@ -177,31 +177,14 @@ async def hydrate_v2_prefix(
 
 def _default_adapter(stage_name: StageName) -> StageAdapter:
     async def execute(state: AgentV2State) -> StageSnapshotEnvelope:
-        field = _stage_field(stage_name)
         value: JsonObject = {
-            "execution_status": "passed",
-            "quality_status": "passed",
-            "score": 100.0,
+            "execution_status": "skipped",
+            "quality_status": "skipped",
+            "score": None,
         }
         current = state.model_dump(mode="json")
-        if field != "routing":
-            current[field] = value
+        if stage_name != "parent_disposition":
+            current[stage_name] = value
         return StageSnapshotEnvelope(stage_name=stage_name, data=current)
 
     return execute
-
-
-def _stage_field(stage_name: StageName) -> str:
-    if stage_name == "ml_validation":
-        return "ml"
-    if stage_name == "weather_context":
-        return "weather"
-    if stage_name in {"rag_retrieval", "rag_interpretation"}:
-        return "rag"
-    if stage_name == "fault_analysis":
-        return "fault"
-    if stage_name == "higher_model_reassessment":
-        return "escalation"
-    if stage_name == "parent_disposition":
-        return "routing"
-    return "report"

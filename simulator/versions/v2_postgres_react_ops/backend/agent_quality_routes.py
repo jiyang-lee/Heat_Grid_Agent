@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import orjson
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
@@ -35,6 +36,39 @@ class StageProjectionResponse(FrozenQualityModel):
     run_id: str
     graph_contract_version: str
     items: tuple[StageProjection, ...]
+
+
+class ModelCallProjection(FrozenQualityModel):
+    model_call_id: str
+    stage_name: str
+    stage_attempt: int
+    execution_profile: str
+    status: str
+    snapshot_bundle_hash: str | None
+    allowed_tools: tuple[str, ...]
+    actual_tool_calls: int
+    actual_model_turns: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+
+class ToolCallProjection(FrozenQualityModel):
+    tool_call_id: str
+    model_call_id: str
+    stage_name: str
+    tool_name: str
+    status: str
+    call_sequence: int
+
+
+class CostBreakdownProjection(FrozenQualityModel):
+    run_id: str
+    model_call_count: int
+    tool_call_count: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
 
 
 class LineageRunProjection(FrozenQualityModel):
@@ -81,7 +115,7 @@ def make_agent_quality_router(engine: AsyncEngine) -> APIRouter:
         )
         return StageProjectionResponse(
             run_id=run_id,
-            graph_contract_version="agent_graph_v2.v2",
+            graph_contract_version="agent_graph_v2.v3",
             items=tuple(_stage_projection(item) for item in ordered),
         )
 
@@ -107,6 +141,66 @@ def make_agent_quality_router(engine: AsyncEngine) -> APIRouter:
             children=tuple(children),
             requests=tuple(requests),
         )
+
+    @router.get(
+        "/agent-runs/{run_id}/model-calls",
+        response_model=tuple[ModelCallProjection, ...],
+    )
+    async def model_calls(run_id: str) -> tuple[ModelCallProjection, ...]:
+        if not await _run_exists(engine, run_id):
+            raise HTTPException(status_code=404, detail="run_id was not found")
+        async with engine.connect() as connection:
+            result = await connection.execute(
+                text(
+                    "SELECT model_call_id, stage_name, stage_attempt, execution_profile, "
+                    "status, snapshot_bundle_hash, CAST(allowed_tools AS text) AS allowed_tools, "
+                    "actual_tool_calls, actual_model_turns, input_tokens, output_tokens, total_tokens "
+                    "FROM agent_model_calls WHERE run_id = :run_id "
+                    "ORDER BY started_at, model_call_id"
+                ),
+                {"run_id": run_id},
+            )
+        return tuple(_model_call_projection(row) for row in result.mappings().all())
+
+    @router.get(
+        "/agent-runs/{run_id}/tool-calls",
+        response_model=tuple[ToolCallProjection, ...],
+    )
+    async def tool_calls(run_id: str) -> tuple[ToolCallProjection, ...]:
+        if not await _run_exists(engine, run_id):
+            raise HTTPException(status_code=404, detail="run_id was not found")
+        async with engine.connect() as connection:
+            result = await connection.execute(
+                text(
+                    "SELECT tool_call_id, model_call_id, stage_name, tool_name, status, call_sequence "
+                    "FROM agent_tool_calls WHERE run_id = :run_id "
+                    "ORDER BY started_at, tool_call_id"
+                ),
+                {"run_id": run_id},
+            )
+        return tuple(_tool_call_projection(row) for row in result.mappings().all())
+
+    @router.get(
+        "/agent-runs/{run_id}/cost-breakdown",
+        response_model=CostBreakdownProjection,
+    )
+    async def cost_breakdown(run_id: str) -> CostBreakdownProjection:
+        if not await _run_exists(engine, run_id):
+            raise HTTPException(status_code=404, detail="run_id was not found")
+        async with engine.connect() as connection:
+            result = await connection.execute(
+                text(
+                    "SELECT count(*) AS model_call_count, "
+                    "coalesce(sum(actual_tool_calls), 0) AS tool_call_count, "
+                    "coalesce(sum(input_tokens), 0) AS input_tokens, "
+                    "coalesce(sum(output_tokens), 0) AS output_tokens, "
+                    "coalesce(sum(total_tokens), 0) AS total_tokens "
+                    "FROM agent_model_calls WHERE run_id = :run_id"
+                ),
+                {"run_id": run_id},
+            )
+        row = result.mappings().one()
+        return CostBreakdownProjection(run_id=run_id, **dict(row))
 
     return router
 
@@ -140,6 +234,38 @@ def _stage_projection(record: StageSnapshotRecord) -> StageProjection:
         contract_version=record.contract_version,
         reused_from_snapshot_id=record.reused_from_snapshot_id,
         created_at=record.created_at,
+    )
+
+
+def _model_call_projection(row: RowMapping) -> ModelCallProjection:
+    allowed = orjson.loads(row["allowed_tools"])
+    tools = tuple(value for value in allowed if isinstance(value, str))
+    return ModelCallProjection(
+        model_call_id=str(row["model_call_id"]),
+        stage_name=str(row["stage_name"]),
+        stage_attempt=int(row["stage_attempt"]),
+        execution_profile=str(row["execution_profile"]),
+        status=str(row["status"]),
+        snapshot_bundle_hash=None
+        if row["snapshot_bundle_hash"] is None
+        else str(row["snapshot_bundle_hash"]),
+        allowed_tools=tools,
+        actual_tool_calls=int(row["actual_tool_calls"]),
+        actual_model_turns=int(row["actual_model_turns"]),
+        input_tokens=int(row["input_tokens"]),
+        output_tokens=int(row["output_tokens"]),
+        total_tokens=int(row["total_tokens"]),
+    )
+
+
+def _tool_call_projection(row: RowMapping) -> ToolCallProjection:
+    return ToolCallProjection(
+        tool_call_id=str(row["tool_call_id"]),
+        model_call_id=str(row["model_call_id"]),
+        stage_name=str(row["stage_name"]),
+        tool_name=str(row["tool_name"]),
+        status=str(row["status"]),
+        call_sequence=int(row["call_sequence"]),
     )
 
 

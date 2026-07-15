@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter_ns
 
-import orjson
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Checkpointer, Durability
-from pydantic import TypeAdapter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -15,6 +14,11 @@ from agent_stage_repository import (
     insert_stage_snapshot,
     list_stage_snapshots,
     resolve_original_stage_snapshot,
+)
+from agent_v2_result import (
+    build_v2_graph_output,
+    persist_completed_v2_run,
+    v2_state_from_graph_result,
 )
 from agent_v2_adapters import make_v2_adapters
 from heatgrid_ops.agent.graph import AgentGraphInvoker
@@ -26,23 +30,11 @@ from heatgrid_ops.agent.graph_v2 import (
     hydrate_v2_prefix,
 )
 from heatgrid_ops.agent.lineage import canonical_json_hash
-from heatgrid_ops.agent.models import OpsAgentOutput, TokenUsage
-from heatgrid_ops.agent.run_models import AgentLoopSummary, AgentRunResult
-from heatgrid_ops.agent.review_models import (
-    AgentRunReviewCaptureSource,
-    ReviewDiagnosticSnapshot,
-    ReviewFinalResultSnapshot,
-    ReviewOpsAgentOutput,
-    ReviewCaptureSourceCardSnapshot,
-)
-from heatgrid_ops.agent.state import (
-    AgentGraphInput,
-    AgentGraphOutput,
-    ResultState,
-)
+from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput
 from heatgrid_ops.agent.v2_models import STAGE_ORDER, StageName
 from heatgrid_ops.agent.v2_policy import v2_stage_input_hash
 from heatgrid_ops.agent.v2_state import AgentV2State, V2RequestState
+from heatgrid_ops.agent.v2_stage_contracts import stage_contract_version
 from heatgrid_ops.agent.services import AgentRuntime
 
 
@@ -64,6 +56,7 @@ class ExplicitV2AgentGraph:
         *,
         durability: Durability | None,
     ) -> AgentGraphOutput:
+        started_at_ns = perf_counter_ns()
         if input is None:
             result = await self.graph.ainvoke(None, config, durability=durability)
         else:
@@ -94,8 +87,13 @@ class ExplicitV2AgentGraph:
                 config,
                 durability=durability,
             )
-        output = _to_legacy_output(result)
-        await _persist_completed_run(self.engine, output)
+        execution_duration_ms = (perf_counter_ns() - started_at_ns) // 1_000_000
+        output = build_v2_graph_output(result, execution_duration_ms=execution_duration_ms)
+        await persist_completed_v2_run(
+            self.engine,
+            output,
+            state=v2_state_from_graph_result(result),
+        )
         return output
 
 
@@ -132,113 +130,12 @@ def build_agent_graph_v2(
     )
 
 
-def _to_legacy_output(result: object) -> AgentGraphOutput:
-    state = TypeAdapter(dict[str, object]).validate_python(result)
-    raw_state = state.get("state")
-    if not isinstance(raw_state, AgentV2State):
-        raw_state = AgentV2State.model_validate(raw_state)
-    output = OpsAgentOutput(
-        summary="Graph v2 stage execution completed.",
-        action_plan="Review the persisted stage evidence and disposition.",
-        caution="Stage quality and external evaluator availability are recorded in snapshots.",
-    )
-    completed_stages = state.get("completed_stages")
-    iteration_count = (
-        len(completed_stages)
-        if isinstance(completed_stages, (tuple, list))
-        else 0
-    )
-    loop_summary = AgentLoopSummary(
-        iterations=iteration_count,
-        max_iterations=4,
-        decision="finalize",
-        confidence=1.0,
-        evidence_score=100.0,
-        review_required=raw_state.routing.force_review,
-        disposition=raw_state.routing.disposition,
-        blocking_retry_exhausted=list(raw_state.routing.blocking_retry_exhausted),
-        graph_contract_version="agent_graph_v2.v2",
-    )
-    result_model = AgentRunResult(
-        run_id=raw_state.request.run_id,
-        status="completed",
-        input_source="alert",
-        alert_id=raw_state.request.alert_id,
-        card_id=raw_state.request.card_id,
-        agent_mode="fallback",
-        ops_output=output,
-        token_usage=TokenUsage(),
-        loop_summary=loop_summary,
-        review_status="pending" if not raw_state.routing.force_review else "pending",
-    )
-    capture = AgentRunReviewCaptureSource(
-        run_id=raw_state.request.run_id,
-        result=ReviewFinalResultSnapshot(
-            status="completed",
-            agent_mode="fallback",
-            ops_output=ReviewOpsAgentOutput(
-                summary=output.summary,
-                action_plan=output.action_plan,
-                caution=output.caution,
-            ),
-        ),
-        loop_count=iteration_count,
-        handling_reason="explicit graph v2 completed",
-        diagnostic=ReviewDiagnosticSnapshot(status="not_triggered"),
-        source_card=ReviewCaptureSourceCardSnapshot(
-            card_id=raw_state.request.card_id,
-            review_required=raw_state.routing.force_review,
-        ),
-    )
-    return {
-        "result": ResultState(value=result_model, review_capture_source=capture),
-    }
-
-
 def _target_stage(config: RunnableConfig) -> StageName | None:
     configurable = config.get("configurable") or {}
     value = configurable.get("target_stage")
     if not isinstance(value, str) or value not in STAGE_ORDER:
         return None
     return value
-
-
-async def _persist_completed_run(
-    engine: AsyncEngine,
-    output: AgentGraphOutput,
-) -> None:
-    result = output["result"].value
-    if result is None:
-        raise RuntimeError("v2 graph completed without result")
-    async with engine.begin() as connection:
-        await connection.execute(
-            text(
-                "UPDATE agent_runs SET status = 'completed', agent_mode = :agent_mode, "
-                "ops_output = CAST(:ops_output AS jsonb), "
-                "token_usage = CAST(:token_usage AS jsonb), "
-                "loop_summary = CAST(:loop_summary AS jsonb), error = NULL, "
-                "updated_at = now() WHERE run_id = :run_id"
-            ),
-            {
-                "run_id": result.run_id,
-                "agent_mode": result.agent_mode,
-                "ops_output": orjson.dumps(
-                    result.ops_output.model_dump(mode="json")
-                    if result.ops_output is not None
-                    else None
-                ).decode("utf-8"),
-                "token_usage": orjson.dumps(
-                    result.token_usage.model_dump(mode="json")
-                    if result.token_usage is not None
-                    else None
-                ).decode("utf-8"),
-                "loop_summary": orjson.dumps(
-                    result.loop_summary.model_dump(mode="json")
-                    if result.loop_summary is not None
-                    else None
-                ).decode("utf-8"),
-            },
-        )
 
 
 async def _hydrate_parent_prefix(
@@ -278,7 +175,7 @@ async def _hydrate_parent_prefix(
                 return
             if source.state_schema_version != state.state_schema_version:
                 return
-            if source.contract_version != f"{stage_name}.v2":
+            if source.contract_version != stage_contract_version(stage_name):
                 return
             if source.component_versions != dict(context.component_versions):
                 return
@@ -316,7 +213,7 @@ async def _hydrate_parent_prefix(
                     run_input_hash=state.request.input_hash,
                     upstream_output_hashes=tuple(upstream),
                     output_snapshot=output_data,
-                    contract_version=f"{stage_name}.v2",
+                    contract_version=stage_contract_version(stage_name),
                     component_versions=dict(context.component_versions),
                     feature_flags=dict(context.feature_flags),
                     thresholds=dict(context.thresholds),
@@ -324,7 +221,7 @@ async def _hydrate_parent_prefix(
                     reused_from_snapshot_id=original.stage_snapshot_id,
                     state_schema_version=state.state_schema_version,
                     envelope=source.output_snapshot,
-                    policy_version="agent_graph_v2.v2",
+                    policy_version="agent_graph_v2.v3",
                     attempt_parameters={"attempt": source.attempt},
                 ),
             )

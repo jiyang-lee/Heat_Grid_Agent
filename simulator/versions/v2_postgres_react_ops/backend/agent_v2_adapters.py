@@ -61,7 +61,7 @@ def _ml(runtime: AgentRuntime) -> StageAdapter:
             "quality_status": quality.quality_status,
             "score": quality.score,
         }
-        updated = state.model_copy(update={"ml": value})
+        updated = state.model_copy(update={"ml_validation": value})
         return StageSnapshotEnvelope(
             stage_name="ml_validation",
             data=updated.model_dump(mode="json"),
@@ -76,8 +76,8 @@ def _weather(runtime: AgentRuntime) -> StageAdapter:
         request = _external_request(state.request.source_input)
         if request is None:
             value: JsonObject = {
-                "execution_status": "unavailable",
-                "quality_status": "unavailable",
+                "execution_status": "skipped",
+                "quality_status": "skipped",
                 "score": None,
                 "weather": {"status": "unavailable"},
             }
@@ -92,7 +92,7 @@ def _weather(runtime: AgentRuntime) -> StageAdapter:
                 "weather": snapshot.weather,
                 "site": snapshot.site,
             }
-        updated = state.model_copy(update={"weather": value})
+        updated = state.model_copy(update={"weather_context": value})
         return StageSnapshotEnvelope(
             stage_name="weather_context",
             data=updated.model_dump(mode="json"),
@@ -114,10 +114,8 @@ def _rag_retrieval(
                 top_k=runtime.config.rag_top_k,
             )
         )
-        quality_status = "skipped" if not quality_enabled else "unavailable"
-        score = None
-        if not quality_enabled:
-            quality_status = "skipped"
+        quality_status = "skipped" if not quality_enabled else "partial"
+        score = None if not quality_enabled else 0.0
         value: JsonObject = {
             "execution_status": "passed",
             "quality_status": quality_status,
@@ -126,11 +124,11 @@ def _rag_retrieval(
             "references": snapshot.references,
             "status": snapshot.status,
         }
-        updated = state.model_copy(update={"rag": value})
+        updated = state.model_copy(update={"rag_retrieval": value})
         return StageSnapshotEnvelope(
             stage_name="rag_retrieval",
             data=updated.model_dump(mode="json"),
-            control=StageControlEnvelope(force_review=quality_status == "unavailable"),
+            control=StageControlEnvelope(force_review=False),
         )
 
     return execute

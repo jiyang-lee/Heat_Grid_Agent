@@ -152,7 +152,7 @@ async def test_stage_runner_rejects_state_schema_mismatch_before_reuse() -> None
             execution_status="passed",
             quality_status="passed",
             score=100.0,
-            contract_version="ml_validation.v2",
+            contract_version="ml_validation.v3",
             component_versions={},
         )
     )
@@ -182,7 +182,7 @@ async def test_rag_evaluator_unavailable_keeps_retrieval_execution_passed() -> N
 
     async def adapter(_: AgentV2State) -> StageSnapshotEnvelope:
         value = state.model_dump(mode="json")
-        value["rag"] = {
+        value["rag_retrieval"] = {
             "retrieval": {"results": [{"id": "e1"}]},
             "execution_status": "passed",
             "quality_status": "unavailable",
@@ -199,7 +199,7 @@ async def test_rag_evaluator_unavailable_keeps_retrieval_execution_passed() -> N
     assert record.execution_status == "passed"
     assert record.quality_status == "unavailable"
     assert record.score is None
-    rag = record.envelope.data.get("rag")
+    rag = record.envelope.data.get("rag_retrieval")
     assert isinstance(rag, dict)
     assert rag.get("retrieval") == {"results": [{"id": "e1"}]}
 

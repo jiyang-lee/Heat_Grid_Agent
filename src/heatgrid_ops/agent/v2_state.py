@@ -35,15 +35,17 @@ class V2RoutingState(V2FrozenModel):
 
 
 class AgentV2State(V2FrozenModel):
-    state_schema_version: Literal["agent_v2_state.v1"] = STATE_SCHEMA_VERSION
+    state_schema_version: Literal["agent_v2_state.v2"] = STATE_SCHEMA_VERSION
     request: V2RequestState
-    ml: JsonObject = Field(default_factory=dict)
-    weather: JsonObject = Field(default_factory=dict)
-    rag: JsonObject = Field(default_factory=dict)
-    fault: JsonObject = Field(default_factory=dict)
-    escalation: JsonObject = Field(default_factory=dict)
-    routing: V2RoutingState = Field(default_factory=V2RoutingState)
-    report: JsonObject = Field(default_factory=dict)
+    ml_validation: JsonObject = Field(default_factory=dict)
+    weather_context: JsonObject = Field(default_factory=dict)
+    rag_retrieval: JsonObject = Field(default_factory=dict)
+    rag_interpretation: JsonObject = Field(default_factory=dict)
+    fault_analysis: JsonObject = Field(default_factory=dict)
+    higher_model_reassessment: JsonObject = Field(default_factory=dict)
+    parent_disposition: V2RoutingState = Field(default_factory=V2RoutingState)
+    report_draft: JsonObject = Field(default_factory=dict)
+    report_fidelity: JsonObject = Field(default_factory=dict)
     attempts: dict[str, int] = Field(default_factory=dict)
     audit: tuple[str, ...] = ()
     result: JsonObject = Field(default_factory=dict)

@@ -13,7 +13,11 @@ from heatgrid_ops.agent.config import AgentRuntimeConfig
 from heatgrid_ops.agent.contracts import (
     ChatModelRequest,
     EvidenceAssessmentRequest,
+    ExecutionProfile,
+    ModelCallBudget,
     ReportWriteRequest,
+    ReportDraftSnapshotBundle,
+    ToolPolicy,
 )
 from heatgrid_ops.agent.diagnostics import DiagnosticModelPort
 from heatgrid_ops.agent.errors import AgentDependencyError
@@ -42,6 +46,7 @@ from heatgrid_ops.agent.run_models import (
     RagEvidenceRequest,
     ReportArtifactDraft,
 )
+from heatgrid_ops.agent.tools import ALL_AGENT_TOOL_NAMES
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,12 +114,27 @@ class AgentRuntime:
         evidence_assessment: EvidenceAssessment | None = None,
         revision_feedback: list[str] | None = None,
         usage: TokenUsage | None = None,
+        run_id: str = "legacy",
+        stage_name: str = "report_draft",
+        stage_attempt: int = 1,
+        execution_profile: ExecutionProfile = "parent_evidence_agent",
+        snapshot_bundle: ReportDraftSnapshotBundle | None = None,
     ) -> OpsAgentOutput:
         result = await self.chat_model.generate(
             ChatModelRequest(
+                run_id=run_id,
                 card_id=card_id,
+                stage_name=stage_name,
+                stage_attempt=stage_attempt,
+                execution_profile=execution_profile,
                 source_input=source_input,
                 evidence_context=evidence_context,
+                snapshot_bundle=snapshot_bundle,
+                snapshot_bundle_hash=None
+                if snapshot_bundle is None
+                else snapshot_bundle.bundle_hash,
+                tool_policy=_tool_policy(execution_profile),
+                model_budget=_model_budget(execution_profile),
                 model_verification=model_verification,
                 evidence_assessment=evidence_assessment,
                 revision_feedback=revision_feedback or [],
@@ -197,9 +217,15 @@ class AgentRuntime:
         output = fallback_note(source_input, evidence_context)
         usage = self.token_usage_for(source_input, evidence_context, card_id)
         request = ChatModelRequest(
+            run_id="stream",
             card_id=card_id,
+            stage_name="report_draft",
+            stage_attempt=1,
+            execution_profile="parent_evidence_agent",
             source_input=source_input,
             evidence_context=evidence_context,
+            tool_policy=_tool_policy("parent_evidence_agent"),
+            model_budget=_model_budget("parent_evidence_agent"),
         )
         try:
             async for event in self.chat_model.stream(request):
@@ -266,3 +292,29 @@ def _context_status(rag_status: str, external_status: str) -> str:
     if rag_status == "available" or external_status == "available":
         return "configured"
     return "configured_no_match"
+
+
+def _tool_policy(profile: ExecutionProfile) -> ToolPolicy:
+    if profile in {"report_snapshot_only", "report_revision_only"}:
+        return ToolPolicy(
+            policy_version="agent_tool_policy.v1",
+            allowed_tools=(),
+            max_total_tool_calls=0,
+            max_model_turns=1,
+        )
+    return ToolPolicy(
+        policy_version="agent_tool_policy.v1",
+        allowed_tools=ALL_AGENT_TOOL_NAMES,
+        max_total_tool_calls=8 if profile == "parent_evidence_agent" else 2,
+        max_model_turns=4 if profile == "parent_evidence_agent" else 2,
+    )
+
+
+def _model_budget(profile: ExecutionProfile) -> ModelCallBudget:
+    report_profile = profile in {"report_snapshot_only", "report_revision_only"}
+    return ModelCallBudget(
+        max_input_chars=40_000 if report_profile else 80_000,
+        max_output_tokens=1_000,
+        max_total_tokens=8_000 if report_profile else 16_000,
+        max_duration_ms=30_000,
+    )
