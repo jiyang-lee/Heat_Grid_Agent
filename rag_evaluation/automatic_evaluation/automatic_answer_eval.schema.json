@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.local/rag_evaluation/automatic_answer_eval.schema.json",
+  "title": "HeatGrid Rule-based Automatic Answer Evaluation Result",
+  "type": "object",
+  "required": ["case_id", "rule_evaluation", "quality_status", "not_calculated"],
+  "additionalProperties": true,
+  "properties": {
+    "case_id": {"type": "string"},
+    "query": {"type": ["string", "null"]},
+    "rule_evaluation": {
+      "type": "object",
+      "required": [
+        "coverage_rate",
+        "forbidden_claim_detected",
+        "citation_exists",
+        "citation_valid",
+        "retrieval_miss_policy_passed",
+        "answerable_policy_passed",
+        "abstention_expression_detected",
+        "json_valid",
+        "warning_count",
+        "error_count"
+      ],
+      "properties": {
+        "coverage_rate": {"type": ["number", "null"]},
+        "covered_expected_answer_point_indexes": {"type": "array", "items": {"type": "integer"}},
+        "expected_answer_point_count": {"type": "integer"},
+        "forbidden_claim_detected": {"type": "boolean"},
+        "forbidden_claim_hits": {"type": "array", "items": {"type": "string"}},
+        "citation_exists": {"type": "boolean"},
+        "citation_valid": {"type": "boolean"},
+        "retrieval_miss_policy_passed": {"type": ["boolean", "null"]},
+        "answerable_policy_passed": {"type": ["boolean", "null"]},
+        "abstention_expression_detected": {"type": "boolean"},
+        "json_valid": {"type": "boolean"},
+        "warning_count": {"type": "integer"},
+        "error_count": {"type": "integer"},
+        "internal_label_leak_detected": {"type": "boolean"},
+        "internal_label_leak_hits": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "quality_status": {
+      "type": "object",
+      "required": ["rule_based_completed", "llm_judge_completed", "human_review_completed"],
+      "properties": {
+        "rule_based_completed": {"type": "boolean"},
+        "llm_judge_completed": {"type": "boolean"},
+        "human_review_completed": {"type": "boolean"}
+      }
+    },
+    "not_calculated": {
+      "type": "object",
+      "additionalProperties": {"const": "NOT_CALCULATED"}
+    }
+  }
+}

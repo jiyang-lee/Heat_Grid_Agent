@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.local/rag_evaluation/llm_judge.schema.json",
+  "title": "HeatGrid LLM Judge Semantic Answer Evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "faithfulness",
+    "hallucination_severity",
+    "operational_usefulness",
+    "citation_accuracy_semantic",
+    "answer_relevance",
+    "overall_recommendation",
+    "recommendation_criteria_status",
+    "judge_confidence",
+    "judge_comment",
+    "judge_model",
+    "judge_prompt_version",
+    "evaluation_time",
+    "usage"
+  ],
+  "properties": {
+    "case_id": {"type": "string"},
+    "faithfulness": {"type": "integer", "minimum": 0, "maximum": 5},
+    "hallucination_severity": {"type": "string", "enum": ["NONE", "MINOR", "MAJOR", "CRITICAL"]},
+    "operational_usefulness": {"type": "integer", "minimum": 0, "maximum": 5},
+    "citation_accuracy_semantic": {"type": "integer", "minimum": 0, "maximum": 5},
+    "answer_relevance": {"type": "integer", "minimum": 0, "maximum": 5},
+    "overall_recommendation": {"type": "string", "enum": ["PASS", "REVISE", "FAIL"]},
+    "recommendation_criteria_status": {"type": "string", "const": "calibration_required"},
+    "judge_confidence": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
+    "judge_comment": {"type": "string", "minLength": 1},
+    "judge_model": {"type": "string", "minLength": 1},
+    "judge_prompt_version": {"type": "string", "minLength": 1},
+    "evaluation_time": {"type": "string", "format": "date-time"},
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "total_tokens", "estimated_cost_usd"],
+      "properties": {
+        "input_tokens": {"type": ["integer", "null"]},
+        "output_tokens": {"type": ["integer", "null"]},
+        "total_tokens": {"type": ["integer", "null"]},
+        "estimated_cost_usd": {"type": ["number", "null"]}
+      }
+    }
+  }
+}

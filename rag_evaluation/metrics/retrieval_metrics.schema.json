@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.local/rag_evaluation/retrieval_metrics.schema.json",
+  "title": "HeatGrid Retrieval Evaluation Result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "case_id",
+    "query",
+    "category",
+    "difficulty",
+    "query_intent",
+    "answerable",
+    "label_status",
+    "review_required",
+    "excluded_from_macro_metrics",
+    "relevant_chunk_ids",
+    "partially_relevant_chunk_ids",
+    "retrieved_chunk_ids",
+    "metrics",
+    "warnings"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "difficulty": {
+      "type": "string"
+    },
+    "query_intent": {
+      "type": "string"
+    },
+    "answerable": {
+      "type": "boolean"
+    },
+    "label_status": {
+      "type": "string"
+    },
+    "review_required": {
+      "type": "boolean"
+    },
+    "excluded_from_macro_metrics": {
+      "type": "boolean"
+    },
+    "exclusion_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "relevant_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "partially_relevant_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retrieved_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retrieved_count": {
+      "type": "integer"
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "recall_at_1",
+        "recall_at_3",
+        "recall_at_5",
+        "precision_at_1",
+        "precision_at_3",
+        "precision_at_5",
+        "mrr",
+        "ndcg_at_5",
+        "hit_rate_at_1",
+        "hit_rate_at_3",
+        "hit_rate_at_5"
+      ],
+      "properties": {
+        "recall_at_1": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "recall_at_3": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "recall_at_5": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "precision_at_1": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "precision_at_3": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "precision_at_5": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mrr": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ndcg_at_5": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hit_rate_at_1": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hit_rate_at_3": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hit_rate_at_5": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

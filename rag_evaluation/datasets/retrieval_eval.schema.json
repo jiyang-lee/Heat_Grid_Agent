@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.local/rag_evaluation/retrieval_eval.schema.json",
+  "title": "HeatGrid RAG Retrieval Evaluation Dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "category",
+    "query",
+    "query_intent",
+    "query_type",
+    "difficulty",
+    "fault_group",
+    "substation_context",
+    "expected_answer_points",
+    "forbidden_claims",
+    "relevant_document_ids",
+    "relevant_chunk_ids",
+    "partially_relevant_chunk_ids",
+    "irrelevant_but_confusable_chunk_ids",
+    "source_sections",
+    "answerable",
+    "review_required",
+    "reviewer_notes",
+    "label_status",
+    "tags"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^retrieval_eval_[0-9]{3}$"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "operating_standard",
+        "inspection_action",
+        "fault_cause",
+        "priority_reason",
+        "safety_caution",
+        "similar_case",
+        "unanswerable"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 5
+    },
+    "query_intent": {
+      "type": "string",
+      "enum": [
+        "reason_explanation",
+        "inspection_action",
+        "operating_standard",
+        "priority_reason",
+        "fault_cause",
+        "safety",
+        "comparison",
+        "unknown"
+      ]
+    },
+    "query_type": {
+      "type": "string",
+      "enum": [
+        "keyword_match",
+        "semantic_paraphrase",
+        "multi_condition",
+        "ambiguous",
+        "negative_or_unanswerable"
+      ]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "fault_group": {
+      "type": "string"
+    },
+    "substation_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system",
+        "symptoms",
+        "constraints"
+      ],
+      "properties": {
+        "system": {
+          "type": "string"
+        },
+        "symptoms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "expected_answer_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "relevant_document_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "relevant_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "partially_relevant_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "irrelevant_but_confusable_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "source_sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "chunk_id",
+          "document_title",
+          "section_title",
+          "evidence_note"
+        ],
+        "properties": {
+          "chunk_id": {
+            "type": "string"
+          },
+          "document_title": {
+            "type": "string"
+          },
+          "section_title": {
+            "type": "string"
+          },
+          "evidence_note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "answerable": {
+      "type": "boolean"
+    },
+    "review_required": {
+      "type": "boolean"
+    },
+    "reviewer_notes": {
+      "type": "string"
+    },
+    "label_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "reviewed",
+        "approved"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+dataset_path: "rag_evaluation/review/retrieval_eval.review.jsonl"
+approved_dataset_path: "rag_evaluation/datasets/retrieval_eval.approved.jsonl"
+requested_backend: "jsonl"
+top_k: 5
+raw_output_path: "rag_evaluation/results/raw_retrieval_outputs.jsonl"
+results_path: "rag_evaluation/results/real_retrieval_results.jsonl"
+summary_path: "rag_evaluation/results/real_retrieval_summary.json"
+
+metadata:
+  dataset_status: "draft"
+  result_level: "reference"
+  official_benchmark: false
+
+backend_modes:
+  auto: "Use production RagSearcher default backend selection."
+  pgvector: "Require active pgvector; skip/fail clearly if unavailable."
+  jsonl: "Force JSONL lexical fallback via HEATGRID_RAG_BACKEND=jsonl."
