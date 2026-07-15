@@ -571,7 +571,9 @@ async def _verify_application_catalog(
     connection: AsyncConnection[DictRow],
     version: int,
 ) -> None:
-    if version < 10:
+    # APPLICATION_TABLES_V011 includes replay_* tables created by migration 011,
+    # so enforce from 011 onward; checking at 010 breaks fresh-database bootstrap.
+    if version < 11:
         return
     result = await connection.execute(
         "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "

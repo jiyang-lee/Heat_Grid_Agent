@@ -4,19 +4,27 @@
  */
 
 import type {
+  ActivityProjectionQuery,
   AgentOperationsMetrics,
+  AgentReportListPage,
   AgentRunArtifact,
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunEvaluationItem,
   AgentRunEvaluationPage,
+  AgentRunListItem,
   AgentRunListPage,
+  AgentRunListQuery,
   AgentRunReviewSnapshotResponse,
   AgentRunResponse,
   OperatorReviewHistory,
   OperatorReviewRecord,
+  OperatorReviewStatus,
   OperatorReviewSubmitRequest,
+  StageName,
+  StageProjectionResponse,
+  WorkOrderListPage,
   PolicyCandidate,
   PolicyCandidateDecisionRequest,
   PolicyCandidatePage,
@@ -51,6 +59,22 @@ import { buildMockOpsOutput } from './workOrder'
 import { complexes } from '../data/complexes'
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+/** mock 결정적 기준 시각(mockData BASE_MS와 동일 값) */
+const BASE_TIME_MS = Date.parse('2026-07-09T09:00:00+09:00')
+
+/** 내부 9단계 stage 순서 — 백엔드 STAGE_ORDER와 1:1 */
+const STAGE_NAMES: readonly StageName[] = [
+  'ml_validation',
+  'weather_context',
+  'rag_retrieval',
+  'rag_interpretation',
+  'fault_analysis',
+  'higher_model_reassessment',
+  'parent_disposition',
+  'report_draft',
+  'report_fidelity',
+]
 
 /** 홈 '대기 서류' 시안 수치(3건) 재현용 검토 대기 문서. run 생성 시 새 task가 앞에 쌓인다. */
 function seedReviewTask(seq: number, title: string, riskLevel: HumanReviewTask['risk_level'], createdAt: string): HumanReviewTask {
@@ -222,23 +246,78 @@ export const priorityEvaluationsApi = {
   },
 }
 
+/** 백엔드 목록 projection과 동일 규칙: reject는 ELSE 분기라 pending으로 투영된다. */
+function latestOperatorStatus(runId: string): OperatorReviewStatus {
+  const latest = mockOperatorReviews.get(runId)?.at(-1)
+  if (!latest) return 'pending'
+  if (latest.decision === 'approve') return 'approved'
+  if (latest.decision === 'correct') return 'corrected'
+  if (latest.decision === 'keep_human_review') return 'keep_human_review'
+  return 'pending'
+}
+
+const REPORT_KINDS = ['anomaly_report', 'daily_report'] as const
+
+function reportArtifactsOf(runId: string): AgentRunArtifact[] {
+  return (store.artifacts.get(runId) ?? []).filter((artifact) =>
+    (REPORT_KINDS as readonly string[]).includes(artifact.kind),
+  )
+}
+
+function runListItem(run: AgentRunResponse): AgentRunListItem {
+  const alert = store.alerts.get(run.alert_id)
+  const reports = reportArtifactsOf(run.run_id)
+  return {
+    run_id: run.run_id,
+    status: run.status,
+    alert_id: run.alert_id,
+    card_id: run.card_id,
+    priority: alert?.priority_level ?? null,
+    operator_review_status: latestOperatorStatus(run.run_id),
+    worker_status: run.status === 'completed' ? 'completed' : run.status === 'failed' ? 'failed' : 'running',
+    review_snapshot_status: run.status === 'completed' ? 'available' : 'pending',
+    created_at: run.created_at ?? new Date(BASE_TIME_MS).toISOString(),
+    updated_at: run.created_at ?? new Date(BASE_TIME_MS).toISOString(),
+    manufacturer_id: run.manufacturer_id,
+    substation_id: run.substation_id,
+    substation_uid: run.substation_uid,
+    alert_reason: alert?.enqueue_reason ?? null,
+    current_stage: run.status === 'completed' ? 'report_fidelity' : run.status === 'failed' ? 'fault_analysis' : 'rag_interpretation',
+    has_result: run.ops_output != null,
+    report_artifact_count: reports.length,
+    latest_report_name: reports.at(-1)?.name ?? null,
+  }
+}
+
+function matchesPeriod(createdAt: string, query?: { created_from?: string; created_to?: string }): boolean {
+  const at = Date.parse(createdAt)
+  if (query?.created_from && at < Date.parse(query.created_from)) return false
+  if (query?.created_to && at > Date.parse(query.created_to)) return false
+  return true
+}
+
 export const agentRunsApi = {
-  async list(): Promise<AgentRunListPage> {
+  async list(query?: AgentRunListQuery): Promise<AgentRunListPage> {
     await delay(100)
+    const needle = query?.search?.toLowerCase()
+    const items = [...store.runs.values()]
+      .map(runListItem)
+      .filter((item) => (query?.status ? item.status === query.status : true))
+      .filter((item) => (query?.operator_review_status ? item.operator_review_status === query.operator_review_status : true))
+      .filter((item) => (query?.substation_id != null ? item.substation_id === query.substation_id : true))
+      .filter((item) => matchesPeriod(item.created_at, query))
+      .filter((item) =>
+        needle
+          ? [item.alert_reason, item.manufacturer_id, item.run_id, item.card_id, item.latest_report_name]
+              .some((value) => value?.toLowerCase().includes(needle))
+          : true,
+      )
+      .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.run_id.localeCompare(a.run_id))
+    const limit = query?.limit ?? 50
     return {
-      items: [...store.runs.values()].map((run) => ({
-        run_id: run.run_id,
-        status: run.status,
-        alert_id: run.alert_id,
-        card_id: run.card_id,
-        priority: run.review_status === 'pending' ? 'critical' : 'high',
-        operator_review_status: run.review_status === 'rejected' ? 'keep_human_review' : run.review_status,
-        worker_status: run.status === 'completed' ? 'completed' : run.status === 'failed' ? 'failed' : 'running',
-        review_snapshot_status: run.status === 'completed' ? 'available' : 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })),
+      items: items.slice(0, limit),
       next_cursor: null,
+      total_count: items.length,
     }
   },
   async create(body: AgentRunCreateRequest): Promise<AgentRunResponse> {
@@ -264,6 +343,8 @@ export const agentRunsApi = {
       evaluation_run_id: alert.evaluation_run_id,
       manufacturer_id: alert.manufacturer_id,
       substation_id: alert.substation_id,
+      substation_uid: null,
+      created_at: new Date().toISOString(),
       parent_run_id: existing?.run_id ?? null,
       trigger_type: body.force_new ? 'manual_rerun' : 'alert',
       requested_by: body.requested_by ?? null,
@@ -316,8 +397,8 @@ export const agentRunsApi = {
     }
     store.runs.set(runId, run)
     store.artifacts.set(runId, [
-      { artifact_id: `${runId}-ev`, run_id: runId, kind: 'evidence', name: `evidence_${alert.card_id}.json`, uri: `/artifacts/${runId}/evidence.json` },
-      { artifact_id: `${runId}-rp`, run_id: runId, kind: 'report', name: 'ops_action_report.md', uri: `/artifacts/${runId}/report.md` },
+      { artifact_id: `${runId}-ev`, run_id: runId, kind: 'evidence', name: `evidence_${alert.card_id}.json`, uri: `/artifacts/${runId}/evidence.json`, created_at: run.created_at },
+      { artifact_id: `${runId}-rp`, run_id: runId, kind: 'anomaly_report', name: 'ops_action_report.md', uri: `/artifacts/${runId}/report.md`, created_at: run.created_at },
     ])
     mockReviewTasks.unshift({
       task_id: `${runId}-review`,
@@ -348,6 +429,7 @@ export const agentRunsApi = {
     await delay(100)
     const r = store.runs.get(runId)
     if (!r) throw new ApiError(404, `/agent-runs/${runId}/review`, 'run_id를 찾을 수 없습니다.')
+    const alert = store.alerts.get(r.alert_id)
     return {
       run_id: runId,
       status: r.status === 'completed' ? 'available' : 'pending',
@@ -355,14 +437,123 @@ export const agentRunsApi = {
       snapshot_hash: r.status === 'completed' ? `mock-${runId}` : null,
       snapshot: r.status === 'completed'
         ? {
-          handling_reason: r.ops_output?.summary ?? null,
+          schema_version: 'agent_run_review.v1',
+          run_id: runId,
+          result: { status: 'completed', agent_mode: r.agent_mode, ops_output: r.ops_output, error: null },
+          decisions: [
+            { sequence: 1, decision: 'collect_evidence', reason: '우선순위 카드와 내부 근거를 수집했습니다.' },
+            { sequence: 2, decision: 'finalize', reason: '수집 근거가 충분하여 최종 보고를 확정했습니다.' },
+          ],
           loop_count: r.loop_summary?.iterations ?? 0,
-          diagnostic: { status: 'completed' },
-          evidence: [{ label: '운영 근거', content: 'mock priority card evidence', source: 'manual' }],
+          handling_reason: r.ops_output?.summary ?? '완료된 실행입니다.',
+          diagnostic: {
+            trigger: null,
+            status: 'completed',
+            hypotheses: [
+              {
+                hypothesis_id: `${runId}-hyp-1`,
+                title: '열교환기 2차측 열부하 감소 가능성',
+                rationale: '공급온도 하락과 유량 변화가 동시에 관측되어 2차측 부하 변동을 우선 검토합니다.',
+                evidence_ids: [`${runId}-ev-1`],
+                confidence: 0.82,
+              },
+            ],
+            attempts: 1,
+            input_tokens: 1200,
+            output_tokens: 320,
+            input_token_limit: 3000,
+            output_token_limit: 1000,
+            deadline_seconds: 60,
+            fallback_reason: null,
+          },
+          model_verification: {
+            status: 'verified',
+            agreement: true,
+            component_results: [
+              { component: 'risk', agreement: true },
+              { component: 'anomaly', agreement: true },
+              { component: 'priority', agreement: true },
+            ],
+            stored_score: alert?.priority_score ?? null,
+            current_score: alert?.priority_score ?? null,
+            score_delta: 0,
+            reason: '저장 점수와 재계산 점수가 일치합니다.',
+          },
+          weather: {
+            status: 'available',
+            observed_at: r.created_at,
+            temperature_c: 26.1,
+            humidity_percent: 78,
+            precipitation_mm: 2.1,
+            wind_speed_mps: 1.4,
+            provenance: { source: 'KMA 관측(mock)', source_owner: 'kma', snapshot_id: null, retrieval_id: null, document_id: null, chunk_id: null, error_type: null, message: null },
+          },
+          evidence: [
+            {
+              evidence_id: `${runId}-ev-1`,
+              document_type: 'internal_rag',
+              source_owner: 'ops',
+              source: '내부 운영 문서(mock)',
+              title: '열교환기 유량 상승 대응 사례',
+              section: '조치 절차',
+              score: 0.87,
+              excerpt: '2차측 유량 증가와 공급온도 하락이 동반되면 열교환기 연결부 점검을 우선한다.',
+              provenance: { source: 'internal(mock)', source_owner: 'ops', snapshot_id: null, retrieval_id: null, document_id: 'R-021', chunk_id: null, error_type: null, message: null },
+            },
+            {
+              evidence_id: `${runId}-ev-2`,
+              document_type: 'operator_manual_evidence',
+              source_owner: 'operator',
+              source: '운영 노트(mock)',
+              title: '현장 열림 밸브 확인 기록',
+              section: null,
+              score: 0.8,
+              excerpt: '보충수 밸브 설정 변경 이력이 있어 현장 확인이 필요하다.',
+              provenance: { source: 'note(mock)', source_owner: 'operator', snapshot_id: null, retrieval_id: null, document_id: 'N-20260711-01', chunk_id: null, error_type: null, message: null },
+            },
+          ],
+          source_card: {
+            card_id: r.card_id,
+            substation_id: r.substation_id,
+            manufacturer_id: r.manufacturer_id,
+            priority_level: alert?.priority_level ?? 'high',
+            status: alert?.status ?? null,
+            review_required: true,
+            reason: alert?.enqueue_reason ?? '우선순위 카드 검토 대상',
+          },
+          budget: { parent_token_limit: 60000, parent_tokens_used: 4200, diagnostic_token_limit: 3000, diagnostic_tokens_used: 1520 },
+          checkpoint: { thread_id: runId, namespace: 'mock', checkpoint_id: null, durability: 'sync' },
         }
         : null,
-      created_at: r.status === 'completed' ? new Date().toISOString() : null,
+      created_at: r.status === 'completed' ? r.created_at : null,
       unavailable_reason: r.status === 'completed' ? null : '실행이 아직 완료되지 않았습니다.',
+    }
+  },
+  /** 9단계 stage snapshot projection — 완료 run은 전 단계 passed로 결정적 구성 */
+  async stages(runId: string): Promise<StageProjectionResponse> {
+    await delay(80)
+    const r = store.runs.get(runId)
+    if (!r) throw new ApiError(404, `/agent-runs/${runId}/stages`, 'run_id를 찾을 수 없습니다.')
+    const baseMs = Date.parse(r.created_at ?? new Date(BASE_TIME_MS).toISOString())
+    const completedCount = r.status === 'completed' ? STAGE_NAMES.length : r.status === 'failed' ? 5 : 4
+    return {
+      run_id: runId,
+      graph_contract_version: 'agent_graph_v2.v3',
+      items: STAGE_NAMES.slice(0, completedCount).map((stageName, index) => ({
+        stage_snapshot_id: `${runId}-stage-${index + 1}`,
+        stage_name: stageName,
+        attempt: 1,
+        execution_status: r.status === 'failed' && index === completedCount - 1 ? 'failed' : 'passed',
+        quality_status: ['higher_model_reassessment', 'parent_disposition'].includes(stageName) ? null : 'passed',
+        score: ['higher_model_reassessment', 'parent_disposition'].includes(stageName) ? null : 92,
+        threshold: ['higher_model_reassessment', 'parent_disposition'].includes(stageName) ? null : 70,
+        reasons: [],
+        retry_exhausted: false,
+        force_review: false,
+        contract_version: 'stage.v1',
+        reused_from_snapshot_id: null,
+        created_at: new Date(baseMs + (index + 1) * 45_000).toISOString(),
+      })),
     }
   },
   async result(runId: string): Promise<OpsAgentResultV4> {
@@ -409,6 +600,7 @@ export const agentRunsApi = {
       kind: 'daily_report',
       name: 'daily_report.json',
       uri: `output/ops_agent/reports/${runId}/daily_report.json`,
+      created_at: new Date().toISOString(),
     }
     store.artifacts.set(runId, [...artifacts, artifact])
     return artifact
@@ -744,3 +936,139 @@ export function subscribeSse(path: string, onEvent: (data: unknown) => void): ()
 
 export const alertEventsPath = '/alerts/events'
 export const agentRunEventsPath = (runId: string) => `/agent-runs/${runId}/events`
+
+/* ===== AI 활동 — 작업지시서/보고서 projection mock ===== */
+
+function projectionFilter<
+  T extends { operator_review_status: OperatorReviewStatus; substation_id: number | null; created_at: string },
+>(
+  rows: T[],
+  query: ActivityProjectionQuery | undefined,
+  searchText: (item: T) => readonly (string | null)[],
+): { items: T[]; total: number } {
+  const needle = query?.search?.toLowerCase()
+  const filtered = rows
+    .filter((item) => (query?.operator_review_status ? item.operator_review_status === query.operator_review_status : true))
+    .filter((item) => (query?.substation_id != null ? item.substation_id === query.substation_id : true))
+    .filter((item) => matchesPeriod(item.created_at, query))
+    .filter((item) => (needle ? searchText(item).some((value) => value?.toLowerCase().includes(needle)) : true))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  return { items: filtered.slice(0, query?.limit ?? 50), total: filtered.length }
+}
+
+export const workOrdersApi = {
+  async list(query?: ActivityProjectionQuery): Promise<WorkOrderListPage> {
+    await delay(100)
+    const rows = [...store.runs.values()]
+      .filter((run) => run.ops_output != null)
+      .map((run) => {
+        const alert = store.alerts.get(run.alert_id)
+        return {
+          run_id: run.run_id,
+          priority: alert?.priority_level ?? null,
+          alert_reason: alert?.enqueue_reason ?? null,
+          manufacturer_id: run.manufacturer_id,
+          substation_id: run.substation_id,
+          substation_uid: run.substation_uid,
+          operator_review_status: latestOperatorStatus(run.run_id),
+          created_at: run.created_at ?? new Date(BASE_TIME_MS).toISOString(),
+        }
+      })
+    const { items, total } = projectionFilter(rows, query, (item) => [item.alert_reason, item.manufacturer_id, item.run_id])
+    return { items, next_cursor: null, total_count: total }
+  },
+}
+
+export const agentReportsApi = {
+  async list(query?: ActivityProjectionQuery): Promise<AgentReportListPage> {
+    await delay(100)
+    const rows = [...store.runs.values()].flatMap((run) => {
+      const alert = store.alerts.get(run.alert_id)
+      return reportArtifactsOf(run.run_id).map((artifact) => ({
+        artifact_id: artifact.artifact_id,
+        run_id: run.run_id,
+        kind: artifact.kind,
+        name: artifact.name,
+        uri: artifact.uri,
+        priority: alert?.priority_level ?? null,
+        manufacturer_id: run.manufacturer_id,
+        substation_id: run.substation_id,
+        substation_uid: run.substation_uid,
+        operator_review_status: latestOperatorStatus(run.run_id),
+        created_at: artifact.created_at ?? run.created_at ?? new Date(BASE_TIME_MS).toISOString(),
+      }))
+    })
+    const { items, total } = projectionFilter(rows, query, (item) => [item.name, item.manufacturer_id, item.run_id])
+    return { items, next_cursor: null, total_count: total }
+  },
+}
+
+/** mock 초기 시연 데이터 — 실행/작업지시서/보고서 목록이 비지 않게 완료 2·실패 1 run 시드 */
+function seedMockAgentRuns(): void {
+  const seeds = [
+    { runId: 'run-seed-0001', alertId: 'alert-001', offsetMin: 120, status: 'completed' as const, approve: true, daily: false },
+    { runId: 'run-seed-0002', alertId: 'alert-002', offsetMin: 60, status: 'completed' as const, approve: false, daily: true },
+    { runId: 'run-seed-0003', alertId: 'alert-003', offsetMin: 30, status: 'failed' as const, approve: false, daily: false },
+  ]
+  for (const seed of seeds) {
+    const alert = store.alerts.get(seed.alertId)
+    if (!alert) continue
+    const createdAt = new Date(BASE_TIME_MS - seed.offsetMin * 60_000).toISOString()
+    const complex = complexForAlert(seed.alertId)
+    const opsOutput = seed.status === 'completed' && complex ? buildMockOpsOutput(complex) : null
+    store.runs.set(seed.runId, {
+      run_id: seed.runId,
+      status: seed.status,
+      input_source: 'alert',
+      alert_id: seed.alertId,
+      card_id: alert.card_id,
+      evaluation_run_id: alert.evaluation_run_id,
+      manufacturer_id: alert.manufacturer_id,
+      substation_id: alert.substation_id,
+      substation_uid: null,
+      created_at: createdAt,
+      parent_run_id: null,
+      trigger_type: 'alert',
+      requested_by: 'ops-manager',
+      trigger_reason: '알림 기반 자동 분석',
+      approved_action_task_id: null,
+      agent_mode: seed.status === 'completed' ? 'llm' : null,
+      ops_output: opsOutput,
+      token_usage: opsOutput ? buildTokenUsage(opsOutput) : null,
+      loop_summary: null,
+      review_status: 'pending',
+      review_task_id: null,
+      error: seed.status === 'failed' ? '진단 단계에서 근거 수집에 실패했습니다.' : null,
+    })
+    if (seed.status === 'completed') {
+      const artifacts: AgentRunArtifact[] = [
+        { artifact_id: `${seed.runId}-rp`, run_id: seed.runId, kind: 'anomaly_report', name: 'ops_action_report.md', uri: `/artifacts/${seed.runId}/report.md`, created_at: createdAt },
+      ]
+      if (seed.daily) {
+        artifacts.push({ artifact_id: `${seed.runId}-daily`, run_id: seed.runId, kind: 'daily_report', name: 'daily_report.json', uri: `/artifacts/${seed.runId}/daily_report.json`, created_at: createdAt })
+      }
+      store.artifacts.set(seed.runId, artifacts)
+    }
+    if (seed.approve) {
+      mockOperatorReviews.set(seed.runId, [
+        {
+          review_id: `${seed.runId}-rv-1`,
+          run_id: seed.runId,
+          review_version: 1,
+          idempotency_key: `${seed.runId}-seed`,
+          request_hash: 'mock'.padEnd(64, '0'),
+          decision: 'approve',
+          reviewer: 'ops-manager',
+          reason: '보고 내용이 현장 상황과 일치하여 승인합니다.',
+          disposition: 'normal_observation',
+          correction: null,
+          evidence_annotations: [],
+          operator_labels: [],
+          created_at: createdAt,
+        },
+      ])
+    }
+  }
+}
+
+seedMockAgentRuns()

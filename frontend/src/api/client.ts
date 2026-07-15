@@ -10,15 +10,20 @@
  */
 
 import type {
+  ActivityProjectionQuery,
   AgentOperationsMetrics,
+  AgentReportListPage,
   AgentRunArtifact,
   AgentReportCreateRequest,
   AgentLoopIteration,
   AgentRunCreateRequest,
   AgentRunEvaluationPage,
   AgentRunListPage,
+  AgentRunListQuery,
   AgentRunReviewSnapshotResponse,
   AgentRunResponse,
+  StageProjectionResponse,
+  WorkOrderListPage,
   OperatorReviewHistory,
   OperatorReviewRecord,
   OperatorReviewSubmitRequest,
@@ -94,11 +99,13 @@ export async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return res.json() as Promise<T>
 }
 
-function toQueryString(query?: Record<string, string | undefined>): string {
+function toQueryString(
+  query?: Record<string, string | number | undefined>,
+): string {
   if (!query) return ''
   const params = new URLSearchParams()
   for (const [k, v] of Object.entries(query)) {
-    if (v != null) params.set(k, v)
+    if (v != null) params.set(k, String(v))
   }
   const s = params.toString()
   return s ? `?${s}` : ''
@@ -171,7 +178,10 @@ export const simulationsApi = {
 }
 
 export const agentRunsApi = {
-  list: () => apiFetch<AgentRunListPage>('/agent-runs?limit=20'),
+  list: (query?: AgentRunListQuery) =>
+    apiFetch<AgentRunListPage>(
+      `/agent-runs${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
+    ),
   create: (body: AgentRunCreateRequest) =>
     apiFetch<AgentRunResponse>('/agent-runs', {
       method: 'POST',
@@ -183,6 +193,9 @@ export const agentRunsApi = {
   result: (runId: string) => apiFetch<OpsAgentResultV4>(`/agent-runs/${runId}/result`),
   artifacts: (runId: string) =>
     apiFetch<AgentRunArtifact[]>(`/agent-runs/${runId}/artifacts`),
+  /** 커밋 402482a 신설 — 9단계 stage snapshot projection */
+  stages: (runId: string) =>
+    apiFetch<StageProjectionResponse>(`/agent-runs/${runId}/stages`),
   dailyReport: (runId: string, body: AgentReportCreateRequest) =>
     apiFetch<AgentRunArtifact>(`/agent-runs/${runId}/reports/daily`, {
       method: 'POST',
@@ -190,6 +203,21 @@ export const agentRunsApi = {
     }),
   iterations: (runId: string) =>
     apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
+}
+
+/** AI 활동 — 작업지시서/보고서 read-only projection */
+export const workOrdersApi = {
+  list: (query?: ActivityProjectionQuery) =>
+    apiFetch<WorkOrderListPage>(
+      `/work-orders${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
+    ),
+}
+
+export const agentReportsApi = {
+  list: (query?: ActivityProjectionQuery) =>
+    apiFetch<AgentReportListPage>(
+      `/agent-reports${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
+    ),
 }
 
 /* ===== v3-02 신규 계약 (docs/report/06_agent_v3_backend_completion_ko.md) ===== */

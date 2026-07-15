@@ -97,7 +97,7 @@ const completenessLabels: Record<EvidenceCompleteness, string> = {
   complete: '완전', partial: '부분', missing: '없음',
 }
 const decisionLabels: Record<OperatorReviewDecision, string> = {
-  approve: '승인', correct: '교정', keep_human_review: '사람 검토 유지',
+  approve: '승인', reject: '반려', correct: '교정', keep_human_review: '사람 검토 유지',
 }
 const dispositionLabels: Record<OperatorReviewDisposition, string> = {
   normal_observation: '정상 관찰', inspection_recommended: '점검 권장', urgent_review: '긴급 검토',
