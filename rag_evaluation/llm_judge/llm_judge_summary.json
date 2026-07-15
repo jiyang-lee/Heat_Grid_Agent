@@ -1,0 +1,302 @@
+{
+  "answer_relevance_average": 4.035714285714286,
+  "answerable_false_breakdown": {
+    "answer_relevance_average": 5.0,
+    "case_count": 3,
+    "citation_accuracy_semantic_average": 5.0,
+    "faithfulness_average": 5.0,
+    "hallucination_distribution": {
+      "NONE": 3
+    },
+    "operational_usefulness_average": 4.0,
+    "overall_recommendation_distribution": {
+      "PASS": 3
+    }
+  },
+  "api_call_count": 28,
+  "citation_accuracy_semantic_average": 3.2857142857142856,
+  "cost_calculation_note": "estimated_total_cost_usd is null because official pricing for the configured model was not confirmed in this evaluation config.",
+  "duplicate_case_ids": [],
+  "estimated_total_cost_usd": null,
+  "evaluated_case_count": 28,
+  "execution_time": "2026-07-15T07:28:52.414297+00:00",
+  "failed_case_count": 0,
+  "failed_cases": [],
+  "faithfulness_average": 3.607142857142857,
+  "generation_models": [
+    "gpt-5.4-mini"
+  ],
+  "hallucination_distribution": {
+    "MAJOR": 1,
+    "MINOR": 11,
+    "NONE": 16
+  },
+  "input_file_hashes_after": {
+    "answer_eval.draft.jsonl": "FB1A31E747172EE70D4C61A8EA6D702EBE879E2618E7659535EB43FBC8A105A4",
+    "answer_generation_all.jsonl": "8A2F8B832F4854EE3C5AEF51BBDDB97B74CD05DFA6F84ABB8C5268EBF2306DA5",
+    "automatic_answer_eval_results.jsonl": "5AF3C595EB802803CDBF85B225A48FFC8C1B84678CF5CC48896812F218CC4D88",
+    "real_retrieval_results.jsonl": "48602805E87BE5248C177AF90EE51124CC51B97EF12DDBE852143999707DE374"
+  },
+  "input_file_hashes_before": {
+    "answer_eval.draft.jsonl": "FB1A31E747172EE70D4C61A8EA6D702EBE879E2618E7659535EB43FBC8A105A4",
+    "answer_generation_all.jsonl": "8A2F8B832F4854EE3C5AEF51BBDDB97B74CD05DFA6F84ABB8C5268EBF2306DA5",
+    "automatic_answer_eval_results.jsonl": "5AF3C595EB802803CDBF85B225A48FFC8C1B84678CF5CC48896812F218CC4D88",
+    "real_retrieval_results.jsonl": "48602805E87BE5248C177AF90EE51124CC51B97EF12DDBE852143999707DE374"
+  },
+  "input_hashes_unchanged": true,
+  "jsonl_row_count": 28,
+  "judge_confidence_distribution": {
+    "HIGH": 27,
+    "MEDIUM": 1
+  },
+  "judge_generation_same_model": true,
+  "judge_model": "gpt-5.4-mini",
+  "judge_prompt_version": "llm-judge-v1.0-draft",
+  "manual_review_priority_cases": [
+    {
+      "answer_relevance": 1,
+      "case_id": "retrieval_eval_006",
+      "citation_accuracy_semantic": 0,
+      "faithfulness": 0,
+      "hallucination_severity": "NONE",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 1,
+      "overall_recommendation": "FAIL"
+    },
+    {
+      "answer_relevance": 1,
+      "case_id": "retrieval_eval_008",
+      "citation_accuracy_semantic": 0,
+      "faithfulness": 0,
+      "hallucination_severity": "NONE",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 1,
+      "overall_recommendation": "FAIL"
+    },
+    {
+      "answer_relevance": 4,
+      "case_id": "retrieval_eval_016",
+      "citation_accuracy_semantic": 5,
+      "faithfulness": 5,
+      "hallucination_severity": "NONE",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "PASS"
+    },
+    {
+      "answer_relevance": 4,
+      "case_id": "retrieval_eval_002",
+      "citation_accuracy_semantic": 2,
+      "faithfulness": 3,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 3,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 4,
+      "case_id": "retrieval_eval_003",
+      "citation_accuracy_semantic": 1,
+      "faithfulness": 2,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "MEDIUM",
+      "operational_usefulness": 3,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 3,
+      "case_id": "retrieval_eval_005",
+      "citation_accuracy_semantic": 1,
+      "faithfulness": 2,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 4,
+      "case_id": "retrieval_eval_007",
+      "citation_accuracy_semantic": 2,
+      "faithfulness": 3,
+      "hallucination_severity": "NONE",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 3,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 4,
+      "case_id": "retrieval_eval_011",
+      "citation_accuracy_semantic": 2,
+      "faithfulness": 3,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 3,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 2,
+      "case_id": "retrieval_eval_013",
+      "citation_accuracy_semantic": 0,
+      "faithfulness": 1,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 2,
+      "case_id": "retrieval_eval_014",
+      "citation_accuracy_semantic": 5,
+      "faithfulness": 5,
+      "hallucination_severity": "NONE",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 5,
+      "case_id": "retrieval_eval_015",
+      "citation_accuracy_semantic": 3,
+      "faithfulness": 4,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 4,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 2,
+      "case_id": "retrieval_eval_019",
+      "citation_accuracy_semantic": 1,
+      "faithfulness": 1,
+      "hallucination_severity": "MINOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "REVISE"
+    },
+    {
+      "answer_relevance": 3,
+      "case_id": "retrieval_eval_024",
+      "citation_accuracy_semantic": 1,
+      "faithfulness": 2,
+      "hallucination_severity": "MAJOR",
+      "judge_confidence": "HIGH",
+      "operational_usefulness": 2,
+      "overall_recommendation": "REVISE"
+    }
+  ],
+  "missing_case_ids": [],
+  "operational_usefulness_average": 3.2857142857142856,
+  "overall_recommendation_distribution": {
+    "FAIL": 2,
+    "PASS": 16,
+    "REVISE": 10
+  },
+  "query_type_breakdown": {
+    "keyword_match": {
+      "answer_relevance_average": 4.090909090909091,
+      "case_count": 11,
+      "citation_accuracy_semantic_average": 3.272727272727273,
+      "faithfulness_average": 3.5454545454545454,
+      "hallucination_distribution": {
+        "MINOR": 5,
+        "NONE": 6
+      },
+      "operational_usefulness_average": 3.3636363636363638,
+      "overall_recommendation_distribution": {
+        "FAIL": 1,
+        "PASS": 7,
+        "REVISE": 3
+      }
+    },
+    "semantic_paraphrase": {
+      "answer_relevance_average": 4.0,
+      "case_count": 7,
+      "citation_accuracy_semantic_average": 2.4285714285714284,
+      "faithfulness_average": 3.142857142857143,
+      "hallucination_distribution": {
+        "MAJOR": 1,
+        "MINOR": 5,
+        "NONE": 1
+      },
+      "operational_usefulness_average": 2.857142857142857,
+      "overall_recommendation_distribution": {
+        "PASS": 2,
+        "REVISE": 5
+      }
+    }
+  },
+  "raw_response_issue_count": 0,
+  "raw_response_issues": [],
+  "recommendation_criteria_status": "calibration_required",
+  "retrieval_hit_breakdown": {
+    "answer_relevance_average": 5.0,
+    "case_count": 10,
+    "citation_accuracy_semantic_average": 4.3,
+    "faithfulness_average": 4.5,
+    "hallucination_distribution": {
+      "MINOR": 5,
+      "NONE": 5
+    },
+    "operational_usefulness_average": 4.3,
+    "overall_recommendation_distribution": {
+      "PASS": 9,
+      "REVISE": 1
+    }
+  },
+  "retrieval_miss_breakdown": {
+    "answer_relevance_average": 3.2,
+    "case_count": 15,
+    "citation_accuracy_semantic_average": 2.2666666666666666,
+    "faithfulness_average": 2.7333333333333334,
+    "hallucination_distribution": {
+      "MAJOR": 1,
+      "MINOR": 6,
+      "NONE": 8
+    },
+    "operational_usefulness_average": 2.466666666666667,
+    "overall_recommendation_distribution": {
+      "FAIL": 2,
+      "PASS": 4,
+      "REVISE": 9
+    }
+  },
+  "retry_count": 0,
+  "retry_log": [],
+  "schema_validation_error_count": 0,
+  "schema_validation_errors": {
+    "retrieval_eval_001": [],
+    "retrieval_eval_002": [],
+    "retrieval_eval_003": [],
+    "retrieval_eval_004": [],
+    "retrieval_eval_005": [],
+    "retrieval_eval_006": [],
+    "retrieval_eval_007": [],
+    "retrieval_eval_008": [],
+    "retrieval_eval_009": [],
+    "retrieval_eval_010": [],
+    "retrieval_eval_011": [],
+    "retrieval_eval_012": [],
+    "retrieval_eval_013": [],
+    "retrieval_eval_014": [],
+    "retrieval_eval_015": [],
+    "retrieval_eval_016": [],
+    "retrieval_eval_017": [],
+    "retrieval_eval_018": [],
+    "retrieval_eval_019": [],
+    "retrieval_eval_020": [],
+    "retrieval_eval_021": [],
+    "retrieval_eval_022": [],
+    "retrieval_eval_023": [],
+    "retrieval_eval_024": [],
+    "retrieval_eval_025": [],
+    "retrieval_eval_026": [],
+    "retrieval_eval_027": [],
+    "retrieval_eval_028": []
+  },
+  "total_case_count": 28,
+  "total_input_tokens": 119258,
+  "total_output_tokens": 6039,
+  "total_tokens": 125297,
+  "warning_case_count": 0,
+  "warning_cases": []
+}
