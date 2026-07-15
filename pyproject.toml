@@ -36,6 +36,7 @@ dependencies = [
 [project.scripts]
 third-model-pipeline = "third_model.pipeline:main"
 heatgrid-db-migrate = "heatgrid_ops.db.cli:main"
+heatgrid-replay-worker = "simulator.versions.v2_postgres_react_ops.backend.replay_worker_main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

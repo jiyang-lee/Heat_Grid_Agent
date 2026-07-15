@@ -49,6 +49,7 @@ from repository import (
 )
 from priority_evaluation_routes import make_priority_evaluation_router
 from retrain_routes import make_retrain_router
+from replay_routes import make_replay_router
 from schemas import (
     ApiMetadata,
     CardSummary,
@@ -158,6 +159,8 @@ async def index() -> ApiMetadata:
             "/api/evidence-candidates",
             "/api/retrain-jobs",
             "/api/model-candidates",
+            "/api/replay-datasets",
+            "/api/replay-runs",
         ],
     )
 
@@ -314,6 +317,7 @@ app.include_router(
 app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
+app.include_router(make_replay_router(engine, storage_root=settings.replay_storage_root))
 
 
 if __name__ == "__main__":

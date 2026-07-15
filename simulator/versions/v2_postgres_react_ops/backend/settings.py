@@ -43,3 +43,4 @@ class Settings(BaseSettings):
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)
     priority_model_version: str = "active-priority-contract-v1"
+    replay_storage_root: str = "C:/var/lib/heatgrid/replay"

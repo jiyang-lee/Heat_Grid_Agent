@@ -30,7 +30,7 @@ CHECKPOINT_INDEXES: Final = frozenset(
         "checkpoint_writes_thread_id_idx",
     }
 )
-APPLICATION_TABLES_V010: Final = frozenset(
+APPLICATION_TABLES_V011: Final = frozenset(
     {
         "agent_budget_ledger",
         "agent_loop_iterations",
@@ -65,6 +65,14 @@ APPLICATION_TABLES_V010: Final = frozenset(
         "priority_decisions",
         "priority_evaluation_results",
         "priority_evaluation_runs",
+        "replay_dataset_files",
+        "replay_datasets",
+        "replay_latest_readings",
+        "replay_run_commands",
+        "replay_runs",
+        "replay_stream_events",
+        "replay_tick_batches",
+        "replay_window_evaluations",
         "rag_chunks",
         "rag_documents",
         "retrain_jobs",
@@ -571,10 +579,10 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    if actual != APPLICATION_TABLES_V010:
+    if actual != APPLICATION_TABLES_V011:
         raise MigrationContractError(
             "application tables mismatch: "
-            f"expected={sorted(APPLICATION_TABLES_V010)}, actual={sorted(actual)}"
+            f"expected={sorted(APPLICATION_TABLES_V011)}, actual={sorted(actual)}"
         )
 
 
