@@ -16,6 +16,7 @@ from heatgrid_ops.agent.models import JsonObject, JsonValue
 from heatgrid_ops.agent.v2_models import STAGE_ORDER, StageName, StageSnapshotEnvelope
 from heatgrid_ops.agent.v2_stage_contracts import StageAdapter, StageSnapshotPort
 from heatgrid_ops.agent.v2_stage_runner import StageExecutionRequest, StageRunner
+from heatgrid_ops.agent.v2_policy import v2_stage_input_hash
 from heatgrid_ops.agent.v2_state import AgentV2State
 
 
@@ -23,12 +24,14 @@ class V2GraphState(TypedDict, total=False):
     state: AgentV2State
     stage_hashes: dict[str, str]
     completed_stages: tuple[StageName, ...]
+    start_stage: StageName
 
 
-class V2GraphInput(TypedDict):
+class V2GraphInput(TypedDict, total=False):
     state: AgentV2State
     stage_hashes: dict[str, str]
     completed_stages: tuple[StageName, ...]
+    start_stage: StageName
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +71,11 @@ def build_agent_v2_graph(
     runner = StageRunner(context.snapshots)
     for stage_name in STAGE_ORDER:
         graph.add_node(stage_name, partial(_run_stage, runner, context, stage_name))
-    graph.add_edge(START, STAGE_ORDER[0])
+    graph.add_conditional_edges(
+        START,
+        lambda state: state.get("start_stage", STAGE_ORDER[0]),
+        {stage_name: stage_name for stage_name in STAGE_ORDER},
+    )
     for previous, current in zip(STAGE_ORDER, STAGE_ORDER[1:]):
         graph.add_edge(previous, current)
     graph.add_edge(STAGE_ORDER[-1], END)
@@ -113,8 +120,59 @@ async def _run_stage(
         "state": restored,
         "stage_hashes": hashes,
         "completed_stages": completed,
+        "start_stage": state.get("start_stage", STAGE_ORDER[0]),
     }
     return result
+
+
+async def hydrate_v2_prefix(
+    context: AgentV2GraphContext,
+    state: AgentV2State,
+) -> tuple[AgentV2State, dict[str, str], tuple[StageName, ...], StageName]:
+    if state.request.target_stage is None:
+        return state, {}, (), STAGE_ORDER[0]
+    hashes: dict[str, str] = {}
+    completed: list[StageName] = []
+    current = state
+    for stage_name in STAGE_ORDER:
+        if stage_name == state.request.target_stage:
+            break
+        snapshot = await context.snapshots.get_attempt(
+            state.request.run_id,
+            stage_name,
+            state.attempts.get(stage_name, 1),
+        )
+        if snapshot is None:
+            break
+        if snapshot.envelope.state_schema_version != state.state_schema_version:
+            break
+        if canonical_json_hash(snapshot.envelope.model_dump(mode="json")) != snapshot.output_hash:
+            break
+        expected_hash = v2_stage_input_hash(
+            run_input_hash=state.request.input_hash,
+            stage_name=stage_name,
+            upstream_output_hashes=tuple(hashes.values()),
+            component_versions=context.component_versions,
+            feature_flags=context.feature_flags,
+            thresholds=context.thresholds,
+            attempt_parameters={"attempt": state.attempts.get(stage_name, 1)},
+        )
+        if snapshot.stage_input_hash != expected_hash:
+            break
+        if snapshot.component_versions != dict(context.component_versions):
+            break
+        try:
+            current = AgentV2State.model_validate(snapshot.envelope.data)
+        except ValueError:
+            break
+        hashes[stage_name] = snapshot.output_hash
+        completed.append(stage_name)
+    start_stage = (
+        STAGE_ORDER[len(completed)]
+        if len(completed) < len(STAGE_ORDER)
+        else STAGE_ORDER[-1]
+    )
+    return current, hashes, tuple(completed), start_stage
 
 
 def _default_adapter(stage_name: StageName) -> StageAdapter:

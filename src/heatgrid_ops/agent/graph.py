@@ -62,6 +62,7 @@ from heatgrid_ops.agent.state import (
     RequestState,
     ResultState,
 )
+from heatgrid_ops.agent.v2_models import StageName
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +217,7 @@ async def execute_agent_graph_v2_with_capture(
     *,
     graph: AgentGraphInvoker | None = None,
     resume: bool = False,
+    target_stage: StageName | None = None,
 ) -> AgentGraphExecution:
     validated_input = validate_agent_input(prepared_input, request)
     if graph is None:
@@ -242,7 +244,10 @@ async def execute_agent_graph_v2_with_capture(
         }
     )
     config: RunnableConfig = {
-        "configurable": {"thread_id": request.run_id},
+        "configurable": {
+            "thread_id": request.run_id,
+            "target_stage": target_stage,
+        },
         "recursion_limit": 64,
     }
     state = await active_graph.ainvoke(

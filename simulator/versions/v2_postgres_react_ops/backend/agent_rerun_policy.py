@@ -3,26 +3,47 @@ from __future__ import annotations
 from typing import Final
 
 from agent_review_api_models import OperatorReviewRecordResponse
-from agent_stage_repository import StageName
+from heatgrid_ops.agent.v2_models import StageName
 
 
 TARGET_STAGE_BY_REASON: Final[dict[str, StageName]] = {
-    "model_disagreement": "ml_validation",
-    "ml_disagreement": "ml_validation",
-    "rag_quality": "rag_retrieval",
-    "rag_evidence_insufficient": "rag_retrieval",
-    "fault_analysis": "fault_analysis",
-    "fault_analysis_insufficient": "fault_analysis",
-    "higher_model_reassessment": "higher_model_reassessment",
-    "report_quality": "report_fidelity",
-    "report_fidelity": "report_fidelity",
+    "ml_prediction_issue": "ml_validation",
+    "weather_context_issue": "weather_context",
+    "rag_retrieval_issue": "rag_retrieval",
+    "rag_interpretation_issue": "rag_interpretation",
+    "fault_analysis_issue": "fault_analysis",
+    "escalation_issue": "higher_model_reassessment",
+    "report_draft_issue": "report_draft",
+    "insufficient_evidence": "rag_retrieval",
 }
+
+CANONICAL_REASON_CATEGORIES: Final[frozenset[str]] = frozenset(
+    {
+        "ml_prediction_issue",
+        "weather_context_issue",
+        "rag_retrieval_issue",
+        "rag_interpretation_issue",
+        "fault_analysis_issue",
+        "escalation_issue",
+        "report_draft_issue",
+        "insufficient_evidence",
+        "operational_policy_issue",
+    }
+)
 
 
 def target_stage_for_review(review: OperatorReviewRecordResponse) -> StageName | None:
     if review.reason_category in TARGET_STAGE_BY_REASON:
-        return TARGET_STAGE_BY_REASON[str(review.reason_category)]
+        return TARGET_STAGE_BY_REASON[review.reason_category]
     return None
+
+
+def is_canonical_reason_category(value: str | None) -> bool:
+    return value in CANONICAL_REASON_CATEGORIES
+
+
+def broaden_for_reason(value: str | None) -> bool:
+    return value == "insufficient_evidence"
 
 
 def rerun_block_status(

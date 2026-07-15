@@ -9,7 +9,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
-from agent_rerun_policy import rerun_block_status, target_stage_for_review
+from agent_rerun_policy import (
+    broaden_for_reason,
+    rerun_block_status,
+    target_stage_for_review,
+)
 from agent_review_api_models import OperatorReviewRecordResponse
 from agent_stage_repository import StageName
 
@@ -32,6 +36,8 @@ async def create_targeted_child_run(
     if review.run_id is None:
         return None
     target_stage = target_stage_for_review(review)
+    if review.reason_category == "operational_policy_issue":
+        target_stage = "parent_disposition"
     if target_stage is None:
         return None
     existing = await connection.execute(
@@ -63,6 +69,8 @@ async def create_targeted_child_run(
                 "source_review_id": review.review_id,
                 "source_run_id": review.run_id,
                 "target_stage": target_stage,
+                "reason_category": review.reason_category,
+                "broaden": broaden_for_reason(review.reason_category),
             },
             option=orjson.OPT_SORT_KEYS,
         )
@@ -81,6 +89,18 @@ async def create_targeted_child_run(
             child_run_id=None,
             target_stage=target_stage,
             status=blocked_status,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+        return None
+    if review.reason_category == "operational_policy_issue":
+        await _insert_rerun_request(
+            connection,
+            rerun_request_id=rerun_request_id,
+            review=review,
+            child_run_id=None,
+            target_stage="parent_disposition",
+            status="policy_candidate_created",
             idempotency_key=idempotency_key,
             request_hash=request_hash,
         )
@@ -202,6 +222,30 @@ async def mark_rerun_scheduled(
             {
                 "rerun_request_id": child.rerun_request_id,
                 "status": "scheduled" if scheduled else "schedule_failed",
+            },
+        )
+
+
+async def mark_child_rescheduled(engine: AsyncEngine, run_id: str) -> None:
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "UPDATE agent_rerun_requests SET status = 'scheduled', updated_at = now() "
+                "WHERE child_run_id = :run_id AND status IN ('queued', 'schedule_failed')"
+            ),
+            {"run_id": run_id},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO agent_run_events (run_id, event_type, message, payload, operation_key) "
+                "VALUES (:run_id, 'child_rescheduled', 'targeted child rescheduled', "
+                "CAST(:payload AS jsonb), :operation_key) "
+                "ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL DO NOTHING"
+            ),
+            {
+                "run_id": run_id,
+                "payload": orjson.dumps({"status": "scheduled"}).decode("utf-8"),
+                "operation_key": f"child-rescheduled:{run_id}",
             },
         )
 

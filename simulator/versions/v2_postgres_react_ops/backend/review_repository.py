@@ -15,6 +15,7 @@ from agent_operator_review_repository import (
     record_review,
     record_subject_review,
 )
+from agent_rerun_policy import is_canonical_reason_category
 from heatgrid_rag.embedding import hash_embedding, vector_literal
 from schemas import (
     AutomationPolicy,
@@ -430,6 +431,7 @@ def _legacy_review_record_input(
     payload: ReviewTaskSubmitRequest,
     corrected_output: dict[str, str] | None,
 ) -> ReviewRecordInput:
+    canonical_category = payload.reason_category
     match payload.decision:
         case "approve":
             decision = "approve"
@@ -448,6 +450,9 @@ def _legacy_review_record_input(
                 decision = "keep_human_review"
                 legacy_status_override = "rejected"
                 operator_labels = ("legacy_reject",)
+    is_canonical = is_canonical_reason_category(canonical_category)
+    contract_version = 2 if is_canonical else 1
+    reason_category = canonical_category if is_canonical else None
     return ReviewRecordInput(
         run_id=task.run_id,
         review_task_id=task.task_id,
@@ -456,13 +461,14 @@ def _legacy_review_record_input(
         decision=decision,
         reviewer=payload.reviewer,
         reason=payload.reason or "legacy review task submission",
-        reason_category="legacy_reject" if payload.decision == "reject" else None,
+        reason_category=reason_category,
         idempotency_key=f"legacy-task:{task.task_id}",
         request_hash=_legacy_request_hash(payload),
         disposition=None,
         correction=corrected_output,
         evidence_annotations=(),
         operator_labels=operator_labels,
+        review_contract_version=contract_version,
         legacy_status_override=legacy_status_override,
     )
 

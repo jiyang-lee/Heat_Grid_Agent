@@ -21,6 +21,8 @@ from agent_rerun_repository import (
     create_targeted_child_run,
     mark_rerun_scheduled,
 )
+from agent_rerun_policy import is_canonical_reason_category
+from agent_root_cause_service import routing_outcome
 
 
 class StaleReviewVersionError(RuntimeError):
@@ -108,14 +110,26 @@ async def submit_operator_review(
             review=review,
             rag_quality_enabled=rag_quality_enabled,
         )
+    routing_status = "policy_candidate_created" if request.reason_category == "operational_policy_issue" else (
+        "queued" if child is not None else "not_routable"
+    )
     if child is not None and schedule_child is not None:
         try:
             schedule_child(child)
-        except RuntimeError:
+        except (RuntimeError, ValueError, TypeError, LookupError):
             await mark_rerun_scheduled(engine, child, scheduled=False)
+            routing_status = "schedule_failed"
         else:
             await mark_rerun_scheduled(engine, child, scheduled=True)
-    return review
+            routing_status = "scheduled"
+    outcome = routing_outcome(review, status=routing_status, child=child)
+    return review.model_copy(
+        update={
+            "child_run_id": outcome.child_run_id,
+            "routing_status": outcome.routing_status,
+            "target_stage": outcome.target_stage,
+        }
+    )
 
 
 async def record_subject_review(
@@ -167,6 +181,15 @@ async def record_review(
     connection: AsyncConnection,
     request: ReviewRecordInput,
 ) -> OperatorReviewRecordResponse:
+    if request.review_contract_version == 2 and request.reason_category is not None:
+        if not is_canonical_reason_category(request.reason_category):
+            raise ValueError("reason_category is not canonical")
+    if (
+        request.review_contract_version == 2
+        and request.decision in {"reject", "keep_human_review"}
+        and request.reason_category is None
+    ):
+        raise ValueError("reason_category is required for contract v2 review")
     if request.subject_type == "agent_run" and request.run_id is None:
         raise ValueError("agent_run reviews require run_id")
     if request.subject_type == "agent_run" and request.subject_key != request.run_id:

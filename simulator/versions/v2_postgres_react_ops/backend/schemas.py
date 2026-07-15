@@ -323,6 +323,7 @@ class ReviewTaskSubmitRequest(BaseModel):
     decision: Literal["approve", "reject", "correct"]
     reviewer: str
     reason: str = ""
+    reason_category: str | None = None
     corrected_output: OpsAgentOutput | None = None
     corrected_label: str | None = None
     metadata: JsonObject = Field(default_factory=dict)

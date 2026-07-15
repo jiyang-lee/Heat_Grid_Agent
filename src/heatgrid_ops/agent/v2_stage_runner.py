@@ -80,7 +80,7 @@ class StageRunner:
             stage_name=request.stage_name,
             attempt=request.attempt,
             stage_input_hash=stage_input,
-            output_hash=canonical_json_hash(envelope.data),
+            output_hash=canonical_json_hash(envelope.model_dump(mode="json")),
             envelope=envelope,
             execution_status=execution_status,
             quality_status=quality_status,

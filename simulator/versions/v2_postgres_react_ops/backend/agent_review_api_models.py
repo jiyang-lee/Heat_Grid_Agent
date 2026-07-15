@@ -6,6 +6,7 @@ from typing import Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from heatgrid_ops.agent.review_models import AgentRunReviewSnapshotV1
+from heatgrid_ops.agent.v2_models import ReasonCategory
 
 
 OperatorReviewStatus: TypeAlias = Literal[
@@ -106,7 +107,7 @@ class OperatorReviewSubmitRequest(FrozenApiModel):
     decision: Literal["approve", "correct", "keep_human_review"]
     reviewer: str
     reason: str
-    reason_category: str | None = None
+    reason_category: ReasonCategory | None = None
     disposition: Literal[
         "normal_observation",
         "inspection_recommended",
@@ -142,6 +143,9 @@ class OperatorReviewRecordResponse(FrozenApiModel):
     evidence_annotations: tuple[dict[str, str | None], ...] = ()
     operator_labels: tuple[str, ...] = ()
     created_at: datetime
+    child_run_id: str | None = None
+    routing_status: str | None = None
+    target_stage: str | None = None
 
 
 class OperatorReviewHistoryResponse(FrozenApiModel):

@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 
 from fastapi import HTTPException
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_execution_repository import (
@@ -15,6 +16,7 @@ from agent_execution_repository import (
     list_reclaimable_agent_runs,
     release_agent_graph_task,
 )
+from agent_rerun_repository import mark_child_rescheduled
 from agent_input_snapshot_repository import (
     AgentInputLineage,
     get_agent_input_lineage,
@@ -42,6 +44,7 @@ from heatgrid_ops.agent.graph import (
 )
 from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 from heatgrid_ops.agent.models import JsonObject
+from heatgrid_ops.agent.v2_models import STAGE_ORDER, StageName
 from heatgrid_ops.agent.services import AgentRuntime
 from schemas import AgentRunResponse
 from settings import Settings
@@ -124,6 +127,7 @@ async def run_reserved_agent_graph(
                     AgentInputSnapshot(source_input=prepared_input.snapshot),
                     graph=graph,
                     resume=claim.resume_from_checkpoint,
+                    target_stage=await _target_stage(engine, request.run_id),
                 )
             else:
                 execution = await execute_agent_graph_with_capture(
@@ -245,6 +249,8 @@ async def resume_reclaimable_agent_runs(
             graph=active_graph or graph,
             task_key=run.task_key,
         )
+        if run.task_key == AGENT_GRAPH_TASK_KEY_V2:
+            await mark_child_rescheduled(engine, run.run_id)
     return len(runs)
 
 
@@ -277,6 +283,18 @@ def _request_snapshot(request: AgentRunRequest) -> JsonObject:
         "alert_id": request.alert_id,
         "card_id": request.card_id,
     }
+
+
+async def _target_stage(engine: AsyncEngine, run_id: str) -> StageName | None:
+    async with engine.connect() as connection:
+        result = await connection.execute(
+            text("SELECT target_stage FROM agent_runs WHERE run_id = :run_id"),
+            {"run_id": run_id},
+        )
+    value = result.scalar_one_or_none()
+    if not isinstance(value, str) or value not in STAGE_ORDER:
+        return None
+    return value
 
 
 async def _prepare_task_input(
