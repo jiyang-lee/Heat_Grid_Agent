@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import joblib
 import numpy as np
@@ -626,12 +627,28 @@ def _positive_class_index(classes: list[Any], width: int) -> int:
 
 def _resolve_model_root(value: str | Path | None) -> Path:
     if value is None:
-        return ROOT / "models"
-    candidate = Path(value)
-    if not candidate.is_absolute():
-        candidate = ROOT / candidate
-    nested = candidate / "models"
-    return nested if nested.exists() else candidate
+        env_value = os.getenv("HEATGRID_MODEL_ROOT")
+        candidates = [
+            Path(env_value) if env_value else None,
+            Path("/app/models"),
+            Path.cwd() / "models",
+            ROOT / "models",
+        ]
+    else:
+        candidate = Path(value)
+        if not candidate.is_absolute():
+            candidate = ROOT / candidate
+        candidates = [candidate]
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        nested = candidate / "models"
+        if nested.exists():
+            return nested
+        if candidate.exists():
+            return candidate
+    raise PriorityInferenceError("model root directory is missing")
 
 
 def _bundle_version(
@@ -672,8 +689,8 @@ def _imputation_values() -> dict[str, float]:
         return {}
     frame = pd.read_csv(path)
     return {
-        str(row.column_name): _finite_number(row.imputation_value, 0.0)
-        for row in frame.itertuples(index=False)
+        str(row["column_name"]): _finite_number(row["imputation_value"], 0.0)
+        for _, row in frame.iterrows()
     }
 
 

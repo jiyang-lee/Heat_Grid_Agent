@@ -37,7 +37,7 @@ def test_checkpoint_setup_is_outside_application_ddl_transaction() -> None:
     source = (ROOT / "src" / "heatgrid_ops" / "db" / "migrations.py").read_text()
     function = source[source.index("async def _apply_checkpoint_migration") :]
 
-    transaction_end = function.index("checkpointer = AsyncPostgresSaver")
+    transaction_end = function.index("checkpointer = _checkpoint_saver()(connection)")
     assert "async with connection.transaction()" in function[:transaction_end]
     assert "await checkpointer.setup()" in function[transaction_end:]
     assert function.index("await checkpointer.setup()") < function.index(

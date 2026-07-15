@@ -14,13 +14,6 @@ from agent_result_contract import build_ops_agent_result_v4
 from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
 from agent_input_snapshot_repository import get_agent_input_lineage
 from agent_loop_repository import list_agent_loop_iterations
-from agent_runner import (
-    AgentRunRequest,
-    SimulateCard,
-    is_agent_run_scheduled,
-    schedule_reserved_agent_graph,
-)
-from agent_runtime_factory import create_agent_runtime
 from agent_run_artifact_repository import (
     claim_agent_run_action,
     complete_agent_run_action,
@@ -44,11 +37,9 @@ from agent_run_repository import (
 from alert_repository import get_alert
 from heatgrid_ops.agent.contracts import ReportWriteRequest
 from heatgrid_ops.agent.errors import AgentDependencyError
-from heatgrid_ops.agent.graph import AgentGraphInvoker
 from heatgrid_ops.agent.lineage import source_output_hash
 from heatgrid_ops.agent.models import OpsAgentOutput as CoreOpsAgentOutput
 from heatgrid_ops.agent.run_models import AutomationPolicySnapshot
-from heatgrid_ops.agent.services import AgentRuntime
 from heatgrid_ops.approval.policy import (
     ActionExecutionContext,
     decide_action_execution,
@@ -63,7 +54,13 @@ from schemas import (
     OpsAgentResultV4,
     JsonValue,
 )
-from settings import Settings
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from heatgrid_ops.agent.graph import AgentGraphInvoker
+    from heatgrid_ops.agent.services import AgentRuntime
+    from agent_runner import SimulateCard
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -72,12 +69,21 @@ REPORT_ROOT = (ROOT / "output" / "ops_agent" / "reports").resolve()
 
 def make_agent_run_router(
     engine: AsyncEngine,
-    simulate_card: SimulateCard | None = None,
-    runtime: AgentRuntime | None = None,
-    graph_provider: Callable[[], AgentGraphInvoker | None] | None = None,
+    simulate_card: "SimulateCard | None" = None,
+    runtime: "AgentRuntime | None" = None,
+    graph_provider: Callable[[], "AgentGraphInvoker | None"] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api")
-    runtime = runtime or create_agent_runtime(Settings(), engine)
+    active_runtime = runtime
+
+    def _runtime() -> "AgentRuntime":
+        nonlocal active_runtime
+        if active_runtime is None:
+            from agent_runtime_factory import create_agent_runtime
+            from settings import Settings
+
+            active_runtime = create_agent_runtime(Settings(), engine)
+        return active_runtime
 
     @router.post("/agent-runs", response_model=AgentRunResponse)
     async def create_agent_run(payload: AgentRunCreateRequest) -> AgentRunResponse:
@@ -89,6 +95,12 @@ def make_agent_run_router(
                 status_code=422,
                 detail="requested_by and reason are required for a manual rerun.",
             )
+        from agent_runner import (
+            AgentRunRequest,
+            is_agent_run_scheduled,
+            schedule_reserved_agent_graph,
+        )
+
         request = AgentRunRequest(
             run_id=str(uuid4()),
             alert_id=payload.alert_id,
@@ -118,7 +130,7 @@ def make_agent_run_router(
                     card_id=queued.card_id,
                 ),
                 simulate_card,
-                runtime,
+                _runtime(),
                 None if graph_provider is None else graph_provider(),
                 task_key=AGENT_GRAPH_TASK_KEY_V2,
             )
@@ -183,7 +195,7 @@ def make_agent_run_router(
             raise HTTPException(status_code=409, detail="완료된 실행만 보고서를 생성할 수 있습니다.")
         return await _create_daily_report_artifact(
             engine,
-            runtime,
+            _runtime(),
             run,
             payload,
         )

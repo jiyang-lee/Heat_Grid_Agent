@@ -4,7 +4,10 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY migrations ./migrations
+COPY models ./models
 COPY simulator ./simulator
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir .
 
 WORKDIR /app/simulator/versions/v2_postgres_react_ops/backend
