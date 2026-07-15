@@ -7,8 +7,11 @@ from pathlib import Path
 from third_model import config as model_config
 from third_model.synthetic_replay import (
     DEFAULT_FAULT_SCENARIO_COUNT,
+    DEFAULT_MEDIUM_SCENARIO_RATIO,
     DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS,
+    DEFAULT_MINIMUM_ELIGIBLE_MEDIUM_SCENARIOS,
     DEFAULT_QUALITY_SCENARIO_COUNT,
+    DEFAULT_RECOVERY_HOURS,
     DEFAULT_REPLAY_END,
     DEFAULT_REPLAY_START,
     DEFAULT_WARMUP_START,
@@ -32,7 +35,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sensor-manifest",
         type=Path,
-        default=model_config.PROJECT_ROOT / "data/demo_replay/config/sensor_manifest.csv",
+        default=model_config.PROJECT_ROOT
+        / "data/demo_replay/config/sensor_manifest.csv",
     )
     parser.add_argument("--raw-root", type=Path, default=model_config.SOURCE_RAW_ROOT)
     parser.add_argument(
@@ -45,7 +49,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", default=DEFAULT_REPLAY_END.isoformat())
     parser.add_argument("--stations", default=None)
     parser.add_argument("--seed", type=int, default=20230710)
-    parser.add_argument("--dataset-version", default="predist-synthetic-replay-v2")
+    parser.add_argument("--dataset-version", default="predist-synthetic-replay-v3")
     parser.add_argument(
         "--fault-scenarios", type=int, default=DEFAULT_FAULT_SCENARIO_COUNT
     )
@@ -57,6 +61,17 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS,
     )
+    parser.add_argument(
+        "--minimum-approved-medium",
+        type=int,
+        default=DEFAULT_MINIMUM_ELIGIBLE_MEDIUM_SCENARIOS,
+    )
+    parser.add_argument(
+        "--medium-scenario-ratio",
+        type=float,
+        default=DEFAULT_MEDIUM_SCENARIO_RATIO,
+    )
+    parser.add_argument("--recovery-hours", type=int, default=DEFAULT_RECOVERY_HOURS)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
         "--sample",
@@ -81,8 +96,14 @@ def main() -> None:
         parser.error("--sample and --full-range are mutually exclusive")
     if args.build_registry_only:
         target = args.output / "model_sensor_registry.csv"
-        registry = build_model_sensor_registry(model_config.PROJECT_ROOT, output_path=target)
-        print(json.dumps({"path": str(target), "sensor_count": len(registry)}, ensure_ascii=False))
+        registry = build_model_sensor_registry(
+            model_config.PROJECT_ROOT, output_path=target
+        )
+        print(
+            json.dumps(
+                {"path": str(target), "sensor_count": len(registry)}, ensure_ascii=False
+            )
+        )
         return
     if args.validate_only:
         result = validate_replay_dataset(
@@ -100,6 +121,7 @@ def main() -> None:
     fault_scenarios = args.fault_scenarios
     quality_scenarios = args.quality_scenarios
     minimum_approved_faults = args.minimum_approved_faults
+    minimum_approved_medium = args.minimum_approved_medium
     if args.sample:
         start = DEFAULT_WARMUP_START.isoformat()
         replay_start = DEFAULT_REPLAY_START.isoformat()
@@ -108,6 +130,7 @@ def main() -> None:
         fault_scenarios = 0
         quality_scenarios = 0
         minimum_approved_faults = 0
+        minimum_approved_medium = 0
     elif args.full_range:
         start = DEFAULT_WARMUP_START.isoformat()
         replay_start = DEFAULT_REPLAY_START.isoformat()
@@ -129,6 +152,9 @@ def main() -> None:
         fault_scenario_count=fault_scenarios,
         quality_scenario_count=quality_scenarios,
         minimum_eligible_fault_scenarios=minimum_approved_faults,
+        minimum_eligible_medium_scenarios=minimum_approved_medium,
+        medium_scenario_ratio=args.medium_scenario_ratio,
+        recovery_hours=args.recovery_hours,
         overwrite=args.overwrite,
     )
     manifest = generate_replay_dataset(generation)

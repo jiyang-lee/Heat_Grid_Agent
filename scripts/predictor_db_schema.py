@@ -44,6 +44,7 @@ TARGET_SCHEMA_DDL: Final = (
         simulated_at timestamptz NOT NULL,
         manufacturer_id text NOT NULL,
         substation_id integer NOT NULL,
+        substation_uid uuid NOT NULL,
         values jsonb NOT NULL,
         quality jsonb NOT NULL,
         is_synthetic boolean NOT NULL DEFAULT true,
@@ -69,6 +70,7 @@ TARGET_SCHEMA_DDL: Final = (
         window_id uuid PRIMARY KEY,
         manufacturer_id text NOT NULL,
         substation_id integer,
+        substation_uid uuid NOT NULL,
         window_start timestamptz NOT NULL,
         window_end timestamptz NOT NULL,
         source_file text,
@@ -81,9 +83,42 @@ TARGET_SCHEMA_DDL: Final = (
     CREATE TABLE IF NOT EXISTS substations (
         manufacturer_id text NOT NULL,
         substation_id integer NOT NULL,
+        substation_uid uuid NOT NULL DEFAULT gen_random_uuid(),
         configuration_type text,
         PRIMARY KEY (manufacturer_id, substation_id)
     )
+    """,
+    """
+    ALTER TABLE sensor_readings
+    ADD COLUMN IF NOT EXISTS substation_uid uuid
+    """,
+    """
+    UPDATE sensor_readings reading
+    SET substation_uid = substation.substation_uid
+    FROM substations substation
+    WHERE reading.substation_uid IS NULL
+      AND reading.manufacturer_id = substation.manufacturer_id
+      AND reading.substation_id = substation.substation_id
+    """,
+    """
+    ALTER TABLE sensor_readings
+    ALTER COLUMN substation_uid SET NOT NULL
+    """,
+    """
+    ALTER TABLE windows
+    ADD COLUMN IF NOT EXISTS substation_uid uuid
+    """,
+    """
+    UPDATE windows window_record
+    SET substation_uid = substation.substation_uid
+    FROM substations substation
+    WHERE window_record.substation_uid IS NULL
+      AND window_record.manufacturer_id = substation.manufacturer_id
+      AND window_record.substation_id = substation.substation_id
+    """,
+    """
+    ALTER TABLE windows
+    ALTER COLUMN substation_uid SET NOT NULL
     """,
     """
     CREATE TABLE IF NOT EXISTS model_feature_snapshots (

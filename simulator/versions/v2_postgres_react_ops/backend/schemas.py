@@ -585,6 +585,18 @@ class ReplaySnapshot(ReplayStatus):
     readings: list[ReplayReading] = Field(default_factory=list)
 
 
+class ReplayPreset(BaseModel):
+    scenario_id: str
+    label: Literal["pre_fault_demo", "medium_warning_demo"]
+    seek_at: datetime
+    event_at: datetime
+    substation_id: int
+    fleet_high_count: int = 0
+    fleet_medium_count: int = 0
+    fleet_low_count: int = 0
+    fleet_max_priority_score: float = 0.0
+
+
 class ReplayControlRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

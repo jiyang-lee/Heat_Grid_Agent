@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
     evaluation_run_id uuid,
     manufacturer_id text,
     substation_id integer,
+    substation_uid uuid NOT NULL,
     priority_rank integer,
     freshness_status text,
     priority_level text NOT NULL CHECK (priority_level IN ('urgent', 'high')),
@@ -29,6 +30,12 @@ ALERT_QUEUE_COMPATIBILITY_DDL: Final = (
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS evaluation_run_id uuid",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS manufacturer_id text",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_id integer",
+    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_uid uuid",
+    "UPDATE ops_alert_queue alert SET substation_uid = substation.substation_uid "
+    "FROM substations substation WHERE alert.substation_uid IS NULL "
+    "AND alert.manufacturer_id = substation.manufacturer_id "
+    "AND alert.substation_id = substation.substation_id",
+    "ALTER TABLE ops_alert_queue ALTER COLUMN substation_uid SET NOT NULL",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS priority_rank integer",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS freshness_status text",
     "ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_card_id_key",
@@ -66,6 +73,7 @@ candidates AS (
         result.evaluation_run_id,
         result.manufacturer_id,
         result.substation_id,
+        result.substation_uid,
         result.priority_rank,
         result.freshness_status,
         lower(result.priority_level) AS priority_level,
@@ -94,6 +102,7 @@ inserted AS (
         evaluation_run_id,
         manufacturer_id,
         substation_id,
+        substation_uid,
         priority_rank,
         freshness_status,
         priority_level,

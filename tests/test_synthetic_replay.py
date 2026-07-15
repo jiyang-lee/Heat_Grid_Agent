@@ -16,6 +16,8 @@ from third_model.synthetic_replay import (
     _apply_scenarios,
     _calendar_balanced_pair,
     _high_trajectory_heads,
+    _medium_trajectory_heads,
+    _normal_donor_index,
     _scenario_donor_index,
     build_model_sensor_registry,
     expected_dataset_counts,
@@ -145,7 +147,9 @@ def _write_fixture_project(root: Path) -> tuple[Path, Path, Path]:
                     "sample_non_null_count": int(raw[column].notna().sum()),
                 }
             )
-    pd.DataFrame(schema_rows).to_csv(root / "data/interim/raw_schema_summary.csv", index=False)
+    pd.DataFrame(schema_rows).to_csv(
+        root / "data/interim/raw_schema_summary.csv", index=False
+    )
 
     donors = []
     for station in (1, 2):
@@ -280,17 +284,84 @@ def test_fault_curve_preserves_source_trajectory_shape() -> None:
             "effect_scale": [1.0],
         }
     )
-    sensors = pd.DataFrame(
-        {"source_column": ["sensor"], "sensor_type": ["numeric"]}
-    )
+    sensors = pd.DataFrame({"source_column": ["sensor"], "sensor_type": ["numeric"]})
 
-    applied, quality, scenario_ids = _apply_scenarios(
-        values, 1, scenarios, sensors
-    )
+    applied, quality, scenario_ids = _apply_scenarios(values, 1, scenarios, sensors)
 
     np.testing.assert_allclose(applied["sensor"], [0.0, 1.0, 2.0, 6.0, 10.0])
     assert set(quality) == {"synthetic_fault_pattern"}
     assert set(scenario_ids) == {"fault-01"}
+
+
+def test_fault_curve_decays_during_recovery() -> None:
+    index = pd.date_range("2023-01-08", periods=7, freq="10min", tz="Asia/Seoul")
+    values = pd.DataFrame({"sensor": np.zeros(7)}, index=index)
+    scenarios = pd.DataFrame(
+        {
+            "scenario_id": ["fault-01"],
+            "scenario_type": ["pre_fault_drift"],
+            "substation_id": [1],
+            "start": [index[0].isoformat()],
+            "end": [index[3].isoformat()],
+            "recovery_end": [index[6].isoformat()],
+            "sensor_effects_json": ['{"sensor":10.0}'],
+            "sensor_curve_json": ['{"sensor":[0.0,1.0]}'],
+            "effect_scale": [1.0],
+        }
+    )
+    sensors = pd.DataFrame({"source_column": ["sensor"], "sensor_type": ["numeric"]})
+
+    applied, quality, scenario_ids = _apply_scenarios(values, 1, scenarios, sensors)
+
+    np.testing.assert_allclose(
+        applied["sensor"], [0.0, 5.0, 10.0, 10.0, 20.0 / 3.0, 10.0 / 3.0, 0.0]
+    )
+    assert quality[2] == "synthetic_fault_pattern"
+    assert quality[3] == "synthetic_fault_recovery"
+    assert scenario_ids[5] == "fault-01"
+    assert scenario_ids[6] == ""
+
+
+def test_normal_donor_timing_is_deterministic_and_station_decorrelated() -> None:
+    donors = pd.DataFrame(
+        {
+            "label": ["normal"] * 4,
+            "substation_id": [1, 1, 2, 2],
+            "season_bucket": ["winter"] * 4,
+        }
+    )
+    timestamp = pd.Timestamp("2023-01-08T00:00:00+09:00")
+
+    first = _normal_donor_index(donors, 1, timestamp, 0)
+    repeated = _normal_donor_index(donors, 1, timestamp, 0)
+    second_station = _normal_donor_index(donors, 2, timestamp, 0)
+
+    assert first == repeated
+    assert first != second_station
+
+
+def test_scenario_donor_stops_at_recovery_boundary() -> None:
+    donors = pd.DataFrame({"donor_id": ["fault"]})
+    scenarios = pd.DataFrame(
+        {
+            "scenario_id": ["fault-01"],
+            "scenario_type": ["pre_fault_drift"],
+            "start": ["2023-01-08T00:00:00+09:00"],
+            "end": ["2023-01-08T12:00:00+09:00"],
+            "recovery_end": ["2023-01-09T12:00:00+09:00"],
+            "donor_id": ["fault"],
+            "donor_sequence_json": ['["fault"]'],
+        }
+    )
+
+    result = _scenario_donor_index(
+        donors,
+        "fault-01",
+        scenarios,
+        pd.Timestamp("2023-01-08T12:00:00+09:00"),
+    )
+
+    assert result is None
 
 
 def test_model_guided_selection_keeps_best_high_row_per_fault_trajectory() -> None:
@@ -309,7 +380,25 @@ def test_model_guided_selection_keeps_best_high_row_per_fault_trajectory() -> No
     assert selected["donor_id"].tolist() == ["event-a-late", "event-b"]
 
 
-def test_registry_and_manifest_allow_only_four_physical_model_sensors(tmp_path: Path) -> None:
+def test_model_guided_medium_selection_excludes_high_rows() -> None:
+    scored = pd.DataFrame(
+        {
+            "donor_id": ["event-a-medium", "event-a-high", "event-b-medium"],
+            "substation_id": [30, 30, 26],
+            "fault_event_id": [10.0, 10.0, 69.0],
+            "_runtime_priority_level": ["medium", "high", "medium"],
+            "_runtime_priority_score": [72.0, 93.0, 68.0],
+        }
+    )
+
+    selected = _medium_trajectory_heads(scored)
+
+    assert selected["donor_id"].tolist() == ["event-a-medium", "event-b-medium"]
+
+
+def test_registry_and_manifest_allow_only_four_physical_model_sensors(
+    tmp_path: Path,
+) -> None:
     _, _, manifest_path = _write_fixture_project(tmp_path)
     schema_path = tmp_path / "data/interim/raw_schema_summary.csv"
     schema = pd.read_csv(schema_path)
@@ -334,13 +423,19 @@ def test_registry_and_manifest_allow_only_four_physical_model_sensors(tmp_path: 
     assert set(SENSORS).issubset(set(registry["source_column"]))
     assert "s_hc1_supply_temperature_setpoint" not in set(registry["source_column"])
     assert bool(
-        registry.loc[registry["source_column"].eq("p_net_meter_flow"), "nullable"].iloc[0]
+        registry.loc[registry["source_column"].eq("p_net_meter_flow"), "nullable"].iloc[
+            0
+        ]
     )
-    assert int(
-        registry.loc[
-            registry["source_column"].eq("p_net_meter_flow"), "available_station_count"
-        ].iloc[0]
-    ) == 1
+    assert (
+        int(
+            registry.loc[
+                registry["source_column"].eq("p_net_meter_flow"),
+                "available_station_count",
+            ].iloc[0]
+        )
+        == 1
+    )
     enabled = load_sensor_manifest(manifest_path, registry)
     assert enabled["source_column"].tolist() == list(SENSORS)
 
@@ -351,7 +446,9 @@ def test_registry_and_manifest_allow_only_four_physical_model_sensors(tmp_path: 
         load_sensor_manifest(manifest_path, registry)
 
 
-def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(tmp_path: Path) -> None:
+def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(
+    tmp_path: Path,
+) -> None:
     project = tmp_path / "project"
     raw_root, donor_path, sensor_manifest = _write_fixture_project(project)
     outputs = []
@@ -378,7 +475,10 @@ def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(tmp_path
         assert result["window_rows"] == 4
         outputs.append((output, manifest))
 
-    assert outputs[0][1]["raw_shards"][0]["sha256"] == outputs[1][1]["raw_shards"][0]["sha256"]
+    assert (
+        outputs[0][1]["raw_shards"][0]["sha256"]
+        == outputs[1][1]["raw_shards"][0]["sha256"]
+    )
     raw = pd.read_csv(outputs[0][0] / outputs[0][1]["raw_shards"][0]["path"])
     windows = pd.read_csv(outputs[0][0] / outputs[0][1]["window_shards"][0]["path"])
     first_replay = raw.loc[raw["phase"].eq("replay"), "simulated_at"].min()
@@ -392,10 +492,14 @@ def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(tmp_path
         assert station_window[f"{sensor}__mean"] == pytest.approx(values.mean())
         assert station_window[f"{sensor}__min"] == pytest.approx(values.min())
         assert station_window[f"{sensor}__max"] == pytest.approx(values.max())
-        assert station_window[f"{sensor}__delta"] == pytest.approx(values.iloc[-1] - values.iloc[0])
+        assert station_window[f"{sensor}__delta"] == pytest.approx(
+            values.iloc[-1] - values.iloc[0]
+        )
 
     donor_map = pd.read_csv(outputs[0][0] / "sensor_donor_map.csv")
-    assert set(donor_map.loc[donor_map["substation_id"].eq(2), "donor_station_id"]) == {1}
+    assert set(donor_map.loc[donor_map["substation_id"].eq(2), "donor_station_id"]) == {
+        1
+    }
 
     no_seek_manifest = outputs[1][0] / "dataset_manifest.json"
     no_seek_payload = json.loads(no_seek_manifest.read_text(encoding="utf-8"))
@@ -421,7 +525,9 @@ def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(tmp_path
         validate_replay_dataset(outputs[0][0], project_root=project)
 
 
-def test_quality_scenario_missing_values_are_intentional_and_keep_parity(tmp_path: Path) -> None:
+def test_quality_scenario_missing_values_are_intentional_and_keep_parity(
+    tmp_path: Path,
+) -> None:
     project = tmp_path / "project"
     raw_root, donor_path, sensor_manifest = _write_fixture_project(project)
     output = tmp_path / "quality"

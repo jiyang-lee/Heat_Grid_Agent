@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS priority_evaluation_results (
         REFERENCES priority_evaluation_runs(evaluation_run_id) ON DELETE CASCADE,
     manufacturer_id text NOT NULL,
     substation_id integer NOT NULL,
+    substation_uid uuid NOT NULL,
     source_window_id uuid,
     source_window_start timestamptz,
     source_window_end timestamptz,
@@ -62,6 +63,14 @@ BEGIN
         ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS evaluation_run_id uuid;
         ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS manufacturer_id text;
         ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_id integer;
+        ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_uid uuid;
+        UPDATE ops_alert_queue alert
+        SET substation_uid = substation.substation_uid
+        FROM substations substation
+        WHERE alert.substation_uid IS NULL
+          AND alert.manufacturer_id = substation.manufacturer_id
+          AND alert.substation_id = substation.substation_id;
+        ALTER TABLE ops_alert_queue ALTER COLUMN substation_uid SET NOT NULL;
         ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS priority_rank integer;
         ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS freshness_status text;
         ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_card_id_key;

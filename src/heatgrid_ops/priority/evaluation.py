@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS priority_evaluation_results (
         REFERENCES priority_evaluation_runs(evaluation_run_id) ON DELETE CASCADE,
     manufacturer_id text NOT NULL,
     substation_id integer NOT NULL,
+    substation_uid uuid NOT NULL,
     source_window_id uuid,
     source_window_start timestamptz,
     source_window_end timestamptz,
@@ -65,6 +66,21 @@ CREATE TABLE IF NOT EXISTS priority_evaluation_results (
     UNIQUE (evaluation_run_id, manufacturer_id, substation_id)
 )
 """
+
+PRIORITY_EVALUATION_COMPATIBILITY_DDL: Final = (
+    "ALTER TABLE substations ADD COLUMN IF NOT EXISTS substation_uid uuid",
+    "UPDATE substations SET substation_uid = gen_random_uuid() "
+    "WHERE substation_uid IS NULL",
+    "ALTER TABLE substations ALTER COLUMN substation_uid SET DEFAULT gen_random_uuid()",
+    "ALTER TABLE substations ALTER COLUMN substation_uid SET NOT NULL",
+    "CREATE UNIQUE INDEX IF NOT EXISTS substations_uid_idx ON substations(substation_uid)",
+    "ALTER TABLE priority_evaluation_results ADD COLUMN IF NOT EXISTS substation_uid uuid",
+    "UPDATE priority_evaluation_results result SET substation_uid = substation.substation_uid "
+    "FROM substations substation WHERE result.substation_uid IS NULL "
+    "AND result.manufacturer_id = substation.manufacturer_id "
+    "AND result.substation_id = substation.substation_id",
+    "ALTER TABLE priority_evaluation_results ALTER COLUMN substation_uid SET NOT NULL",
+)
 
 PRIORITY_EVALUATION_INDEX_DDL: Final = (
     "CREATE UNIQUE INDEX IF NOT EXISTS priority_evaluation_one_active_idx "
@@ -140,7 +156,7 @@ ORDER BY s.manufacturer_id, s.substation_id
 
 INSERT_RESULT_SQL: Final = """
 INSERT INTO priority_evaluation_results (
-    evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id,
+    evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id, substation_uid,
     source_window_id, source_window_start, source_window_end, source_card_id,
     source_priority_decision_id, priority_score, priority_rank, rank_included,
     priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket,
@@ -148,6 +164,8 @@ INSERT INTO priority_evaluation_results (
     model_components
 ) VALUES (
     :evaluation_result_id, :evaluation_run_id, :manufacturer_id, :substation_id,
+    (SELECT substation_uid FROM substations WHERE manufacturer_id = :manufacturer_id
+     AND substation_id = :substation_id),
     :source_window_id, :source_window_start, :source_window_end, :source_card_id,
     :source_priority_decision_id, :priority_score, :priority_rank, :rank_included,
     :priority_level, :risk_score, :anomaly_score, :anomaly_label, :leadtime_bucket,
@@ -161,6 +179,8 @@ async def ensure_priority_evaluation_tables(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(text(PRIORITY_EVALUATION_RUNS_DDL))
         await connection.execute(text(PRIORITY_EVALUATION_RESULTS_DDL))
+        for statement in PRIORITY_EVALUATION_COMPATIBILITY_DDL:
+            await connection.execute(text(statement))
         for statement in PRIORITY_EVALUATION_INDEX_DDL:
             await connection.execute(text(statement))
 
@@ -421,7 +441,6 @@ def build_evaluation_results(
     rows: list[dict[str, Any]] = []
     for candidate, inference in zip(candidates, inferences, strict=True):
         source_window_end = candidate.get("source_window_end")
-        raw_card = _json_object(candidate.get("raw_card"))
         priority_score = _float(inference.get("priority_score"))
         source_card_id = candidate.get("source_card_id")
         has_model_result = (

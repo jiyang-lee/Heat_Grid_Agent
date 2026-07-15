@@ -271,6 +271,26 @@ class ReplayService:
         service.error = error
         return service
 
+    def presets(self) -> list[dict[str, Any]]:
+        if self.dataset is None:
+            return []
+        presets = list(getattr(self.dataset, "presets", ()))
+        ranked = sorted(
+            presets,
+            key=lambda preset: (
+                preset.fleet_high_count * 5 + preset.fleet_medium_count,
+                preset.fleet_high_count,
+                preset.fleet_max_priority_score,
+            ),
+            reverse=True,
+        )
+        selected = [
+            preset
+            for label in ("pre_fault_demo", "medium_warning_demo")
+            for preset in [item for item in ranked if item.label == label][:6]
+        ]
+        return [preset.as_dict() for preset in selected]
+
     def configure(
         self,
         *,

@@ -42,6 +42,7 @@ import type {
   PriorityEvaluationSnapshot,
   PrioritySubstationSnapshot,
   DemoReplayControlRequest,
+  DemoReplayPreset,
   DemoReplaySnapshot,
   DemoReplayStatus,
 } from './contracts'
@@ -159,6 +160,7 @@ export const priorityEvaluationsApi = {
 export const demoReplayApi = {
   status: () => apiFetch<DemoReplayStatus>('/demo-replay/status'),
   snapshot: () => apiFetch<DemoReplaySnapshot>('/demo-replay/snapshot'),
+  presets: () => apiFetch<DemoReplayPreset[]>('/demo-replay/presets'),
   control: (body: DemoReplayControlRequest) =>
     apiFetch<DemoReplayStatus>('/demo-replay/control', {
       method: 'POST',

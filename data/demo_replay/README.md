@@ -11,10 +11,11 @@ Small validation run:
 .\.venv\Scripts\python.exe scripts\generate_synthetic_replay.py --sample --stations 1-31 --output "$env:TEMP\heatgrid-replay-sample" --overwrite --run-inference-validation
 ```
 
-Full three-year generation (large output, intentionally not tracked). The default v2
-profile creates 96 candidates from continuous source fault trajectories, distributes
-them across configuration-compatible substations, and requires at least 10
-model-approved fault scenarios before validation passes:
+Full three-year generation (large output, intentionally not tracked). The default v3
+profile creates 96 interleaved high/medium candidates from continuous source fault
+trajectories, adds a 24-hour recovery phase, and decorrelates normal donor timing across
+substations. Validation requires at least 20 model-approved high scenarios and 20
+model-approved medium scenarios:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\generate_synthetic_replay.py --full-range --overwrite
@@ -27,6 +28,7 @@ Validate an existing output:
 ```
 
 The output root contains `dataset_manifest.json`, copied sensor/registry manifests,
-scenario and approved seek-point manifests, fallback donor provenance, monthly `raw/`
+scenario and approved seek-point manifests (including fleet-level preset counts),
+fallback donor provenance, monthly `raw/`
 shards, monthly `windows/` shards, and `validation_report.json`. Generated files under
 `data/demo_replay/current/` are ignored by Git.

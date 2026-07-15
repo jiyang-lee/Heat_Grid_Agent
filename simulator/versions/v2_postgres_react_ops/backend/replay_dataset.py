@@ -41,6 +41,32 @@ class SensorDefinition:
 
 
 @dataclass(frozen=True, slots=True)
+class ReplayPreset:
+    scenario_id: str
+    label: str
+    seek_at: datetime
+    event_at: datetime
+    substation_id: int
+    fleet_high_count: int
+    fleet_medium_count: int
+    fleet_low_count: int
+    fleet_max_priority_score: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "scenario_id": self.scenario_id,
+            "label": self.label,
+            "seek_at": self.seek_at.isoformat(),
+            "event_at": self.event_at.isoformat(),
+            "substation_id": self.substation_id,
+            "fleet_high_count": self.fleet_high_count,
+            "fleet_medium_count": self.fleet_medium_count,
+            "fleet_low_count": self.fleet_low_count,
+            "fleet_max_priority_score": self.fleet_max_priority_score,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReplayShard:
     path: Path
     start: datetime | None = None
@@ -194,6 +220,8 @@ class CsvReplayDataset:
         sensor_path = self.root / str(payload.get("sensor_manifest") or "sensor_manifest.csv")
         self.sensors = _read_sensors(sensor_path)
         self.manifest = _read_manifest(self.root, payload)
+        preset_path = self.root / str(payload.get("seek_points") or "seek_points.csv")
+        self.presets = _read_presets(preset_path)
         self._validated_window_shards: set[Path] = set()
         self._validate_shards()
 
@@ -572,6 +600,35 @@ def _shard_paths(root: Path, value: Any, *, fallback: str) -> tuple[ReplayShard,
                 raise ReplayDatasetError(f"shard start must precede end: {relative}")
         shards.append(ReplayShard(path=candidate, start=start, end=end))
     return tuple(shards)
+
+
+def _read_presets(path: Path) -> tuple[ReplayPreset, ...]:
+    if not path.is_file():
+        return ()
+    presets = [
+        ReplayPreset(
+            scenario_id=_required(row, "scenario_id"),
+            label=_required(row, "label"),
+            seek_at=_parse_time(_required(row, "seek_at")),
+            event_at=_parse_time(_required(row, "event_at")),
+            substation_id=int(_required(row, "substation_id")),
+            fleet_high_count=int(row.get("fleet_high_count") or 0),
+            fleet_medium_count=int(row.get("fleet_medium_count") or 0),
+            fleet_low_count=int(row.get("fleet_low_count") or 0),
+            fleet_max_priority_score=float(row.get("fleet_max_priority_score") or 0.0),
+        )
+        for row in _iter_csv(path)
+    ]
+    return tuple(
+        sorted(
+            presets,
+            key=lambda preset: (
+                -preset.fleet_high_count,
+                -preset.fleet_medium_count,
+                preset.event_at,
+            ),
+        )
+    )
 
 
 def _iter_csv(path: Path) -> Iterator[dict[str, str]]:

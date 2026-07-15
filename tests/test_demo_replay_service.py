@@ -270,6 +270,7 @@ async def test_replay_http_contract_starts_paused_and_returns_dynamic_snapshot()
         base_url="http://test",
     ) as client:
         initial = await client.get("/api/demo-replay/status")
+        presets = await client.get("/api/demo-replay/presets")
         started = await client.post(
             "/api/demo-replay/control",
             json={"action": "start"},
@@ -278,6 +279,8 @@ async def test_replay_http_contract_starts_paused_and_returns_dynamic_snapshot()
         snapshot = await client.get("/api/demo-replay/snapshot")
 
     assert initial.status_code == 200
+    assert presets.status_code == 200
+    assert presets.json() == []
     assert initial.json()["state"] == "paused"
     assert len(initial.json()["sensors"]) == 4
     assert started.json()["state"] == "running"

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from replay_service import ReplayControlError, ReplayService
-from schemas import ReplayControlRequest, ReplaySnapshot, ReplayStatus
+from schemas import ReplayControlRequest, ReplayPreset, ReplaySnapshot, ReplayStatus
 
 
 def make_replay_router(
@@ -26,6 +26,10 @@ def make_replay_router(
     @router.get("/snapshot", response_model=ReplaySnapshot)
     async def replay_snapshot() -> dict[str, Any]:
         return service_provider().snapshot()
+
+    @router.get("/presets", response_model=list[ReplayPreset])
+    async def replay_presets() -> list[dict[str, Any]]:
+        return service_provider().presets()
 
     @router.get("/events", include_in_schema=False)
     async def replay_events() -> StreamingResponse:

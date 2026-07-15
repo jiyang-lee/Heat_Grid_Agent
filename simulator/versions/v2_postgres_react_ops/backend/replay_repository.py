@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
     simulated_at timestamptz NOT NULL,
     manufacturer_id text NOT NULL,
     substation_id integer NOT NULL,
+    substation_uid uuid NOT NULL,
     values jsonb NOT NULL,
     quality jsonb NOT NULL,
     is_synthetic boolean NOT NULL DEFAULT true,
@@ -70,6 +71,18 @@ REPLAY_COMPATIBILITY_DDL: Final = (
     "ALTER TABLE demo_replay_runs ADD COLUMN IF NOT EXISTS "
     "has_scored_window boolean NOT NULL DEFAULT false",
     "ALTER TABLE demo_replay_runs ADD COLUMN IF NOT EXISTS last_evaluation_run_id uuid",
+    "ALTER TABLE sensor_readings ADD COLUMN IF NOT EXISTS substation_uid uuid",
+    "UPDATE sensor_readings reading SET substation_uid = substation.substation_uid "
+    "FROM substations substation WHERE reading.substation_uid IS NULL "
+    "AND reading.manufacturer_id = substation.manufacturer_id "
+    "AND reading.substation_id = substation.substation_id",
+    "ALTER TABLE sensor_readings ALTER COLUMN substation_uid SET NOT NULL",
+    "ALTER TABLE windows ADD COLUMN IF NOT EXISTS substation_uid uuid",
+    "UPDATE windows window_record SET substation_uid = substation.substation_uid "
+    "FROM substations substation WHERE window_record.substation_uid IS NULL "
+    "AND window_record.manufacturer_id = substation.manufacturer_id "
+    "AND window_record.substation_id = substation.substation_id",
+    "ALTER TABLE windows ALTER COLUMN substation_uid SET NOT NULL",
 )
 
 
@@ -259,10 +272,13 @@ class PostgresReplayStore:
                 text(
                     "INSERT INTO sensor_readings ("
                     "run_id, dataset_version, sequence, phase, simulated_at, "
-                    "manufacturer_id, substation_id, values, quality, is_synthetic, "
+                    "manufacturer_id, substation_id, substation_uid, values, quality, is_synthetic, "
                     "scenario_id) VALUES ("
                     ":run_id, :dataset_version, :sequence, :phase, :simulated_at, "
-                    ":manufacturer_id, :substation_id, CAST(:values AS jsonb), "
+                    ":manufacturer_id, :substation_id, "
+                    "(SELECT substation_uid FROM substations "
+                    "WHERE manufacturer_id = :manufacturer_id "
+                    "AND substation_id = :substation_id), CAST(:values AS jsonb), "
                     "CAST(:quality AS jsonb), :is_synthetic, :scenario_id) "
                     "ON CONFLICT (run_id, sequence, manufacturer_id, substation_id) "
                     "DO UPDATE SET values = EXCLUDED.values, quality = EXCLUDED.quality, "
@@ -443,9 +459,12 @@ class PostgresReplayStore:
         await connection.execute(
             text(
                 "INSERT INTO windows ("
-                "window_id, manufacturer_id, substation_id, window_start, window_end, "
-                "source_file, season_bucket, label, fault_event_id) VALUES ("
-                ":window_id, :manufacturer_id, :substation_id, :window_start, :window_end, "
+                "window_id, manufacturer_id, substation_id, substation_uid, "
+                "window_start, window_end, source_file, season_bucket, label, fault_event_id) "
+                "VALUES (:window_id, :manufacturer_id, :substation_id, "
+                "(SELECT substation_uid FROM substations "
+                "WHERE manufacturer_id = :manufacturer_id "
+                "AND substation_id = :substation_id), :window_start, :window_end, "
                 ":source_file, :season_bucket, :label, :fault_event_id) "
                 "ON CONFLICT (window_id) DO UPDATE SET source_file = EXCLUDED.source_file"
             ),
@@ -568,8 +587,8 @@ class PostgresReplayStore:
         )
 
 async def prepare_replay_database(engine: AsyncEngine) -> None:
-    await ensure_replay_tables(engine)
     await ensure_priority_evaluation_tables(engine)
+    await ensure_replay_tables(engine)
     await ensure_alert_queue(engine)
 
 

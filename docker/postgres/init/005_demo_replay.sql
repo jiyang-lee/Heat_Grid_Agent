@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
     simulated_at timestamptz NOT NULL,
     manufacturer_id text NOT NULL,
     substation_id integer NOT NULL,
+    substation_uid uuid NOT NULL,
     values jsonb NOT NULL,
     quality jsonb NOT NULL,
     is_synthetic boolean NOT NULL DEFAULT true,

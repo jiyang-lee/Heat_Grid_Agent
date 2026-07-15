@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   useAlerts,
   useDemoReplayControl,
+  useDemoReplayPresets,
   useDemoReplaySnapshot,
   useDemoReplayStatus,
   useDemoReplayStream,
@@ -10,6 +11,7 @@ import {
 } from '../api/hooks'
 import type {
   DemoReplayControlAction,
+  DemoReplayPreset,
   DemoReplayState,
   PriorityEvaluationResult,
   ReplaySensorDefinition,
@@ -83,6 +85,11 @@ function sortedSensors(sensors: ReplaySensorDefinition[]): ReplaySensorDefinitio
   )
 }
 
+function presetLabel(preset: DemoReplayPreset): string {
+  const level = preset.label === 'pre_fault_demo' ? 'HIGH' : 'MEDIUM'
+  return `${level} · H ${preset.fleet_high_count} / M ${preset.fleet_medium_count} · ${simulatedTime(preset.event_at)}`
+}
+
 export function DashboardPage() {
   const priority = usePrioritySnapshot()
   const alerts = useAlerts({ status: 'open' })
@@ -90,7 +97,9 @@ export function DashboardPage() {
   const replayStatus = useDemoReplayStatus()
   const replaySnapshot = useDemoReplaySnapshot()
   const replayMutation = useDemoReplayControl()
+  const replayPresets = useDemoReplayPresets()
   const [seekValue, setSeekValue] = useState('2023-01-08T00:00')
+  const [presetId, setPresetId] = useState('')
   useDemoReplayStream()
 
   const rawPriorityRows = useMemo(() => priority.data?.results ?? [], [priority.data?.results])
@@ -153,6 +162,27 @@ export function DashboardPage() {
           <p>운영 데이터와 우선순위 모델을 함께 확인합니다.</p>
         </div>
         <div className="replay-header-controls">
+          <label className="replay-preset">
+            <span>발표 프리셋</span>
+            <select
+              aria-label="발표 프리셋"
+              disabled={replayPresets.isLoading || !replayPresets.data?.length}
+              onChange={(event) => {
+                const nextId = event.target.value
+                const preset = replayPresets.data?.find((item) => item.scenario_id === nextId)
+                setPresetId(nextId)
+                if (preset) setSeekValue(preset.seek_at.slice(0, 16))
+              }}
+              value={presetId}
+            >
+              <option value="">검증 구간 선택</option>
+              {replayPresets.data?.map((preset) => (
+                <option key={preset.scenario_id} value={preset.scenario_id}>
+                  {presetLabel(preset)}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="replay-seek">
             <span>가상 시각 이동</span>
             <input

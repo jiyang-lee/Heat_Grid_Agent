@@ -48,6 +48,7 @@ export const qk = {
   prioritySnapshot: ['priority-evaluation-latest'] as const,
   replayStatus: ['demo-replay-status'] as const,
   replaySnapshot: ['demo-replay-snapshot'] as const,
+  replayPresets: ['demo-replay-presets'] as const,
 }
 
 export function useAlerts(query?: AlertListQuery) {
@@ -78,6 +79,14 @@ export function useDemoReplaySnapshot() {
   return useQuery({
     queryKey: qk.replaySnapshot,
     queryFn: () => demoReplayApi.snapshot(),
+  })
+}
+
+export function useDemoReplayPresets() {
+  return useQuery({
+    queryKey: qk.replayPresets,
+    queryFn: () => demoReplayApi.presets(),
+    staleTime: Number.POSITIVE_INFINITY,
   })
 }
 

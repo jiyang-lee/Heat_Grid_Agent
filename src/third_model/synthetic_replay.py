@@ -22,8 +22,12 @@ DEFAULT_STATIONS = tuple(range(1, 32))
 MANUFACTURER_ID = "manufacturer 1"
 DEFAULT_FAULT_SCENARIO_COUNT = 96
 DEFAULT_QUALITY_SCENARIO_COUNT = 18
-DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS = 10
-FAULT_EFFECT_SCALES = (1.0, 1.1, 1.2, 1.25)
+DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS = 20
+DEFAULT_MINIMUM_ELIGIBLE_MEDIUM_SCENARIOS = 20
+DEFAULT_MEDIUM_SCENARIO_RATIO = 0.5
+DEFAULT_RECOVERY_HOURS = 24
+HIGH_FAULT_EFFECT_SCALES = (1.35, 1.5, 1.65, 1.8)
+MEDIUM_FAULT_EFFECT_SCALES = (0.7, 0.8, 0.9, 1.0)
 
 RAW_METADATA_COLUMNS = [
     "dataset_version",
@@ -48,6 +52,17 @@ WINDOW_METADATA_COLUMNS = [
     "feature_set_version",
     "feature_hash",
     "scenario_id",
+]
+SEEK_POINT_COLUMNS = [
+    "scenario_id",
+    "label",
+    "seek_at",
+    "event_at",
+    "substation_id",
+    "fleet_high_count",
+    "fleet_medium_count",
+    "fleet_low_count",
+    "fleet_max_priority_score",
 ]
 
 MODEL_METADATA_SPECS = (
@@ -104,7 +119,9 @@ def _sha256(path: Path) -> str:
 
 
 def _json_hash(value: Any) -> str:
-    encoded = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    encoded = json.dumps(
+        value, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
@@ -149,7 +166,9 @@ def load_model_feature_union(project_root: Path) -> list[str]:
         payload = json.loads(path.read_text(encoding="utf-8"))
         features.extend(str(item) for item in payload.get(key, []))
 
-    runtime_path = project_root / "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json"
+    runtime_path = (
+        project_root / "models/m1_specialist/m1_full_gate_runtime_policy_metadata.json"
+    )
     if runtime_path.exists():
         payload = json.loads(runtime_path.read_text(encoding="utf-8"))
         for metadata in payload.get("models", {}).values():
@@ -164,12 +183,16 @@ def build_model_sensor_registry(
     output_path: Path | None = None,
 ) -> pd.DataFrame:
     """Build the selectable physical-sensor registry from raw and model contracts."""
-    schema_path = raw_schema_path or project_root / "data/interim/raw_schema_summary.csv"
+    schema_path = (
+        raw_schema_path or project_root / "data/interim/raw_schema_summary.csv"
+    )
     schema = pd.read_csv(schema_path)
     if "column_name" not in schema.columns:
         raise ValueError(f"raw schema has no column_name: {schema_path}")
     if "manufacturer" in schema.columns:
-        schema = schema.loc[schema["manufacturer"].astype(str).eq(MANUFACTURER_ID)].copy()
+        schema = schema.loc[
+            schema["manufacturer"].astype(str).eq(MANUFACTURER_ID)
+        ].copy()
     features = load_model_feature_union(project_root)
     if not features:
         raise ValueError("no deployed model feature metadata was found")
@@ -179,7 +202,9 @@ def build_model_sensor_registry(
         station_ids = pd.to_numeric(schema["substation_id"], errors="coerce")
         scoped_schema = schema.loc[station_ids.between(1, 31)].copy()
     expected_stations = (
-        int(scoped_schema["substation_id"].dropna().nunique()) if "substation_id" in scoped_schema else 0
+        int(scoped_schema["substation_id"].dropna().nunique())
+        if "substation_id" in scoped_schema
+        else 0
     )
     rows: list[dict[str, Any]] = []
     for source_column in sorted(schema["column_name"].dropna().astype(str).unique()):
@@ -194,10 +219,14 @@ def build_model_sensor_registry(
         if not linked:
             continue
         sensor_type, unit = _sensor_type(source_column)
-        available_rows = scoped_schema.loc[scoped_schema["column_name"].eq(source_column)]
+        available_rows = scoped_schema.loc[
+            scoped_schema["column_name"].eq(source_column)
+        ]
         if "sample_non_null_count" in available_rows:
             available_rows = available_rows.loc[
-                pd.to_numeric(available_rows["sample_non_null_count"], errors="coerce").fillna(0).gt(0)
+                pd.to_numeric(available_rows["sample_non_null_count"], errors="coerce")
+                .fillna(0)
+                .gt(0)
             ]
         available = (
             int(available_rows["substation_id"].nunique())
@@ -220,7 +249,9 @@ def build_model_sensor_registry(
         )
     registry = pd.DataFrame(rows)
     if registry.empty:
-        raise ValueError("raw/model contract intersection has no physical numeric sensors")
+        raise ValueError(
+            "raw/model contract intersection has no physical numeric sensors"
+        )
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         registry.to_csv(output_path, index=False, encoding="utf-8", lineterminator="\n")
@@ -249,17 +280,28 @@ def load_sensor_manifest(path: Path, registry: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"sensor manifest is missing columns: {missing}")
     enabled = manifest.loc[manifest["enabled"].map(_boolean)].copy()
     if len(enabled) != 4:
-        raise ValueError(f"sensor manifest must enable exactly four sensors; got {len(enabled)}")
-    if enabled["sensor_key"].duplicated().any() or enabled["source_column"].duplicated().any():
+        raise ValueError(
+            f"sensor manifest must enable exactly four sensors; got {len(enabled)}"
+        )
+    if (
+        enabled["sensor_key"].duplicated().any()
+        or enabled["source_column"].duplicated().any()
+    ):
         raise ValueError("enabled sensor keys and source columns must be unique")
 
     allowed = registry.set_index("source_column")
-    unknown = sorted(set(enabled["source_column"].astype(str)) - set(allowed.index.astype(str)))
+    unknown = sorted(
+        set(enabled["source_column"].astype(str)) - set(allowed.index.astype(str))
+    )
     if unknown:
-        raise ValueError(f"manifest contains sensors outside the physical model registry: {unknown}")
+        raise ValueError(
+            f"manifest contains sensors outside the physical model registry: {unknown}"
+        )
     for source_column in enabled["source_column"].astype(str):
         if int(allowed.loc[source_column, "model_feature_count"]) <= 0:
-            raise ValueError(f"sensor has no deployed model feature connection: {source_column}")
+            raise ValueError(
+                f"sensor has no deployed model feature connection: {source_column}"
+            )
     return enabled.sort_values("display_order").reset_index(drop=True)
 
 
@@ -275,10 +317,13 @@ class ReplayGenerationConfig:
     replay_end: pd.Timestamp = DEFAULT_REPLAY_END
     stations: tuple[int, ...] = DEFAULT_STATIONS
     seed: int = 20230710
-    dataset_version: str = "predist-synthetic-replay-v2"
+    dataset_version: str = "predist-synthetic-replay-v3"
     fault_scenario_count: int = DEFAULT_FAULT_SCENARIO_COUNT
     quality_scenario_count: int = DEFAULT_QUALITY_SCENARIO_COUNT
     minimum_eligible_fault_scenarios: int = DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS
+    minimum_eligible_medium_scenarios: int = DEFAULT_MINIMUM_ELIGIBLE_MEDIUM_SCENARIOS
+    medium_scenario_ratio: float = DEFAULT_MEDIUM_SCENARIO_RATIO
+    recovery_hours: int = DEFAULT_RECOVERY_HOURS
     overwrite: bool = False
 
     def validate(self) -> None:
@@ -288,7 +333,9 @@ class ReplayGenerationConfig:
         if not start < replay < end:
             raise ValueError("expected warmup_start < replay_start < replay_end")
         if (replay - start) % SOURCE_INTERVAL:
-            raise ValueError("warmup duration must align to the 10-minute source interval")
+            raise ValueError(
+                "warmup duration must align to the 10-minute source interval"
+            )
         if (end - start) % SOURCE_INTERVAL:
             raise ValueError("replay end must align to the 10-minute source interval")
         if (replay - start) % WINDOW_INTERVAL:
@@ -300,17 +347,42 @@ class ReplayGenerationConfig:
         if self.fault_scenario_count < 0 or self.quality_scenario_count < 0:
             raise ValueError("scenario counts must be non-negative")
         if self.minimum_eligible_fault_scenarios < 0:
-            raise ValueError("minimum eligible fault scenarios must be non-negative")
+            raise ValueError("minimum eligible high scenarios must be non-negative")
+        if self.minimum_eligible_medium_scenarios < 0:
+            raise ValueError("minimum eligible medium scenarios must be non-negative")
+        if not 0.0 <= self.medium_scenario_ratio <= 1.0:
+            raise ValueError("medium scenario ratio must be between zero and one")
+        if self.recovery_hours < 0:
+            raise ValueError("recovery hours must be non-negative")
+        medium_targets = int(
+            round(self.fault_scenario_count * self.medium_scenario_ratio)
+        )
+        high_targets = self.fault_scenario_count - medium_targets
         if (
             self.fault_scenario_count > 0
-            and self.minimum_eligible_fault_scenarios > self.fault_scenario_count
+            and self.minimum_eligible_fault_scenarios > high_targets
         ):
-            raise ValueError("minimum eligible faults cannot exceed fault scenario count")
+            raise ValueError(
+                "minimum eligible high scenarios cannot exceed high targets"
+            )
+        if (
+            self.fault_scenario_count > 0
+            and self.minimum_eligible_medium_scenarios > medium_targets
+        ):
+            raise ValueError(
+                "minimum eligible medium scenarios cannot exceed medium targets"
+            )
 
 
 def expected_dataset_counts(config: ReplayGenerationConfig) -> dict[str, int]:
-    warmup_ticks = int((_timestamp(config.replay_start) - _timestamp(config.warmup_start)) / SOURCE_INTERVAL)
-    replay_ticks = int((_timestamp(config.replay_end) - _timestamp(config.replay_start)) / SOURCE_INTERVAL)
+    warmup_ticks = int(
+        (_timestamp(config.replay_start) - _timestamp(config.warmup_start))
+        / SOURCE_INTERVAL
+    )
+    replay_ticks = int(
+        (_timestamp(config.replay_end) - _timestamp(config.replay_start))
+        / SOURCE_INTERVAL
+    )
     station_count = len(config.stations)
     return {
         "warmup_ticks": warmup_ticks,
@@ -321,7 +393,9 @@ def expected_dataset_counts(config: ReplayGenerationConfig) -> dict[str, int]:
         "total_raw_rows": (warmup_ticks + replay_ticks) * station_count,
         "warmup_window_rows": warmup_ticks // WINDOW_TICKS * station_count,
         "replay_window_rows": replay_ticks // WINDOW_TICKS * station_count,
-        "total_window_rows": (warmup_ticks + replay_ticks) // WINDOW_TICKS * station_count,
+        "total_window_rows": (warmup_ticks + replay_ticks)
+        // WINDOW_TICKS
+        * station_count,
     }
 
 
@@ -338,8 +412,14 @@ def _merge_feature_source(
         return base
     keys = ["manufacturer", "substation_id", "window_start", "window_end"]
     header = _read_csv_columns(path)
-    wanted = keys + [name for name in feature_union if name in header and name not in base.columns]
-    extras = [name for name in ("anomaly_score",) if name in header and name not in wanted and name not in base.columns]
+    wanted = keys + [
+        name for name in feature_union if name in header and name not in base.columns
+    ]
+    extras = [
+        name
+        for name in ("anomaly_score",)
+        if name in header and name not in wanted and name not in base.columns
+    ]
     if not set(keys).issubset(header) or len(wanted) == len(keys):
         return base
     source = pd.read_csv(path, usecols=wanted + extras, low_memory=False)
@@ -362,7 +442,8 @@ def load_donor_feature_frame(
     base = base.drop_duplicates(keys, keep="last")
     sources = (
         project_root / "artifacts/current_best/source_score_outputs/risk_scores.csv",
-        project_root / "artifacts/current_best/source_score_outputs/leadtime_scores.csv",
+        project_root
+        / "artifacts/current_best/source_score_outputs/leadtime_scores.csv",
         project_root / "output/merged_model_scores.csv",
         project_root / "output/m1_specialist_compact13_features.csv",
     )
@@ -386,9 +467,13 @@ def load_donor_feature_frame(
         )
     base["manufacturer_code"] = 0.0
     if "configuration_type" in base:
-        names = sorted(base["configuration_type"].fillna("missing").astype(str).unique())
+        names = sorted(
+            base["configuration_type"].fillna("missing").astype(str).unique()
+        )
         codes = {name: float(index) for index, name in enumerate(names)}
-        base["configuration_code"] = base["configuration_type"].fillna("missing").astype(str).map(codes)
+        base["configuration_code"] = (
+            base["configuration_type"].fillna("missing").astype(str).map(codes)
+        )
     else:
         base["configuration_type"] = "missing"
         base["configuration_code"] = 0.0
@@ -430,19 +515,54 @@ def _scenario_times(
 
 
 def _high_trajectory_heads(scored: pd.DataFrame) -> pd.DataFrame:
-    required = {"donor_id", "substation_id", "_runtime_priority_level", "_runtime_priority_score"}
+    required = {
+        "donor_id",
+        "substation_id",
+        "_runtime_priority_level",
+        "_runtime_priority_score",
+    }
     if not required.issubset(scored.columns):
         return scored.iloc[0:0].copy()
     candidates = scored.loc[
-        scored["_runtime_priority_level"].astype(str).isin({"high", "urgent", "critical"})
+        scored["_runtime_priority_level"]
+        .astype(str)
+        .isin({"high", "urgent", "critical"})
     ].copy()
     if candidates.empty:
         return candidates
     if "fault_event_id" in candidates:
         event = candidates["fault_event_id"]
-        candidates["_trajectory_key"] = event.where(event.notna(), candidates["donor_id"]).astype(
-            str
-        )
+        candidates["_trajectory_key"] = event.where(
+            event.notna(), candidates["donor_id"]
+        ).astype(str)
+    else:
+        candidates["_trajectory_key"] = candidates["donor_id"].astype(str)
+    return (
+        candidates.sort_values("_runtime_priority_score", ascending=False)
+        .drop_duplicates(["substation_id", "_trajectory_key"], keep="first")
+        .reset_index(drop=True)
+    )
+
+
+def _medium_trajectory_heads(scored: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "donor_id",
+        "substation_id",
+        "_runtime_priority_level",
+        "_runtime_priority_score",
+    }
+    if not required.issubset(scored.columns):
+        return scored.iloc[0:0].copy()
+    candidates = scored.loc[
+        scored["_runtime_priority_level"].astype(str).eq("medium")
+    ].copy()
+    if candidates.empty:
+        return candidates
+    if "fault_event_id" in candidates:
+        event = candidates["fault_event_id"]
+        candidates["_trajectory_key"] = event.where(
+            event.notna(), candidates["donor_id"]
+        ).astype(str)
     else:
         candidates["_trajectory_key"] = candidates["donor_id"].astype(str)
     return (
@@ -455,34 +575,60 @@ def _high_trajectory_heads(scored: pd.DataFrame) -> pd.DataFrame:
 def _model_guided_fault_trajectories(
     generation: ReplayGenerationConfig,
     holdout: pd.DataFrame,
+    normal: pd.DataFrame,
     feature_union: Sequence[str],
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[int, float]]:
     required_models = (
         generation.project_root / "models/anomaly/isolation_forest.joblib",
         generation.project_root / "models/risk/risk_model_best.joblib",
         generation.project_root / "models/leadtime/leadtime_model_best.joblib",
     )
     if holdout.empty or not all(path.exists() for path in required_models):
-        return holdout.iloc[0:0].copy()
+        empty = holdout.iloc[0:0].copy()
+        return empty, empty, {}
 
     from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
     runtime = PriorityInferenceRuntime(model_root=generation.project_root / "models")
+    combined = pd.concat(
+        [
+            holdout.assign(_runtime_source="fault"),
+            normal.assign(_runtime_source="normal"),
+        ],
+        ignore_index=True,
+    )
     rows = [
         {
             "manufacturer_id": MANUFACTURER_ID,
             "substation_id": int(row["substation_id"]),
             "configuration_type": str(row["configuration_type"]),
-            "feature_values": {feature: float(row[feature]) for feature in feature_union},
+            "feature_values": {
+                feature: float(row[feature]) for feature in feature_union
+            },
         }
-        for row in holdout.to_dict(orient="records")
+        for row in combined.to_dict(orient="records")
     ]
     results = runtime.infer_batch(rows)
-    scored = holdout.copy()
-    scored["_runtime_priority_level"] = [str(result["priority_level"]) for result in results]
-    scored["_runtime_priority_score"] = [float(result["priority_score"]) for result in results]
+    scored = combined.copy()
+    scored["_runtime_priority_level"] = [
+        str(result["priority_level"]) for result in results
+    ]
+    scored["_runtime_priority_score"] = [
+        float(result["priority_score"]) for result in results
+    ]
     scored["_runtime_usable"] = [bool(result["usable"]) for result in results]
-    return _high_trajectory_heads(scored.loc[scored["_runtime_usable"]])
+    usable = scored.loc[scored["_runtime_usable"]]
+    fault_usable = usable.loc[usable["_runtime_source"].eq("fault")]
+    station_priority = (
+        usable.loc[usable["_runtime_source"].eq("normal")]
+        .groupby("substation_id")["_runtime_priority_score"]
+        .median()
+    )
+    return (
+        _high_trajectory_heads(fault_usable),
+        _medium_trajectory_heads(fault_usable),
+        {int(station): float(score) for station, score in station_priority.items()},
+    )
 
 
 def build_scenario_manifest(
@@ -508,10 +654,13 @@ def build_scenario_manifest(
     normal = donors.loc[donors["label"].astype(str).eq("normal")]
     if normal.empty:
         normal = donors
-    preferred_trajectories = _model_guided_fault_trajectories(
-        generation,
-        holdout,
-        feature_union,
+    high_trajectories, medium_trajectories, station_priority = (
+        _model_guided_fault_trajectories(
+            generation,
+            holdout,
+            normal,
+            feature_union,
+        )
     )
 
     station_configurations: dict[int, str] = {}
@@ -535,13 +684,33 @@ def build_scenario_manifest(
     shuffled_stations = list(generation.stations)
     rng.shuffle(shuffled_stations)
     for index, start in enumerate(fault_times):
-        preferred_donor: pd.Series | None = None
-        if not preferred_trajectories.empty:
-            preferred_pool = preferred_trajectories.loc[
-                preferred_trajectories["season_bucket"].astype(str).eq(_season(start))
+        medium_before = math.floor(index * generation.medium_scenario_ratio)
+        medium_after = math.floor((index + 1) * generation.medium_scenario_ratio)
+        target_level = "medium" if medium_after > medium_before else "high"
+        target_trajectories = (
+            medium_trajectories if target_level == "medium" else high_trajectories
+        )
+        if target_level == "medium" and not target_trajectories.empty:
+            viable_configurations = {
+                configuration
+                for station, configuration in station_configurations.items()
+                if abs(station_priority.get(station, 40.0) - 40.0) <= 12.0
+            }
+            viable = target_trajectories.loc[
+                target_trajectories["configuration_type"]
+                .astype(str)
+                .isin(viable_configurations)
             ]
-            if not preferred_pool.empty:
-                preferred_donor = preferred_pool.iloc[index % len(preferred_pool)]
+            if not viable.empty:
+                target_trajectories = viable
+        preferred_donor: pd.Series | None = None
+        if not target_trajectories.empty:
+            preferred_pool = target_trajectories.loc[
+                target_trajectories["season_bucket"].astype(str).eq(_season(start))
+            ]
+            if preferred_pool.empty:
+                preferred_pool = target_trajectories
+            preferred_donor = preferred_pool.iloc[index % len(preferred_pool)]
         donor = (
             preferred_donor
             if preferred_donor is not None
@@ -554,6 +723,11 @@ def build_scenario_manifest(
             for station in shuffled_stations
             if station_configurations.get(station) == donor_configuration
         ] or shuffled_stations
+        if target_level == "medium":
+            target_pool = sorted(
+                target_pool,
+                key=lambda candidate: abs(station_priority.get(candidate, 40.0) - 40.0),
+            )[:8]
         station = target_pool[index % len(target_pool)]
 
         trajectory = holdout.loc[holdout["substation_id"].eq(donor_station)]
@@ -573,6 +747,7 @@ def build_scenario_manifest(
         donor_sequence = trajectory["donor_id"].astype(str).tolist() or [
             str(donor["donor_id"])
         ]
+        donor_sequence.append(str(donor["donor_id"]))
 
         target_normal = normal.loc[normal["substation_id"].eq(station)]
         if target_normal.empty:
@@ -598,7 +773,9 @@ def build_scenario_manifest(
             limit = max(abs(spread) * 2.5, 1e-6)
             effects[sensor] = float(np.clip(candidate, -limit, limit))
             if mean_column in trajectory:
-                series = pd.to_numeric(trajectory[mean_column], errors="coerce").dropna()
+                series = pd.to_numeric(
+                    trajectory[mean_column], errors="coerce"
+                ).dropna()
                 if len(series) >= 2:
                     delta = float(series.iloc[-1] - series.iloc[0])
                     if abs(delta) > 1e-9:
@@ -608,14 +785,25 @@ def build_scenario_manifest(
                         curve[-1] = 1.0
                         curves[sensor] = curve
         duration_hours = min(max(len(donor_sequence) * 6, 48), 96)
-        effect_scale = FAULT_EFFECT_SCALES[index % len(FAULT_EFFECT_SCALES)]
+        scales = (
+            MEDIUM_FAULT_EFFECT_SCALES
+            if target_level == "medium"
+            else HIGH_FAULT_EFFECT_SCALES
+        )
+        effect_scale = scales[index % len(scales)]
+        end = min(start + pd.Timedelta(hours=duration_hours), replay_end)
+        recovery_end = min(
+            end + pd.Timedelta(hours=generation.recovery_hours), replay_end
+        )
         rows.append(
             {
                 "scenario_id": f"fault-{index + 1:02d}",
                 "scenario_type": "pre_fault_drift",
                 "substation_id": station,
                 "start": _iso(start),
-                "end": _iso(min(start + pd.Timedelta(hours=duration_hours), replay_end)),
+                "end": _iso(end),
+                "recovery_end": _iso(recovery_end),
+                "target_level": target_level,
                 "donor_id": donor["donor_id"],
                 "donor_substation_id": donor_station,
                 "donor_configuration_type": donor_configuration,
@@ -630,12 +818,15 @@ def build_scenario_manifest(
                     curves, sort_keys=True, separators=(",", ":")
                 ),
                 "effect_scale": effect_scale,
-                "expected_behavior": "source_fault_trajectory_model_risk_change",
+                "expected_behavior": f"validated_{target_level}_rise_then_recovery",
             }
         )
 
     quality_times = _scenario_times(
-        replay_start, replay_end, generation.quality_scenario_count, margin=pd.Timedelta(days=2)
+        replay_start,
+        replay_end,
+        generation.quality_scenario_count,
+        margin=pd.Timedelta(days=2),
     )
     quality_types = ("missing", "frozen", "communication_gap")
     for index, start in enumerate(quality_times):
@@ -648,6 +839,8 @@ def build_scenario_manifest(
                 "substation_id": station,
                 "start": _iso(start),
                 "end": _iso(min(start + pd.Timedelta(hours=1), replay_end)),
+                "recovery_end": _iso(min(start + pd.Timedelta(hours=1), replay_end)),
+                "target_level": "quality",
                 "donor_id": "",
                 "donor_substation_id": "",
                 "donor_configuration_type": "",
@@ -665,6 +858,8 @@ def build_scenario_manifest(
         "substation_id",
         "start",
         "end",
+        "recovery_end",
+        "target_level",
         "donor_id",
         "donor_substation_id",
         "donor_configuration_type",
@@ -689,7 +884,11 @@ def _slot_numbers(timestamps: pd.DatetimeIndex) -> np.ndarray:
             "minute": naive.minute,
         }
     )
-    return ((fixed.dt.dayofyear.to_numpy() - 1) * 144 + fixed.dt.hour.to_numpy() * 6 + fixed.dt.minute.to_numpy() // 10).astype(int)
+    return (
+        (fixed.dt.dayofyear.to_numpy() - 1) * 144
+        + fixed.dt.hour.to_numpy() * 6
+        + fixed.dt.minute.to_numpy() // 10
+    ).astype(int)
 
 
 def _load_station_raw(path: Path, sensor_columns: Sequence[str]) -> pd.DataFrame:
@@ -703,14 +902,18 @@ def _load_station_raw(path: Path, sensor_columns: Sequence[str]) -> pd.DataFrame
         usecols=["timestamp", *available_sensors],
         low_memory=False,
     )
-    frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce").dt.floor("10min")
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce").dt.floor(
+        "10min"
+    )
     for sensor in sensor_columns:
         frame[sensor] = (
-            pd.to_numeric(frame[sensor], errors="coerce")
-            if sensor in frame
-            else np.nan
+            pd.to_numeric(frame[sensor], errors="coerce") if sensor in frame else np.nan
         )
-    frame = frame.dropna(subset=["timestamp"]).groupby("timestamp", as_index=False)[list(sensor_columns)].mean()
+    frame = (
+        frame.dropna(subset=["timestamp"])
+        .groupby("timestamp", as_index=False)[list(sensor_columns)]
+        .mean()
+    )
     return frame.sort_values("timestamp").reset_index(drop=True)
 
 
@@ -724,10 +927,14 @@ def _build_fleet_fallback_plan(
 ) -> tuple[dict[int, dict[str, pd.DataFrame]], pd.DataFrame]:
     schema = pd.read_csv(raw_schema_path)
     if "manufacturer" in schema.columns:
-        schema = schema.loc[schema["manufacturer"].astype(str).eq(MANUFACTURER_ID)].copy()
+        schema = schema.loc[
+            schema["manufacturer"].astype(str).eq(MANUFACTURER_ID)
+        ].copy()
     if "sample_non_null_count" in schema:
         schema = schema.loc[
-            pd.to_numeric(schema["sample_non_null_count"], errors="coerce").fillna(0).gt(0)
+            pd.to_numeric(schema["sample_non_null_count"], errors="coerce")
+            .fillna(0)
+            .gt(0)
         ]
     configurations: dict[int, str] = {}
     if station_context_path is not None and station_context_path.exists():
@@ -735,9 +942,13 @@ def _build_fleet_fallback_plan(
         if {"substation_id", "predist_configuration_type"}.issubset(context.columns):
             configurations = {
                 int(row.substation_id): str(row.predist_configuration_type)
-                for row in context[["substation_id", "predist_configuration_type"]].itertuples(index=False)
+                for row in context[
+                    ["substation_id", "predist_configuration_type"]
+                ].itertuples(index=False)
             }
-    fallbacks: dict[int, dict[str, pd.DataFrame]] = {int(station): {} for station in stations}
+    fallbacks: dict[int, dict[str, pd.DataFrame]] = {
+        int(station): {} for station in stations
+    }
     provenance: list[dict[str, Any]] = []
     loaded: dict[tuple[int, tuple[str, ...]], pd.DataFrame] = {}
     for sensor in sensor_columns:
@@ -745,7 +956,12 @@ def _build_fleet_fallback_plan(
             schema["column_name"].astype(str).eq(sensor), "substation_id"
         ]
         candidates = sorted(
-            set(pd.to_numeric(candidate_series, errors="coerce").dropna().astype(int).tolist())
+            set(
+                pd.to_numeric(candidate_series, errors="coerce")
+                .dropna()
+                .astype(int)
+                .tolist()
+            )
         )
         if not candidates:
             continue
@@ -756,10 +972,14 @@ def _build_fleet_fallback_plan(
             same_configuration = [
                 candidate
                 for candidate in candidates
-                if target_configuration and configurations.get(candidate) == target_configuration
+                if target_configuration
+                and configurations.get(candidate) == target_configuration
             ]
             pool = same_configuration or candidates
-            donor_station = min(pool, key=lambda candidate: (abs(candidate - int(target_station)), candidate))
+            donor_station = min(
+                pool,
+                key=lambda candidate: (abs(candidate - int(target_station)), candidate),
+            )
             key = (donor_station, (sensor,))
             if key not in loaded:
                 path = (
@@ -776,7 +996,9 @@ def _build_fleet_fallback_plan(
                     "sensor_key": sensor,
                     "donor_station_id": donor_station,
                     "target_configuration_type": target_configuration or "unknown",
-                    "donor_configuration_type": configurations.get(donor_station, "unknown"),
+                    "donor_configuration_type": configurations.get(
+                        donor_station, "unknown"
+                    ),
                     "selection_policy": "same_configuration_nearest_station"
                     if same_configuration
                     else "nearest_available_station",
@@ -807,7 +1029,9 @@ def _stitch_value_blocks(
         method="time", limit=6, limit_area="inside"
     )
     source_index = regular.index
-    midnight_positions = np.flatnonzero((source_index.hour == 0) & (source_index.minute == 0))
+    midnight_positions = np.flatnonzero(
+        (source_index.hour == 0) & (source_index.minute == 0)
+    )
     if not len(midnight_positions):
         midnight_positions = np.arange(0, len(source_index), 144)
     complete = regular.notna().all(axis=1).to_numpy(dtype=bool)
@@ -840,7 +1064,9 @@ def _stitch_value_blocks(
                 "limited-gap interpolation"
             )
         start = int(candidates[int(rng.integers(0, len(candidates)))])
-        block = regular.iloc[start : start + length].to_numpy(dtype="float64", copy=True)
+        block = regular.iloc[start : start + length].to_numpy(
+            dtype="float64", copy=True
+        )
         if cursor and length:
             blend_count = min(6, length)
             boundary_offset = output[cursor - 1] - block[0]
@@ -870,38 +1096,54 @@ def _generate_station_values(
         if bound_source.empty:
             fallback = fallback_sources.get(sensor)
             if fallback is None:
-                raise ValueError(f"source and fleet fallback have no usable values for sensor: {sensor}")
+                raise ValueError(
+                    f"source and fleet fallback have no usable values for sensor: {sensor}"
+                )
             fallback_series = pd.to_numeric(fallback[sensor], errors="coerce")
             fallback_series.index = pd.DatetimeIndex(fallback["timestamp"])
             fallback_series = fallback_series.groupby(level=0).mean().sort_index()
             if fallback_series.dropna().empty:
-                raise ValueError(f"fleet fallback has no usable values for sensor: {sensor}")
+                raise ValueError(
+                    f"fleet fallback has no usable values for sensor: {sensor}"
+                )
             numeric[sensor] = fallback_series.reindex(source_index).to_numpy()
             bound_source = fallback_series.dropna()
         bound_sources[sensor] = bound_source
-    values = _stitch_value_blocks(
-        numeric[sensor_columns], target_index, seed=seed
-    )
+    values = _stitch_value_blocks(numeric[sensor_columns], target_index, seed=seed)
 
     for column_index, sensor in enumerate(sensor_columns):
         source_values = bound_sources[sensor]
         low = float(source_values.quantile(0.001))
         high = float(source_values.quantile(0.999))
         padding = max((high - low) * 0.1, 0.5)
-        values[:, column_index] = np.clip(values[:, column_index], low - padding, high + padding)
-        sensor_type = str(sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0])
+        values[:, column_index] = np.clip(
+            values[:, column_index], low - padding, high + padding
+        )
+        sensor_type = str(
+            sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0]
+        )
         if sensor_type in {"flow", "heat_power"}:
             values[:, column_index] = np.maximum(values[:, column_index], 0.0)
         if sensor_type.startswith("cumulative_"):
             source_deltas = source_values.diff().dropna()
             positive = source_deltas.loc[source_deltas.ge(0)]
             typical = float(positive.median()) if not positive.empty else 0.0
-            increments = np.maximum(np.diff(values[:, column_index], prepend=values[0, column_index]), 0.0)
-            cap = float(positive.quantile(0.999)) if not positive.empty else max(typical, 1.0)
+            increments = np.maximum(
+                np.diff(values[:, column_index], prepend=values[0, column_index]), 0.0
+            )
+            cap = (
+                float(positive.quantile(0.999))
+                if not positive.empty
+                else max(typical, 1.0)
+            )
             increments = np.clip(increments, 0.0, max(cap, typical, 1e-9))
-            values[:, column_index] = float(source_values.iloc[0]) + np.cumsum(increments)
+            values[:, column_index] = float(source_values.iloc[0]) + np.cumsum(
+                increments
+            )
 
-    if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(sensor_columns):
+    if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(
+        sensor_columns
+    ):
         supply = sensor_columns.index("p_net_supply_temperature")
         returned = sensor_columns.index("p_net_return_temperature")
         values[:, supply] = np.maximum(values[:, supply], values[:, returned] + 1.0)
@@ -922,8 +1164,14 @@ def _apply_scenarios(
     for scenario in selected.itertuples(index=False):
         start = _timestamp(scenario.start)
         end = _timestamp(scenario.end)
-        mask = (values.index >= start) & (values.index < end)
-        positions = np.flatnonzero(mask)
+        recovery_end = _timestamp(getattr(scenario, "recovery_end", scenario.end))
+        active_positions = np.flatnonzero(
+            (values.index >= start) & (values.index < end)
+        )
+        recovery_positions = np.flatnonzero(
+            (values.index >= end) & (values.index < recovery_end)
+        )
+        positions = np.concatenate([active_positions, recovery_positions])
         if not len(positions):
             continue
         scenario_ids[positions] = scenario.scenario_id
@@ -936,16 +1184,24 @@ def _apply_scenarios(
                     curve = curves.get(sensor)
                     if isinstance(curve, list) and len(curve) >= 2:
                         profile = np.interp(
-                            np.linspace(0.0, len(curve) - 1, len(positions)),
+                            np.linspace(0.0, len(curve) - 1, len(active_positions)),
                             np.arange(len(curve), dtype="float64"),
                             np.asarray(curve, dtype="float64"),
                         )
                     else:
-                        profile = np.linspace(0.0, 1.0, len(positions))
-                    values.iloc[positions, values.columns.get_loc(sensor)] += (
+                        profile = np.linspace(0.0, 1.0, len(active_positions))
+                    values.iloc[active_positions, values.columns.get_loc(sensor)] += (
                         profile * float(effect) * effect_scale
                     )
-            quality[positions] = "synthetic_fault_pattern"
+                    if len(recovery_positions):
+                        recovery_profile = np.linspace(
+                            1.0, 0.0, len(recovery_positions), endpoint=False
+                        )
+                        values.iloc[
+                            recovery_positions, values.columns.get_loc(sensor)
+                        ] += recovery_profile * float(effect) * effect_scale
+            quality[active_positions] = "synthetic_fault_pattern"
+            quality[recovery_positions] = "synthetic_fault_recovery"
         elif scenario.scenario_type in {"missing", "communication_gap"}:
             values.iloc[positions, :] = np.nan
             quality[positions] = f"synthetic_{scenario.scenario_type}"
@@ -955,15 +1211,28 @@ def _apply_scenarios(
             quality[positions] = "synthetic_frozen"
 
     sensor_columns = sensors["source_column"].astype(str).tolist()
-    if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(sensor_columns):
-        valid = values[["p_net_supply_temperature", "p_net_return_temperature"]].notna().all(axis=1)
+    if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(
+        sensor_columns
+    ):
+        valid = (
+            values[["p_net_supply_temperature", "p_net_return_temperature"]]
+            .notna()
+            .all(axis=1)
+        )
         values.loc[valid, "p_net_supply_temperature"] = np.maximum(
             values.loc[valid, "p_net_supply_temperature"],
             values.loc[valid, "p_net_return_temperature"] + 1.0,
         )
     for sensor in sensor_columns:
-        sensor_type = str(sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0])
-        if sensor_type in {"flow", "heat_power", "cumulative_energy", "cumulative_volume"}:
+        sensor_type = str(
+            sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0]
+        )
+        if sensor_type in {
+            "flow",
+            "heat_power",
+            "cumulative_energy",
+            "cumulative_volume",
+        }:
             values[sensor] = values[sensor].clip(lower=0.0)
         if sensor_type.startswith("cumulative_"):
             values[sensor] = values[sensor].cummax()
@@ -986,7 +1255,8 @@ def _normal_donor_index(
         candidates = donors.index[mask]
     if not len(candidates):
         candidates = donors.index
-    return int(candidates[sequence % len(candidates)])
+    station_offset = station * 1009
+    return int(candidates[(sequence + station_offset) % len(candidates)])
 
 
 def _scenario_donor_index(
@@ -1001,10 +1271,12 @@ def _scenario_donor_index(
     if match.empty or match.iloc[0]["scenario_type"] != "pre_fault_drift":
         return None
     scenario = match.iloc[0]
+    end = _timestamp(scenario["end"])
+    if window_start >= end:
+        return None
     sequence = json.loads(str(scenario.get("donor_sequence_json", "[]")))
     if sequence:
         start = _timestamp(scenario["start"])
-        end = _timestamp(scenario["end"])
         duration = max((end - start).total_seconds(), 1.0)
         progress = float(
             np.clip(
@@ -1051,7 +1323,9 @@ def _aggregate_windows(
         frame = groups.get_group(window_id).sort_values("sequence")
         start = _timestamp(frame["simulated_at"].iloc[0])
         end = start + WINDOW_INTERVAL
-        scenario_ids = [value for value in frame["scenario_id"].astype(str).unique() if value]
+        scenario_ids = [
+            value for value in frame["scenario_id"].astype(str).unique() if value
+        ]
         scenario_id = scenario_ids[0] if scenario_ids else ""
         donor_index = _scenario_donor_index(donors, scenario_id, scenarios, start)
         if donor_index is None:
@@ -1077,11 +1351,15 @@ def _aggregate_windows(
             }
             for statistic, value in stats.items():
                 name = f"{sensor}__{statistic}"
-                aggregate_values.setdefault(name, []).append(float(value) if pd.notna(value) else np.nan)
+                aggregate_values.setdefault(name, []).append(
+                    float(value) if pd.notna(value) else np.nan
+                )
                 if name in feature_row.index:
                     feature_row[name] = value
 
-        if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(sensor_columns):
+        if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(
+            sensor_columns
+        ):
             gap = frame["p_net_supply_temperature"] - frame["p_net_return_temperature"]
             for statistic, value in {
                 "mean": gap.mean(),
@@ -1089,7 +1367,9 @@ def _aggregate_windows(
                 "max_abs": gap.abs().max(),
             }.items():
                 name = f"network_temperature_gap__{statistic}"
-                aggregate_values.setdefault(name, []).append(float(value) if pd.notna(value) else np.nan)
+                aggregate_values.setdefault(name, []).append(
+                    float(value) if pd.notna(value) else np.nan
+                )
                 if name in feature_row.index:
                     feature_row[name] = value
 
@@ -1126,7 +1406,8 @@ def _aggregate_windows(
         ]
         target_configuration = (
             str(station_configurations.mode().iloc[0])
-            if "configuration_type" in donors and not station_configurations.dropna().empty
+            if "configuration_type" in donors
+            and not station_configurations.dropna().empty
             else str(donors.loc[donor_index].get("configuration_type", "missing"))
         )
         rows.append(
@@ -1174,11 +1455,15 @@ def _aggregate_windows(
 
     horizon_sizes = {"roll24h": 4, "roll3d": 12, "roll7d": 28}
     for target in feature_union:
-        matched_base = next((base for base in base_columns if target.startswith(f"{base}__roll")), None)
+        matched_base = next(
+            (base for base in base_columns if target.startswith(f"{base}__roll")), None
+        )
         if matched_base is None:
             continue
         suffix = target[len(matched_base) + 2 :]
-        horizon = next((name for name in horizon_sizes if suffix.startswith(name + "_")), None)
+        horizon = next(
+            (name for name in horizon_sizes if suffix.startswith(name + "_")), None
+        )
         if horizon is None:
             continue
         operation = suffix[len(horizon) + 1 :]
@@ -1197,7 +1482,8 @@ def _aggregate_windows(
 
     station_raw = raw.sort_values("sequence").reset_index(drop=True)
     sequence_positions = {
-        int(value): index + 1 for index, value in enumerate(station_raw["sequence"].astype(int))
+        int(value): index + 1
+        for index, value in enumerate(station_raw["sequence"].astype(int))
     }
     compact_suffixes = (
         "last_6h_mean_minus_prev_6h_mean",
@@ -1207,30 +1493,61 @@ def _aggregate_windows(
         "last_minus_first",
     )
     compact_targets = [
-        target for target in feature_union if any(target.endswith(suffix) for suffix in compact_suffixes)
+        target
+        for target in feature_union
+        if any(target.endswith(suffix) for suffix in compact_suffixes)
     ]
     raw_series = {
-        sensor: pd.to_numeric(station_raw[sensor], errors="coerce") for sensor in sensor_columns
+        sensor: pd.to_numeric(station_raw[sensor], errors="coerce")
+        for sensor in sensor_columns
     }
     for target in compact_targets:
-        sensor = next((name for name in sensor_columns if target.startswith(name + "__")), None)
+        sensor = next(
+            (name for name in sensor_columns if target.startswith(name + "__")), None
+        )
         if sensor is None:
             continue
         series = raw_series[sensor]
         for row_index, sequence_end in enumerate(metadata["sequence_end"]):
             end_position = sequence_positions[int(sequence_end)]
             value: float | None = None
-            if target == f"{sensor}__last_6h_mean_minus_prev_6h_mean" and end_position >= 72:
-                value = float(series.iloc[end_position - 36 : end_position].mean() - series.iloc[end_position - 72 : end_position - 36].mean())
-            elif target == f"{sensor}__last_12h_mean_minus_prev_12h_mean" and end_position >= 144:
-                value = float(series.iloc[end_position - 72 : end_position].mean() - series.iloc[end_position - 144 : end_position - 72].mean())
-            elif target == f"{sensor}__last_1d_mean_minus_prev_6d_mean" and end_position >= 1008:
-                value = float(series.iloc[end_position - 144 : end_position].mean() - series.iloc[end_position - 1008 : end_position - 144].mean())
-            elif target == f"{sensor}__last_1d_std_minus_prev_6d_std" and end_position >= 1008:
-                value = float(series.iloc[end_position - 144 : end_position].std() - series.iloc[end_position - 1008 : end_position - 144].std())
+            if (
+                target == f"{sensor}__last_6h_mean_minus_prev_6h_mean"
+                and end_position >= 72
+            ):
+                value = float(
+                    series.iloc[end_position - 36 : end_position].mean()
+                    - series.iloc[end_position - 72 : end_position - 36].mean()
+                )
+            elif (
+                target == f"{sensor}__last_12h_mean_minus_prev_12h_mean"
+                and end_position >= 144
+            ):
+                value = float(
+                    series.iloc[end_position - 72 : end_position].mean()
+                    - series.iloc[end_position - 144 : end_position - 72].mean()
+                )
+            elif (
+                target == f"{sensor}__last_1d_mean_minus_prev_6d_mean"
+                and end_position >= 1008
+            ):
+                value = float(
+                    series.iloc[end_position - 144 : end_position].mean()
+                    - series.iloc[end_position - 1008 : end_position - 144].mean()
+                )
+            elif (
+                target == f"{sensor}__last_1d_std_minus_prev_6d_std"
+                and end_position >= 1008
+            ):
+                value = float(
+                    series.iloc[end_position - 144 : end_position].std()
+                    - series.iloc[end_position - 1008 : end_position - 144].std()
+                )
             elif target == f"{sensor}__last_minus_first" and end_position >= 1008:
                 context = series.iloc[end_position - 1008 : end_position].dropna()
-                value = float(context.iloc[-1] - context.iloc[0]) if len(context) else None
+                value = (
+                    float(context.iloc[-1] - context.iloc[0]) if len(context) else None
+                )
             if value is not None and np.isfinite(value):
                 features.iat[row_index, features.columns.get_loc(target)] = value
 
@@ -1239,8 +1556,14 @@ def _aggregate_windows(
         if column in raw_derived_columns:
             features[column] = features[column].replace([np.inf, -np.inf], np.nan)
             continue
-        fallback = float(donors[column].median()) if column in donors and donors[column].notna().any() else 0.0
-        features[column] = features[column].replace([np.inf, -np.inf], np.nan).fillna(fallback)
+        fallback = (
+            float(donors[column].median())
+            if column in donors and donors[column].notna().any()
+            else 0.0
+        )
+        features[column] = (
+            features[column].replace([np.inf, -np.inf], np.nan).fillna(fallback)
+        )
     ordered_features = list(dict.fromkeys([*feature_union, *base_columns]))
     features = features.reindex(columns=ordered_features, fill_value=0.0)
     feature_set_version = "model-union-" + _json_hash(ordered_features)[:12]
@@ -1255,11 +1578,19 @@ def _aggregate_windows(
 
 def _write_parts(frame: pd.DataFrame, root: Path, category: str, station: int) -> None:
     timestamp_column = "simulated_at" if category == "raw" else "window_end"
-    timestamps = pd.to_datetime(frame[timestamp_column], utc=True).dt.tz_convert("Asia/Seoul")
+    timestamps = pd.to_datetime(frame[timestamp_column], utc=True).dt.tz_convert(
+        "Asia/Seoul"
+    )
     for month, part in frame.groupby(timestamps.dt.strftime("%Y-%m"), sort=True):
         path = root / ".parts" / category / str(month) / f"station_{station}.csv"
         path.parent.mkdir(parents=True, exist_ok=True)
-        part.to_csv(path, index=False, encoding="utf-8", lineterminator="\n", float_format="%.17g")
+        part.to_csv(
+            path,
+            index=False,
+            encoding="utf-8",
+            lineterminator="\n",
+            float_format="%.17g",
+        )
 
 
 def _consolidate_parts(output_root: Path, category: str) -> list[dict[str, Any]]:
@@ -1273,11 +1604,22 @@ def _consolidate_parts(output_root: Path, category: str) -> list[dict[str, Any]]
     interval = SOURCE_INTERVAL if category == "raw" else WINDOW_INTERVAL
     sort_columns = [timestamp_column, "substation_id"]
     for month_dir in sorted(path for path in source_root.iterdir() if path.is_dir()):
-        frames = [pd.read_csv(path, low_memory=False) for path in sorted(month_dir.glob("*.csv"))]
+        frames = [
+            pd.read_csv(path, low_memory=False)
+            for path in sorted(month_dir.glob("*.csv"))
+        ]
         frame = pd.concat(frames, ignore_index=True).sort_values(sort_columns)
         target = target_root / f"{month_dir.name}.csv"
-        frame.to_csv(target, index=False, encoding="utf-8", lineterminator="\n", float_format="%.17g")
-        timestamps = pd.to_datetime(frame[timestamp_column], utc=True).dt.tz_convert("Asia/Seoul")
+        frame.to_csv(
+            target,
+            index=False,
+            encoding="utf-8",
+            lineterminator="\n",
+            float_format="%.17g",
+        )
+        timestamps = pd.to_datetime(frame[timestamp_column], utc=True).dt.tz_convert(
+            "Asia/Seoul"
+        )
         shards.append(
             {
                 "path": target.relative_to(output_root).as_posix(),
@@ -1311,14 +1653,23 @@ def _prevalidate_fault_scenarios(
         "event_priority_peak": np.nan,
         "event_risk_peak": np.nan,
         "high_window_count": 0,
+        "medium_window_count": 0,
         "event_window_count": 0,
         "validated_high_at": "",
+        "validated_medium_at": "",
+        "recovery_priority_median": np.nan,
+        "recovered_at": "",
+        "recovery_passed": False,
         "seek_eligible": False,
     }
     for column, value in defaults.items():
         scenarios[column] = value
     if not fault_mask.any():
-        return scenarios, pd.DataFrame(), {"status": "no_fault_scenarios", "eligible_count": 0}
+        return (
+            scenarios,
+            pd.DataFrame(),
+            {"status": "no_fault_scenarios", "eligible_count": 0},
+        )
 
     required_models = (
         project_root / "models/anomaly/isolation_forest.joblib",
@@ -1326,11 +1677,17 @@ def _prevalidate_fault_scenarios(
         project_root / "models/leadtime/leadtime_model_best.joblib",
     )
     if not all(path.exists() for path in required_models):
-        scenarios.loc[fault_mask, "runtime_validation_status"] = "skipped_model_bundle_missing"
-        return scenarios, pd.DataFrame(), {
-            "status": "skipped_model_bundle_missing",
-            "eligible_count": 0,
-        }
+        scenarios.loc[fault_mask, "runtime_validation_status"] = (
+            "skipped_model_bundle_missing"
+        )
+        return (
+            scenarios,
+            pd.DataFrame(),
+            {
+                "status": "skipped_model_bundle_missing",
+                "eligible_count": 0,
+            },
+        )
 
     selected_frames: list[pd.DataFrame] = []
     fault_rows = scenarios.loc[fault_mask]
@@ -1339,7 +1696,7 @@ def _prevalidate_fault_scenarios(
         shard_end = _timestamp(shard["end"])
         relevant = fault_rows.loc[
             [
-                _timestamp(row.end) > shard_start
+                _timestamp(getattr(row, "recovery_end", row.end)) > shard_start
                 and _timestamp(row.start) - pd.Timedelta(days=7) < shard_end
                 for row in fault_rows.itertuples(index=False)
             ]
@@ -1347,10 +1704,12 @@ def _prevalidate_fault_scenarios(
         if relevant.empty:
             continue
         frame = pd.read_csv(output_root / shard["path"], low_memory=False)
-        frame_end = pd.to_datetime(frame["window_end"], utc=True).dt.tz_convert("Asia/Seoul")
+        frame_end = pd.to_datetime(frame["window_end"], utc=True).dt.tz_convert(
+            "Asia/Seoul"
+        )
         for scenario in relevant.itertuples(index=False):
             lower = _timestamp(scenario.start) - pd.Timedelta(days=7)
-            upper = _timestamp(scenario.end)
+            upper = _timestamp(getattr(scenario, "recovery_end", scenario.end))
             mask = (
                 frame["substation_id"].eq(int(scenario.substation_id))
                 & frame_end.gt(lower)
@@ -1362,11 +1721,262 @@ def _prevalidate_fault_scenarios(
                 selected_frames.append(part)
     if not selected_frames:
         scenarios.loc[fault_mask, "runtime_validation_status"] = "no_matching_windows"
-        return scenarios, pd.DataFrame(), {"status": "no_matching_windows", "eligible_count": 0}
+        return (
+            scenarios,
+            pd.DataFrame(),
+            {"status": "no_matching_windows", "eligible_count": 0},
+        )
 
     evaluation = pd.concat(selected_frames, ignore_index=True).drop_duplicates(
         ["_evaluation_scenario_id", "substation_id", "window_end"]
     )
+    from heatgrid_ops.priority.inference import PriorityInferenceRuntime
+
+    runtime = PriorityInferenceRuntime(model_root=project_root / "models")
+    runtime_rows = [
+        {
+            "manufacturer_id": str(row["manufacturer_id"]),
+            "substation_id": int(row["substation_id"]),
+            "configuration_type": str(row["configuration_type"]),
+            "feature_values": {
+                feature: float(row[feature]) for feature in feature_union
+            },
+        }
+        for row in evaluation.to_dict(orient="records")
+    ]
+    results = runtime.infer_batch(runtime_rows)
+    evaluation["_priority_score"] = [
+        float(result["priority_score"]) for result in results
+    ]
+    evaluation["_risk_score"] = [float(result["risk_score"]) for result in results]
+    evaluation["_priority_level"] = [
+        str(result["priority_level"]) for result in results
+    ]
+    evaluation["_usable"] = [bool(result["usable"]) for result in results]
+    level_order = {"low": 0, "medium": 1, "high": 2, "urgent": 3, "critical": 3}
+
+    for scenario_index, scenario in scenarios.loc[fault_mask].iterrows():
+        rows = evaluation.loc[
+            evaluation["_evaluation_scenario_id"].eq(scenario["scenario_id"])
+        ].copy()
+        ends = pd.to_datetime(rows["window_end"], utc=True).dt.tz_convert("Asia/Seoul")
+        start = _timestamp(scenario["start"])
+        end = _timestamp(scenario["end"])
+        recovery_end = _timestamp(scenario.get("recovery_end", scenario["end"]))
+        target_level = str(scenario.get("target_level", "high"))
+        baseline = rows.loc[ends.le(start) & rows["_usable"]]
+        event = rows.loc[ends.gt(start) & ends.le(end) & rows["_usable"]]
+        recovery = rows.loc[ends.gt(end) & ends.le(recovery_end) & rows["_usable"]]
+        if baseline.empty or event.empty:
+            scenarios.loc[scenario_index, "runtime_validation_status"] = (
+                "insufficient_windows"
+            )
+            continue
+        baseline_priority = float(baseline["_priority_score"].median())
+        event_priority = float(event["_priority_score"].median())
+        baseline_risk = float(baseline["_risk_score"].median())
+        event_risk = float(event["_risk_score"].median())
+        priority_delta = event_priority - baseline_priority
+        risk_delta = event_risk - baseline_risk
+        baseline_level = max(
+            level_order.get(value, 0) for value in baseline["_priority_level"]
+        )
+        event_level = max(
+            level_order.get(value, 0) for value in event["_priority_level"]
+        )
+        high_window_count = int(
+            event["_priority_level"].map(level_order).ge(level_order["high"]).sum()
+        )
+        medium_window_count = int(event["_priority_level"].eq("medium").sum())
+        high_event = event.loc[
+            event["_priority_level"].map(level_order).ge(level_order["high"])
+        ]
+        validated_high_at = (
+            _iso(
+                pd.to_datetime(high_event["window_end"], utc=True)
+                .dt.tz_convert("Asia/Seoul")
+                .min()
+            )
+            if not high_event.empty
+            else ""
+        )
+        medium_event = event.loc[event["_priority_level"].eq("medium")]
+        validated_medium_at = (
+            _iso(
+                pd.to_datetime(medium_event["window_end"], utc=True)
+                .dt.tz_convert("Asia/Seoul")
+                .min()
+            )
+            if not medium_event.empty
+            else ""
+        )
+        high_eligible = bool(
+            target_level == "high"
+            and event_level >= level_order["high"]
+            and high_window_count >= 2
+            and priority_delta >= 10.0
+            and (risk_delta >= 0.05 or event_level > baseline_level)
+        )
+        medium_eligible = bool(
+            target_level == "medium"
+            and high_window_count == 0
+            and medium_window_count >= 2
+            and priority_delta >= 5.0
+            and event_level == level_order["medium"]
+        )
+        eligible = high_eligible or medium_eligible
+        recovery_priority = (
+            float(recovery["_priority_score"].median())
+            if not recovery.empty
+            else np.nan
+        )
+        recovered = recovery.loc[
+            recovery["_priority_score"].le(
+                max(baseline_priority + 5.0, event_priority - 5.0)
+            )
+        ]
+        recovered_at = (
+            _iso(
+                pd.to_datetime(recovered["window_end"], utc=True)
+                .dt.tz_convert("Asia/Seoul")
+                .min()
+            )
+            if not recovered.empty
+            else ""
+        )
+        recovery_passed = bool(
+            not recovery.empty
+            and recovery_priority <= max(baseline_priority + 5.0, event_priority - 3.0)
+        )
+        rejection = (
+            "rejected_no_validated_medium_band"
+            if target_level == "medium"
+            else "rejected_no_validated_high_rise"
+        )
+        scenarios.loc[
+            scenario_index,
+            [
+                "runtime_validation_status",
+                "baseline_priority_median",
+                "event_priority_median",
+                "priority_delta",
+                "baseline_risk_median",
+                "event_risk_median",
+                "risk_delta",
+                "event_priority_peak",
+                "event_risk_peak",
+                "high_window_count",
+                "medium_window_count",
+                "event_window_count",
+                "validated_high_at",
+                "validated_medium_at",
+                "recovery_priority_median",
+                "recovered_at",
+                "recovery_passed",
+                "seek_eligible",
+            ],
+        ] = [
+            "passed" if eligible else rejection,
+            baseline_priority,
+            event_priority,
+            priority_delta,
+            baseline_risk,
+            event_risk,
+            risk_delta,
+            float(event["_priority_score"].max()),
+            float(event["_risk_score"].max()),
+            high_window_count,
+            medium_window_count,
+            int(len(event)),
+            validated_high_at,
+            validated_medium_at,
+            recovery_priority,
+            recovered_at,
+            recovery_passed,
+            eligible,
+        ]
+
+    seek = scenarios.loc[fault_mask & scenarios["seek_eligible"].map(_boolean)].copy()
+    if not seek.empty:
+        seek["event_at"] = np.where(
+            seek["target_level"].eq("high"),
+            seek["validated_high_at"],
+            seek["validated_medium_at"],
+        )
+        seek["seek_at"] = [
+            _iso(
+                max(_timestamp(value) - pd.Timedelta(hours=6), _timestamp(replay_start))
+            )
+            for value in seek["event_at"]
+        ]
+        seek["label"] = np.where(
+            seek["target_level"].eq("high"),
+            "pre_fault_demo",
+            "medium_warning_demo",
+        )
+    seek = seek.reindex(
+        columns=["scenario_id", "label", "seek_at", "event_at", "substation_id"]
+    )
+    high_candidates = fault_mask & scenarios["target_level"].eq("high")
+    medium_candidates = fault_mask & scenarios["target_level"].eq("medium")
+    high_eligible_count = int(
+        (high_candidates & scenarios["seek_eligible"].map(_boolean)).sum()
+    )
+    medium_eligible_count = int(
+        (medium_candidates & scenarios["seek_eligible"].map(_boolean)).sum()
+    )
+    return (
+        scenarios,
+        seek,
+        {
+            "status": "completed",
+            "candidate_count": int(fault_mask.sum()),
+            "eligible_count": int(len(seek)),
+            "high_candidate_count": int(high_candidates.sum()),
+            "medium_candidate_count": int(medium_candidates.sum()),
+            "high_eligible_count": high_eligible_count,
+            "medium_eligible_count": medium_eligible_count,
+            "recovery_passed_count": int(
+                (fault_mask & scenarios["recovery_passed"].map(_boolean)).sum()
+            ),
+            "minimum_eligible_count": 0,
+            "minimum_eligible_high_count": 0,
+            "minimum_eligible_medium_count": 0,
+            "evaluated_window_count": int(len(evaluation)),
+        },
+    )
+
+
+def _enrich_seek_points(
+    output_root: Path,
+    seek_points: pd.DataFrame,
+    window_shards: Sequence[dict[str, Any]],
+    feature_union: Sequence[str],
+    project_root: Path,
+) -> pd.DataFrame:
+    enriched = seek_points.copy()
+    for column in SEEK_POINT_COLUMNS[5:]:
+        enriched[column] = 0
+    if enriched.empty:
+        return enriched.reindex(columns=SEEK_POINT_COLUMNS)
+
+    event_times = {_timestamp(value) for value in enriched["event_at"]}
+    selected: list[pd.DataFrame] = []
+    for shard in window_shards:
+        shard_start = _timestamp(shard["start"])
+        shard_end = _timestamp(shard["end"])
+        relevant = {value for value in event_times if shard_start <= value < shard_end}
+        if not relevant:
+            continue
+        frame = pd.read_csv(output_root / shard["path"], low_memory=False)
+        ends = pd.to_datetime(frame["window_end"], utc=True).dt.tz_convert("Asia/Seoul")
+        mask = ends.isin(relevant)
+        if mask.any():
+            selected.append(frame.loc[mask].copy())
+    if not selected:
+        return enriched.reindex(columns=SEEK_POINT_COLUMNS)
+
+    evaluation = pd.concat(selected, ignore_index=True)
     from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
     runtime = PriorityInferenceRuntime(model_root=project_root / "models")
@@ -1380,98 +1990,30 @@ def _prevalidate_fault_scenarios(
         for row in evaluation.to_dict(orient="records")
     ]
     results = runtime.infer_batch(runtime_rows)
-    evaluation["_priority_score"] = [float(result["priority_score"]) for result in results]
-    evaluation["_risk_score"] = [float(result["risk_score"]) for result in results]
     evaluation["_priority_level"] = [str(result["priority_level"]) for result in results]
-    evaluation["_usable"] = [bool(result["usable"]) for result in results]
-    level_order = {"low": 0, "medium": 1, "high": 2, "urgent": 3, "critical": 3}
-
-    for scenario_index, scenario in scenarios.loc[fault_mask].iterrows():
-        rows = evaluation.loc[evaluation["_evaluation_scenario_id"].eq(scenario["scenario_id"])].copy()
-        ends = pd.to_datetime(rows["window_end"], utc=True).dt.tz_convert("Asia/Seoul")
-        start = _timestamp(scenario["start"])
-        baseline = rows.loc[ends.le(start) & rows["_usable"]]
-        event = rows.loc[ends.gt(start) & rows["_usable"]]
-        if baseline.empty or event.empty:
-            scenarios.loc[scenario_index, "runtime_validation_status"] = "insufficient_windows"
-            continue
-        baseline_priority = float(baseline["_priority_score"].median())
-        event_priority = float(event["_priority_score"].median())
-        baseline_risk = float(baseline["_risk_score"].median())
-        event_risk = float(event["_risk_score"].median())
-        priority_delta = event_priority - baseline_priority
-        risk_delta = event_risk - baseline_risk
-        baseline_level = max(level_order.get(value, 0) for value in baseline["_priority_level"])
-        event_level = max(level_order.get(value, 0) for value in event["_priority_level"])
-        high_window_count = int(
-            event["_priority_level"].map(level_order).ge(level_order["high"]).sum()
+    evaluation["_priority_score"] = [float(result["priority_score"]) for result in results]
+    evaluation["_event_at"] = [
+        _iso(_timestamp(value)) for value in evaluation["window_end"]
+    ]
+    summaries = []
+    for event_at, rows in evaluation.groupby("_event_at"):
+        levels = rows["_priority_level"]
+        summaries.append(
+            {
+                "event_at": event_at,
+                "fleet_high_count": int(
+                    levels.isin({"high", "urgent", "critical"}).sum()
+                ),
+                "fleet_medium_count": int(levels.eq("medium").sum()),
+                "fleet_low_count": int(levels.eq("low").sum()),
+                "fleet_max_priority_score": float(rows["_priority_score"].max()),
+            }
         )
-        high_event = event.loc[
-            event["_priority_level"].map(level_order).ge(level_order["high"])
-        ]
-        validated_high_at = (
-            _iso(
-                pd.to_datetime(high_event["window_end"], utc=True)
-                .dt.tz_convert("Asia/Seoul")
-                .min()
-            )
-            if not high_event.empty
-            else ""
-        )
-        eligible = bool(
-            event_level >= level_order["high"]
-            and high_window_count >= 2
-            and priority_delta >= 10.0
-            and (risk_delta >= 0.05 or event_level > baseline_level)
-        )
-        scenarios.loc[scenario_index, [
-            "runtime_validation_status",
-            "baseline_priority_median",
-            "event_priority_median",
-            "priority_delta",
-            "baseline_risk_median",
-            "event_risk_median",
-            "risk_delta",
-            "event_priority_peak",
-            "event_risk_peak",
-            "high_window_count",
-            "event_window_count",
-            "validated_high_at",
-            "seek_eligible",
-        ]] = [
-            "passed" if eligible else "rejected_no_validated_high_rise",
-            baseline_priority,
-            event_priority,
-            priority_delta,
-            baseline_risk,
-            event_risk,
-            risk_delta,
-            float(event["_priority_score"].max()),
-            float(event["_risk_score"].max()),
-            high_window_count,
-            int(len(event)),
-            validated_high_at,
-            eligible,
-        ]
-
-    seek = scenarios.loc[fault_mask & scenarios["seek_eligible"].map(_boolean)].copy()
-    if not seek.empty:
-        seek["event_at"] = seek["validated_high_at"]
-        seek["seek_at"] = [
-            _iso(max(_timestamp(value) - pd.Timedelta(hours=6), _timestamp(replay_start)))
-            for value in seek["validated_high_at"]
-        ]
-        seek["label"] = "pre_fault_demo"
-    seek = seek.reindex(
-        columns=["scenario_id", "label", "seek_at", "event_at", "substation_id"]
+    enriched["event_at"] = [_iso(_timestamp(value)) for value in enriched["event_at"]]
+    enriched = enriched.drop(columns=SEEK_POINT_COLUMNS[5:]).merge(
+        pd.DataFrame(summaries), on="event_at", how="left"
     )
-    return scenarios, seek, {
-        "status": "completed",
-        "candidate_count": int(fault_mask.sum()),
-        "eligible_count": int(len(seek)),
-        "minimum_eligible_count": 0,
-        "evaluated_window_count": int(len(evaluation)),
-    }
+    return enriched.reindex(columns=SEEK_POINT_COLUMNS)
 
 
 def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any]:
@@ -1479,7 +2021,9 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
     output_root = generation.output_root.resolve()
     if output_root.exists() and any(output_root.iterdir()):
         if not generation.overwrite:
-            raise FileExistsError(f"output is not empty; pass overwrite=True: {output_root}")
+            raise FileExistsError(
+                f"output is not empty; pass overwrite=True: {output_root}"
+            )
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -1530,10 +2074,17 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         donor_map_path, index=False, encoding="utf-8", lineterminator="\n"
     )
     sequence = np.arange(len(target_index), dtype="int64")
-    phase = np.where(target_index < _timestamp(generation.replay_start), "warmup", "replay")
+    phase = np.where(
+        target_index < _timestamp(generation.replay_start), "warmup", "replay"
+    )
 
     for station in generation.stations:
-        source_path = generation.raw_root / "manufacturer 1" / "operational_data" / f"substation_{station}.csv"
+        source_path = (
+            generation.raw_root
+            / "manufacturer 1"
+            / "operational_data"
+            / f"substation_{station}.csv"
+        )
         if not source_path.exists():
             raise FileNotFoundError(f"missing PreDist raw source: {source_path}")
         source = _load_station_raw(source_path, sensor_columns)
@@ -1544,7 +2095,9 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
             seed=generation.seed + station * 1009,
             fallback_sources=fallback_sources_by_station.get(station, {}),
         )
-        values, quality, scenario_ids = _apply_scenarios(values, station, scenarios, sensors)
+        values, quality, scenario_ids = _apply_scenarios(
+            values, station, scenarios, sensors
+        )
         raw = pd.DataFrame(
             {
                 "dataset_version": generation.dataset_version,
@@ -1561,7 +2114,9 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         raw["is_synthetic"] = True
         raw["scenario_id"] = scenario_ids
         raw = raw[RAW_METADATA_COLUMNS + sensor_columns + RAW_TRAILING_COLUMNS]
-        windows = _aggregate_windows(raw, sensors, donors, feature_union, scenarios, generation)
+        windows = _aggregate_windows(
+            raw, sensors, donors, feature_union, scenarios, generation
+        )
         _write_parts(raw, output_root, "raw", station)
         _write_parts(windows, output_root, "windows", station)
 
@@ -1576,17 +2131,35 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         generation.project_root,
         _timestamp(generation.replay_start),
     )
+    seek_points = _enrich_seek_points(
+        output_root,
+        seek_points,
+        window_shards,
+        feature_union,
+        generation.project_root,
+    )
     scenario_validation["minimum_eligible_count"] = (
         generation.minimum_eligible_fault_scenarios
+        + generation.minimum_eligible_medium_scenarios
+    )
+    scenario_validation["minimum_eligible_high_count"] = (
+        generation.minimum_eligible_fault_scenarios
+    )
+    scenario_validation["minimum_eligible_medium_count"] = (
+        generation.minimum_eligible_medium_scenarios
     )
     scenarios.to_csv(
-        output_root / "scenario_manifest.csv", index=False, encoding="utf-8", lineterminator="\n"
+        output_root / "scenario_manifest.csv",
+        index=False,
+        encoding="utf-8",
+        lineterminator="\n",
     )
-    seek_points = seek_points.reindex(
-        columns=["scenario_id", "label", "seek_at", "event_at", "substation_id"]
-    )
+    seek_points = seek_points.reindex(columns=SEEK_POINT_COLUMNS)
     seek_points.to_csv(
-        output_root / "seek_points.csv", index=False, encoding="utf-8", lineterminator="\n"
+        output_root / "seek_points.csv",
+        index=False,
+        encoding="utf-8",
+        lineterminator="\n",
     )
     counts = expected_dataset_counts(generation)
     dataset_manifest = {
@@ -1610,6 +2183,9 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
             "noise": "empirical_joint_autocorrelation_preserved_without_additive_jitter",
             "missing_sensor_fallback": "same_configuration_nearest_available_station",
             "synthetic_use": "demo_and_integration_validation_only",
+            "fault_targets": "interleaved_model_validated_medium_and_high",
+            "fault_recovery_hours": generation.recovery_hours,
+            "normal_donor_timing": "season_matched_station_decorrelated",
         },
         "expected_substations": len(generation.stations),
         "substation_ids": list(generation.stations),
@@ -1629,11 +2205,15 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         "window_shards": window_shards,
         "scenario_runtime_validation": scenario_validation,
         "minimum_eligible_fault_scenarios": generation.minimum_eligible_fault_scenarios,
+        "minimum_eligible_medium_scenarios": generation.minimum_eligible_medium_scenarios,
+        "medium_scenario_ratio": generation.medium_scenario_ratio,
+        "recovery_hours": generation.recovery_hours,
         "validation_report": "validation_report.json",
     }
     manifest_path = output_root / "dataset_manifest.json"
     manifest_path.write_text(
-        json.dumps(dataset_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(dataset_manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
     return dataset_manifest
 
@@ -1652,12 +2232,18 @@ def _psi(reference: pd.Series, sample: pd.Series, bins: int = 10) -> float:
     sample_rate = np.histogram(sample, bins=edges)[0] / len(sample)
     reference_rate = np.maximum(reference_rate, 1e-6)
     sample_rate = np.maximum(sample_rate, 1e-6)
-    return float(np.sum((sample_rate - reference_rate) * np.log(sample_rate / reference_rate)))
+    return float(
+        np.sum((sample_rate - reference_rate) * np.log(sample_rate / reference_rate))
+    )
 
 
 def _ks_statistic(reference: pd.Series, sample: pd.Series) -> float:
-    left = np.sort(pd.to_numeric(reference, errors="coerce").dropna().to_numpy(dtype="float64"))
-    right = np.sort(pd.to_numeric(sample, errors="coerce").dropna().to_numpy(dtype="float64"))
+    left = np.sort(
+        pd.to_numeric(reference, errors="coerce").dropna().to_numpy(dtype="float64")
+    )
+    right = np.sort(
+        pd.to_numeric(sample, errors="coerce").dropna().to_numpy(dtype="float64")
+    )
     if not len(left) or not len(right):
         return float("nan")
     values = np.sort(np.unique(np.concatenate([left, right])))
@@ -1686,12 +2272,24 @@ def _sample_source_raw(
 
     def load(station: int) -> pd.DataFrame:
         if station not in source_cache:
-            path = raw_root / "manufacturer 1" / "operational_data" / f"substation_{station}.csv"
-            source_cache[station] = _load_station_raw(path, sensor_columns).set_index("timestamp")
+            path = (
+                raw_root
+                / "manufacturer 1"
+                / "operational_data"
+                / f"substation_{station}.csv"
+            )
+            source_cache[station] = _load_station_raw(path, sensor_columns).set_index(
+                "timestamp"
+            )
         return source_cache[station]
 
     for station in stations:
-        path = raw_root / "manufacturer 1" / "operational_data" / f"substation_{station}.csv"
+        path = (
+            raw_root
+            / "manufacturer 1"
+            / "operational_data"
+            / f"substation_{station}.csv"
+        )
         if not path.exists():
             continue
         effective = load(int(station)).copy()
@@ -1722,7 +2320,9 @@ def _sample_source_raw(
             station_distribution.append(group.iloc[positions])
             ordered = group.sort_values("simulated_at")
             run_id = ordered["simulated_at"].diff().ne(SOURCE_INTERVAL).cumsum()
-            longest = max((run for _, run in ordered.groupby(run_id, sort=False)), key=len)
+            longest = max(
+                (run for _, run in ordered.groupby(run_id, sort=False)), key=len
+            )
             temporal = longest.head(128).copy()
             temporal["_temporal_segment"] = f"source:{station}:{int(month)}"
             temporal_samples.append(temporal)
@@ -1737,7 +2337,9 @@ def _sample_source_raw(
         else pd.DataFrame()
     )
     temporal = (
-        pd.concat(temporal_samples, ignore_index=True) if temporal_samples else pd.DataFrame()
+        pd.concat(temporal_samples, ignore_index=True)
+        if temporal_samples
+        else pd.DataFrame()
     )
     return distribution, temporal
 
@@ -1813,8 +2415,12 @@ def _distribution_audit(
     reference, synthetic = _calendar_balanced_pair(reference, synthetic)
     sensor_metrics: dict[str, Any] = {}
     for sensor in sensor_columns:
-        reference_sorted = reference_temporal.sort_values(["substation_id", "simulated_at"])
-        synthetic_sorted = synthetic_temporal.sort_values(["substation_id", "simulated_at"])
+        reference_sorted = reference_temporal.sort_values(
+            ["substation_id", "simulated_at"]
+        )
+        synthetic_sorted = synthetic_temporal.sort_values(
+            ["substation_id", "simulated_at"]
+        )
         reference_group_keys = ["substation_id"]
         synthetic_group_keys = ["substation_id"]
         if "_temporal_segment" in reference_sorted:
@@ -1825,29 +2431,39 @@ def _distribution_audit(
         syn = pd.to_numeric(synthetic[sensor], errors="coerce")
         ref_delta = reference_sorted.groupby(reference_group_keys)[sensor].diff()
         syn_delta = synthetic_sorted.groupby(synthetic_group_keys)[sensor].diff()
-        reference_autocorrelations = reference_sorted.groupby(reference_group_keys)[sensor].apply(
-            lambda values: pd.to_numeric(values, errors="coerce").autocorr(lag=1)
-        )
-        synthetic_autocorrelations = synthetic_sorted.groupby(synthetic_group_keys)[sensor].apply(
-            lambda values: pd.to_numeric(values, errors="coerce").autocorr(lag=1)
-        )
+        reference_autocorrelations = reference_sorted.groupby(reference_group_keys)[
+            sensor
+        ].apply(lambda values: pd.to_numeric(values, errors="coerce").autocorr(lag=1))
+        synthetic_autocorrelations = synthetic_sorted.groupby(synthetic_group_keys)[
+            sensor
+        ].apply(lambda values: pd.to_numeric(values, errors="coerce").autocorr(lag=1))
         ref_autocorr = reference_autocorrelations.mean()
         syn_autocorr = synthetic_autocorrelations.mean()
         sensor_metrics[sensor] = {
             "psi": _psi(ref, syn),
             "ks_d": _ks_statistic(ref, syn),
             "delta_ks_d": _ks_statistic(ref_delta, syn_delta),
-            "lag1_autocorr_reference": float(ref_autocorr) if pd.notna(ref_autocorr) else None,
-            "lag1_autocorr_synthetic": float(syn_autocorr) if pd.notna(syn_autocorr) else None,
+            "lag1_autocorr_reference": float(ref_autocorr)
+            if pd.notna(ref_autocorr)
+            else None,
+            "lag1_autocorr_synthetic": float(syn_autocorr)
+            if pd.notna(syn_autocorr)
+            else None,
             "lag1_autocorr_abs_delta": float(abs(ref_autocorr - syn_autocorr))
             if pd.notna(ref_autocorr) and pd.notna(syn_autocorr)
             else None,
         }
-    ref_corr = reference[list(sensor_columns)].apply(pd.to_numeric, errors="coerce").corr()
-    syn_corr = synthetic[list(sensor_columns)].apply(pd.to_numeric, errors="coerce").corr()
+    ref_corr = (
+        reference[list(sensor_columns)].apply(pd.to_numeric, errors="coerce").corr()
+    )
+    syn_corr = (
+        synthetic[list(sensor_columns)].apply(pd.to_numeric, errors="coerce").corr()
+    )
     correlation_delta = (ref_corr - syn_corr).abs()
     values = correlation_delta.to_numpy(dtype="float64")
-    max_correlation_delta = float(np.nanmax(values)) if np.isfinite(values).any() else None
+    max_correlation_delta = (
+        float(np.nanmax(values)) if np.isfinite(values).any() else None
+    )
     passed = all(
         (
             metric["psi"] < 0.20
@@ -1880,7 +2496,9 @@ def _raw_window_aggregates_for_validation(
     sensor_columns: Sequence[str],
 ) -> pd.DataFrame:
     work = frame[["substation_id", "sequence", *sensor_columns]].copy()
-    work["_window"] = pd.to_numeric(work["sequence"], errors="raise").astype("int64") // WINDOW_TICKS
+    work["_window"] = (
+        pd.to_numeric(work["sequence"], errors="raise").astype("int64") // WINDOW_TICKS
+    )
     for sensor in sensor_columns:
         work[sensor] = pd.to_numeric(work[sensor], errors="coerce")
     grouped = work.groupby(["substation_id", "_window"], sort=False)
@@ -1895,8 +2513,12 @@ def _raw_window_aggregates_for_validation(
                 f"{sensor}__std": values.std(ddof=1),
                 f"{sensor}__first": values.first(),
                 f"{sensor}__last": values.last(),
-                f"{sensor}__missing_count": values.apply(lambda item: float(item.isna().sum())),
-                f"{sensor}__missing_rate": values.apply(lambda item: float(item.isna().mean())),
+                f"{sensor}__missing_count": values.apply(
+                    lambda item: float(item.isna().sum())
+                ),
+                f"{sensor}__missing_rate": values.apply(
+                    lambda item: float(item.isna().mean())
+                ),
             }
         )
         statistics[f"{sensor}__delta"] = (
@@ -1923,20 +2545,44 @@ def validate_replay_dataset(
     window_required = set(WINDOW_METADATA_COLUMNS)
     errors: list[str] = []
     scenario_validation = manifest.get("scenario_runtime_validation") or {}
-    minimum_eligible = int(
-        manifest.get("minimum_eligible_fault_scenarios")
-        or scenario_validation.get("minimum_eligible_count")
-        or 1
-    )
     if (
         scenario_validation.get("status") == "completed"
         and int(scenario_validation.get("candidate_count") or 0) > 0
-        and int(scenario_validation.get("eligible_count") or 0) < minimum_eligible
     ):
-        errors.append(
-            "fault scenarios produced fewer model-approved seek points than required: "
-            f"{int(scenario_validation.get('eligible_count') or 0)} < {minimum_eligible}"
-        )
+        if "high_eligible_count" in scenario_validation:
+            minimum_high = int(
+                manifest.get("minimum_eligible_fault_scenarios")
+                or scenario_validation.get("minimum_eligible_high_count")
+                or 0
+            )
+            minimum_medium = int(
+                manifest.get("minimum_eligible_medium_scenarios")
+                or scenario_validation.get("minimum_eligible_medium_count")
+                or 0
+            )
+            high_eligible = int(scenario_validation.get("high_eligible_count") or 0)
+            medium_eligible = int(scenario_validation.get("medium_eligible_count") or 0)
+            if high_eligible < minimum_high:
+                errors.append(
+                    "high scenarios produced fewer model-approved seek points than required: "
+                    f"{high_eligible} < {minimum_high}"
+                )
+            if medium_eligible < minimum_medium:
+                errors.append(
+                    "medium scenarios produced fewer model-approved seek points than required: "
+                    f"{medium_eligible} < {minimum_medium}"
+                )
+        else:
+            minimum_eligible = int(
+                manifest.get("minimum_eligible_fault_scenarios")
+                or scenario_validation.get("minimum_eligible_count")
+                or 1
+            )
+            if int(scenario_validation.get("eligible_count") or 0) < minimum_eligible:
+                errors.append(
+                    "fault scenarios produced fewer model-approved seek points than required: "
+                    f"{int(scenario_validation.get('eligible_count') or 0)} < {minimum_eligible}"
+                )
     raw_rows = 0
     window_rows = 0
     first_replay_raw_parts: list[pd.DataFrame] = []
@@ -1959,25 +2605,46 @@ def validate_replay_dataset(
         raw_rows += len(frame)
         if not raw_required.issubset(frame.columns):
             errors.append(f"raw columns missing: {shard['path']}")
-        timestamps = pd.to_datetime(frame["simulated_at"], utc=True).dt.tz_convert("Asia/Seoul")
+        timestamps = pd.to_datetime(frame["simulated_at"], utc=True).dt.tz_convert(
+            "Asia/Seoul"
+        )
         actual_start = timestamps.min()
         actual_end = timestamps.max() + SOURCE_INTERVAL
-        if _timestamp(shard["start"]) != actual_start or _timestamp(shard["end"]) != actual_end:
+        if (
+            _timestamp(shard["start"]) != actual_start
+            or _timestamp(shard["end"]) != actual_end
+        ):
             errors.append(f"raw shard manifest range mismatch: {shard['path']}")
         if previous_raw_end is not None and actual_start != previous_raw_end:
-            errors.append(f"raw shard ranges are not contiguous before: {shard['path']}")
+            errors.append(
+                f"raw shard ranges are not contiguous before: {shard['path']}"
+            )
         previous_raw_end = actual_end
         counts = frame.groupby(["sequence", timestamps]).size()
         if not counts.eq(int(manifest["expected_substations"])).all():
-            errors.append(f"raw tick does not contain every substation: {shard['path']}")
-        raw_aggregate_parts.append(_raw_window_aggregates_for_validation(frame, sensor_columns))
+            errors.append(
+                f"raw tick does not contain every substation: {shard['path']}"
+            )
+        raw_aggregate_parts.append(
+            _raw_window_aggregates_for_validation(frame, sensor_columns)
+        )
         unique_timestamps = pd.Series(timestamps.unique()).sort_values()
-        if len(unique_timestamps) > 1 and not unique_timestamps.diff().dropna().eq(SOURCE_INTERVAL).all():
-            errors.append(f"raw timestamps are not a continuous 10-minute grid: {shard['path']}")
-        unique_sequences = np.sort(pd.to_numeric(frame["sequence"], errors="raise").unique())
+        if (
+            len(unique_timestamps) > 1
+            and not unique_timestamps.diff().dropna().eq(SOURCE_INTERVAL).all()
+        ):
+            errors.append(
+                f"raw timestamps are not a continuous 10-minute grid: {shard['path']}"
+            )
+        unique_sequences = np.sort(
+            pd.to_numeric(frame["sequence"], errors="raise").unique()
+        )
         if len(unique_sequences) > 1 and not np.all(np.diff(unique_sequences) == 1):
             errors.append(f"raw sequence is not continuous: {shard['path']}")
-        if previous_sequence is not None and int(unique_sequences[0]) != previous_sequence + 1:
+        if (
+            previous_sequence is not None
+            and int(unique_sequences[0]) != previous_sequence + 1
+        ):
             errors.append(f"raw sequence breaks at shard boundary: {shard['path']}")
         previous_sequence = int(unique_sequences[-1])
         first_mask = timestamps.ge(replay_start) & timestamps.lt(first_window_end)
@@ -1987,15 +2654,18 @@ def validate_replay_dataset(
         if not normal.empty:
             stratified: list[pd.DataFrame] = []
             for _, group in normal.groupby("substation_id", sort=False):
-                sample_count = min(
-                    len(group), max(int(round(len(group) / 144)), 1)
-                )
+                sample_count = min(len(group), max(int(round(len(group) / 144)), 1))
                 positions = np.unique(
                     np.linspace(0, len(group) - 1, sample_count, dtype=int)
                 )
                 stratified.append(group.iloc[positions])
                 ordered_group = group.sort_values("sequence")
-                run_id = pd.to_numeric(ordered_group["sequence"], errors="coerce").diff().ne(1).cumsum()
+                run_id = (
+                    pd.to_numeric(ordered_group["sequence"], errors="coerce")
+                    .diff()
+                    .ne(1)
+                    .cumsum()
+                )
                 runs = [run for _, run in ordered_group.groupby(run_id, sort=False)]
                 longest_run = max(runs, key=len).head(128).copy()
                 longest_run["_temporal_segment"] = (
@@ -2003,15 +2673,25 @@ def validate_replay_dataset(
                 )
                 synthetic_temporal_samples.append(longest_run)
             synthetic_samples.append(pd.concat(stratified, ignore_index=True))
-        intentional_mask = frame["quality_flag"].astype(str).isin(
-            {"synthetic_missing", "synthetic_communication_gap"}
+        intentional_mask = (
+            frame["quality_flag"]
+            .astype(str)
+            .isin({"synthetic_missing", "synthetic_communication_gap"})
         )
-        intentional_missing_values += int(frame.loc[intentional_mask, sensor_columns].isna().sum().sum())
+        intentional_missing_values += int(
+            frame.loc[intentional_mask, sensor_columns].isna().sum().sum()
+        )
         unexpected_missing_values += int(
             frame.loc[~intentional_mask, sensor_columns].isna().sum().sum()
         )
-        if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(sensor_columns):
-            valid = frame[["p_net_supply_temperature", "p_net_return_temperature"]].notna().all(axis=1)
+        if {"p_net_supply_temperature", "p_net_return_temperature"}.issubset(
+            sensor_columns
+        ):
+            valid = (
+                frame[["p_net_supply_temperature", "p_net_return_temperature"]]
+                .notna()
+                .all(axis=1)
+            )
             physical_violations += int(
                 (
                     frame.loc[valid, "p_net_supply_temperature"]
@@ -2019,25 +2699,46 @@ def validate_replay_dataset(
                 ).sum()
             )
         for sensor in sensor_columns:
-            sensor_type = str(sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0])
-            if sensor_type in {"flow", "heat_power", "cumulative_energy", "cumulative_volume"}:
-                physical_violations += int((pd.to_numeric(frame[sensor], errors="coerce") < 0).sum())
+            sensor_type = str(
+                sensors.loc[sensors["source_column"].eq(sensor), "sensor_type"].iloc[0]
+            )
+            if sensor_type in {
+                "flow",
+                "heat_power",
+                "cumulative_energy",
+                "cumulative_volume",
+            }:
+                physical_violations += int(
+                    (pd.to_numeric(frame[sensor], errors="coerce") < 0).sum()
+                )
             if sensor_type.startswith("cumulative_"):
                 ordered = frame.sort_values(["substation_id", "sequence"])
                 decreases = ordered.groupby("substation_id")[sensor].diff()
-                physical_violations += int((pd.to_numeric(decreases, errors="coerce") < -1e-9).sum())
-                for station, station_values in ordered.groupby("substation_id", sort=False)[sensor]:
-                    numeric_values = pd.to_numeric(station_values, errors="coerce").dropna()
+                physical_violations += int(
+                    (pd.to_numeric(decreases, errors="coerce") < -1e-9).sum()
+                )
+                for station, station_values in ordered.groupby(
+                    "substation_id", sort=False
+                )[sensor]:
+                    numeric_values = pd.to_numeric(
+                        station_values, errors="coerce"
+                    ).dropna()
                     if numeric_values.empty:
                         continue
                     key = (int(station), sensor)
-                    if key in previous_cumulative_values and float(numeric_values.iloc[0]) < previous_cumulative_values[key] - 1e-9:
+                    if (
+                        key in previous_cumulative_values
+                        and float(numeric_values.iloc[0])
+                        < previous_cumulative_values[key] - 1e-9
+                    ):
                         physical_violations += 1
                     previous_cumulative_values[key] = float(numeric_values.iloc[-1])
     raw_aggregate_lookup = pd.concat(raw_aggregate_parts, ignore_index=True).set_index(
         ["substation_id", "sequence_end"]
     )
-    feature_union = load_model_feature_union(project_root) if project_root is not None else []
+    feature_union = (
+        load_model_feature_union(project_root) if project_root is not None else []
+    )
     first_visible_batch: pd.DataFrame | None = None
     normal_window_samples: list[pd.DataFrame] = []
     minimum_static_coverage = 1.0
@@ -2050,9 +2751,9 @@ def validate_replay_dataset(
             errors.append(f"window checksum mismatch: {shard['path']}")
         frame = pd.read_csv(path, low_memory=False)
         window_rows += len(frame)
-        window_event_times = pd.to_datetime(frame["window_end"], utc=True).dt.tz_convert(
-            "Asia/Seoul"
-        )
+        window_event_times = pd.to_datetime(
+            frame["window_end"], utc=True
+        ).dt.tz_convert("Asia/Seoul")
         actual_shard_start = window_event_times.min()
         actual_shard_end = window_event_times.max() + WINDOW_INTERVAL
         if (
@@ -2060,8 +2761,13 @@ def validate_replay_dataset(
             or _timestamp(shard["end"]) != actual_shard_end
         ):
             errors.append(f"window shard manifest range mismatch: {shard['path']}")
-        if previous_window_shard_end is not None and actual_shard_start != previous_window_shard_end:
-            errors.append(f"window shard ranges are not contiguous before: {shard['path']}")
+        if (
+            previous_window_shard_end is not None
+            and actual_shard_start != previous_window_shard_end
+        ):
+            errors.append(
+                f"window shard ranges are not contiguous before: {shard['path']}"
+            )
         previous_window_shard_end = actual_shard_end
         if not window_required.issubset(frame.columns):
             errors.append(f"window columns missing: {shard['path']}")
@@ -2072,17 +2778,30 @@ def validate_replay_dataset(
                 minimum_static_coverage,
                 len(set(feature_union) & set(frame.columns)) / len(feature_union),
             )
-        if not pd.to_numeric(frame["expected_count"], errors="coerce").eq(WINDOW_TICKS).all():
+        if (
+            not pd.to_numeric(frame["expected_count"], errors="coerce")
+            .eq(WINDOW_TICKS)
+            .all()
+        ):
             errors.append(f"window expected_count is not 36: {shard['path']}")
-        if not pd.to_numeric(frame["sequence_end"], errors="coerce").mod(WINDOW_TICKS).eq(WINDOW_TICKS - 1).all():
-            errors.append(f"window sequence boundary is not the 36th tick: {shard['path']}")
+        if (
+            not pd.to_numeric(frame["sequence_end"], errors="coerce")
+            .mod(WINDOW_TICKS)
+            .eq(WINDOW_TICKS - 1)
+            .all()
+        ):
+            errors.append(
+                f"window sequence boundary is not the 36th tick: {shard['path']}"
+            )
         keys = pd.MultiIndex.from_frame(
             frame[["substation_id", "sequence_end"]].astype("int64")
         )
         expected_aggregates = raw_aggregate_lookup.reindex(keys).reset_index(drop=True)
         aggregate_checked_rows += len(frame)
         if expected_aggregates.isna().all(axis=1).any():
-            aggregate_mismatch_count += int(expected_aggregates.isna().all(axis=1).sum())
+            aggregate_mismatch_count += int(
+                expected_aggregates.isna().all(axis=1).sum()
+            )
         for sensor in sensor_columns:
             for statistic in (
                 "mean",
@@ -2096,29 +2815,43 @@ def validate_replay_dataset(
                 "missing_rate",
             ):
                 column = f"{sensor}__{statistic}"
-                actual = pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype="float64")
+                actual = pd.to_numeric(frame[column], errors="coerce").to_numpy(
+                    dtype="float64"
+                )
                 expected = pd.to_numeric(
                     expected_aggregates[column], errors="coerce"
                 ).to_numpy(dtype="float64")
                 aggregate_mismatch_count += int(
-                    (~np.isclose(actual, expected, rtol=1e-12, atol=1e-12, equal_nan=True)).sum()
+                    (
+                        ~np.isclose(
+                            actual, expected, rtol=1e-12, atol=1e-12, equal_nan=True
+                        )
+                    ).sum()
                 )
         replay = frame.loc[frame["phase"].eq("replay")]
         if first_visible_batch is None and not replay.empty:
             first_end = replay["window_end"].min()
             first_visible_batch = replay.loc[replay["window_end"].eq(first_end)].copy()
-        normal_replay = replay.loc[replay["scenario_id"].fillna("").astype(str).eq("")].copy()
+        normal_replay = replay.loc[
+            replay["scenario_id"].fillna("").astype(str).eq("")
+        ].copy()
         if not normal_replay.empty:
-            normal_replay["_hour"] = pd.to_datetime(
-                normal_replay["window_start"], utc=True
-            ).dt.tz_convert("Asia/Seoul").dt.hour
+            normal_replay["_hour"] = (
+                pd.to_datetime(normal_replay["window_start"], utc=True)
+                .dt.tz_convert("Asia/Seoul")
+                .dt.hour
+            )
             normal_window_samples.append(
-                normal_replay.groupby(["_hour", "substation_id"], group_keys=False).head(1)
+                normal_replay.groupby(
+                    ["_hour", "substation_id"], group_keys=False
+                ).head(1)
             )
     if raw_rows != int(manifest["total_raw_rows"]):
         errors.append(f"raw row count {raw_rows} != {manifest['total_raw_rows']}")
     if window_rows != int(manifest["total_window_rows"]):
-        errors.append(f"window row count {window_rows} != {manifest['total_window_rows']}")
+        errors.append(
+            f"window row count {window_rows} != {manifest['total_window_rows']}"
+        )
     if physical_violations:
         errors.append(f"physical constraints were violated {physical_violations} times")
     if unexpected_missing_values:
@@ -2126,7 +2859,9 @@ def validate_replay_dataset(
             f"sensor values have {unexpected_missing_values} unintended missing cells outside quality scenarios"
         )
     if minimum_static_coverage < 1.0:
-        errors.append(f"model feature union coverage is {minimum_static_coverage:.3f}, expected 1.0")
+        errors.append(
+            f"model feature union coverage is {minimum_static_coverage:.3f}, expected 1.0"
+        )
     if aggregate_mismatch_count:
         errors.append(
             f"raw/window aggregate parity failed for {aggregate_mismatch_count} cells"
@@ -2138,12 +2873,18 @@ def validate_replay_dataset(
         "first_replay_window_end": None,
         "raw_window_aggregate_parity": False,
     }
-    first_raw = pd.concat(first_replay_raw_parts, ignore_index=True) if first_replay_raw_parts else pd.DataFrame()
+    first_raw = (
+        pd.concat(first_replay_raw_parts, ignore_index=True)
+        if first_replay_raw_parts
+        else pd.DataFrame()
+    )
     if not first_raw.empty:
         first_timestamp = _timestamp(first_raw["simulated_at"].min())
         timing_audit["first_replay_raw"] = _iso(first_timestamp)
         if first_timestamp != replay_start:
-            errors.append(f"first replay raw timestamp {first_timestamp} != {replay_start}")
+            errors.append(
+                f"first replay raw timestamp {first_timestamp} != {replay_start}"
+            )
     if first_visible_batch is None:
         errors.append("no visible replay window was found")
     else:
@@ -2152,7 +2893,9 @@ def validate_replay_dataset(
         timing_audit["first_replay_window_start"] = _iso(first_start)
         timing_audit["first_replay_window_end"] = _iso(first_end)
         if first_start != replay_start or first_end != first_window_end:
-            errors.append("first replay window is not [replay_start, replay_start + 6h)")
+            errors.append(
+                "first replay window is not [replay_start, replay_start + 6h)"
+            )
         if len(first_visible_batch) != int(manifest["expected_substations"]):
             errors.append("first replay window batch does not contain every substation")
 
@@ -2182,12 +2925,16 @@ def validate_replay_dataset(
             reference_temporal=reference_temporal,
         )
         if distribution_audit["status"] == "failed":
-            errors.append("PSI/KS/autocorrelation/sensor-correlation distribution audit failed")
+            errors.append(
+                "PSI/KS/autocorrelation/sensor-correlation distribution audit failed"
+            )
 
     inference_summary: dict[str, Any] | None = None
     if run_inference:
         if project_root is None or first_visible_batch is None:
-            errors.append("inference validation requires project_root and a replay window batch")
+            errors.append(
+                "inference validation requires project_root and a replay window batch"
+            )
         else:
             from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
@@ -2213,13 +2960,17 @@ def validate_replay_dataset(
                 }
                 for row in inference_frame.to_dict(orient="records")
             ]
-            results = PriorityInferenceRuntime(model_root=project_root / "models").infer_batch(rows)
+            results = PriorityInferenceRuntime(
+                model_root=project_root / "models"
+            ).infer_batch(rows)
             coverage_keys = ("anomaly", "risk", "leadtime", "m1_specialist")
             inference_summary = {
                 "batch_size": len(results),
                 "usable_count": sum(bool(result["usable"]) for result in results),
                 "minimum_coverage": {
-                    key: min(float(result["feature_coverage"][key]) for result in results)
+                    key: min(
+                        float(result["feature_coverage"][key]) for result in results
+                    )
                     for key in coverage_keys
                 },
             }
@@ -2230,21 +2981,37 @@ def validate_replay_dataset(
             baseline_path = project_root / "output/priority_scores.csv"
             baseline_high_ratio: float | None = None
             if baseline_path.exists():
-                baseline = pd.read_csv(baseline_path, usecols=["label", "priority_level"])
+                baseline = pd.read_csv(
+                    baseline_path, usecols=["label", "priority_level"]
+                )
                 baseline = baseline.loc[baseline["label"].astype(str).eq("normal")]
                 if not baseline.empty:
                     baseline_high_ratio = float(
-                        baseline["priority_level"].astype(str).isin({"high", "urgent", "critical"}).mean()
+                        baseline["priority_level"]
+                        .astype(str)
+                        .isin({"high", "urgent", "critical"})
+                        .mean()
                     )
             inference_summary["normal_high_or_urgent_ratio"] = generated_high_ratio
-            inference_summary["reference_normal_high_or_urgent_ratio"] = baseline_high_ratio
-            inference_summary["normal_high_or_urgent_delta"] = (
-                generated_high_ratio - baseline_high_ratio if baseline_high_ratio is not None else None
+            inference_summary["reference_normal_high_or_urgent_ratio"] = (
+                baseline_high_ratio
             )
-            if baseline_high_ratio is not None and generated_high_ratio - baseline_high_ratio > 0.05:
-                errors.append("normal synthetic high/urgent ratio increased by more than 5 percentage points")
+            inference_summary["normal_high_or_urgent_delta"] = (
+                generated_high_ratio - baseline_high_ratio
+                if baseline_high_ratio is not None
+                else None
+            )
+            if (
+                baseline_high_ratio is not None
+                and generated_high_ratio - baseline_high_ratio > 0.05
+            ):
+                errors.append(
+                    "normal synthetic high/urgent ratio increased by more than 5 percentage points"
+                )
             if inference_summary["usable_count"] != len(results):
-                errors.append("one or more generated window rows failed runtime usability")
+                errors.append(
+                    "one or more generated window rows failed runtime usability"
+                )
     result = {
         "valid": not errors,
         "errors": errors,
@@ -2258,8 +3025,12 @@ def validate_replay_dataset(
         "distribution": distribution_audit,
         "inference": inference_summary,
     }
-    report_path = output_root / manifest.get("validation_report", "validation_report.json")
-    report_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report_path = output_root / manifest.get(
+        "validation_report", "validation_report.json"
+    )
+    report_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     if errors:
         raise ValueError("dataset validation failed: " + "; ".join(errors))
     return result

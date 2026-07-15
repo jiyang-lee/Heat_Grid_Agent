@@ -570,6 +570,18 @@ export interface DemoReplaySnapshot extends DemoReplayStatus {
   readings: ReplaySensorReading[]
 }
 
+export interface DemoReplayPreset {
+  scenario_id: string
+  label: 'pre_fault_demo' | 'medium_warning_demo'
+  seek_at: string
+  event_at: string
+  substation_id: number
+  fleet_high_count: number
+  fleet_medium_count: number
+  fleet_low_count: number
+  fleet_max_priority_score: number
+}
+
 export type DemoReplayControlAction = 'start' | 'pause' | 'resume' | 'reset' | 'seek'
 
 export interface DemoReplayControlRequest {
