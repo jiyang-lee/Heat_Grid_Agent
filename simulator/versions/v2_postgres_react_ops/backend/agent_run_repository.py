@@ -38,7 +38,7 @@ AGENT_RUN_SELECT: Final = (
     "ORDER BY review.review_version DESC LIMIT 1), ops_output) AS text) AS ops_output, "
     "CAST(token_usage AS text) AS token_usage, "
     "CAST(loop_summary AS text) AS loop_summary, "
-    "review_status, review_task_id, error "
+    "review_status, review_task_id, error, created_at "
     "FROM agent_runs "
 )
 
@@ -479,4 +479,6 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         if row["review_task_id"] is None
         else str(row["review_task_id"]),
         error=row["error"],
+        # 일부 RETURNING 경로에는 created_at이 없어 .get으로 안전 처리(additive).
+        created_at=row.get("created_at"),
     )

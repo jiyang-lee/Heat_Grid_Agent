@@ -12,8 +12,14 @@ from agent_rerun_repository import TargetedChildRun
 from agent_runner import schedule_reserved_agent_graph
 from agent_runtime_factory import create_agent_runtime
 
+from agent_activity_projection_repository import (
+    ActivityProjectionFilters,
+    list_agent_reports,
+    list_work_orders,
+)
 from agent_review_api_models import (
     AgentOperationsMetricsResponse,
+    AgentReportListPage,
     AgentRunEvaluationPage,
     AgentRunListPage,
     AgentRunReviewSnapshotResponse,
@@ -26,6 +32,7 @@ from agent_review_api_models import (
     PolicyCandidatePage,
     PolicyCandidateResponse,
     PolicyCandidateStatus,
+    WorkOrderListPage,
     WorkerStatus,
 )
 from agent_operations_metrics_repository import (
@@ -91,6 +98,8 @@ def make_agent_review_router(
         operator_review_status: OperatorReviewStatus | None = None,
         worker_status: WorkerStatus | None = None,
         priority: str | None = Query(default=None, min_length=1, max_length=120),
+        substation_id: int | None = Query(default=None, ge=0),
+        search: str | None = Query(default=None, min_length=1, max_length=200),
         created_from: datetime | None = None,
         created_to: datetime | None = None,
         cursor: str | None = Query(default=None, min_length=1, max_length=1000),
@@ -105,6 +114,58 @@ def make_agent_review_router(
                 operator_review_status=operator_review_status,
                 worker_status=worker_status,
                 priority=priority,
+                substation_id=substation_id,
+                search=search,
+                created_from=normalized_from,
+                created_to=normalized_to,
+                cursor=parsed_cursor,
+                limit=limit,
+            ),
+        )
+
+    @router.get("/work-orders", response_model=WorkOrderListPage)
+    async def work_orders(
+        operator_review_status: OperatorReviewStatus | None = None,
+        substation_id: int | None = Query(default=None, ge=0),
+        search: str | None = Query(default=None, min_length=1, max_length=200),
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        cursor: str | None = Query(default=None, min_length=1, max_length=1000),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> WorkOrderListPage:
+        normalized_from, normalized_to = _normalize_period(created_from, created_to)
+        parsed_cursor = _parse_cursor(cursor)
+        return await list_work_orders(
+            engine,
+            ActivityProjectionFilters(
+                operator_review_status=operator_review_status,
+                substation_id=substation_id,
+                search=search,
+                created_from=normalized_from,
+                created_to=normalized_to,
+                cursor=parsed_cursor,
+                limit=limit,
+            ),
+        )
+
+    @router.get("/agent-reports", response_model=AgentReportListPage)
+    async def agent_reports(
+        operator_review_status: OperatorReviewStatus | None = None,
+        substation_id: int | None = Query(default=None, ge=0),
+        search: str | None = Query(default=None, min_length=1, max_length=200),
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        cursor: str | None = Query(default=None, min_length=1, max_length=1000),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> AgentReportListPage:
+        normalized_from, normalized_to = _normalize_period(created_from, created_to)
+        parsed_cursor = _parse_cursor(cursor)
+        return await list_agent_reports(
+            engine,
+            ActivityProjectionFilters(
+                operator_review_status=operator_review_status,
+                substation_id=substation_id,
+                search=search,
                 created_from=normalized_from,
                 created_to=normalized_to,
                 cursor=parsed_cursor,
