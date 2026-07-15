@@ -13,6 +13,7 @@ from third_model.synthetic_replay import (
     DEFAULT_REPLAY_START,
     DEFAULT_WARMUP_START,
     ReplayGenerationConfig,
+    _apply_scenarios,
     _calendar_balanced_pair,
     _high_trajectory_heads,
     _scenario_donor_index,
@@ -264,6 +265,34 @@ def test_fault_trajectory_reaches_its_endpoint_in_the_final_window() -> None:
     assert donors.loc[final, "donor_id"] == "late"
 
 
+def test_fault_curve_preserves_source_trajectory_shape() -> None:
+    index = pd.date_range("2023-01-08", periods=5, freq="10min", tz="Asia/Seoul")
+    values = pd.DataFrame({"sensor": np.zeros(5)}, index=index)
+    scenarios = pd.DataFrame(
+        {
+            "scenario_id": ["fault-01"],
+            "scenario_type": ["pre_fault_drift"],
+            "substation_id": [1],
+            "start": [index[0].isoformat()],
+            "end": [(index[-1] + pd.Timedelta(minutes=10)).isoformat()],
+            "sensor_effects_json": ['{"sensor":10.0}'],
+            "sensor_curve_json": ['{"sensor":[0.0,0.2,1.0]}'],
+            "effect_scale": [1.0],
+        }
+    )
+    sensors = pd.DataFrame(
+        {"source_column": ["sensor"], "sensor_type": ["numeric"]}
+    )
+
+    applied, quality, scenario_ids = _apply_scenarios(
+        values, 1, scenarios, sensors
+    )
+
+    np.testing.assert_allclose(applied["sensor"], [0.0, 1.0, 2.0, 6.0, 10.0])
+    assert set(quality) == {"synthetic_fault_pattern"}
+    assert set(scenario_ids) == {"fault-01"}
+
+
 def test_model_guided_selection_keeps_best_high_row_per_fault_trajectory() -> None:
     scored = pd.DataFrame(
         {
@@ -376,7 +405,7 @@ def test_small_dataset_is_deterministic_and_window_aggregates_match_raw(tmp_path
         "eligible_count": 0,
     }
     no_seek_manifest.write_text(json.dumps(no_seek_payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="no model-approved seek point"):
+    with pytest.raises(ValueError, match="fewer model-approved seek points"):
         validate_replay_dataset(outputs[1][0], project_root=project)
 
     window_path = outputs[0][0] / outputs[0][1]["window_shards"][0]["path"]

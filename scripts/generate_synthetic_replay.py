@@ -6,6 +6,9 @@ from pathlib import Path
 
 from third_model import config as model_config
 from third_model.synthetic_replay import (
+    DEFAULT_FAULT_SCENARIO_COUNT,
+    DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS,
+    DEFAULT_QUALITY_SCENARIO_COUNT,
     DEFAULT_REPLAY_END,
     DEFAULT_REPLAY_START,
     DEFAULT_WARMUP_START,
@@ -42,9 +45,18 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", default=DEFAULT_REPLAY_END.isoformat())
     parser.add_argument("--stations", default=None)
     parser.add_argument("--seed", type=int, default=20230710)
-    parser.add_argument("--dataset-version", default="predist-synthetic-replay-v1")
-    parser.add_argument("--fault-scenarios", type=int, default=18)
-    parser.add_argument("--quality-scenarios", type=int, default=12)
+    parser.add_argument("--dataset-version", default="predist-synthetic-replay-v2")
+    parser.add_argument(
+        "--fault-scenarios", type=int, default=DEFAULT_FAULT_SCENARIO_COUNT
+    )
+    parser.add_argument(
+        "--quality-scenarios", type=int, default=DEFAULT_QUALITY_SCENARIO_COUNT
+    )
+    parser.add_argument(
+        "--minimum-approved-faults",
+        type=int,
+        default=DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS,
+    )
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
         "--sample",
@@ -87,6 +99,7 @@ def main() -> None:
     stations = args.stations or "1-31"
     fault_scenarios = args.fault_scenarios
     quality_scenarios = args.quality_scenarios
+    minimum_approved_faults = args.minimum_approved_faults
     if args.sample:
         start = DEFAULT_WARMUP_START.isoformat()
         replay_start = DEFAULT_REPLAY_START.isoformat()
@@ -94,6 +107,7 @@ def main() -> None:
         stations = args.stations or "1"
         fault_scenarios = 0
         quality_scenarios = 0
+        minimum_approved_faults = 0
     elif args.full_range:
         start = DEFAULT_WARMUP_START.isoformat()
         replay_start = DEFAULT_REPLAY_START.isoformat()
@@ -114,6 +128,7 @@ def main() -> None:
         dataset_version=args.dataset_version,
         fault_scenario_count=fault_scenarios,
         quality_scenario_count=quality_scenarios,
+        minimum_eligible_fault_scenarios=minimum_approved_faults,
         overwrite=args.overwrite,
     )
     manifest = generate_replay_dataset(generation)

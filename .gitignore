@@ -35,3 +35,4 @@ data/manufacturer 2/
 
 # Generated PreDist replay shards (manifests/configs are tracked separately)
 data/demo_replay/current/
+data/demo_replay/current_v1_*/

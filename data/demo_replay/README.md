@@ -11,7 +11,10 @@ Small validation run:
 .\.venv\Scripts\python.exe scripts\generate_synthetic_replay.py --sample --stations 1-31 --output "$env:TEMP\heatgrid-replay-sample" --overwrite --run-inference-validation
 ```
 
-Full three-year generation (large output, intentionally not tracked):
+Full three-year generation (large output, intentionally not tracked). The default v2
+profile creates 96 candidates from continuous source fault trajectories, distributes
+them across configuration-compatible substations, and requires at least 10
+model-approved fault scenarios before validation passes:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\generate_synthetic_replay.py --full-range --overwrite

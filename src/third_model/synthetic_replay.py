@@ -20,6 +20,10 @@ WINDOW_INTERVAL = pd.Timedelta(hours=6)
 WINDOW_TICKS = 36
 DEFAULT_STATIONS = tuple(range(1, 32))
 MANUFACTURER_ID = "manufacturer 1"
+DEFAULT_FAULT_SCENARIO_COUNT = 96
+DEFAULT_QUALITY_SCENARIO_COUNT = 18
+DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS = 10
+FAULT_EFFECT_SCALES = (1.0, 1.1, 1.2, 1.25)
 
 RAW_METADATA_COLUMNS = [
     "dataset_version",
@@ -271,9 +275,10 @@ class ReplayGenerationConfig:
     replay_end: pd.Timestamp = DEFAULT_REPLAY_END
     stations: tuple[int, ...] = DEFAULT_STATIONS
     seed: int = 20230710
-    dataset_version: str = "predist-synthetic-replay-v1"
-    fault_scenario_count: int = 18
-    quality_scenario_count: int = 12
+    dataset_version: str = "predist-synthetic-replay-v2"
+    fault_scenario_count: int = DEFAULT_FAULT_SCENARIO_COUNT
+    quality_scenario_count: int = DEFAULT_QUALITY_SCENARIO_COUNT
+    minimum_eligible_fault_scenarios: int = DEFAULT_MINIMUM_ELIGIBLE_FAULT_SCENARIOS
     overwrite: bool = False
 
     def validate(self) -> None:
@@ -292,6 +297,15 @@ class ReplayGenerationConfig:
             raise ValueError("stations must be non-empty and unique")
         if any(station <= 0 for station in self.stations):
             raise ValueError("station IDs must be positive")
+        if self.fault_scenario_count < 0 or self.quality_scenario_count < 0:
+            raise ValueError("scenario counts must be non-negative")
+        if self.minimum_eligible_fault_scenarios < 0:
+            raise ValueError("minimum eligible fault scenarios must be non-negative")
+        if (
+            self.fault_scenario_count > 0
+            and self.minimum_eligible_fault_scenarios > self.fault_scenario_count
+        ):
+            raise ValueError("minimum eligible faults cannot exceed fault scenario count")
 
 
 def expected_dataset_counts(config: ReplayGenerationConfig) -> dict[str, int]:
@@ -500,74 +514,123 @@ def build_scenario_manifest(
         feature_union,
     )
 
+    station_configurations: dict[int, str] = {}
+    for station in generation.stations:
+        station_rows = donors.loc[
+            donors["substation_id"].eq(station), "configuration_type"
+        ]
+        station_configurations[station] = (
+            str(station_rows.mode().iloc[0])
+            if not station_rows.dropna().empty
+            else "missing"
+        )
+
     rows: list[dict[str, Any]] = []
     fault_times = _scenario_times(
-        replay_start, replay_end, generation.fault_scenario_count, margin=pd.Timedelta(days=7)
+        replay_start,
+        replay_end,
+        generation.fault_scenario_count,
+        margin=pd.Timedelta(days=7),
     )
     shuffled_stations = list(generation.stations)
     rng.shuffle(shuffled_stations)
     for index, start in enumerate(fault_times):
-        station = shuffled_stations[index % len(shuffled_stations)]
         preferred_donor: pd.Series | None = None
         if not preferred_trajectories.empty:
             preferred_pool = preferred_trajectories.loc[
                 preferred_trajectories["season_bucket"].astype(str).eq(_season(start))
             ]
             if not preferred_pool.empty:
-                candidate = preferred_pool.iloc[index % len(preferred_pool)]
-                candidate_station = int(candidate["substation_id"])
-                if candidate_station in generation.stations:
-                    station = candidate_station
-                    preferred_donor = candidate
-        target_configuration_rows = donors.loc[donors["substation_id"].eq(station), "configuration_type"]
-        target_configuration = (
-            str(target_configuration_rows.mode().iloc[0])
-            if "configuration_type" in donors and not target_configuration_rows.dropna().empty
-            else "missing"
-        )
-        compatible = holdout
-        if "configuration_type" in holdout:
-            same_configuration = holdout.loc[
-                holdout["configuration_type"].astype(str).eq(target_configuration)
-            ]
-            if not same_configuration.empty:
-                compatible = same_configuration
+                preferred_donor = preferred_pool.iloc[index % len(preferred_pool)]
         donor = (
             preferred_donor
             if preferred_donor is not None
-            else compatible.iloc[index % len(compatible)]
+            else holdout.iloc[index % len(holdout)]
         )
-        trajectory = compatible.loc[compatible["substation_id"].eq(int(donor["substation_id"]))]
+        donor_station = int(donor["substation_id"])
+        donor_configuration = str(donor.get("configuration_type", "missing"))
+        target_pool = [
+            station
+            for station in shuffled_stations
+            if station_configurations.get(station) == donor_configuration
+        ] or shuffled_stations
+        station = target_pool[index % len(target_pool)]
+
+        trajectory = holdout.loc[holdout["substation_id"].eq(donor_station)]
         fault_event_id = donor.get("fault_event_id")
-        if "fault_event_id" in compatible and pd.notna(fault_event_id):
-            same_event = compatible.loc[compatible["fault_event_id"].astype(str).eq(str(fault_event_id))]
+        if "fault_event_id" in holdout and pd.notna(fault_event_id):
+            same_event = holdout.loc[
+                holdout["fault_event_id"].astype(str).eq(str(fault_event_id))
+            ]
             if not same_event.empty:
                 trajectory = same_event
         trajectory = trajectory.sort_values("window_start")
-        donor_sequence = trajectory["donor_id"].astype(str).tolist() or [str(donor["donor_id"])]
+        donor_end = pd.Timestamp(donor.get("window_end"))
+        if pd.notna(donor_end) and "window_end" in trajectory:
+            leading = trajectory.loc[trajectory["window_end"].le(donor_end)]
+            if not leading.empty:
+                trajectory = leading
+        donor_sequence = trajectory["donor_id"].astype(str).tolist() or [
+            str(donor["donor_id"])
+        ]
+
+        target_normal = normal.loc[normal["substation_id"].eq(station)]
+        if target_normal.empty:
+            target_normal = normal
         effects: dict[str, float] = {}
+        curves: dict[str, list[float]] = {}
         for sensor in sensors["source_column"].astype(str):
             mean_column = f"{sensor}__mean"
             delta_column = f"{sensor}__delta"
-            baseline = float(normal[mean_column].median()) if mean_column in normal else 0.0
+            baseline = (
+                float(target_normal[mean_column].median())
+                if mean_column in target_normal
+                else 0.0
+            )
             candidate = float(donor.get(mean_column, baseline)) - baseline
-            spread = float(normal[mean_column].std()) if mean_column in normal else abs(candidate)
+            spread = (
+                float(target_normal[mean_column].std())
+                if mean_column in target_normal
+                else abs(candidate)
+            )
             if not np.isfinite(candidate) or abs(candidate) < max(1e-9, spread * 0.05):
                 candidate = float(donor.get(delta_column, spread * 0.5))
             limit = max(abs(spread) * 2.5, 1e-6)
             effects[sensor] = float(np.clip(candidate, -limit, limit))
+            if mean_column in trajectory:
+                series = pd.to_numeric(trajectory[mean_column], errors="coerce").dropna()
+                if len(series) >= 2:
+                    delta = float(series.iloc[-1] - series.iloc[0])
+                    if abs(delta) > 1e-9:
+                        curve = (series - float(series.iloc[0])) / delta
+                        curve = curve.clip(-0.5, 1.5).astype(float).tolist()
+                        curve[0] = 0.0
+                        curve[-1] = 1.0
+                        curves[sensor] = curve
+        duration_hours = min(max(len(donor_sequence) * 6, 48), 96)
+        effect_scale = FAULT_EFFECT_SCALES[index % len(FAULT_EFFECT_SCALES)]
         rows.append(
             {
                 "scenario_id": f"fault-{index + 1:02d}",
                 "scenario_type": "pre_fault_drift",
                 "substation_id": station,
                 "start": _iso(start),
-                "end": _iso(min(start + pd.Timedelta(hours=48), replay_end)),
+                "end": _iso(min(start + pd.Timedelta(hours=duration_hours), replay_end)),
                 "donor_id": donor["donor_id"],
+                "donor_substation_id": donor_station,
+                "donor_configuration_type": donor_configuration,
                 "donor_fault_event_id": donor.get("fault_event_id", ""),
-                "donor_sequence_json": json.dumps(donor_sequence, separators=(",", ":")),
-                "sensor_effects_json": json.dumps(effects, sort_keys=True, separators=(",", ":")),
-                "expected_behavior": "gradual_model_risk_change",
+                "donor_sequence_json": json.dumps(
+                    donor_sequence, separators=(",", ":")
+                ),
+                "sensor_effects_json": json.dumps(
+                    effects, sort_keys=True, separators=(",", ":")
+                ),
+                "sensor_curve_json": json.dumps(
+                    curves, sort_keys=True, separators=(",", ":")
+                ),
+                "effect_scale": effect_scale,
+                "expected_behavior": "source_fault_trajectory_model_risk_change",
             }
         )
 
@@ -586,9 +649,13 @@ def build_scenario_manifest(
                 "start": _iso(start),
                 "end": _iso(min(start + pd.Timedelta(hours=1), replay_end)),
                 "donor_id": "",
+                "donor_substation_id": "",
+                "donor_configuration_type": "",
                 "donor_fault_event_id": "",
                 "donor_sequence_json": "[]",
                 "sensor_effects_json": "{}",
+                "sensor_curve_json": "{}",
+                "effect_scale": 1.0,
                 "expected_behavior": "data_quality_only_no_fault_truth",
             }
         )
@@ -599,9 +666,13 @@ def build_scenario_manifest(
         "start",
         "end",
         "donor_id",
+        "donor_substation_id",
+        "donor_configuration_type",
         "donor_fault_event_id",
         "donor_sequence_json",
         "sensor_effects_json",
+        "sensor_curve_json",
+        "effect_scale",
         "expected_behavior",
     ]
     return pd.DataFrame(rows, columns=columns)
@@ -858,10 +929,22 @@ def _apply_scenarios(
         scenario_ids[positions] = scenario.scenario_id
         if scenario.scenario_type == "pre_fault_drift":
             effects = json.loads(scenario.sensor_effects_json)
-            ramp = np.linspace(0.05, 1.0, len(positions))
+            curves = json.loads(getattr(scenario, "sensor_curve_json", "{}"))
+            effect_scale = float(getattr(scenario, "effect_scale", 1.0) or 1.0)
             for sensor, effect in effects.items():
                 if sensor in values:
-                    values.iloc[positions, values.columns.get_loc(sensor)] += ramp * float(effect)
+                    curve = curves.get(sensor)
+                    if isinstance(curve, list) and len(curve) >= 2:
+                        profile = np.interp(
+                            np.linspace(0.0, len(curve) - 1, len(positions)),
+                            np.arange(len(curve), dtype="float64"),
+                            np.asarray(curve, dtype="float64"),
+                        )
+                    else:
+                        profile = np.linspace(0.0, 1.0, len(positions))
+                    values.iloc[positions, values.columns.get_loc(sensor)] += (
+                        profile * float(effect) * effect_scale
+                    )
             quality[positions] = "synthetic_fault_pattern"
         elif scenario.scenario_type in {"missing", "communication_gap"}:
             values.iloc[positions, :] = np.nan
@@ -1225,6 +1308,11 @@ def _prevalidate_fault_scenarios(
         "baseline_risk_median": np.nan,
         "event_risk_median": np.nan,
         "risk_delta": np.nan,
+        "event_priority_peak": np.nan,
+        "event_risk_peak": np.nan,
+        "high_window_count": 0,
+        "event_window_count": 0,
+        "validated_high_at": "",
         "seek_eligible": False,
     }
     for column, value in defaults.items():
@@ -1315,9 +1403,26 @@ def _prevalidate_fault_scenarios(
         risk_delta = event_risk - baseline_risk
         baseline_level = max(level_order.get(value, 0) for value in baseline["_priority_level"])
         event_level = max(level_order.get(value, 0) for value in event["_priority_level"])
+        high_window_count = int(
+            event["_priority_level"].map(level_order).ge(level_order["high"]).sum()
+        )
+        high_event = event.loc[
+            event["_priority_level"].map(level_order).ge(level_order["high"])
+        ]
+        validated_high_at = (
+            _iso(
+                pd.to_datetime(high_event["window_end"], utc=True)
+                .dt.tz_convert("Asia/Seoul")
+                .min()
+            )
+            if not high_event.empty
+            else ""
+        )
         eligible = bool(
             event_level >= level_order["high"]
-            and (priority_delta >= 1.0 or risk_delta >= 0.01 or event_level > baseline_level)
+            and high_window_count >= 2
+            and priority_delta >= 10.0
+            and (risk_delta >= 0.05 or event_level > baseline_level)
         )
         scenarios.loc[scenario_index, [
             "runtime_validation_status",
@@ -1327,24 +1432,34 @@ def _prevalidate_fault_scenarios(
             "baseline_risk_median",
             "event_risk_median",
             "risk_delta",
+            "event_priority_peak",
+            "event_risk_peak",
+            "high_window_count",
+            "event_window_count",
+            "validated_high_at",
             "seek_eligible",
         ]] = [
-            "passed" if eligible else "rejected_no_meaningful_rise",
+            "passed" if eligible else "rejected_no_validated_high_rise",
             baseline_priority,
             event_priority,
             priority_delta,
             baseline_risk,
             event_risk,
             risk_delta,
+            float(event["_priority_score"].max()),
+            float(event["_risk_score"].max()),
+            high_window_count,
+            int(len(event)),
+            validated_high_at,
             eligible,
         ]
 
     seek = scenarios.loc[fault_mask & scenarios["seek_eligible"].map(_boolean)].copy()
     if not seek.empty:
-        seek["event_at"] = seek["start"]
+        seek["event_at"] = seek["validated_high_at"]
         seek["seek_at"] = [
-            _iso(max(_timestamp(value) - pd.Timedelta(days=1), _timestamp(replay_start)))
-            for value in seek["start"]
+            _iso(max(_timestamp(value) - pd.Timedelta(hours=6), _timestamp(replay_start)))
+            for value in seek["validated_high_at"]
         ]
         seek["label"] = "pre_fault_demo"
     seek = seek.reindex(
@@ -1354,6 +1469,7 @@ def _prevalidate_fault_scenarios(
         "status": "completed",
         "candidate_count": int(fault_mask.sum()),
         "eligible_count": int(len(seek)),
+        "minimum_eligible_count": 0,
         "evaluated_window_count": int(len(evaluation)),
     }
 
@@ -1460,6 +1576,9 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         generation.project_root,
         _timestamp(generation.replay_start),
     )
+    scenario_validation["minimum_eligible_count"] = (
+        generation.minimum_eligible_fault_scenarios
+    )
     scenarios.to_csv(
         output_root / "scenario_manifest.csv", index=False, encoding="utf-8", lineterminator="\n"
     )
@@ -1509,6 +1628,7 @@ def generate_replay_dataset(generation: ReplayGenerationConfig) -> dict[str, Any
         "raw_shards": raw_shards,
         "window_shards": window_shards,
         "scenario_runtime_validation": scenario_validation,
+        "minimum_eligible_fault_scenarios": generation.minimum_eligible_fault_scenarios,
         "validation_report": "validation_report.json",
     }
     manifest_path = output_root / "dataset_manifest.json"
@@ -1803,12 +1923,20 @@ def validate_replay_dataset(
     window_required = set(WINDOW_METADATA_COLUMNS)
     errors: list[str] = []
     scenario_validation = manifest.get("scenario_runtime_validation") or {}
+    minimum_eligible = int(
+        manifest.get("minimum_eligible_fault_scenarios")
+        or scenario_validation.get("minimum_eligible_count")
+        or 1
+    )
     if (
         scenario_validation.get("status") == "completed"
         and int(scenario_validation.get("candidate_count") or 0) > 0
-        and int(scenario_validation.get("eligible_count") or 0) < 1
+        and int(scenario_validation.get("eligible_count") or 0) < minimum_eligible
     ):
-        errors.append("fault scenarios produced no model-approved seek point")
+        errors.append(
+            "fault scenarios produced fewer model-approved seek points than required: "
+            f"{int(scenario_validation.get('eligible_count') or 0)} < {minimum_eligible}"
+        )
     raw_rows = 0
     window_rows = 0
     first_replay_raw_parts: list[pd.DataFrame] = []
