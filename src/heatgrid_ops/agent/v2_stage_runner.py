@@ -71,6 +71,10 @@ class StageRunner:
             raise ValueError("stage adapter returned the wrong stage")
         if envelope.state_schema_version != request.state.state_schema_version:
             raise StageSchemaMismatch(request.stage_name)
+        execution_status, quality_status, score = _stage_quality(
+            envelope.data,
+            request.stage_name,
+        )
         record = StageSnapshotWrite(
             run_id=request.run_id,
             stage_name=request.stage_name,
@@ -78,10 +82,42 @@ class StageRunner:
             stage_input_hash=stage_input,
             output_hash=canonical_json_hash(envelope.data),
             envelope=envelope,
-            execution_status="passed",
-            quality_status="passed",
-            score=None,
+            execution_status=execution_status,
+            quality_status=quality_status,
+            score=score,
             contract_version=stage_contract_version(request.stage_name),
             component_versions=dict(request.component_versions),
+            feature_flags=dict(request.feature_flags),
+            thresholds=dict(request.thresholds),
+            attempt_parameters=dict(request.attempt_parameters or {}),
+            upstream_output_hashes=request.upstream_output_hashes,
         )
         return (await self._snapshots.record(record)).envelope
+
+
+def _stage_quality(
+    data: Mapping[str, JsonValue],
+    stage_name: StageName,
+) -> tuple[str, str | None, float | None]:
+    field = {
+        "ml_validation": "ml",
+        "weather_context": "weather",
+        "rag_retrieval": "rag",
+        "rag_interpretation": "rag",
+        "fault_analysis": "fault",
+        "higher_model_reassessment": "escalation",
+        "parent_disposition": "routing",
+        "report_draft": "report",
+        "report_fidelity": "report",
+    }[stage_name]
+    value = data.get(field)
+    if not isinstance(value, dict):
+        return "passed", "passed", None
+    execution = value.get("execution_status", "passed")
+    quality = value.get("quality_status", "passed")
+    score = value.get("score")
+    return (
+        execution if isinstance(execution, str) else "passed",
+        quality if isinstance(quality, str) else "passed",
+        score if isinstance(score, float | int) else None,
+    )

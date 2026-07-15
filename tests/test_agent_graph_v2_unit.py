@@ -4,8 +4,11 @@ import pytest
 
 from heatgrid_ops.agent.v2_models import (
     STATE_SCHEMA_VERSION,
+    STAGE_ORDER,
+    StageControlEnvelope,
     StageSnapshotEnvelope,
 )
+from heatgrid_ops.agent.graph_v2 import AgentV2GraphContext, V2GraphInput, build_agent_v2_graph
 from heatgrid_ops.agent.v2_policy import v2_stage_input_hash
 from heatgrid_ops.agent.v2_stage_contracts import StageSnapshotWrite
 from heatgrid_ops.agent.v2_stage_runner import (
@@ -23,9 +26,11 @@ class MemoryStageSnapshots:
     async def get_attempt(
         self,
         run_id: str,
-        stage_name: str,
+        stage_name: object,
         attempt: int,
     ) -> StageSnapshotWrite | None:
+        if not isinstance(stage_name, str):
+            raise TypeError("stage name must be a string")
         return self.items.get((run_id, stage_name, attempt))
 
     async def record(self, request: StageSnapshotWrite) -> StageSnapshotWrite:
@@ -157,3 +162,93 @@ async def test_stage_runner_rejects_state_schema_mismatch_before_reuse() -> None
 
     with pytest.raises(StageSchemaMismatch):
         await runner.execute(request, adapter)
+
+
+@pytest.mark.anyio
+async def test_rag_evaluator_unavailable_keeps_retrieval_execution_passed() -> None:
+    snapshots = MemoryStageSnapshots()
+    runner = StageRunner(snapshots)
+    state = _state()
+    request = StageExecutionRequest(
+        run_id="run-1",
+        state=state,
+        stage_name="rag_retrieval",
+        attempt=1,
+        upstream_output_hashes=(),
+        component_versions={},
+        feature_flags={"rag_quality": True},
+        thresholds={},
+    )
+
+    async def adapter(_: AgentV2State) -> StageSnapshotEnvelope:
+        value = state.model_dump(mode="json")
+        value["rag"] = {
+            "retrieval": {"results": [{"id": "e1"}]},
+            "execution_status": "passed",
+            "quality_status": "unavailable",
+            "score": None,
+        }
+        return StageSnapshotEnvelope(
+            stage_name="rag_retrieval",
+            data=value,
+            control=StageControlEnvelope(force_review=True),
+        )
+
+    await runner.execute(request, adapter)
+    record = snapshots.items[("run-1", "rag_retrieval", 1)]
+    assert record.execution_status == "passed"
+    assert record.quality_status == "unavailable"
+    assert record.score is None
+    rag = record.envelope.data.get("rag")
+    assert isinstance(rag, dict)
+    assert rag.get("retrieval") == {"results": [{"id": "e1"}]}
+
+
+@pytest.mark.anyio
+async def test_explicit_graph_runs_all_nine_stages_and_restores_state_from_snapshot() -> None:
+    snapshots = MemoryStageSnapshots()
+    graph = build_agent_v2_graph(
+        AgentV2GraphContext(
+            snapshots=snapshots,
+            adapters={},
+            component_versions={"graph": "test"},
+            feature_flags={"rag_quality": False},
+            thresholds={"evidence": 70},
+        )
+    )
+    state = _state()
+    result = await graph.ainvoke(
+        V2GraphInput(state=state, stage_hashes={}, completed_stages=()),
+        {"configurable": {"thread_id": "run-1"}},
+    )
+
+    completed = result.get("completed_stages")
+    hashes = result.get("stage_hashes")
+    restored_state = result.get("state")
+    assert completed == STAGE_ORDER
+    assert hashes is not None
+    assert set(hashes) == set(STAGE_ORDER)
+    assert restored_state is not None
+    snapshot = snapshots.items[("run-1", STAGE_ORDER[-1], 1)]
+    restored = AgentV2State.model_validate(snapshot.envelope.data)
+    assert restored == restored_state
+
+
+@pytest.mark.anyio
+async def test_explicit_graph_reuses_committed_snapshots_without_adapter_calls() -> None:
+    snapshots = MemoryStageSnapshots()
+    graph = build_agent_v2_graph(
+        AgentV2GraphContext(
+            snapshots=snapshots,
+            adapters={},
+            component_versions={"graph": "test"},
+            feature_flags={},
+            thresholds={},
+        )
+    )
+    input_state = V2GraphInput(state=_state(), stage_hashes={}, completed_stages=())
+    first = await graph.ainvoke(input_state, {"configurable": {"thread_id": "run-1"}})
+    second = await graph.ainvoke(input_state, {"configurable": {"thread_id": "run-1"}})
+
+    assert second.get("state") == first.get("state")
+    assert len(snapshots.items) == len(STAGE_ORDER)

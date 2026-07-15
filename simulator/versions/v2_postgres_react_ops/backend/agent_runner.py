@@ -28,6 +28,7 @@ from agent_review_snapshot_lineage import (
 from agent_run_repository import fail_agent_run, get_agent_run, reserve_agent_run
 from agent_runtime_factory import create_agent_graph_context, create_agent_runtime
 from heatgrid_ops.agent.contracts import (
+    AgentInputSnapshot,
     AgentRunRequest,
     SimulateCard,
     validate_agent_input,
@@ -37,6 +38,7 @@ from heatgrid_ops.agent.graph import (
     AgentGraphContext,
     AgentGraphInvoker,
     execute_agent_graph_with_capture,
+    execute_agent_graph_v2_with_capture,
 )
 from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 from heatgrid_ops.agent.models import JsonObject
@@ -115,12 +117,21 @@ async def run_reserved_agent_graph(
                 raise RuntimeError("reserved agent run no longer exists")
             return existing
         try:
-            execution = await execute_agent_graph_with_capture(
-                context,
-                request,
-                graph=graph,
-                resume=claim.resume_from_checkpoint,
-            )
+            if task_key == AGENT_GRAPH_TASK_KEY_V2:
+                execution = await execute_agent_graph_v2_with_capture(
+                    context,
+                    request,
+                    AgentInputSnapshot(source_input=prepared_input.snapshot),
+                    graph=graph,
+                    resume=claim.resume_from_checkpoint,
+                )
+            else:
+                execution = await execute_agent_graph_with_capture(
+                    context,
+                    request,
+                    graph=graph,
+                    resume=claim.resume_from_checkpoint,
+                )
         except HTTPException as exc:
             error = str(exc.detail)
         except AgentCoreError as exc:

@@ -58,6 +58,8 @@ class StageSnapshotDraft:
     reused_from_snapshot_id: str | None = None
     state_schema_version: str = "agent_v2_state.v1"
     envelope: JsonObject | None = None
+    policy_version: str = "agent_graph_v2.v1"
+    attempt_parameters: JsonObject | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +68,7 @@ class StageSnapshotRecord:
     run_id: str
     stage_name: StageName
     stage_kind: StageKind
+    attempt: int
     execution_status: ExecutionStatus
     quality_status: QualityStatus | None
     score: float | None
@@ -114,12 +117,15 @@ async def insert_stage_snapshot(
         )
         if source.output_hash != output_hash:
             raise ValueError("reused stage output hash mismatch")
+    component_versions = dict(draft.component_versions)
+    if draft.attempt_parameters:
+        component_versions["attempt_parameters"] = dict(draft.attempt_parameters)
     input_hash = stage_input_hash(
         run_input_hash=draft.run_input_hash,
         upstream_output_hashes=draft.upstream_output_hashes,
         contract_version=draft.contract_version,
-        policy_version="agent_graph_v2.v1",
-        component_versions=draft.component_versions,
+        policy_version=draft.policy_version,
+        component_versions=component_versions,
         feature_flags=draft.feature_flags,
         thresholds=draft.thresholds,
         stage_name=draft.stage_name,
@@ -218,7 +224,7 @@ async def resolve_original_stage_snapshot(
 
 def _columns() -> str:
     return (
-        "stage_snapshot_id, run_id, stage_name, stage_kind, execution_status, "
+        "stage_snapshot_id, run_id, stage_name, stage_kind, attempt, execution_status, "
         "quality_status, score, stage_input_hash, CAST(output_snapshot AS text) "
         "AS output_snapshot, output_hash, contract_version, "
         "CAST(component_versions AS text) AS component_versions, reused_from_snapshot_id"
@@ -231,6 +237,7 @@ def _record(row: RowMapping) -> StageSnapshotRecord:
         run_id=str(row["run_id"]),
         stage_name=row["stage_name"],
         stage_kind=row["stage_kind"],
+        attempt=int(row["attempt"]),
         execution_status=row["execution_status"],
         quality_status=row["quality_status"],
         score=row["score"],

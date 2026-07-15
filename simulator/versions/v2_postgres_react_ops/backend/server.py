@@ -115,6 +115,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             rag_quality_enabled=settings.rag_quality_enabled,
             evidence_threshold=settings.agent_evidence_threshold,
             model_score_tolerance=settings.model_score_tolerance,
+            checkpointer=checkpointer,
+            runtime=agent_runtime,
         )
         agent_resources.graph_v1 = graph_v1
         agent_resources.graph_v2 = graph_v2

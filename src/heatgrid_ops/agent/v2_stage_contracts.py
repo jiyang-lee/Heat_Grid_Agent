@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from typing import Protocol
 
 from heatgrid_ops.agent.models import JsonObject
@@ -26,6 +26,11 @@ class StageSnapshotWrite:
     contract_version: str
     component_versions: JsonObject
     reused_from_snapshot_id: str | None = None
+    feature_flags: JsonObject = dataclass_field(default_factory=dict)
+    thresholds: JsonObject = dataclass_field(default_factory=dict)
+    attempt_parameters: JsonObject = dataclass_field(default_factory=dict)
+    policy_version: str = "agent_graph_v2.v2"
+    upstream_output_hashes: tuple[str, ...] = ()
 
 
 class StageSnapshotPort(Protocol):
