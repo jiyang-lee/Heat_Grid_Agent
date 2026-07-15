@@ -65,7 +65,7 @@ def test_rag_pg_query_selects_review_provenance() -> None:
 
 def test_agent_review_migration_adds_run_list_indexes_conditionally() -> None:
     source = (
-        ROOT / "docker" / "postgres" / "init" / "005_agent_review.sql"
+        ROOT / "migrations" / "005_agent_review.sql"
     ).read_text(encoding="utf-8").lower()
 
     assert "agent_runs_v3_list_idx" in source

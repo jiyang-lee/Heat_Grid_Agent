@@ -41,6 +41,7 @@ WINDOW_ID: Final = "00000000-0000-0000-0000-000000000501"
 PARENT_TASK_ID: Final = "00000000-0000-0000-0000-000000000601"
 PARENT_LEDGER_ID: Final = "00000000-0000-0000-0000-000000000701"
 DIAGNOSTIC_LEDGER_ID: Final = "00000000-0000-0000-0000-000000000702"
+REVIEW_TASK_ID: Final = "00000000-0000-0000-0000-000000000801"
 
 
 pytestmark = pytest.mark.skipif(
@@ -177,9 +178,17 @@ async def _seed(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "INSERT INTO windows (window_id, manufacturer_id, substation_id, "
+                "INSERT INTO substations (manufacturer_id, substation_id) "
+                "VALUES ('maker', 31) ON CONFLICT (manufacturer_id, substation_id) DO NOTHING"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO windows (window_id, substation_uid, manufacturer_id, substation_id, "
                 "window_start, window_end) VALUES ("
-                ":window_id, 'maker', 31, now() - interval '1 hour', now())"
+                ":window_id, (SELECT substation_uid FROM substations "
+                "WHERE manufacturer_id = 'maker' AND substation_id = 31), "
+                "'maker', 31, now() - interval '1 hour', now())"
             ),
             {"window_id": WINDOW_ID},
         )
@@ -200,8 +209,11 @@ async def _seed(engine: AsyncEngine) -> None:
         await connection.execute(
             text(
                 "INSERT INTO ops_alert_queue ("
-                "alert_id, card_id, priority_level, enqueue_reason"
-                ") VALUES (:alert_id, :card_id, 'high', 'review test')"
+                "alert_id, card_id, substation_uid, manufacturer_id, substation_id, "
+                "priority_level, enqueue_reason"
+                ") VALUES (:alert_id, :card_id, (SELECT substation_uid FROM substations "
+                "WHERE manufacturer_id = 'maker' AND substation_id = 31), "
+                "'maker', 31, 'high', 'review test')"
             ),
             {"alert_id": ALERT_ID, "card_id": CARD_ID},
         )
@@ -215,10 +227,13 @@ async def _seed(engine: AsyncEngine) -> None:
             await connection.execute(
                 text(
                     "INSERT INTO agent_runs ("
-                    "run_id, alert_id, card_id, status, review_snapshot_expected, "
+                    "run_id, alert_id, card_id, substation_uid, manufacturer_id, substation_id, "
+                    "root_run_id, status, review_snapshot_expected, "
                     "created_at, updated_at"
                     ") VALUES ("
-                    ":run_id, :alert_id, :card_id, :status, :expected, "
+                    ":run_id, :alert_id, :card_id, (SELECT substation_uid FROM substations "
+                    "WHERE manufacturer_id = 'maker' AND substation_id = 31), "
+                    "'maker', 31, :run_id, :status, :expected, "
                     ":created_at, :created_at"
                     ")"
                 ),
@@ -233,13 +248,34 @@ async def _seed(engine: AsyncEngine) -> None:
             )
         await connection.execute(
             text(
+                "INSERT INTO human_review_tasks ("
+                "task_id, task_type, status, risk_level, title, run_id, reviewed_by, "
+                "reviewed_at, subject_type, subject_key) VALUES ("
+                ":task_id, 'agent_run_review', 'approved', 'medium', 'review test', "
+                ":run_id, 'operator', now(), 'agent_run', :subject_key)"
+            ),
+            {
+                "task_id": REVIEW_TASK_ID,
+                "run_id": RUN_AVAILABLE,
+                "subject_key": RUN_AVAILABLE,
+            },
+        )
+        await connection.execute(
+            text(
                 "INSERT INTO agent_run_reviews ("
-                "run_id, review_version, idempotency_key, request_hash, decision, "
+                "review_task_id, run_id, subject_type, subject_key, review_contract_version, "
+                "review_version, idempotency_key, request_hash, decision, "
                 "reviewer, reason) VALUES ("
-                ":run_id, 1, 'review-test', :request_hash, 'approve', "
+                ":task_id, :run_id, 'agent_run', :subject_key, 1, "
+                "1, 'review-test', :request_hash, 'approve', "
                 "'operator', 'verified')"
             ),
-            {"run_id": RUN_AVAILABLE, "request_hash": "b" * 64},
+            {
+                "task_id": REVIEW_TASK_ID,
+                "run_id": RUN_AVAILABLE,
+                "subject_key": RUN_AVAILABLE,
+                "request_hash": "b" * 64,
+            },
         )
         await connection.execute(
             text(
@@ -296,6 +332,18 @@ async def _seed(engine: AsyncEngine) -> None:
 
 async def _cleanup(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "TRUNCATE TABLE agent_policy_candidates, agent_run_reviews, "
+                "agent_run_review_snapshots, agent_budget_ledger, agent_run_tasks, "
+                "agent_run_actions, agent_run_artifacts, agent_run_events, "
+                "agent_runs CASCADE"
+            )
+        )
+        await connection.execute(
+            text("DELETE FROM ops_alert_queue WHERE alert_id = :alert_id"),
+            {"alert_id": ALERT_ID},
+        )
         await connection.execute(
             text("DELETE FROM windows WHERE window_id = :window_id"),
             {"window_id": WINDOW_ID},

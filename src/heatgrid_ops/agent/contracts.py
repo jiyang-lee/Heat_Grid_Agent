@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -109,12 +109,64 @@ class AgentOutputContext(BaseModel):
     usage: TokenUsage
 
 
+ExecutionProfile: TypeAlias = Literal[
+    "parent_evidence_agent",
+    "report_snapshot_only",
+    "child_targeted_recovery",
+    "report_revision_only",
+    "diagnostic_worker",
+]
+
+
+class ToolPolicy(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    policy_version: str
+    allowed_tools: tuple[str, ...]
+    max_total_tool_calls: int = Field(ge=0)
+    max_calls_per_tool: dict[str, int] = Field(default_factory=dict)
+    max_model_turns: int = Field(ge=1)
+    stop_on_duplicate_args: bool = True
+    deny_unlisted_tool: bool = True
+    trace_required: bool = True
+
+
+class ModelCallBudget(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    max_input_chars: int = Field(ge=1)
+    max_output_tokens: int = Field(ge=1)
+    max_total_tokens: int = Field(ge=1)
+    max_duration_ms: int = Field(ge=1)
+
+
+class ReportDraftSnapshotBundle(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    schema_version: Literal["report_draft_bundle.v1"] = "report_draft_bundle.v1"
+    run_id: str
+    root_run_id: str
+    parent_run_id: str | None = None
+    target_stage: str | None = None
+    source_input_hash: str
+    bundle_hash: str
+    stages: JsonObject
+
+
 class ChatModelRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    run_id: str
     card_id: str
+    stage_name: str
+    stage_attempt: int = Field(ge=1)
+    execution_profile: ExecutionProfile
     source_input: JsonObject
     evidence_context: JsonObject
+    snapshot_bundle: ReportDraftSnapshotBundle | None = None
+    snapshot_bundle_hash: str | None = None
+    tool_policy: ToolPolicy
+    model_budget: ModelCallBudget
     model_verification: ModelVerificationResult | None = None
     evidence_assessment: EvidenceAssessment | None = None
     revision_feedback: list[str] = Field(default_factory=list)
@@ -139,3 +191,4 @@ class ReportWriteRequest(BaseModel):
     source_input: JsonObject
     evidence_context: JsonObject
     ops_output: OpsAgentOutput
+    source_output_hash: str | None = None

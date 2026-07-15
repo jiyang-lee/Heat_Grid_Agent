@@ -12,8 +12,8 @@ from psycopg import AsyncConnection
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 
-from agent_execution_migration import apply_agent_execution_migration
 from agent_error_mapping import install_agent_error_handlers
+from agent_graph_v2 import build_agent_graph_v2
 from agent_runner import resume_reclaimable_agent_runs
 from agent_runtime_factory import create_agent_graph_context, create_agent_runtime
 from heatgrid_ops.agent.graph import AgentGraphInvoker, build_agent_graph
@@ -29,18 +29,16 @@ from heatgrid_ops.agent.models import (
     TokenUsage as CoreTokenUsage,
 )
 from heatgrid_ops.agent.usage import usage_with_totals as core_usage_with_totals
+from heatgrid_ops.db.migrations import verify_database_contract
 from heatgrid_rag.search import RagSearcher
-from heatgrid_ops.priority.evaluation import (
-    ensure_latest_priority_evaluation,
-    ensure_priority_evaluation_tables,
-)
+from heatgrid_ops.priority.evaluation import ensure_latest_priority_evaluation
 
-from agent_run_repository import ensure_agent_run_tables
 from agent_review_routes import make_agent_review_router
-from agent_loop_repository import ensure_agent_loop_iteration_table
+from review_chat_routes import make_review_chat_router
+from agent_quality_routes import make_agent_quality_router
 from agent_run_routes import make_agent_run_router
 from automation_routes import make_automation_router
-from alert_repository import ensure_alert_queue, get_alert
+from alert_repository import get_alert
 from alert_routes import make_alert_router
 from repository import (
     check_database,
@@ -51,8 +49,7 @@ from repository import (
 )
 from priority_evaluation_routes import make_priority_evaluation_router
 from retrain_routes import make_retrain_router
-from retrain_repository import ensure_retrain_tables
-from review_repository import ensure_review_tables
+from replay_routes import make_replay_router
 from schemas import (
     ApiMetadata,
     CardSummary,
@@ -71,7 +68,8 @@ agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
 
 @dataclass(slots=True)
 class AgentApplicationResources:
-    graph: AgentGraphInvoker | None = None
+    graph_v1: AgentGraphInvoker | None = None
+    graph_v2: AgentGraphInvoker | None = None
     checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] | None = None
 
 
@@ -79,7 +77,7 @@ agent_resources = AgentApplicationResources()
 
 
 def _agent_graph() -> AgentGraphInvoker | None:
-    return agent_resources.graph
+    return agent_resources.graph_v2
 
 
 def _psycopg_database_url(database_url: str) -> str:
@@ -88,18 +86,13 @@ def _psycopg_database_url(database_url: str) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await ensure_priority_evaluation_tables(engine)
+    await verify_database_contract(settings.database_url)
     await ensure_latest_priority_evaluation(
         engine,
         stale_after_hours=settings.priority_stale_after_hours,
         model_version=settings.priority_model_version,
         expected_substations=settings.priority_expected_substations,
     )
-    await ensure_alert_queue(engine)
-    await ensure_agent_run_tables(engine)
-    await ensure_agent_loop_iteration_table(engine)
-    await ensure_review_tables(engine)
-    await ensure_retrain_tables(engine)
     checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] = AsyncConnectionPool(
         conninfo=_psycopg_database_url(settings.database_url),
         min_size=1,
@@ -113,23 +106,34 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     )
     await checkpoint_pool.open()
     try:
-        await apply_agent_execution_migration(checkpoint_pool)
         checkpointer = AsyncPostgresSaver(checkpoint_pool)
-        await checkpointer.setup()
-        graph = build_agent_graph(
+        graph_v1 = build_agent_graph(
             create_agent_graph_context(engine, agent_runtime),
             checkpointer=checkpointer,
         )
-        agent_resources.graph = graph
+        graph_v2 = build_agent_graph_v2(
+            graph_v1,
+            engine,
+            openai_model=settings.openai_model,
+            rag_quality_enabled=settings.rag_quality_enabled,
+            evidence_threshold=settings.agent_evidence_threshold,
+            model_score_tolerance=settings.model_score_tolerance,
+            checkpointer=checkpointer,
+            runtime=agent_runtime,
+        )
+        agent_resources.graph_v1 = graph_v1
+        agent_resources.graph_v2 = graph_v2
         agent_resources.checkpoint_pool = checkpoint_pool
         await resume_reclaimable_agent_runs(
             engine,
             runtime=agent_runtime,
-            graph=graph,
+            graph=graph_v1,
+            v2_graph=graph_v2,
         )
         yield
     finally:
-        agent_resources.graph = None
+        agent_resources.graph_v1 = None
+        agent_resources.graph_v2 = None
         agent_resources.checkpoint_pool = None
         await checkpoint_pool.close()
 
@@ -155,6 +159,8 @@ async def index() -> ApiMetadata:
             "/api/evidence-candidates",
             "/api/retrain-jobs",
             "/api/model-candidates",
+            "/api/replay-datasets",
+            "/api/replay-runs",
         ],
     )
 
@@ -292,9 +298,33 @@ app.include_router(
         graph_provider=_agent_graph,
     )
 )
-app.include_router(make_agent_review_router(engine))
+app.include_router(
+    make_agent_review_router(
+        engine,
+        settings,
+        agent_runtime,
+        _agent_graph,
+    )
+)
+app.include_router(
+    make_review_chat_router(
+        engine,
+        settings,
+        agent_runtime,
+        _agent_graph,
+    )
+)
+app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
+app.include_router(
+    make_replay_router(
+        engine,
+        storage_root=settings.replay_storage_root,
+        replay_enabled=settings.replay_enabled,
+        replay_import_enabled=settings.replay_import_enabled,
+    )
+)
 
 
 if __name__ == "__main__":

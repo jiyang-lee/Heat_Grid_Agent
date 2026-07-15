@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from heatgrid_ops.agent.assessment import EvidenceAssessment
 from heatgrid_ops.agent.models import (
     JsonObject,
     JsonValue,
@@ -28,6 +29,14 @@ class AgentLoopSummary(BaseModel):
     model_verification: ModelVerificationResult | None = None
     review_required: bool = True
     review_task_id: str | None = None
+    disposition: Literal[
+        "urgent_review",
+        "inspection_recommended",
+        "normal_observation",
+    ] | None = None
+    blocking_retry_exhausted: list[str] = Field(default_factory=list)
+    graph_contract_version: str | None = None
+    execution_duration_ms: int | None = None
 
 
 class AgentRunResult(BaseModel):
@@ -39,6 +48,7 @@ class AgentRunResult(BaseModel):
     alert_id: str
     card_id: str
     evaluation_run_id: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     parent_run_id: str | None = None
@@ -107,6 +117,7 @@ class ModelInferenceSnapshot(BaseModel):
 class ExternalDataRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    substation_uid: str
     substation_id: int
     window_start: str
     window_end: str
@@ -140,6 +151,13 @@ class ChatModelResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     output: OpsAgentOutput
+    calls: list[TokenCall] = Field(default_factory=list)
+
+
+class ChatModelAssessmentResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    assessment: EvidenceAssessment
     calls: list[TokenCall] = Field(default_factory=list)
 
 

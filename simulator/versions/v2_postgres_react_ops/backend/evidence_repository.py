@@ -64,7 +64,7 @@ def filter_ops_evidence(
 
     sections = _dict_value(source_input["sections"])
     supported = [name for name in requested_sections if name in SUPPORTED_EVIDENCE_SECTIONS]
-    unsupported = [
+    unsupported: list[JsonValue] = [
         name for name in requested_sections if name not in SUPPORTED_EVIDENCE_SECTIONS
     ]
     return {
@@ -85,8 +85,7 @@ def evidence_context_query():
         "join priority_decisions pd on pd.priority_decision_id = pc.priority_decision_id "
         "join windows w on w.window_id = pd.window_id "
         "left join substations s "
-        "on s.manufacturer_id = w.manufacturer_id "
-        "and s.substation_id = w.substation_id "
+        "on s.substation_uid = w.substation_uid "
         "where pc.card_id = :card_id"
     )
 

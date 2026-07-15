@@ -255,8 +255,69 @@ async def _cleanup(harness: RunnerPostgresHarness) -> None:
                 params,
             )
             await connection.execute(
+                text(f"DELETE FROM training_feedback WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
+                text(
+                    "DELETE FROM agent_policy_candidates "
+                    f"WHERE source_review_id IN (SELECT review_id FROM agent_run_reviews "
+                    f"WHERE run_id {run_filter})"
+                ),
+                params,
+            )
+            await connection.execute(
+                text(f"DELETE FROM agent_run_reviews WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
+                text(f"DELETE FROM agent_run_review_snapshots WHERE run_id {run_filter}"),
+                params,
+            )
+            for table_name in (
+                "evidence_candidates",
+                "agent_run_tasks",
+                "agent_budget_ledger",
+                "agent_run_events",
+                "agent_run_artifacts",
+                "agent_run_actions",
+            ):
+                await connection.execute(
+                    text(f"DELETE FROM {table_name} WHERE run_id {run_filter}"),
+                    params,
+                )
+            await connection.execute(
+                text(f"DELETE FROM human_review_tasks WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
+                text(f"DELETE FROM agent_runs WHERE run_id {run_filter}"),
+                params,
+            )
+            await connection.execute(
+                text("DELETE FROM ops_alert_queue WHERE alert_id = :alert_id"),
+                {"alert_id": harness.alert_id},
+            )
+            await connection.execute(
+                text("DELETE FROM priority_cards WHERE card_id = :card_id"),
+                {"card_id": harness.card_id},
+            )
+            await connection.execute(
+                text(
+                    "DELETE FROM priority_decisions "
+                    "WHERE priority_decision_id = :decision_id"
+                ),
+                {"decision_id": harness.decision_id},
+            )
+            await connection.execute(
                 text("DELETE FROM windows WHERE window_id = :window_id"),
                 {"window_id": harness.window_id},
+            )
+            await connection.execute(
+                text(
+                    "DELETE FROM substations "
+                    "WHERE manufacturer_id = 'maker' AND substation_id = 31"
+                )
             )
             await connection.execute(
                 text("DELETE FROM rag_documents WHERE document_id = :document_id"),

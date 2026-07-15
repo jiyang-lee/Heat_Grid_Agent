@@ -6,48 +6,6 @@ import asyncpg
 
 ALERT_LEVELS: Final = ("urgent", "high")
 
-ALERT_QUEUE_DDL: Final = """
-CREATE TABLE IF NOT EXISTS ops_alert_queue (
-    alert_id uuid PRIMARY KEY,
-    card_id uuid NOT NULL REFERENCES priority_cards(card_id) ON DELETE CASCADE,
-    evaluation_run_id uuid,
-    manufacturer_id text,
-    substation_id integer,
-    priority_rank integer,
-    freshness_status text,
-    priority_level text NOT NULL CHECK (priority_level IN ('urgent', 'high')),
-    priority_score double precision,
-    status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acked', 'resolved')),
-    enqueue_reason text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    acked_at timestamptz,
-    acked_by text
-)
-"""
-
-ALERT_QUEUE_COMPATIBILITY_DDL: Final = (
-    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS evaluation_run_id uuid",
-    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS manufacturer_id text",
-    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_id integer",
-    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS priority_rank integer",
-    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS freshness_status text",
-    "ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_card_id_key",
-    "CREATE UNIQUE INDEX IF NOT EXISTS ops_alert_queue_evaluation_substation_uidx "
-    "ON ops_alert_queue(evaluation_run_id, manufacturer_id, substation_id) "
-    "WHERE evaluation_run_id IS NOT NULL",
-    "CREATE INDEX IF NOT EXISTS ops_alert_queue_evaluation_idx "
-    "ON ops_alert_queue(evaluation_run_id, status, priority_score DESC)",
-    "ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_status_check",
-    "ALTER TABLE ops_alert_queue ADD CONSTRAINT ops_alert_queue_status_check "
-    "CHECK (status IN ('open', 'acked', 'resolved'))",
-)
-
-ALERT_QUEUE_TYPE_MIGRATION: Final = """
-ALTER TABLE ops_alert_queue
-ALTER COLUMN priority_score TYPE double precision
-USING priority_score::double precision
-"""
-
 ENQUEUE_ALERTS_SQL: Final = """
 WITH latest AS (
     SELECT evaluation_run_id, as_of_time
@@ -60,10 +18,11 @@ candidates AS (
     SELECT
         md5(
             'ops_alert|' || result.evaluation_run_id::text || '|' ||
-            result.manufacturer_id || '|' || result.substation_id::text
+            result.substation_uid::text
         )::uuid AS alert_id,
         result.source_card_id AS card_id,
         result.evaluation_run_id,
+        result.substation_uid,
         result.manufacturer_id,
         result.substation_id,
         result.priority_rank,
@@ -84,14 +43,14 @@ existing AS (
     FROM candidates c
     JOIN ops_alert_queue q
       ON q.evaluation_run_id = c.evaluation_run_id
-     AND q.manufacturer_id = c.manufacturer_id
-     AND q.substation_id = c.substation_id
+     AND q.substation_uid = c.substation_uid
 ),
 inserted AS (
     INSERT INTO ops_alert_queue (
         alert_id,
         card_id,
         evaluation_run_id,
+        substation_uid,
         manufacturer_id,
         substation_id,
         priority_rank,
@@ -113,10 +72,9 @@ SELECT
 
 
 async def ensure_alert_queue(conn: asyncpg.Connection) -> None:
-    await conn.execute(ALERT_QUEUE_DDL)
-    await conn.execute(ALERT_QUEUE_TYPE_MIGRATION)
-    for statement in ALERT_QUEUE_COMPATIBILITY_DDL:
-        await conn.execute(statement)
+    exists = await conn.fetchval("SELECT to_regclass('public.ops_alert_queue') IS NOT NULL")
+    if not exists:
+        raise RuntimeError("database migrations have not created ops_alert_queue")
 
 
 async def source_table_status(
@@ -140,7 +98,7 @@ async def collect_source_diagnostics(
     windows_rows: int,
 ) -> dict[str, object]:
     sensor_readings = await source_table_status(conn, "sensor_readings")
-    window_features = await source_table_status(conn, "window_features")
+    window_features = await source_table_status(conn, "model_feature_snapshots")
     raw_ready = (
         sensor_readings["status"] == "available"
         and window_features["status"] == "available"
@@ -149,7 +107,7 @@ async def collect_source_diagnostics(
         "fallback_source": "raw_db" if raw_ready else "csv_windows",
         "sources": {
             "sensor_readings": sensor_readings,
-            "window_features": window_features,
+            "model_feature_snapshots": window_features,
             "agent_priority_card_csv": {
                 "status": "available" if agent_rows > 0 else "empty",
                 "row_count": agent_rows,

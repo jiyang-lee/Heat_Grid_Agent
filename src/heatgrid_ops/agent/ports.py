@@ -21,6 +21,7 @@ from heatgrid_ops.agent.run_models import (
     AgentStreamEvent,
     ArtifactRecord,
     ChatModelResult,
+    ChatModelAssessmentResult,
     ExternalDataRequest,
     ExternalDataSnapshot,
     ModelVerificationRequest,
@@ -93,7 +94,7 @@ class ChatModelPort(Protocol):
     async def assess(
         self,
         request: EvidenceAssessmentRequest,
-    ) -> EvidenceAssessment | None: ...
+    ) -> ChatModelAssessmentResult | EvidenceAssessment | None: ...
 
     def stream(self, request: ChatModelRequest) -> AsyncIterator[AgentStreamEvent]: ...
 

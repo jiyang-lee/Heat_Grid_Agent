@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = (
-        "postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
+        "postgresql+asyncpg://heatgrid_app:heatgrid_app@127.0.0.1:55432/heatgrid_ops"
     )
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8003, ge=1, le=65535)
@@ -38,7 +38,11 @@ class Settings(BaseSettings):
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     model_score_tolerance: float = Field(default=0.12, ge=0.0, le=1.0)
+    rag_quality_enabled: bool = False
     retrain_auto_execute_enabled: bool = False
     priority_expected_substations: int = Field(default=31, ge=1)
     priority_stale_after_hours: int = Field(default=720, ge=1)
     priority_model_version: str = "active-priority-contract-v1"
+    replay_storage_root: str = "C:/var/lib/heatgrid/replay"
+    replay_enabled: bool = False
+    replay_import_enabled: bool = False

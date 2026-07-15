@@ -33,6 +33,7 @@ class FrozenDiagnosticModel(BaseModel):
 
 class DiagnosticCardSnapshot(FrozenDiagnosticModel):
     card_id: str
+    substation_uid: str
     substation_id: int | None = None
     manufacturer_id: str | None = None
     priority_level: str

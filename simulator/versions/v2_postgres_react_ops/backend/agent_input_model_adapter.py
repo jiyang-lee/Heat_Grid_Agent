@@ -7,6 +7,7 @@ from pathlib import Path
 from anyio.to_thread import run_sync
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from agent_input_snapshot_repository import get_agent_input_lineage
 from alert_repository import get_alert
 from heatgrid_ops.agent.contracts import AgentInputSnapshot, AgentRunRequest
 from heatgrid_ops.agent.models import JsonObject, JsonValue
@@ -29,6 +30,11 @@ class PostgresAgentInputModelAdapter:
     engine: AsyncEngine
 
     async def load(self, request: AgentRunRequest) -> AgentInputSnapshot | None:
+        lineage = await get_agent_input_lineage(self.engine, request.run_id)
+        if lineage is not None and lineage.status == "available":
+            if lineage.source_input is None:
+                raise ValueError("available agent input snapshot is missing")
+            return AgentInputSnapshot(source_input=lineage.source_input)
         source_input = await fetch_ops_input(self.engine, request.card_id)
         if source_input is None:
             return None
@@ -104,8 +110,9 @@ async def _evaluation_context(
     if alert is None:
         return None
     evaluation_run_id = _text(alert.get("evaluation_run_id"))
+    substation_uid = _text(alert.get("substation_uid"))
     substation_id = _integer(alert.get("substation_id"))
-    if evaluation_run_id is None or substation_id is None:
+    if evaluation_run_id is None or (substation_uid is None and substation_id is None):
         return None
     try:
         return await get_priority_evaluation_result(
@@ -113,6 +120,7 @@ async def _evaluation_context(
             evaluation_run_id,
             substation_id,
             manufacturer_id=_text(alert.get("manufacturer_id")),
+            substation_uid=substation_uid,
         )
     except (TypeError, ValueError):
         return None
@@ -125,6 +133,9 @@ def _source_identity(source_input: JsonObject) -> JsonObject:
     window = _mapping(raw_context.get("window"))
     substation = _mapping(raw_context.get("substation"))
     return {
+        "substation_uid": evaluation_result.get("substation_uid")
+        or window.get("substation_uid")
+        or substation.get("substation_uid"),
         "manufacturer_id": evaluation_result.get("manufacturer_id")
         or window.get("manufacturer_id")
         or window.get("manufacturer"),

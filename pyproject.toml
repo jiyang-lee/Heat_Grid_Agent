@@ -30,11 +30,13 @@ dependencies = [
     "openai>=2.44.0",
     "sqlalchemy>=2.0.51",
     "asyncpg>=0.31.0",
-    "langgraph-checkpoint-postgres>=3.1.0",
+    "langgraph-checkpoint-postgres==3.1.0",
 ]
 
 [project.scripts]
 third-model-pipeline = "third_model.pipeline:main"
+heatgrid-db-migrate = "heatgrid_ops.db.cli:main"
+heatgrid-replay-worker = "simulator.versions.v2_postgres_react_ops.backend.replay_worker_main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

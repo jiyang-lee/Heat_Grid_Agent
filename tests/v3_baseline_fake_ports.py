@@ -82,6 +82,7 @@ class FakeInputPort:
             },
             "raw_context": {
                 "window": {
+                    "substation_uid": "00000000-0000-0000-0000-000000000031",
                     "manufacturer_id": "manufacturer-1",
                     "substation_id": 31,
                     "window_start": "2020-01-11T00:00:00+09:00",

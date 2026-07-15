@@ -40,7 +40,7 @@ BUDGET_REPOSITORY: Final = (
     / "agent_budget_repository.py"
 )
 EXECUTION_MIGRATION: Final = (
-    ROOT / "docker" / "postgres" / "init" / "004_agent_execution.sql"
+    ROOT / "migrations" / "004_agent_execution.sql"
 )
 BASELINE = orjson.loads(FIXTURE.read_bytes())
 BEHAVIOR_SHA: Final = "8ddc0b485dbe4a7ee9601066354280cc997101d6"

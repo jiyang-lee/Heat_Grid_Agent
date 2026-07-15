@@ -49,6 +49,25 @@ class FakeSnapshotLineage:
     checkpoint: ReviewCheckpointLineage
 
 
+@pytest.fixture(autouse=True)
+def runner_input_lineage(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def unavailable_lineage(_engine, run_id: str):
+        return agent_runner.AgentInputLineage(
+            run_id=run_id,
+            source_input=None,
+            input_schema_version=None,
+            input_hash=None,
+            origin="native_v2",
+            status="unavailable",
+        )
+
+    monkeypatch.setattr(
+        agent_runner,
+        "get_agent_input_lineage",
+        unavailable_lineage,
+    )
+
+
 @pytest.mark.anyio
 async def test_runner_completes_task_before_capturing_snapshot(
     monkeypatch: pytest.MonkeyPatch,

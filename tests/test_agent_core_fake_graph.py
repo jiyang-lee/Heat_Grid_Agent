@@ -33,6 +33,7 @@ from heatgrid_ops.agent.models import ModelVerificationResult, TokenCall
 from heatgrid_ops.agent.run_models import (
     AgentRunResult,
     AgentStreamEvent,
+    ChatModelAssessmentResult,
     ArtifactRecord,
     ChatModelResult,
     ExternalDataRequest,
@@ -167,8 +168,11 @@ class FakeChatModelPort:
     async def assess(
         self,
         request: EvidenceAssessmentRequest,
-    ) -> EvidenceAssessment | None:
-        return None
+    ) -> ChatModelAssessmentResult:
+        return ChatModelAssessmentResult(
+            assessment=request.deterministic,
+            calls=[TokenCall(input_tokens=13, output_tokens=5, total_tokens=18)],
+        )
 
     async def stream(
         self,
@@ -402,6 +406,9 @@ async def run_fake_graph() -> None:
     assert result.agent_mode == "fallback"
     assert result.loop_summary is not None
     assert result.loop_summary.decision == "finalize"
+    assert result.token_usage is not None
+    assert result.token_usage.model_calls == 1
+    assert result.token_usage.total_tokens == 18
     assert external_data.calls == 1
 
 
@@ -442,6 +449,7 @@ def _source_input(card_id: str) -> dict:
         },
         "raw_context": {
             "window": {
+                "substation_uid": "00000000-0000-0000-0000-000000000031",
                 "manufacturer_id": "manufacturer 1",
                 "substation_id": 31,
                 "window_start": "2020-01-11T00:00:00+09:00",

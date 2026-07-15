@@ -14,9 +14,9 @@ from heatgrid_ops.agent.state import AgentGraphInput, AgentGraphOutput, ResultSt
 
 
 ROOT: Final = Path(__file__).resolve().parents[1]
-MIGRATION: Final = ROOT / "docker" / "postgres" / "init" / "004_agent_execution.sql"
+MIGRATION: Final = ROOT / "migrations" / "004_agent_execution.sql"
 BASE_AGENT_SCHEMA: Final = (
-    ROOT / "docker" / "postgres" / "init" / "002_agent_automation.sql"
+    ROOT / "migrations" / "002_agent_automation.sql"
 )
 
 
@@ -95,9 +95,11 @@ def test_agent_execution_migration_contract() -> None:
     assert "agent_budget_ledger_run_id_fkey" in sql
 
 
-def test_clean_init_defers_agent_base_until_predictor_dependencies_exist() -> None:
+def test_clean_init_creates_agent_base_after_canonical_dependencies() -> None:
     sql = BASE_AGENT_SCHEMA.read_text(encoding="utf-8").lower()
 
-    assert "to_regclass('public.ops_alert_queue') is null" in sql
-    assert "to_regclass('public.priority_cards') is null" in sql
-    assert "agent automation schema deferred" in sql
+    assert "create table if not exists public.ops_alert_queue" in sql
+    assert "create table if not exists public.agent_runs" in sql
+    assert sql.index("create table if not exists public.ops_alert_queue") < sql.index(
+        "create table if not exists public.agent_runs"
+    )

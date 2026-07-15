@@ -195,6 +195,13 @@ class AgentLoopSummary(BaseModel):
     model_verification: ModelVerificationResult | None = None
     review_required: bool = True
     review_task_id: str | None = None
+    disposition: Literal[
+        "urgent_review",
+        "inspection_recommended",
+        "normal_observation",
+    ] | None = None
+    blocking_retry_exhausted: list[str] = Field(default_factory=list)
+    graph_contract_version: str | None = None
 
 
 class AgentRunResponse(BaseModel):
@@ -204,6 +211,7 @@ class AgentRunResponse(BaseModel):
     alert_id: str
     card_id: str
     evaluation_run_id: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     parent_run_id: str | None = None
@@ -297,6 +305,8 @@ class HumanReviewTask(BaseModel):
     status: ReviewTaskStatus
     risk_level: Literal["low", "medium", "high", "critical"]
     title: str
+    subject_type: str
+    subject_key: str
     run_id: str | None = None
     candidate_id: str | None = None
     retrain_job_id: str | None = None
@@ -313,6 +323,7 @@ class ReviewTaskSubmitRequest(BaseModel):
     decision: Literal["approve", "reject", "correct"]
     reviewer: str
     reason: str = ""
+    reason_category: str | None = None
     corrected_output: OpsAgentOutput | None = None
     corrected_label: str | None = None
     metadata: JsonObject = Field(default_factory=dict)
@@ -321,6 +332,7 @@ class ReviewTaskSubmitRequest(BaseModel):
 class TrainingFeedback(BaseModel):
     feedback_id: str
     task_id: str
+    source_review_id: str
     run_id: str | None = None
     card_id: str | None = None
     reviewer: str
@@ -452,6 +464,7 @@ class PriorityEvaluationRun(BaseModel):
 class PriorityEvaluationResult(BaseModel):
     evaluation_result_id: str
     evaluation_run_id: str
+    substation_uid: str
     manufacturer_id: str
     substation_id: int
     source_window_id: str | None = None
@@ -513,6 +526,7 @@ class AlertSummary(BaseModel):
     card_id: str
     evaluation_run_id: str | None = None
     as_of_time: str | None = None
+    substation_uid: str | None = None
     manufacturer_id: str | None = None
     substation_id: int | None = None
     priority_rank: int | None = None

@@ -115,6 +115,7 @@ def build_diagnostic_input(state: AgentState) -> DiagnosticWorkerInput:
         run_id=state.request.run_id,
         card=DiagnosticCardSnapshot(
             card_id=state.request.card_id,
+            substation_uid=str(window.get("substation_uid") or ""),
             substation_id=_integer(window.get("substation_id")),
             manufacturer_id=_string(window.get("manufacturer_id")),
             priority_level=str(priority.get("priority_level") or "unknown").lower(),

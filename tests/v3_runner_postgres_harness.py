@@ -11,6 +11,7 @@ from psycopg import AsyncConnection
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from heatgrid_ops.agent.assessment import EvidenceAssessment
@@ -95,7 +96,9 @@ class RunnerPostgresHarness:
         database_url = os.getenv("HEATGRID_TEST_DATABASE_URL", DEFAULT_DATABASE_URL)
         await _apply_migrations(database_url)
         harness = cls(
-            engine=create_async_engine(database_url),
+            engine=create_async_engine(
+                make_url(database_url).set(drivername="postgresql+asyncpg")
+            ),
             database_url=database_url,
             window_id=str(uuid4()),
             decision_id=str(uuid4()),
@@ -193,10 +196,11 @@ class RunnerPostgresHarness:
     async def _seed(self) -> None:
         embedding = vector_literal(hash_embedding(self.rag_query))
         statements = (
-            ("INSERT INTO windows (window_id, manufacturer_id, substation_id, window_start, window_end) VALUES (:window_id, 'maker', 31, now() - interval '1 hour', now())", {"window_id": self.window_id}),
+            ("INSERT INTO substations (manufacturer_id, substation_id) VALUES ('maker', 31) ON CONFLICT (manufacturer_id, substation_id) DO NOTHING", {}),
+            ("INSERT INTO windows (window_id, substation_uid, manufacturer_id, substation_id, window_start, window_end) VALUES (:window_id, (SELECT substation_uid FROM substations WHERE manufacturer_id = 'maker' AND substation_id = 31), 'maker', 31, now() - interval '1 hour', now())", {"window_id": self.window_id}),
             ("INSERT INTO priority_decisions (priority_decision_id, window_id, priority_level) VALUES (:decision_id, :window_id, 'high')", {"decision_id": self.decision_id, "window_id": self.window_id}),
             ("INSERT INTO priority_cards (card_id, priority_decision_id, review_required) VALUES (:card_id, :decision_id, true)", {"card_id": self.card_id, "decision_id": self.decision_id}),
-            ("INSERT INTO ops_alert_queue (alert_id, card_id, priority_level, enqueue_reason) VALUES (:alert_id, :card_id, 'high', 'runner review test')", {"alert_id": self.alert_id, "card_id": self.card_id}),
+            ("INSERT INTO ops_alert_queue (alert_id, card_id, substation_uid, manufacturer_id, substation_id, priority_level, enqueue_reason) VALUES (:alert_id, :card_id, (SELECT substation_uid FROM substations WHERE manufacturer_id = 'maker' AND substation_id = 31), 'maker', 31, 'high', 'runner review test')", {"alert_id": self.alert_id, "card_id": self.card_id}),
             ("INSERT INTO rag_documents (document_id, title, document_type, source_path, source_owner) VALUES (:document_id, 'Operator manual', 'operator_manual_evidence', :source_path, 'operations')", {"document_id": self.rag_document_id, "source_path": self.rag_source_path}),
             ("INSERT INTO rag_chunks (chunk_id, document_id, chunk_text, section_title, embedding) VALUES (:chunk_id, :document_id, :chunk_text, 'Inspection', CAST(:embedding AS vector))", {"chunk_id": self.rag_chunk_id, "document_id": self.rag_document_id, "chunk_text": self.rag_query, "embedding": embedding}),
         )

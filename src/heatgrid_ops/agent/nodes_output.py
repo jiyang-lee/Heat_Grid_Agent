@@ -51,6 +51,7 @@ async def generate_operational_answer(
         state.request.card_id,
     )
     usage.calls.extend(state.evidence.diagnostic_calls)
+    usage.calls.extend(state.evidence.assessment_calls)
     try:
         output = await context.runtime.generate_llm_output(
             state.request.source_input,
@@ -92,6 +93,7 @@ async def generate_fallback_output(
     )
     if state.output.token_usage is None:
         usage.calls.extend(state.evidence.diagnostic_calls)
+        usage.calls.extend(state.evidence.assessment_calls)
     return {
         "output": state.output.model_copy(
             update={

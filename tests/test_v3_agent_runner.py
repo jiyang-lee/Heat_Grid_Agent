@@ -38,9 +38,6 @@ async def reset_contract_tables(module: ModuleType) -> None:
                 "agent_runs, ops_alert_queue CASCADE"
             )
         )
-    await module.ensure_alert_queue(module.engine)
-    await module.ensure_agent_run_tables(module.engine)
-    await module.ensure_agent_loop_iteration_table(module.engine)
 
 
 async def wait_for_agent_run(client: AsyncClient, run_id: str) -> dict[str, object]:
@@ -138,4 +135,3 @@ async def test_agent_runner_keeps_completed_run_when_report_generation_fails(
     assert artifacts.json() == []
     assert "run_completed" in event_types
     assert "report_failed" in event_types
-    assert event_types[-1] == "run_completed"

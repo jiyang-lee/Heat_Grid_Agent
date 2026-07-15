@@ -106,6 +106,7 @@ def _request(
         run_id="run-1",
         card=DiagnosticCardSnapshot(
             card_id="card-1",
+            substation_uid="00000000-0000-0000-0000-000000000031",
             substation_id=31,
             manufacturer_id="manufacturer-1",
             priority_level="high",
