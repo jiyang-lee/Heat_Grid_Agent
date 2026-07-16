@@ -31,7 +31,6 @@
 
 | 파일 | 사유 |
 | --- | --- |
-| `frontend/src/main.tsx` | develop2 버그(#1) 우회용 **로컬 전용** 수정(미설치 devtools import 비활성화). 코드 주석에 "커밋/push 금지, 조원 upstream 정리 대상" 명시 |
 | `frontend/.env.local` | `VITE_USE_MOCK=true` (gitignore 대상) |
 | `scenario/scenario.css` | 작업 중 2회 수정했으나 **서로 상쇄되어 원본과 동일**(아래 "해결한 문제" 참조) → 커밋 대상 없음 |
 
@@ -107,11 +106,14 @@
 
 | # | 파일 | 증상 |
 | --- | --- | --- |
-| 1 | `main.tsx` | 미설치 `react-grab`/`react-scan` 정적 import → dev 서버 500(백지). **현재 로컬에서만 우회 중 — 미커밋** |
 | 2 | `api/contracts.ts` | 타입 26개 중복 선언 → `tsc` 실패 |
 | 3 | `api/mockApi.ts` | export 6개 누락 → `backend.ts`에서 `mock.alertsApi`가 undefined → **mock 정상 모드에서 알림·AI 활동 데이터가 0/빈 상태**(고장 모드는 시나리오 데이터라 정상) |
 | 4 | `scenario/ScenarioReportWorkspace.tsx` | 없는 속성 `changeNote` 사용(→`changeSummary`) |
 | 5 | `console/ai-activity/ExecutionDetail.tsx` | `review.data.result` 잘못된 접근 + 영어 라벨 잔존 |
+
+> **정정 (2026-07-16) — 초기 리포트의 #1은 철회한다.**
+> 초기 리포트에 "`main.tsx`가 package.json에 없는 `react-grab`/`react-scan`을 import해 dev 서버가 500(백지)"이라고 적었으나 **사실이 아니다.** 두 패키지는 `package.json`(`react-grab ^0.1.48`, `react-scan ^0.5.7`)과 `package-lock.json`에 정상 선언돼 있었고, develop2를 `e7c01d6`(팀 공용 실행 환경 구성)으로 갱신한 뒤 `npm install`을 다시 돌리지 않아 **로컬 `node_modules`에만 없던 로컬 환경 문제**였다. `npm install` 실행 후 **원본 `main.tsx` 그대로 dev 서버·앱 렌더·설정 페이지 정상 동작을 확인**했고, 우회용으로 넣었던 로컬 수정은 폐기했다.
+> → develop2를 새로 받거나 갱신했는데 dev 서버가 백지라면 **`cd frontend && npm install`** 을 먼저 실행할 것.
 
 **이번 작업에서 남긴 것**
 
