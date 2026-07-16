@@ -43,7 +43,7 @@ function squareFootprint(lng: number, lat: number, halfMeters: number): number[]
   ]
 }
 
-export function buildComplexFootprints(results: PriorityEvaluationResult[]): FeatureCollection<Polygon> {
+export function buildComplexFootprints(results: readonly PriorityEvaluationResult[]): FeatureCollection<Polygon> {
   const byId = new Map(results.map((result) => [result.substation_id, result]))
   return {
   type: 'FeatureCollection',
@@ -73,7 +73,7 @@ export function buildComplexFootprints(results: PriorityEvaluationResult[]): Fea
   }
 }
 
-export function buildComplexMarkers(results: PriorityEvaluationResult[]): FeatureCollection<Point> {
+export function buildComplexMarkers(results: readonly PriorityEvaluationResult[]): FeatureCollection<Point> {
   const byId = new Map(results.map((result) => [result.substation_id, result]))
   return {
     type: 'FeatureCollection',

@@ -1,9 +1,9 @@
 import type { PriorityEvaluationResult } from '../api/contracts'
-import type { EvaluationCategory, ScenarioAlert, SensorPoint, WorkOrderSection, WorkOrderVersion } from './types'
+import type { EvaluationCategory, ScenarioAlert, ScenarioTimelineAlert, SensorPoint, WorkOrderSection, WorkOrderVersion } from './types'
 
 export const ACTIVE_SCENARIO_ID = 'return-temperature-2020-01-13'
 export const SCENARIO_START_AT = '2020-01-13T14:50:00+09:00'
-export const SCENARIO_INCIDENT_AT = '2020-01-13T15:00:00+09:00'
+export const SCENARIO_INCIDENT_AT = '2020-01-13T15:10:00+09:00'
 
 export const SCENARIO_ALERTS: readonly ScenarioAlert[] = [
   {
@@ -47,6 +47,30 @@ export const SCENARIO_ALERTS: readonly ScenarioAlert[] = [
   },
 ]
 
+function roundedLeadTime(hours: number): number {
+  return Math.round(hours * 10) / 10
+}
+
+function alertWithElapsedTime(alert: ScenarioAlert, simulatedAt: string): ScenarioTimelineAlert {
+  const elapsedHours = Math.max(0, (Date.parse(simulatedAt) - Date.parse(alert.detectedAt)) / 3_600_000)
+  const leadTimeHours = roundedLeadTime(Math.max(0, alert.leadTimeHours - elapsedHours))
+  const resolvedAt = new Date(Date.parse(alert.detectedAt) + alert.leadTimeHours * 3_600_000).toISOString()
+  const status = leadTimeHours === 0 ? 'resolved' : 'active'
+  const evidence = alert.evidence.map((item, index) => index === 1 ? `예상 출동 리드타임 ${leadTimeHours}시간` : item)
+  return { ...alert, leadTimeHours, evidence, status, resolvedAt: status === 'resolved' ? resolvedAt : null }
+}
+
+export function scenarioAlertsAt(simulatedAt: string): { readonly active: readonly ScenarioTimelineAlert[]; readonly history: readonly ScenarioTimelineAlert[] } {
+  const simulatedTime = Date.parse(simulatedAt)
+  const timeline = SCENARIO_ALERTS
+    .filter((alert) => Date.parse(alert.detectedAt) <= simulatedTime)
+    .map((alert) => alertWithElapsedTime(alert, simulatedAt))
+  return {
+    active: timeline.filter((alert) => alert.status === 'active'),
+    history: timeline.filter((alert) => alert.status === 'resolved'),
+  }
+}
+
 const normalSeed = [
   [76.1, 41.5, 116], [76.8, 42.2, 122], [75.9, 41.6, 117], [75.2, 43.1, 112],
   [76.6, 41.7, 120], [76.1, 41.5, 118], [76.5, 42.6, 121], [75.8, 41.4, 117],
@@ -88,7 +112,8 @@ export function fallbackSensorPoint(mode: 'normal' | 'fault', substationId: numb
   }
 }
 
-export const SCENARIO_PRIORITY_ROWS: readonly PriorityEvaluationResult[] = SCENARIO_ALERTS.map((alert, index) => ({
+export function scenarioPriorityRows(alerts: readonly ScenarioAlert[]): readonly PriorityEvaluationResult[] {
+  return alerts.map((alert, index) => ({
   evaluation_result_id: `scenario-result-${alert.substationId}`,
   evaluation_run_id: 'scenario-evaluation-20200113',
   manufacturer_id: 'scenario-replay',
@@ -112,7 +137,10 @@ export const SCENARIO_PRIORITY_ROWS: readonly PriorityEvaluationResult[] = SCENA
   data_age_seconds: 0,
   model_components: { scenario: true, priority: alert.priority },
   created_at: alert.detectedAt,
-}))
+  }))
+}
+
+export const SCENARIO_PRIORITY_ROWS = scenarioPriorityRows(SCENARIO_ALERTS)
 
 function deadlineFor(alert: ScenarioAlert): string {
   const deadline = new Date(new Date(alert.detectedAt).getTime() + alert.leadTimeHours * 3_600_000)

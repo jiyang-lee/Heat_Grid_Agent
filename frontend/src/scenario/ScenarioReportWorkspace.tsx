@@ -16,7 +16,7 @@ function reportText(alert: ScenarioAlert, order: WorkOrderVersion): string {
     `- 대상 설비: ${alert.facility} (기계실 ${alert.substationId})`,
     `- 사고 유형: ${alert.title}`,
     `- 우선순위: ${alert.priority.toUpperCase()} · 출동 제한 ${alert.leadTimeHours.toFixed(1)}시간`,
-    `- 기준 작업지시서: v${order.version} (${order.changeNote})`, '',
+    `- 기준 작업지시서: v${order.version} (${order.changeSummary})`, '',
     '## 2. 사고 타임라인',
     '- 14:30 정상 범위 이탈 전조를 확인하고 해당 기계실 센서 흐름을 집중 모니터링했습니다.',
     '- 15:00 센서 이상과 동시다발 경보 3건을 감지해 우선순위 산정을 시작했습니다.',

@@ -1,29 +1,16 @@
+import { useState } from 'react'
 import { useScenario } from '../scenario/useScenario'
 import type { SensorPoint } from '../scenario/types'
-import { Icon, type IconName } from './icons'
+import { Icon } from './icons'
 import { SurfaceCard } from './ui'
 
 type SensorKey = 'supply' | 'returnTemperature' | 'flow'
 
-interface MetricDef {
-  readonly key: SensorKey
-  readonly label: string
-  readonly unit: string
-  readonly icon: IconName
-  readonly min: number
-  readonly max: number
-  readonly className: string
-}
-
-const METRICS: readonly MetricDef[] = [
-  { key: 'supply', label: '공급온도', unit: '°C', icon: 'thermometer', min: 75, max: 85, className: 'sf-supply' },
-  { key: 'returnTemperature', label: '환수온도', unit: '°C', icon: 'thermometer', min: 40, max: 50, className: 'sf-return' },
-  { key: 'flow', label: '유량', unit: 'm³/h', icon: 'flow', min: 100, max: 130, className: 'sf-flow' },
-]
-
 const CHART_W = 720
 const CHART_H = 300
-const PLOT = { top: 28, right: 24, bottom: 42, left: 48 } as const
+const PLOT = { top: 28, right: 18, bottom: 42, left: 48 } as const
+const LIVE_PROGRESS = 0.75
+const AXIS_POSITIONS = [0, 0.25, 0.5, 0.625, LIVE_PROGRESS, 1] as const
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
 
@@ -33,12 +20,11 @@ function historyDate(value: string): Date {
 
 function formatAxis(value: string): string {
   const date = historyDate(value)
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  return formatDateAxis(date)
 }
 
-function formatReceivedAt(value: string): string {
-  const date = historyDate(value)
-  return `${date.getFullYear()}.${pad2(date.getMonth() + 1)}.${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+function formatDateAxis(date: Date): string {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
 }
 
 interface LineSpec {
@@ -62,20 +48,49 @@ interface ChartProps {
   readonly data: readonly SensorPoint[]
 }
 
+interface HoveredPoint {
+  readonly index: number
+  readonly line: LineSpec
+  readonly point: SensorPoint
+}
+
 function SensorChart({ title, unit, domain, lines, bands, data }: ChartProps) {
+  const [hovered, setHovered] = useState<HoveredPoint | null>(null)
   const plotW = CHART_W - PLOT.left - PLOT.right
   const plotH = CHART_H - PLOT.top - PLOT.bottom
-  const xAt = (index: number) => PLOT.left + (index / Math.max(1, data.length - 1)) * plotW
+  const xAt = (index: number) => PLOT.left + (index / Math.max(1, data.length - 1)) * plotW * LIVE_PROGRESS
   const yAt = (value: number) => PLOT.top + plotH - ((value - domain[0]) / (domain[1] - domain[0])) * plotH
   const gridValues = Array.from({ length: 5 }, (_, index) => domain[0] + ((domain[1] - domain[0]) * index) / 4)
-  const labelIndexes = [...new Set([0, 3, 6, 9, data.length - 1])].filter((index) => index >= 0 && index < data.length)
   const lastIndex = data.length - 1
+  const currentAt = data[lastIndex] ? historyDate(data[lastIndex].at) : null
+  const axisLayout = currentAt ? (() => {
+    const twoHoursBeforeCurrent = new Date(currentAt)
+    twoHoursBeforeCurrent.setHours(twoHoursBeforeCurrent.getHours() - 2)
+    const ninetyMinutesBeforeCurrent = new Date(currentAt)
+    ninetyMinutesBeforeCurrent.setMinutes(ninetyMinutesBeforeCurrent.getMinutes() - 90)
+    const sixtyMinutesBeforeCurrent = new Date(currentAt)
+    sixtyMinutesBeforeCurrent.setHours(sixtyMinutesBeforeCurrent.getHours() - 1)
+    const tenMinutesBeforeCurrent = new Date(currentAt)
+    tenMinutesBeforeCurrent.setMinutes(tenMinutesBeforeCurrent.getMinutes() - 10)
+    const thirtyMinutesAfterCurrent = new Date(currentAt)
+    thirtyMinutesAfterCurrent.setMinutes(thirtyMinutesAfterCurrent.getMinutes() + 30)
+    return {
+      dates: [twoHoursBeforeCurrent, ninetyMinutesBeforeCurrent, sixtyMinutesBeforeCurrent, tenMinutesBeforeCurrent, currentAt, thirtyMinutesAfterCurrent],
+      positions: AXIS_POSITIONS,
+    }
+  })() : { dates: [], positions: [] }
+  const axisDates = axisLayout.dates
+  const futureAt = axisDates.at(-1) ?? null
+  const axisPositions = axisLayout.positions.length > 0 ? axisLayout.positions : AXIS_POSITIONS
+  const hoverValue = hovered?.point[hovered.line.key]
+  const tooltipX = hovered ? Math.min(Math.max(xAt(hovered.index), 110), CHART_W - 110) : 0
+  const tooltipY = hovered && hoverValue != null ? Math.max(PLOT.top + 28, yAt(hoverValue) - 30) : 0
 
   return (
     <article className="sf-chart-card">
       <header className="sf-chart-header">
-        <div><h3>{title}</h3><div className="sf-chart-legend">{lines.map((line) => <span key={line.key}><i style={{ background: line.color }} />{line.label}</span>)}</div></div>
-        <span>단위: {unit}</span>
+        <h3>{title} <span className="sf-chart-unit">단위: {unit}</span></h3>
+        <div className="sf-chart-legend">{lines.map((line) => <span key={line.key}><i style={{ background: line.color }} />{line.label}</span>)}</div>
       </header>
       <svg aria-label={`${title} 센서 시계열 차트`} className="sf-history-chart" role="img" viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
         {bands.map((band) => <rect fill={band.color} height={Math.abs(yAt(band.min) - yAt(band.max))} key={`${band.min}-${band.max}`} opacity="0.5" width={plotW} x={PLOT.left} y={yAt(band.max)} />)}
@@ -84,45 +99,32 @@ function SensorChart({ title, unit, domain, lines, bands, data }: ChartProps) {
         {lines.map((line) => {
           const points = data.map((point, index) => `${xAt(index)},${yAt(point[line.key])}`).join(' ')
           const last = data[lastIndex]?.[line.key] ?? 0
-          return <g key={line.key}><polyline fill="none" points={points} stroke={line.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />{data.map((point, index) => <circle className={index === lastIndex ? 'sf-new-point' : ''} cx={xAt(index)} cy={yAt(point[line.key])} fill={line.color} key={`${line.key}-${point.at}`} r={index === lastIndex ? 5 : 3.5} stroke="#fff" strokeWidth="1.5" />)}<text className="sf-current-value" fill={line.color} textAnchor="end" x={xAt(lastIndex) - 9} y={yAt(last) - 9}>{last.toFixed(1)}</text></g>
+          return <g key={line.key}><polyline fill="none" points={points} stroke={line.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />{data.map((point, index) => <circle aria-label={`${line.label} ${formatAxis(point.at)} ${point[line.key].toFixed(1)} ${unit}`} className={`sf-chart-point ${index === lastIndex ? 'sf-new-point' : ''}`.trim()} cx={xAt(index)} cy={yAt(point[line.key])} fill={line.color} key={`${line.key}-${point.at}`} onBlur={() => setHovered(null)} onFocus={() => setHovered({ index, line, point })} onMouseEnter={() => setHovered({ index, line, point })} onMouseLeave={() => setHovered(null)} r={index === lastIndex ? 5 : 3.5} stroke="#fff" strokeWidth="1.5" tabIndex={0} />)}<text className="sf-current-value" fill={line.color} textAnchor="end" x={xAt(lastIndex) - 9} y={yAt(last) - 9}>{last.toFixed(1)}</text></g>
         })}
-        {labelIndexes.map((index) => { const point = data[index]; return point ? <text className="sf-x-label" key={point.at} textAnchor={index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'} x={xAt(index)} y={CHART_H - 14}>{formatAxis(point.at)}</text> : null })}
+        {axisDates.map((date, index) => <text className={`sf-x-label ${date === futureAt ? 'sf-future-label' : ''}`.trim()} key={date.getTime()} textAnchor={index === 0 ? 'start' : date === futureAt ? 'end' : 'middle'} x={PLOT.left + plotW * axisPositions[index]} y={CHART_H - 14}>{formatDateAxis(date)}</text>)}
+        {hovered && hoverValue != null && <g className="sf-chart-tooltip" pointerEvents="none" transform={`translate(${tooltipX - 96} ${tooltipY - 24})`}><rect height="48" rx="7" width="192" /><text x="12" y="20">{formatAxis(hovered.point.at)} · {hovered.line.label}</text><text className="sf-tooltip-value" x="12" y="38">{hoverValue.toFixed(1)} {unit}</text></g>}
       </svg>
     </article>
   )
 }
 
 export default function SensorFlowCard() {
-  const { sensor, alerts, state: scenarioState } = useScenario()
+  const { sensor } = useScenario()
   const data = sensor.state.points
   const latest = data.at(-1)
   if (!latest) return null
-  const selectedAlert = alerts.find((alert) => alert.id === scenarioState.selectedAlertId)
 
   return (
     <SurfaceCard
       action={
-        <div className="sf-head">
-          <span className="sf-sub">기계실 {sensor.state.substationId}</span>
-          <span className="sf-divider" />
-          <span className="sf-sub">최근 2시간 · 10분 간격</span>
-          <div className="sf-right">
-            <span className="sf-received">최근 데이터 {formatReceivedAt(latest.at)}</span>
-            <button className="sf-pause-button" onClick={sensor.togglePaused} type="button"><Icon name={sensor.state.paused ? 'arrow' : 'more'} />{sensor.state.paused ? '재개' : '일시정지'}</button>
-          </div>
+        <div className="sf-right">
+          <span className="sf-title-meta">기계실 {sensor.state.substationId} · 최근 2시간 · 10분 간격</span>
+          <button className="sf-pause-button" onClick={sensor.togglePaused} type="button"><Icon name={sensor.state.paused ? 'arrow' : 'more'} />{sensor.state.paused ? '재개' : '일시정지'}</button>
         </div>
       }
       className="sensor-flow"
-      title="실시간 센서 흐름"
+      title="GRAPH"
     >
-      <div className="sensor-tiles">
-        {METRICS.map((metric) => {
-          const value = latest[metric.key]
-          const normal = value >= metric.min && value <= metric.max
-          const incidentFocus = scenarioState.incidentState === 'incident-active' && selectedAlert?.affectedMetric === metric.key
-          return <article className={`sensor-tile ${metric.className} ${incidentFocus ? 'is-incident-focus' : ''}`.trim()} key={metric.key}><div className="sensor-tile-main"><span className="tile-icon"><Icon name={metric.icon} /></span><div><p>{metric.label}</p><strong>{value.toFixed(1)} <em>{metric.unit}</em></strong></div><span className={`sf-status ${normal ? 'normal' : 'warning'}`}><i />{incidentFocus ? '이상 감지' : normal ? '정상' : '범위 이탈'}</span></div></article>
-        })}
-      </div>
       <div className="sf-charts">
         <SensorChart bands={[{ min: 75, max: 85, color: 'var(--ops-critical-soft)' }, { min: 40, max: 50, color: 'var(--ops-primary-soft)' }]} data={data} domain={[30, 90]} lines={[{ key: 'supply', label: '공급온도', color: 'var(--ops-critical)' }, { key: 'returnTemperature', label: '환수온도', color: 'var(--ops-sensor-return)' }]} title="공급·환수 온도" unit="°C" />
         <SensorChart bands={[{ min: 100, max: 130, color: 'var(--ops-primary-soft)' }]} data={data} domain={[80, 160]} lines={[{ key: 'flow', label: '유량', color: 'var(--ops-sensor-flow)' }]} title="유량" unit="m³/h" />

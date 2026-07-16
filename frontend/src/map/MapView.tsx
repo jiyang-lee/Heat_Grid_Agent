@@ -10,7 +10,7 @@ import { buildComplexFootprints, buildComplexMarkers, SEJONG_CENTER } from './fo
 interface Props {
   onSelectComplex: (id: number) => void
   theme: 'dark' | 'light'
-  results: PriorityEvaluationResult[]
+  results: readonly PriorityEvaluationResult[]
   loading: boolean
   error: boolean
 }
@@ -25,7 +25,7 @@ function whenStyleReady(map: maplibregl.Map, cb: () => void) {
 }
 
 /** 단지 소스/레이어 추가(초기 및 스타일 교체 후 공통). 스타일 교체 시 커스텀 레이어가 지워지므로 재구성. */
-const HOME_ZOOM = 11
+const HOME_ZOOM = 13.3
 const FOOTPRINT_LAYER = 'complexes-3d'
 const MARKER_SOURCE = 'complex-markers'
 const MARKER_LAYER = 'complex-markers-dot'
@@ -67,7 +67,7 @@ class FitAllControl implements maplibregl.IControl {
 
 function addComplexLayers(
   map: maplibregl.Map,
-  results: PriorityEvaluationResult[],
+  results: readonly PriorityEvaluationResult[],
 ) {
   // 베이스맵 자체 3D 건물(예: Streets 'Building 3D') 제거.
   // MapLibre는 모든 fill-extrusion을 첫 돌출 레이어 위치에서 한 패스로 그려서,

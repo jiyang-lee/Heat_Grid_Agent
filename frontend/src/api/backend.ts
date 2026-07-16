@@ -1,31 +1,24 @@
-/**
- * API 소스 스위치. USE_MOCK이면 mock, 아니면 real client.
- * 훅/화면은 항상 여기서 import한다(계약 표면 단일 진입점).
- */
-
-import { USE_MOCK } from './config'
-import * as real from './client'
-import * as mock from './mockApi'
-
-export const alertsApi = USE_MOCK ? mock.alertsApi : real.alertsApi
-export const agentRunsApi = USE_MOCK ? mock.agentRunsApi : real.agentRunsApi
-export const workOrdersApi = USE_MOCK ? mock.workOrdersApi : real.workOrdersApi
-export const agentReportsApi = USE_MOCK ? mock.agentReportsApi : real.agentReportsApi
-export const agentRunEvaluationsApi = USE_MOCK ? mock.agentRunEvaluationsApi : real.agentRunEvaluationsApi
-export const operatorReviewsApi = USE_MOCK ? mock.operatorReviewsApi : real.operatorReviewsApi
-export const reviewChatApi = USE_MOCK ? mock.reviewChatApi : real.reviewChatApi
-export const replayApi = USE_MOCK ? mock.replayApi : real.replayApi
-export const agentQualityApi = USE_MOCK ? mock.agentQualityApi : real.agentQualityApi
-export const policyCandidatesApi = USE_MOCK ? mock.policyCandidatesApi : real.policyCandidatesApi
-export const operationsMetricsApi = USE_MOCK ? mock.operationsMetricsApi : real.operationsMetricsApi
-export const healthApi = USE_MOCK ? mock.healthApi : real.healthApi
-export const priorityEvaluationsApi = USE_MOCK ? mock.priorityEvaluationsApi : real.priorityEvaluationsApi
-export const reviewTasksApi = USE_MOCK ? mock.reviewTasksApi : real.reviewTasksApi
-export const evidenceCandidatesApi = USE_MOCK ? mock.evidenceCandidatesApi : real.evidenceCandidatesApi
-export const trainingFeedbackApi = USE_MOCK ? mock.trainingFeedbackApi : real.trainingFeedbackApi
-export const automationPolicyApi = USE_MOCK ? mock.automationPolicyApi : real.automationPolicyApi
-export const retrainJobsApi = USE_MOCK ? mock.retrainJobsApi : real.retrainJobsApi
-export const modelCandidatesApi = USE_MOCK ? mock.modelCandidatesApi : real.modelCandidatesApi
-export const subscribeSse = USE_MOCK ? mock.subscribeSse : real.subscribeSse
-export const alertEventsPath = real.alertEventsPath
-export const agentRunEventsPath = real.agentRunEventsPath
+export {
+  alertsApi,
+  agentRunsApi,
+  workOrdersApi,
+  agentReportsApi,
+  agentRunEvaluationsApi,
+  operatorReviewsApi,
+  reviewChatApi,
+  replayApi,
+  agentQualityApi,
+  policyCandidatesApi,
+  operationsMetricsApi,
+  healthApi,
+  priorityEvaluationsApi,
+  reviewTasksApi,
+  evidenceCandidatesApi,
+  trainingFeedbackApi,
+  automationPolicyApi,
+  retrainJobsApi,
+  modelCandidatesApi,
+  subscribeSse,
+  alertEventsPath,
+  agentRunEventsPath,
+} from './client'

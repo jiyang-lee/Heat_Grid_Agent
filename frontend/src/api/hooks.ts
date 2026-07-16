@@ -417,7 +417,7 @@ export function useRunCostBreakdown(runId: string | null) {
   })
 }
 
-export function useReviewChatThreadOpen(runId: string | null) {
+export function useReviewChatThreadOpen() {
   return useMutation({
     mutationFn: (value: ReviewChatOpenRequest & { runId: string }) =>
       reviewChatApi.open(value.runId, { created_by: value.created_by, idempotency_key: value.idempotency_key }),

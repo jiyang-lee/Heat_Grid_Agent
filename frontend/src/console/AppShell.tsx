@@ -45,10 +45,11 @@ interface Props {
   readonly simulatedAt: string | null
   readonly alertCount?: number
   readonly onExit: () => void
+  readonly onRefresh?: () => void
   readonly children: ReactNode
 }
 
-export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, onExit, children }: Props) {
+export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, onExit, onRefresh, children }: Props) {
   const [collapsed, setCollapsed] = useState(true)
   const now = useClock()
   const queryClient = useQueryClient()
@@ -61,6 +62,7 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
   const pageLabel = pageLabels[page]
 
   const refreshAll = () => {
+    onRefresh?.()
     void Promise.allSettled([
       queryClient.refetchQueries({ queryKey: qk.prioritySnapshot }),
       queryClient.refetchQueries({ queryKey: ['alerts'] }),
@@ -95,6 +97,11 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <button className="profile-button sidebar-profile" type="button">
+            <span><Icon name="users" /></span>
+            <strong>운영자</strong>
+            <Icon className="profile-chevron" name="chevron" />
+          </button>
           <button aria-label={collapsed ? '메뉴 펼치기' : '메뉴 접기'} className="sidebar-collapse" onClick={toggleCollapsed} type="button">
             <Icon name="chevron" />
           </button>
@@ -102,27 +109,22 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
       </aside>
       <div className="ops-content-shell">
         <header className="ops-topbar">
-          <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong><span>{pageLabel.summary}</span></div></div>
+          <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong>{page !== 'dashboard' && <span>{pageLabel.summary}</span>}</div></div>
           <div className="topbar-tools">
             <span className={`topbar-mode mode-${mode}`}><i />{mode === 'fault' ? '고장 시나리오' : '정상 운영'}</span>
             <div className="topbar-clock">
               <strong>{time}</strong>
               <span>{date}</span>
             </div>
-            <button className="refresh-button" onClick={refreshAll} type="button">
-              <Icon name="refresh" />
-              새로고침
-            </button>
-            <button className="version-exit-button" onClick={onExit} type="button"><Icon name="x" />버전 종료</button>
             <button aria-label={`열린 알림 ${openCount}개`} className="notification-button" onClick={() => onPageChange('alerts')} type="button">
               <Icon name="bell" />
               {openCount > 0 && <b>{openCount}</b>}
             </button>
-            <button className="profile-button" type="button">
-              <span><Icon name="users" /></span>
-              <strong>운영자</strong>
-              <Icon className="profile-chevron" name="chevron" />
+            <button className="refresh-button" onClick={refreshAll} type="button">
+              <Icon name="refresh" />
+              새로고침
             </button>
+            <button className="version-exit-button" onClick={onExit} type="button"><Icon name="x" />시나리오 종료</button>
           </div>
         </header>
         <main className="ops-main">{children}</main>

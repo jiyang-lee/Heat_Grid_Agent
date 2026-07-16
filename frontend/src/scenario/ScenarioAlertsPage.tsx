@@ -37,7 +37,7 @@ function leadTimeFilterFrom(value: string): LeadTimeFilter {
 }
 
 export function ScenarioAlertsPage({ initialAlertId, onOpenAiAction }: Props) {
-  const { alerts, completeAnalysis, dismissAnalysisToast, selectAlert, sensor, startAnalysis, state } = useScenario()
+  const { alertHistory, alerts, completeAnalysis, dismissAnalysisToast, selectAlert, sensor, startAnalysis, state } = useScenario()
   const [detailId, setDetailId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
@@ -76,7 +76,7 @@ export function ScenarioAlertsPage({ initialAlertId, onOpenAiAction }: Props) {
 
   return <div className="page-stack alert-page scenario-alert-page">
     <div className={`scenario-alert-workspace ${selected ? 'has-detail' : ''}`.trim()}>
-      <SurfaceCard className="scenario-alert-list" title="알림 목록">
+      <SurfaceCard className="scenario-alert-list" title="활성 알림">
         <div className="filter-bar scenario-filter">
           <label className="filter-search"><span>알림 검색</span><input onChange={(event) => setSearch(event.target.value)} placeholder="설비명, 알림 내용 검색" value={search} /></label>
           <label><span>우선순위</span><select aria-label="우선순위 필터" onChange={(event) => setPriorityFilter(priorityFilterFrom(event.target.value))} value={priorityFilter}><option value="all">전체</option><option value="urgent">urgent</option><option value="high">high</option></select></label>
@@ -86,6 +86,7 @@ export function ScenarioAlertsPage({ initialAlertId, onOpenAiAction }: Props) {
         </div>
         {!incidentActive && <div className="scenario-list-empty"><StatusBadge tone="success">정상</StatusBadge><strong>운영 알림이 없습니다.</strong><span>고장 시나리오 감지를 대기하고 있습니다.</span></div>}
         {incidentActive && <div className="scenario-alert-rows">{rows.map((alert, index) => <button aria-pressed={detailId === alert.id} className={detailId === alert.id ? 'selected' : ''} key={alert.id} onClick={() => openDetail(alert)} type="button"><span className="scenario-alert-rank">{index + 1}</span><div><strong>{alert.title}</strong><span>{alert.facility} · {alert.leadTimeHours}시간 이내 출동</span></div><StatusBadge tone={priorityTone(alert)}>{alert.priority}</StatusBadge></button>)}</div>}
+        {incidentActive && alertHistory.length > 0 && <section className="scenario-alert-history"><h3>알림 이력</h3><div className="scenario-alert-rows">{alertHistory.map((alert) => <div className="scenario-alert-history-row" key={alert.id}><div><strong>{alert.title}</strong><span>{alert.facility} · 출동 기한 종료</span></div><StatusBadge tone="success">종결</StatusBadge></div>)}</div></section>}
       </SurfaceCard>
       {selected && <SurfaceCard className="scenario-alert-detail" title="상세 정보" action={<button aria-label="상세 정보 닫기" className="scenario-detail-close" onClick={() => setDetailId(null)} type="button"><Icon name="x" /></button>}>
         <div className="scenario-detail-compact">

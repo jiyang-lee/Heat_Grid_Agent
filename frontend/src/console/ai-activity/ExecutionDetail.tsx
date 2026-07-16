@@ -323,8 +323,8 @@ export function ExecutionDetail({ item, onClose }: Props) {
               <>
                 <article className="activity-evidence-card">
                   <h3>Review overview</h3>
-                  <p><strong>Result status:</strong> {review.data.result?.status}</p>
-                  <p><strong>Agent mode:</strong> {review.data.result?.agent_mode ?? '-'}</p>
+                  <p><strong>Result status:</strong> {review.data.snapshot?.result?.status}</p>
+                  <p><strong>Agent mode:</strong> {review.data.snapshot?.result?.agent_mode ?? '-'}</p>
                   <p><strong>Review required:</strong> {review.data.snapshot?.model_verification ? review.data.snapshot.model_verification.status : 'no snapshot'}</p>
                 </article>
                 <article className="activity-evidence-card">

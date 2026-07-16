@@ -4,7 +4,7 @@ import { Icon, type IconName } from './icons'
 export type Tone = 'critical' | 'warning' | 'notice' | 'success' | 'neutral' | 'primary'
 
 interface SurfaceProps {
-  readonly title?: string
+  readonly title?: ReactNode
   readonly action?: ReactNode
   readonly children: ReactNode
   readonly className?: string
@@ -37,13 +37,13 @@ interface HomeMetricProps {
   readonly tone: string
   readonly label: string
   readonly value: string
-  readonly unit: string
-  readonly children: ReactNode
+  readonly unit?: string
+  readonly children?: ReactNode
 }
 
 /** 홈 요약 카드 — 헤더(아이콘+라벨), 우측 정렬 수치, 푸터 문구. 알림 페이지와 공용. */
 export function HomeMetric({ icon, tone, label, value, unit, children }: HomeMetricProps) {
-  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}<em>{unit}</em></strong><footer>{children}</footer></article>
+  return <article className="metric-card home-metric"><header><span className={`metric-icon tone-${tone}`}><Icon name={icon} /></span><p>{label}</p></header><strong>{value}{unit != null && <em>{unit}</em>}</strong>{children != null && <footer>{children}</footer>}</article>
 }
 
 export function StatusBadge({ tone, children }: { readonly tone: Tone; readonly children: ReactNode }) {

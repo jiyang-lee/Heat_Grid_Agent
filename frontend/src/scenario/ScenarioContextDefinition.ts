@@ -1,15 +1,16 @@
 import { createContext } from 'react'
-import { SCENARIO_ALERTS } from './scenarioData'
-import type { EntryMode, EvaluationCategory, ScenarioAiEntry, ScenarioState } from './types'
+import type { EntryMode, EvaluationCategory, ScenarioAiEntry, ScenarioState, ScenarioTimelineAlert } from './types'
 import type { useSensorStream } from './useSensorStream'
 
 export interface ScenarioContextValue {
   readonly state: ScenarioState
   readonly sensor: ReturnType<typeof useSensorStream>
-  readonly alerts: typeof SCENARIO_ALERTS
+  readonly alerts: readonly ScenarioTimelineAlert[]
+  readonly alertHistory: readonly ScenarioTimelineAlert[]
   readonly selectMode: (mode: EntryMode) => void
   readonly backToModeSelection: () => void
   readonly startFaultScenario: () => void
+  readonly restartScenario: () => void
   readonly exitConsole: () => void
   readonly selectAlert: (alertId: string) => void
   readonly startAnalysis: () => void

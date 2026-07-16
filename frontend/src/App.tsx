@@ -47,6 +47,12 @@ function ConsoleApp() {
     setPendingRunId(null)
     scenario.exitConsole()
   }
+  const restartScenario = () => {
+    setPage('dashboard')
+    setInitialScenarioAlertId(null)
+    setPendingRunId(null)
+    scenario.restartScenario()
+  }
 
   if (scenario.state.entryStep !== 'console' || scenario.state.mode == null) return <EntryGate />
   const faultMode = scenario.state.mode === 'fault'
@@ -56,6 +62,7 @@ function ConsoleApp() {
     mode={scenario.state.mode}
     onExit={exitConsole}
     onPageChange={navigate}
+    onRefresh={restartScenario}
     page={page}
     simulatedAt={faultMode ? scenario.sensor.state.simulatedAt : null}
   >

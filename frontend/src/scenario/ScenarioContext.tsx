@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ACTIVE_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, workOrderVersion } from './scenarioData'
+import { ACTIVE_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, scenarioAlertsAt, workOrderVersion } from './scenarioData'
 import { ScenarioContext, type ScenarioContextValue } from './ScenarioContextDefinition'
 import type { ChatProposal, ChatTargetStage, EntryMode, EvaluationCategory, ScenarioAiEntry, ScenarioAlert, ScenarioChatMessage, ScenarioReportStatus, ScenarioState } from './types'
 import { useSensorStream } from './useSensorStream'
@@ -107,6 +107,10 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const [state, setState] = useState<ScenarioState>(loadSession)
   const selectedAlert = alertFor(state.selectedAlertId)
   const sensor = useSensorStream(state.mode, state.entryStep === 'console', selectedAlert.substationId, state.incidentState)
+  const alertTimeline = useMemo(() => scenarioAlertsAt(sensor.state.simulatedAt), [sensor.state.simulatedAt])
+  const { alerts, alertHistory } = useMemo(() => state.mode === 'fault' && state.incidentState === 'incident-active'
+    ? { alerts: alertTimeline.active, alertHistory: alertTimeline.history }
+    : { alerts: [], alertHistory: [] }, [alertTimeline, state.incidentState, state.mode])
 
   useEffect(() => {
     if (state.entryStep === 'console') persist(state)
@@ -135,6 +139,11 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   }, [])
 
   const startFaultScenario = useCallback(() => update({ ...initialState, mode: 'fault', entryStep: 'console', scenarioId: ACTIVE_SCENARIO_ID }), [update])
+  const restartScenario = useCallback(() => {
+    if (state.mode == null) return
+    sensor.reset()
+    update({ ...initialState, mode: state.mode, entryStep: 'console', scenarioId: state.mode === 'fault' ? ACTIVE_SCENARIO_ID : null })
+  }, [sensor, state.mode, update])
   const exitConsole = useCallback(() => {
     sensor.reset()
     backToModeSelection()
@@ -175,8 +184,8 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => ({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts: SCENARIO_ALERTS, selectMode, backToModeSelection, startFaultScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, dismissAnalysisToast, dismissIncidentPopup, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
-  }), [acceptWorkOrder, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentPopup, exitConsole, issueReport, postChatMessage, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, dismissAnalysisToast, dismissIncidentPopup, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentPopup, exitConsole, issueReport, postChatMessage, restartScenario, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }

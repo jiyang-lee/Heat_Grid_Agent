@@ -1,6 +1,6 @@
 /**
  * 작업 지시서 패널 — 기계실 상세 하단.
- * 버튼 클릭 → 생성(mock/LLM) → summary/action_plan/caution 카드 표시(결과만).
+ * 버튼 클릭 → 실백엔드 생성 → summary/action_plan/caution 카드 표시(결과만).
  */
 
 import { useState } from 'react'
@@ -17,7 +17,7 @@ type Phase = 'idle' | 'loading' | 'done' | 'error'
 export default function WorkOrderPanel({ complex }: Props) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [output, setOutput] = useState<OpsAgentOutput | null>(null)
-  const [mode, setMode] = useState<WorkOrderMode>('mock')
+  const [mode, setMode] = useState<WorkOrderMode | null>(null)
   const [err, setErr] = useState('')
 
   const run = async () => {
@@ -40,7 +40,7 @@ export default function WorkOrderPanel({ complex }: Props) {
         {phase === 'loading' ? '작업 지시서 생성 중…' : phase === 'done' ? '작업 지시서 재생성' : '작업 지시서 생성'}
       </button>
 
-      {phase === 'done' && output && (
+      {phase === 'done' && output && mode && (
         <div className="wo-card">
           <div className="wo-mode">{mode.toUpperCase()} · 작업 지시서</div>
           <div className="wo-sec">

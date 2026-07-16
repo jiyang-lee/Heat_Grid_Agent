@@ -46,6 +46,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const [resetKey, setResetKey] = useState(0)
   const pausedRef = useRef(false)
   const speedRef = useRef(1)
+  const manualRefreshRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     pausedRef.current = state.paused
@@ -77,27 +78,31 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
       })
     }
 
+    const advanceFallback = (reason: string) => {
+      if (pausedRef.current) return
+      fallbackSequence += 1
+      setState((current) => {
+        const previous = current.points.at(-1)
+        if (!previous) return current
+        const next = fallbackSensorPoint(activeMode, substationId, incidentActive, fallbackSequence, previous.at)
+        return {
+          ...current,
+          status: 'fallback',
+          source: 'scenario-fallback',
+          points: [...current.points, next].slice(-MAX_POINTS),
+          simulatedAt: next.at,
+          receivedAt: new Date().toISOString(),
+          nextReceiveSeconds: 3,
+          connectionMessage: reason,
+        }
+      })
+    }
+
     const startFallback = (reason: string) => {
       setState((current) => ({ ...current, status: current.paused ? 'paused' : 'fallback', source: 'scenario-fallback', connectionMessage: reason }))
+      manualRefreshRef.current = () => advanceFallback(reason)
       const tick = () => {
-        if (!pausedRef.current) {
-          fallbackSequence += 1
-          setState((current) => {
-            const previous = current.points.at(-1)
-            if (!previous) return current
-            const next = fallbackSensorPoint(activeMode, substationId, incidentActive, fallbackSequence, previous.at)
-            return {
-              ...current,
-              status: 'fallback',
-              source: 'scenario-fallback',
-              points: [...current.points, next].slice(-MAX_POINTS),
-              simulatedAt: next.at,
-              receivedAt: new Date().toISOString(),
-              nextReceiveSeconds: 3,
-              connectionMessage: reason,
-            }
-          })
-        }
+        advanceFallback(reason)
         if (!cancelled) timer = window.setTimeout(tick, Math.max(300, POLL_MS / speedRef.current))
       }
       timer = window.setTimeout(tick, Math.max(300, POLL_MS / speedRef.current))
@@ -119,8 +124,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
         if (cancelled) return
         await replayApi.command(created.run_id, { command_type: 'start', expected_run_version: created.version, payload: {}, requested_by: 'ops-scenario-ui', idempotency_key: `${created.run_id}-start` })
         if (cancelled) return
-        setState((current) => ({ ...current, status: 'live', source: 'backend-replay', connectionMessage: '실시간 센서 연동 수신 중' }))
-        timer = window.setInterval(() => {
+        const refreshFromBackend = () => {
           if (pausedRef.current) return
           void replayApi.snapshot(created.run_id).then((snapshot) => {
             failures = 0
@@ -136,7 +140,10 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
             if (timer != null) window.clearInterval(timer)
           startFallback('실시간 센서 연동이 중단되어 시나리오 대체 데이터로 전환했습니다.')
           })
-        }, POLL_MS)
+        }
+        setState((current) => ({ ...current, status: 'live', source: 'backend-replay', connectionMessage: '실시간 센서 연동 수신 중' }))
+        manualRefreshRef.current = refreshFromBackend
+        timer = window.setInterval(refreshFromBackend, POLL_MS)
       } catch (error: unknown) {
         if (error instanceof Error) {
           startFallback('실시간 센서 연동에 연결할 수 없어 시나리오 대체 데이터를 표시합니다.')
@@ -149,6 +156,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     void connect()
     return () => {
       cancelled = true
+      manualRefreshRef.current = () => {}
       if (timer != null) window.clearInterval(timer)
     }
   }, [activeMode, enabled, incidentState, mode, resetKey, substationId])
@@ -161,6 +169,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   })), [])
   const setSpeed = useCallback((speed: number) => setState((current) => ({ ...current, speed })), [])
   const reset = useCallback(() => setResetKey((current) => current + 1), [])
+  const refresh = useCallback(() => manualRefreshRef.current(), [])
 
-  return { state, togglePaused, setSpeed, reset }
+  return { state, togglePaused, setSpeed, reset, refresh }
 }
