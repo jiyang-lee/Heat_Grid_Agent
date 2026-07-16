@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.quality import ml_quality_result
+from heatgrid_ops.agent.rag_quality import evaluate_retrieval_quality
 from heatgrid_ops.agent.run_models import (
     ExternalDataRequest,
     ModelVerificationRequest,
@@ -107,28 +108,69 @@ def _rag_retrieval(
     quality_enabled: bool,
 ) -> StageAdapter:
     async def execute(state: AgentV2State) -> StageSnapshotEnvelope:
-        snapshot = await runtime.rag.search(
-            RagEvidenceRequest(
-                card_id=state.request.card_id,
-                source_input=state.request.source_input,
-                top_k=runtime.config.rag_top_k,
-            )
+        initial_top_k = max(1, min(runtime.config.rag_top_k, 20))
+        expanded_top_k = max(
+            initial_top_k,
+            min(runtime.config.rag_expanded_top_k, 20),
         )
-        quality_status = "skipped" if not quality_enabled else "partial"
-        score = None if not quality_enabled else 0.0
+        maximum_top_k = max(
+            expanded_top_k,
+            min(runtime.config.rag_max_top_k, 20),
+        )
+        top_k_candidates = (
+            [initial_top_k]
+            if not state.request.broaden
+            else list(dict.fromkeys([expanded_top_k, maximum_top_k]))
+        )
+        retrieval_attempts: list[JsonObject] = []
+        snapshot = None
+        quality = None
+        reasons: tuple[str, ...] = ()
+        for top_k in top_k_candidates:
+            snapshot = await runtime.rag.search(
+                RagEvidenceRequest(
+                    card_id=state.request.card_id,
+                    source_input=state.request.source_input,
+                    top_k=top_k,
+                )
+            )
+            quality, reasons = evaluate_retrieval_quality(
+                snapshot.retrieval,
+                quality_enabled=quality_enabled,
+                jsonl_min_top_score=runtime.config.rag_jsonl_min_top_score,
+                jsonl_min_unique_matches=runtime.config.rag_jsonl_min_unique_matches,
+            )
+            retrieval_attempts.append(
+                {
+                    "top_k": top_k,
+                    "result_count": len(snapshot.retrieval.get("chunks") or []),
+                    "quality_status": quality.quality_status,
+                    "score": quality.score,
+                    "reasons": list(reasons),
+                }
+            )
+            if not quality_enabled or quality.quality_status == "passed":
+                break
+        if snapshot is None or quality is None:
+            raise RuntimeError("RAG retrieval did not execute")
         value: JsonObject = {
-            "execution_status": "passed",
-            "quality_status": quality_status,
-            "score": score,
+            "execution_status": quality.execution_status,
+            "quality_status": quality.quality_status,
+            "score": quality.score,
             "retrieval": snapshot.retrieval,
             "references": snapshot.references,
             "status": snapshot.status,
+            "quality_reasons": list(reasons),
+            "retrieval_attempts": retrieval_attempts,
+            "broadened": state.request.broaden,
         }
         updated = state.model_copy(update={"rag_retrieval": value})
         return StageSnapshotEnvelope(
             stage_name="rag_retrieval",
             data=updated.model_dump(mode="json"),
-            control=StageControlEnvelope(force_review=False),
+            control=StageControlEnvelope(
+                force_review=quality_enabled and quality.quality_status != "passed"
+            ),
         )
 
     return execute

@@ -1,0 +1,307 @@
+[
+  {
+    "name": "perfect_match_relevant_rank_1",
+    "description": "Relevant chunk is ranked first.",
+    "case": {
+      "case_id": "metric_case_001",
+      "query": "perfect match",
+      "category": "unit",
+      "difficulty": "easy",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": []
+    },
+    "retrieved_chunk_ids": ["rel_a", "noise_1", "noise_2"],
+    "expected_metrics": {
+      "recall_at_1": 1.0,
+      "recall_at_3": 1.0,
+      "recall_at_5": 1.0,
+      "precision_at_1": 1.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.2,
+      "hit_rate_at_1": 1.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_5": 1.0
+    }
+  },
+  {
+    "name": "relevant_rank_3",
+    "description": "Relevant chunk appears at rank 3.",
+    "case": {
+      "case_id": "metric_case_002",
+      "query": "rank three",
+      "category": "unit",
+      "difficulty": "medium",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": []
+    },
+    "retrieved_chunk_ids": ["noise_1", "noise_2", "rel_a", "noise_3"],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 1.0,
+      "recall_at_5": 1.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.2,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.3333333333333333,
+      "ndcg_at_5": 0.5
+    }
+  },
+  {
+    "name": "relevant_outside_top_5",
+    "description": "Relevant chunk appears at rank 6, outside top 5. MRR uses full retrieved list.",
+    "case": {
+      "case_id": "metric_case_003",
+      "query": "outside top five",
+      "category": "unit",
+      "difficulty": "hard",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": []
+    },
+    "retrieved_chunk_ids": ["noise_1", "noise_2", "noise_3", "noise_4", "noise_5", "rel_a"],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.0,
+      "recall_at_5": 0.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.0,
+      "precision_at_5": 0.0,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 0.0,
+      "hit_rate_at_5": 0.0,
+      "mrr": 0.1666666666666667,
+      "ndcg_at_5": 0.0
+    }
+  },
+  {
+    "name": "multiple_relevant_one_in_top_3",
+    "description": "Two relevant chunks exist but only one appears in top 3.",
+    "case": {
+      "case_id": "metric_case_004",
+      "query": "multiple relevant",
+      "category": "unit",
+      "difficulty": "medium",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a", "rel_b"],
+      "partially_relevant_chunk_ids": []
+    },
+    "retrieved_chunk_ids": ["noise_1", "rel_a", "noise_2", "noise_3", "rel_b"],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.5,
+      "recall_at_5": 1.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.4,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.5,
+      "ndcg_at_5": 0.6240505200038379
+    }
+  },
+  {
+    "name": "partial_relevant_ndcg",
+    "description": "One relevant and one partial candidate test coarse nDCG.",
+    "case": {
+      "case_id": "metric_case_005",
+      "query": "partial ndcg",
+      "category": "unit",
+      "difficulty": "medium",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": ["part_a"]
+    },
+    "retrieved_chunk_ids": ["part_a", "noise_1", "rel_a"],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 1.0,
+      "recall_at_5": 1.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.2,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.3333333333333333,
+      "ndcg_at_5": 0.7601875334318685
+    }
+  },
+  {
+    "name": "duplicate_retrieved_chunk_deduped",
+    "description": "Duplicate retrieved chunk should only count once at the first rank.",
+    "case": {
+      "case_id": "metric_case_006",
+      "query": "duplicate",
+      "category": "unit",
+      "difficulty": "easy",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": []
+    },
+    "retrieved_chunk_ids": ["rel_a", "rel_a", "noise_1"],
+    "expected_metrics": {
+      "recall_at_1": 1.0,
+      "recall_at_3": 1.0,
+      "recall_at_5": 1.0,
+      "precision_at_1": 1.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.2,
+      "hit_rate_at_1": 1.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_5": 1.0
+    },
+    "expected_warnings": ["duplicate_retrieved_chunks_deduped:1"]
+  },
+  {
+    "name": "empty_retrieval",
+    "description": "Empty retrieved list should produce zero metrics without division errors.",
+    "case": {
+      "case_id": "metric_case_007",
+      "query": "empty",
+      "category": "unit",
+      "difficulty": "easy",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a"],
+      "partially_relevant_chunk_ids": ["part_a"]
+    },
+    "retrieved_chunk_ids": [],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.0,
+      "recall_at_5": 0.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.0,
+      "precision_at_5": 0.0,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 0.0,
+      "hit_rate_at_5": 0.0,
+      "mrr": 0.0,
+      "ndcg_at_5": 0.0
+    },
+    "expected_warnings": ["empty_retrieval"]
+  },
+  {
+    "name": "answerable_without_relevant_labels",
+    "description": "Answerable case without relevant labels should be excluded with a warning.",
+    "case": {
+      "case_id": "metric_case_008",
+      "query": "missing labels",
+      "category": "unit",
+      "difficulty": "hard",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": [],
+      "partially_relevant_chunk_ids": ["part_a"]
+    },
+    "retrieved_chunk_ids": ["part_a"],
+    "expected_metrics": {
+      "recall_at_1": null,
+      "recall_at_3": null,
+      "recall_at_5": null,
+      "precision_at_1": null,
+      "precision_at_3": null,
+      "precision_at_5": null,
+      "hit_rate_at_1": null,
+      "hit_rate_at_3": null,
+      "hit_rate_at_5": null,
+      "mrr": null,
+      "ndcg_at_5": null
+    },
+    "expected_exclusion_reason": "missing_relevant_labels",
+    "expected_warnings": ["answerable_case_without_relevant_labels"]
+  },
+  {
+    "name": "unanswerable_excluded",
+    "description": "Unanswerable case should be excluded from macro metrics.",
+    "case": {
+      "case_id": "metric_case_009",
+      "query": "unanswerable",
+      "category": "unanswerable",
+      "difficulty": "easy",
+      "query_intent": "unknown",
+      "answerable": false,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": [],
+      "partially_relevant_chunk_ids": ["part_a"]
+    },
+    "retrieved_chunk_ids": ["part_a"],
+    "expected_metrics": {
+      "recall_at_1": null,
+      "recall_at_3": null,
+      "recall_at_5": null,
+      "precision_at_1": null,
+      "precision_at_3": null,
+      "precision_at_5": null,
+      "hit_rate_at_1": null,
+      "hit_rate_at_3": null,
+      "hit_rate_at_5": null,
+      "mrr": null,
+      "ndcg_at_5": null
+    },
+    "expected_exclusion_reason": "answerable_false"
+  },
+  {
+    "name": "mixed_relevant_partial_ranking",
+    "description": "Two relevant and two partial chunks in a mixed ranking validate ideal nDCG ordering.",
+    "case": {
+      "case_id": "metric_case_010",
+      "query": "mixed ranking",
+      "category": "unit",
+      "difficulty": "hard",
+      "query_intent": "metric_validation",
+      "answerable": true,
+      "label_status": "draft",
+      "review_required": true,
+      "relevant_chunk_ids": ["rel_a", "rel_b"],
+      "partially_relevant_chunk_ids": ["part_a", "part_b"]
+    },
+    "retrieved_chunk_ids": ["part_a", "rel_a", "noise_1", "part_b", "rel_b"],
+    "expected_metrics": {
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.5,
+      "recall_at_5": 1.0,
+      "precision_at_1": 0.0,
+      "precision_at_3": 0.3333333333333333,
+      "precision_at_5": 0.4,
+      "hit_rate_at_1": 0.0,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.5,
+      "ndcg_at_5": 0.826764904527197
+    }
+  }
+]

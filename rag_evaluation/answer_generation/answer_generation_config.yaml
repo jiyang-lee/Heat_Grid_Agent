@@ -1,0 +1,61 @@
+dataset_path: rag_evaluation/answer_evaluation/answer_eval.draft.jsonl
+prompt_path: rag_evaluation/answer_generation/answer_generation_prompt.md
+output_path: rag_evaluation/results/answer_generation_pilot.jsonl
+
+prompt_version: answer-generation-v1.1-miss-citation-strict
+model_name: ${HEATGRID_OPENAI_MODEL:-${OPENAI_MODEL:-gpt-5.4-mini}}
+temperature: 0
+timeout_seconds: 60
+max_retries: 2
+input_cost_per_1m_tokens: null
+output_cost_per_1m_tokens: null
+pricing_source: null
+
+dataset_status: draft
+result_level: reference
+official_benchmark: false
+retrieval_backend: jsonl
+top_k: 5
+
+pilot_selection:
+  - name: hit_keyword
+    answerable: true
+    retrieval_hit_at_5: true
+    query_type: keyword_match
+  - name: hit_semantic
+    answerable: true
+    retrieval_hit_at_5: true
+    query_type: semantic_paraphrase
+  - name: miss_keyword
+    answerable: true
+    retrieval_hit_at_5: false
+    query_type: keyword_match
+  - name: miss_semantic
+    answerable: true
+    retrieval_hit_at_5: false
+    query_type: semantic_paraphrase
+  - name: unanswerable
+    answerable: false
+
+input_policy:
+  allowed_fields:
+    - case_id
+    - query
+    - category
+    - query_intent
+    - query_type
+    - difficulty
+    - answerable
+    - retrieval_hit_at_5
+    - retrieved_contexts
+  forbidden_fields:
+    - expected_answer_points
+    - relevant_chunk_ids
+    - partially_relevant_chunk_ids
+    - forbidden_claims
+    - human_scores
+    - automated_scores
+    - label_status
+    - metrics
+    - evaluation_metadata
+    - retrieval_recall_at_5

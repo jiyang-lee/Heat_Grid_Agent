@@ -1,0 +1,54 @@
+{
+  "baseline_id": "dev2-raglogic-answer-quality-v2-100-rag",
+  "status": "draft_reference",
+  "official_benchmark": false,
+  "source": {
+    "dataset": "rag_evaluation/answer_evaluation/answer_quality_eval_100.jsonl",
+    "rag_raw": "rag_evaluation/results/answer_quality_rag_raw_100.jsonl",
+    "analysis": "rag_evaluation/results/answer_quality_rule_calibration_100.json",
+    "validation": "rag_evaluation/results/answer_quality_benchmark_100_validation.json",
+    "unique_case_count": 100,
+    "actual_answer_count": 200,
+    "comparison_count": 200,
+    "candidate_observation_count": 400,
+    "rag_backend": "pgvector",
+    "rag_indexed_chunk_count": 112,
+    "retrieval_hit_at_5_count": 25,
+    "retrieval_miss_at_5_count": 75,
+    "judge_model": "gpt-5.4",
+    "answer_model": "gpt-5.4-mini",
+    "position_swapped_passes": 2
+  },
+  "runtime_gate": {
+    "threshold": 75.0,
+    "policy_version": "answer-quality-policy.v2-100-rag-single-judge-draft",
+    "offline_threshold_stability_range": [72.0, 75.0],
+    "runtime_judgments_per_candidate": 1,
+    "weights": {
+      "correctness": 0.3,
+      "completeness": 0.15,
+      "actionability": 0.2,
+      "evidence_grounding": 0.25,
+      "calibration": 0.1
+    },
+    "hard_fail_conditions": [
+      "correctness <= 2",
+      "evidence_grounding <= 2",
+      "over_abstention = true",
+      "unsupported_claim_risk in [MEDIUM, HIGH]"
+    ],
+    "maximum_regenerations": 1,
+    "tie_policy": "keep_initial"
+  },
+  "out_of_fold_metrics": {
+    "accuracy": 0.9475,
+    "bad_answer_capture_rate": 0.9559748427672956,
+    "false_pass_rate": 0.0440251572327044,
+    "unnecessary_regeneration_rate": 0.058091286307053944
+  },
+  "limitations": [
+    "The dataset and LLM labels remain Draft/Reference until human approval.",
+    "The 100 questions are synthetic scenarios grounded in the HeatGrid corpus.",
+    "The measured retrieval baseline reflects the current hash-embedding pgvector implementation."
+  ]
+}

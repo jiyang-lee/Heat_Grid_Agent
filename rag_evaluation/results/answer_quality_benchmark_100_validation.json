@@ -1,0 +1,45 @@
+{
+  "actual_answer_count": 200,
+  "answerable_distribution": {
+    "False": 10,
+    "True": 90
+  },
+  "candidate_observation_count": 400,
+  "category_distribution": {
+    "fault_cause": 11,
+    "inspection_action": 31,
+    "operating_standard": 20,
+    "priority_reason": 4,
+    "safety_caution": 21,
+    "similar_case": 3,
+    "unanswerable": 10
+  },
+  "comparison_count": 200,
+  "difficulty_distribution": {
+    "easy": 26,
+    "hard": 47,
+    "medium": 27
+  },
+  "errors": [],
+  "retrieval_hit_distribution": {
+    "False": 75,
+    "True": 25
+  },
+  "retrieved_source_distribution": {
+    "danfoss_vxe_manual.pdf": 50,
+    "iea_dhc_connection_handbook.pdf": 27,
+    "kdhc_inspection_standard.pdf": 361,
+    "prioritisation_faults_substations.pdf": 16,
+    "swedish_f101_substations.pdf": 14,
+    "unknown": 32
+  },
+  "source_distribution": {
+    "danfoss_vxe_manual.pdf": 1,
+    "iea_dhc_connection_handbook.pdf": 1,
+    "kdhc_inspection_standard.pdf": 23
+  },
+  "status": "passed",
+  "unique_case_count": 100,
+  "unique_query_count": 100,
+  "validated_at": "2026-07-16T08:09:07.025040+00:00"
+}

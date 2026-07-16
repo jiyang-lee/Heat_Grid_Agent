@@ -1,0 +1,241 @@
+{
+  "api_call_count": 28,
+  "breakdown_by_category": {
+    "fault_cause": {
+      "case_count": 2,
+      "winner_counts": {
+        "with_rag": 2
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "winner_counts": {
+        "with_rag": 7
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "operating_standard": {
+      "case_count": 8,
+      "winner_counts": {
+        "with_rag": 8
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "winner_counts": {
+        "with_rag": 3
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "safety_caution": {
+      "case_count": 3,
+      "winner_counts": {
+        "tie": 1,
+        "with_rag": 2
+      },
+      "with_rag_win_rate": 0.6666666666666666
+    },
+    "similar_case": {
+      "case_count": 2,
+      "winner_counts": {
+        "with_rag": 2
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "unanswerable": {
+      "case_count": 3,
+      "winner_counts": {
+        "with_rag": 3
+      },
+      "with_rag_win_rate": 1.0
+    }
+  },
+  "breakdown_by_difficulty": {
+    "easy": {
+      "case_count": 8,
+      "winner_counts": {
+        "with_rag": 8
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "hard": {
+      "case_count": 4,
+      "winner_counts": {
+        "tie": 1,
+        "with_rag": 3
+      },
+      "with_rag_win_rate": 0.75
+    },
+    "medium": {
+      "case_count": 16,
+      "winner_counts": {
+        "with_rag": 16
+      },
+      "with_rag_win_rate": 1.0
+    }
+  },
+  "breakdown_by_query_intent": {
+    "comparison": {
+      "case_count": 2,
+      "winner_counts": {
+        "with_rag": 2
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "fault_cause": {
+      "case_count": 4,
+      "winner_counts": {
+        "with_rag": 4
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "winner_counts": {
+        "with_rag": 7
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "operating_standard": {
+      "case_count": 6,
+      "winner_counts": {
+        "with_rag": 6
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "winner_counts": {
+        "with_rag": 3
+      },
+      "with_rag_win_rate": 1.0
+    },
+    "safety": {
+      "case_count": 3,
+      "winner_counts": {
+        "tie": 1,
+        "with_rag": 2
+      },
+      "with_rag_win_rate": 0.6666666666666666
+    },
+    "unknown": {
+      "case_count": 3,
+      "winner_counts": {
+        "with_rag": 3
+      },
+      "with_rag_win_rate": 1.0
+    }
+  },
+  "breakdown_by_retrieval_hit": {
+    "False": {
+      "case_count": 18,
+      "winner_counts": {
+        "tie": 1,
+        "with_rag": 17
+      },
+      "with_rag_win_rate": 0.9444444444444444
+    },
+    "True": {
+      "case_count": 10,
+      "winner_counts": {
+        "with_rag": 10
+      },
+      "with_rag_win_rate": 1.0
+    }
+  },
+  "dimension_averages": {
+    "actionability": {
+      "delta_with_minus_without": 1.5,
+      "no_rag_average": 1.5,
+      "with_rag_average": 3.0
+    },
+    "calibration": {
+      "delta_with_minus_without": 0.3214285714285712,
+      "no_rag_average": 4.392857142857143,
+      "with_rag_average": 4.714285714285714
+    },
+    "completeness": {
+      "delta_with_minus_without": 1.5714285714285714,
+      "no_rag_average": 1.2857142857142858,
+      "with_rag_average": 2.857142857142857
+    },
+    "correctness": {
+      "delta_with_minus_without": 1.2857142857142856,
+      "no_rag_average": 2.5714285714285716,
+      "with_rag_average": 3.857142857142857
+    },
+    "evidence_grounding": {
+      "delta_with_minus_without": 1.8928571428571428,
+      "no_rag_average": 1.75,
+      "with_rag_average": 3.642857142857143
+    },
+    "expected_point_coverage": {
+      "delta_with_minus_without": 0.3653571428571429,
+      "no_rag_average": 0.09107142857142858,
+      "with_rag_average": 0.45642857142857146
+    }
+  },
+  "evaluated_case_count": 28,
+  "failure_count": 0,
+  "failure_signal_counts": {
+    "none": 11,
+    "retrieval_miss_but_answer_resilient": 17
+  },
+  "failure_tag_counts": {
+    "no_rag": {
+      "citation_mismatch": 1,
+      "missed_expected_point": 27,
+      "none": 1,
+      "over_abstention": 24
+    },
+    "with_rag": {
+      "citation_mismatch": 3,
+      "missed_expected_point": 20,
+      "none": 7,
+      "over_abstention": 11
+    }
+  },
+  "failures": [],
+  "methodology_notes": [
+    "Candidate identity was hidden from the Judge and A/B position was alternated by case hash.",
+    "The dataset is Draft/Reference and results are not an official benchmark.",
+    "Failure signals are diagnostic heuristics and require human confirmation."
+  ],
+  "model": "gpt-5.4",
+  "retrieval_effect_counts": {
+    "beneficial": 27,
+    "neutral": 1
+  },
+  "review_priority_counts": {
+    "LOW": 15,
+    "MEDIUM": 13
+  },
+  "status": "complete",
+  "swap_positions": true,
+  "unsupported_claim_risk_counts": {
+    "no_rag": {
+      "LOW": 14,
+      "NONE": 14
+    },
+    "with_rag": {
+      "LOW": 21,
+      "NONE": 7
+    }
+  },
+  "usage": {
+    "input_tokens": 64185,
+    "output_tokens": 7912,
+    "total_tokens": 72097
+  },
+  "winner_counts": {
+    "tie": 1,
+    "with_rag": 27
+  },
+  "winner_strength_counts": {
+    "clear": 12,
+    "slight": 15,
+    "tie": 1
+  }
+}

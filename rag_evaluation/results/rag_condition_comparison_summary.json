@@ -1,0 +1,16 @@
+{
+  "shared_case_count": 28,
+  "with_rag_only_case_ids": [],
+  "no_rag_only_case_ids": [],
+  "average_score_deltas_with_minus_without": {
+    "faithfulness": -0.6071428571428571,
+    "operational_usefulness": 0.5714285714285714,
+    "citation_accuracy_semantic": -1.6071428571428572,
+    "answer_relevance": 0.5357142857142857
+  },
+  "rag_effectiveness_improved_case_count": 17,
+  "rag_effectiveness_degraded_case_count": 7,
+  "grounding_comparison_note": "no-RAG answers mostly abstain, so faithfulness and citation scores are safety indicators rather than direct RAG-effectiveness measures",
+  "manual_review_required_count": 17,
+  "comparison_status": "complete"
+}

@@ -1,0 +1,269 @@
+{
+  "adopted_hard_rules": [
+    "judge_citation_mismatch",
+    "judge_low_correctness",
+    "judge_low_grounding",
+    "judge_over_abstention"
+  ],
+  "candidate_observation_count": 112,
+  "comparison_count": 56,
+  "cross_validated_threshold": 83.0,
+  "cross_validation": [
+    {
+      "fold": 0,
+      "test_metrics": {
+        "accuracy": 0.95,
+        "bad_answer_capture_rate": 1.0,
+        "count": 20,
+        "false_pass_rate": 0.0,
+        "fn": 1,
+        "fp": 0,
+        "threshold": 83.0,
+        "tn": 13,
+        "tp": 6,
+        "unnecessary_regeneration_rate": 0.14285714285714285
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention"
+      ],
+      "train_threshold": 83.0
+    },
+    {
+      "fold": 1,
+      "test_metrics": {
+        "accuracy": 0.85,
+        "bad_answer_capture_rate": 1.0,
+        "count": 20,
+        "false_pass_rate": 0.0,
+        "fn": 3,
+        "fp": 0,
+        "threshold": 83.0,
+        "tn": 11,
+        "tp": 6,
+        "unnecessary_regeneration_rate": 0.3333333333333333
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention"
+      ],
+      "train_threshold": 83.0
+    },
+    {
+      "fold": 2,
+      "test_metrics": {
+        "accuracy": 0.9166666666666666,
+        "bad_answer_capture_rate": 0.875,
+        "count": 24,
+        "false_pass_rate": 0.125,
+        "fn": 0,
+        "fp": 2,
+        "threshold": 77.0,
+        "tn": 14,
+        "tp": 8,
+        "unnecessary_regeneration_rate": 0.0
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention"
+      ],
+      "train_threshold": 77.0
+    },
+    {
+      "fold": 3,
+      "test_metrics": {
+        "accuracy": 0.9583333333333334,
+        "bad_answer_capture_rate": 1.0,
+        "count": 24,
+        "false_pass_rate": 0.0,
+        "fn": 1,
+        "fp": 0,
+        "threshold": 83.0,
+        "tn": 16,
+        "tp": 7,
+        "unnecessary_regeneration_rate": 0.125
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention"
+      ],
+      "train_threshold": 83.0
+    },
+    {
+      "fold": 4,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "bad_answer_capture_rate": 1.0,
+        "count": 24,
+        "false_pass_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "threshold": 83.0,
+        "tn": 16,
+        "tp": 8,
+        "unnecessary_regeneration_rate": 0.0
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention"
+      ],
+      "train_threshold": 83.0
+    }
+  ],
+  "full_sample_selection": {
+    "accuracy": 0.9553571428571429,
+    "bad_answer_capture_rate": 1.0,
+    "count": 112,
+    "false_pass_rate": 0.0,
+    "fn": 5,
+    "fp": 0,
+    "threshold": 83.0,
+    "tn": 72,
+    "tp": 35,
+    "unnecessary_regeneration_rate": 0.125
+  },
+  "judge_stability": {
+    "candidate_count": 56,
+    "candidate_recommendation_agreement_count": 52,
+    "candidate_recommendation_agreement_rate": 0.9285714285714286,
+    "case_count": 28,
+    "disagreement_count": 4,
+    "disagreement_score_range": [
+      64.0,
+      83.0
+    ],
+    "disagreements": [
+      {
+        "case_id": "retrieval_eval_002",
+        "first_recommendation": "PASS",
+        "first_score": 78.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 73.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "retrieval_eval_011",
+        "first_recommendation": "REGENERATE",
+        "first_score": 64.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 73.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "retrieval_eval_023",
+        "first_recommendation": "REGENERATE",
+        "first_score": 67.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 69.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "retrieval_eval_023",
+        "first_recommendation": "REGENERATE",
+        "first_score": 80.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 83.0,
+        "variant": "regenerated"
+      }
+    ],
+    "maximum_absolute_score_delta": 13.0,
+    "mean_absolute_score_delta": 4.107142857142857,
+    "winner_agreement_count": 24,
+    "winner_agreement_rate": 0.8571428571428571
+  },
+  "methodology": "All candidate observations are used through StratifiedGroupKFold with case_id as the group; no fixed 60/20/20 split is used.",
+  "out_of_fold_metrics": {
+    "accuracy": 0.9375,
+    "bad_answer_capture_rate": 0.9722222222222222,
+    "count": 112,
+    "false_pass_rate": 0.027777777777777776,
+    "fn": 5,
+    "fp": 2,
+    "tn": 70,
+    "tp": 35,
+    "unnecessary_regeneration_rate": 0.125
+  },
+  "rule_stats": {
+    "empty_answer": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "invalid_citation": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "judge_citation_mismatch": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 17,
+      "bad_precision": 0.9444444444444444,
+      "support": 18
+    },
+    "judge_low_correctness": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 52,
+      "bad_precision": 1.0,
+      "support": 52
+    },
+    "judge_low_grounding": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 31,
+      "bad_precision": 1.0,
+      "support": 31
+    },
+    "judge_over_abstention": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 41,
+      "bad_precision": 1.0,
+      "support": 41
+    },
+    "judge_unsafe_action": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "judge_unsupported_risk": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 2,
+      "bad_precision": 1.0,
+      "support": 2
+    },
+    "missing_citation_on_retrieval_hit": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "very_short_answer": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    }
+  },
+  "status": "draft_reference",
+  "threshold_stability_range": [
+    77.0,
+    83.0
+  ],
+  "unique_case_count": 28,
+  "winner_counts": {
+    "initial": 1,
+    "regenerated": 52,
+    "tie": 3
+  }
+}

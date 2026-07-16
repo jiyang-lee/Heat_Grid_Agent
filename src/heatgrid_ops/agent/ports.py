@@ -17,6 +17,8 @@ from heatgrid_ops.agent.contracts import (
 from heatgrid_ops.agent.diagnostics import DiagnosticBudgetReservation
 from heatgrid_ops.agent.models import JsonObject
 from heatgrid_ops.agent.run_models import (
+    AnswerQualityRequest,
+    AnswerQualityResult,
     AgentRunResult,
     AgentStreamEvent,
     ArtifactRecord,
@@ -97,6 +99,13 @@ class ChatModelPort(Protocol):
     ) -> ChatModelAssessmentResult | EvidenceAssessment | None: ...
 
     def stream(self, request: ChatModelRequest) -> AsyncIterator[AgentStreamEvent]: ...
+
+
+class AnswerQualityModelPort(Protocol):
+    async def evaluate_answer_quality(
+        self,
+        request: AnswerQualityRequest,
+    ) -> AnswerQualityResult: ...
 
 
 class AgentBudgetPort(Protocol):

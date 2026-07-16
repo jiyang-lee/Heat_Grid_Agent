@@ -39,10 +39,19 @@ class Settings(BaseSettings):
     integrated_agent_model: str = "gpt-5.4-mini"
     independent_agent_model: str = "gpt-5.4-mini"
     rejudge_model: str = "gpt-5.4"
+    answer_quality_enabled: bool = True
+    answer_quality_threshold: float = Field(default=75.0, ge=0.0, le=100.0)
+    answer_quality_baseline_version: str = (
+        "answer-quality-policy.v2-100-rag-single-judge-draft"
+    )
     replay_enabled: bool = False
     replay_import_enabled: bool = False
     replay_storage_root: str = "/var/lib/heatgrid/replay"
     rag_top_k: int = 5
+    rag_expanded_top_k: int = Field(default=10, ge=1, le=20)
+    rag_max_top_k: int = Field(default=20, ge=1, le=20)
+    rag_jsonl_min_top_score: float = Field(default=6.0, ge=0.0)
+    rag_jsonl_min_unique_matches: int = Field(default=2, ge=0)
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     model_score_tolerance: float = Field(default=0.12, ge=0.0, le=1.0)

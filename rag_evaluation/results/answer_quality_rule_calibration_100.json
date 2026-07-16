@@ -1,0 +1,422 @@
+{
+  "adopted_hard_rules": [
+    "judge_low_correctness",
+    "judge_low_grounding",
+    "judge_over_abstention",
+    "judge_unsupported_risk"
+  ],
+  "candidate_observation_count": 400,
+  "comparison_count": 200,
+  "cross_validated_threshold": 75.0,
+  "cross_validation": [
+    {
+      "fold": 0,
+      "test_metrics": {
+        "accuracy": 0.9,
+        "bad_answer_capture_rate": 0.90625,
+        "count": 80,
+        "false_pass_rate": 0.09375,
+        "fn": 5,
+        "fp": 3,
+        "threshold": 72.0,
+        "tn": 29,
+        "tp": 43,
+        "unnecessary_regeneration_rate": 0.10416666666666667
+      },
+      "train_rules": [
+        "judge_citation_mismatch",
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention",
+        "judge_unsupported_risk"
+      ],
+      "train_threshold": 72.0
+    },
+    {
+      "fold": 1,
+      "test_metrics": {
+        "accuracy": 0.9625,
+        "bad_answer_capture_rate": 1.0,
+        "count": 80,
+        "false_pass_rate": 0.0,
+        "fn": 3,
+        "fp": 0,
+        "threshold": 75.0,
+        "tn": 32,
+        "tp": 45,
+        "unnecessary_regeneration_rate": 0.0625
+      },
+      "train_rules": [
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention",
+        "judge_unsupported_risk"
+      ],
+      "train_threshold": 75.0
+    },
+    {
+      "fold": 2,
+      "test_metrics": {
+        "accuracy": 0.9625,
+        "bad_answer_capture_rate": 0.967741935483871,
+        "count": 80,
+        "false_pass_rate": 0.03225806451612903,
+        "fn": 2,
+        "fp": 1,
+        "threshold": 72.0,
+        "tn": 30,
+        "tp": 47,
+        "unnecessary_regeneration_rate": 0.04081632653061224
+      },
+      "train_rules": [
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention",
+        "judge_unsupported_risk"
+      ],
+      "train_threshold": 72.0
+    },
+    {
+      "fold": 3,
+      "test_metrics": {
+        "accuracy": 0.9125,
+        "bad_answer_capture_rate": 0.90625,
+        "count": 80,
+        "false_pass_rate": 0.09375,
+        "fn": 4,
+        "fp": 3,
+        "threshold": 75.0,
+        "tn": 29,
+        "tp": 44,
+        "unnecessary_regeneration_rate": 0.08333333333333333
+      },
+      "train_rules": [
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention",
+        "judge_unsupported_risk"
+      ],
+      "train_threshold": 75.0
+    },
+    {
+      "fold": 4,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "bad_answer_capture_rate": 1.0,
+        "count": 80,
+        "false_pass_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "threshold": 75.0,
+        "tn": 32,
+        "tp": 48,
+        "unnecessary_regeneration_rate": 0.0
+      },
+      "train_rules": [
+        "judge_low_correctness",
+        "judge_low_grounding",
+        "judge_over_abstention",
+        "judge_unsupported_risk"
+      ],
+      "train_threshold": 75.0
+    }
+  ],
+  "full_sample_selection": {
+    "accuracy": 0.9675,
+    "bad_answer_capture_rate": 0.9559748427672956,
+    "count": 400,
+    "false_pass_rate": 0.0440251572327044,
+    "fn": 6,
+    "fp": 7,
+    "threshold": 72.0,
+    "tn": 152,
+    "tp": 235,
+    "unnecessary_regeneration_rate": 0.024896265560165973
+  },
+  "judge_stability": {
+    "candidate_count": 200,
+    "candidate_recommendation_agreement_count": 177,
+    "candidate_recommendation_agreement_rate": 0.885,
+    "case_count": 100,
+    "disagreement_count": 23,
+    "disagreement_score_range": [
+      49.0,
+      87.0
+    ],
+    "disagreements": [
+      {
+        "case_id": "answer_quality_005",
+        "first_recommendation": "PASS",
+        "first_score": 69.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 53.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_006",
+        "first_recommendation": "PASS",
+        "first_score": 56.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 49.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_006",
+        "first_recommendation": "PASS",
+        "first_score": 60.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 60.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_011",
+        "first_recommendation": "PASS",
+        "first_score": 87.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 66.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_011",
+        "first_recommendation": "PASS",
+        "first_score": 87.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 73.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_013",
+        "first_recommendation": "PASS",
+        "first_score": 73.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 59.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_013",
+        "first_recommendation": "PASS",
+        "first_score": 73.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 59.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_015",
+        "first_recommendation": "PASS",
+        "first_score": 77.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 55.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_021",
+        "first_recommendation": "REGENERATE",
+        "first_score": 62.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 78.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_026",
+        "first_recommendation": "PASS",
+        "first_score": 82.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 71.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_037",
+        "first_recommendation": "PASS",
+        "first_score": 73.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 64.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_042",
+        "first_recommendation": "PASS",
+        "first_score": 77.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 66.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_054",
+        "first_recommendation": "REGENERATE",
+        "first_score": 64.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 84.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_064",
+        "first_recommendation": "PASS",
+        "first_score": 78.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 60.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_065",
+        "first_recommendation": "PASS",
+        "first_score": 64.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 64.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_065",
+        "first_recommendation": "PASS",
+        "first_score": 78.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 64.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_069",
+        "first_recommendation": "REGENERATE",
+        "first_score": 71.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 82.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_075",
+        "first_recommendation": "PASS",
+        "first_score": 77.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 74.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_076",
+        "first_recommendation": "PASS",
+        "first_score": 73.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 76.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_082",
+        "first_recommendation": "REGENERATE",
+        "first_score": 76.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 76.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_083",
+        "first_recommendation": "PASS",
+        "first_score": 77.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 62.0,
+        "variant": "initial"
+      },
+      {
+        "case_id": "answer_quality_083",
+        "first_recommendation": "PASS",
+        "first_score": 84.0,
+        "swapped_recommendation": "REGENERATE",
+        "swapped_score": 69.0,
+        "variant": "regenerated"
+      },
+      {
+        "case_id": "answer_quality_092",
+        "first_recommendation": "REGENERATE",
+        "first_score": 77.0,
+        "swapped_recommendation": "PASS",
+        "swapped_score": 82.0,
+        "variant": "initial"
+      }
+    ],
+    "maximum_absolute_score_delta": 28.0,
+    "mean_absolute_score_delta": 5.28,
+    "winner_agreement_count": 72,
+    "winner_agreement_rate": 0.72
+  },
+  "methodology": "All candidate observations are used through StratifiedGroupKFold with case_id as the group; no fixed 60/20/20 split is used.",
+  "out_of_fold_metrics": {
+    "accuracy": 0.9475,
+    "bad_answer_capture_rate": 0.9559748427672956,
+    "count": 400,
+    "false_pass_rate": 0.0440251572327044,
+    "fn": 14,
+    "fp": 7,
+    "tn": 152,
+    "tp": 227,
+    "unnecessary_regeneration_rate": 0.058091286307053944
+  },
+  "rule_stats": {
+    "empty_answer": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "invalid_citation": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "judge_citation_mismatch": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 11,
+      "bad_precision": 0.7333333333333333,
+      "support": 15
+    },
+    "judge_low_correctness": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 111,
+      "bad_precision": 0.9736842105263158,
+      "support": 114
+    },
+    "judge_low_grounding": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 23,
+      "bad_precision": 1.0,
+      "support": 23
+    },
+    "judge_over_abstention": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 13,
+      "bad_precision": 1.0,
+      "support": 13
+    },
+    "judge_unsafe_action": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "judge_unsupported_risk": {
+      "adopt_as_hard_rule": true,
+      "bad_count": 54,
+      "bad_precision": 1.0,
+      "support": 54
+    },
+    "missing_citation_on_retrieval_hit": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    },
+    "very_short_answer": {
+      "adopt_as_hard_rule": false,
+      "bad_count": 0,
+      "bad_precision": null,
+      "support": 0
+    }
+  },
+  "status": "draft_reference",
+  "threshold_stability_range": [
+    72.0,
+    75.0
+  ],
+  "unique_case_count": 100,
+  "winner_counts": {
+    "initial": 9,
+    "regenerated": 141,
+    "tie": 50
+  }
+}

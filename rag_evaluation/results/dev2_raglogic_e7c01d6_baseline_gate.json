@@ -1,0 +1,36 @@
+{
+  "baseline_id": "dev2-raglogic-e7c01d6-jsonl-reference-v1",
+  "comparisons": [
+    {
+      "current": 0.4,
+      "metric": "recall_at_5",
+      "minimum": 0.4,
+      "passed": true
+    },
+    {
+      "current": 0.4,
+      "metric": "hit_rate_at_5",
+      "minimum": 0.4,
+      "passed": true
+    },
+    {
+      "current": 0.32333333333333336,
+      "metric": "mrr",
+      "minimum": 0.32333333333333336,
+      "passed": true
+    },
+    {
+      "current": 0.29054645946376806,
+      "metric": "ndcg_at_5",
+      "minimum": 0.29054645946376806,
+      "passed": true
+    }
+  ],
+  "failed_case_count": {
+    "current": 0,
+    "maximum": 0,
+    "passed": true
+  },
+  "failed_metrics": [],
+  "status": "passed"
+}

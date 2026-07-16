@@ -1,0 +1,21 @@
+{
+  "generated_at_start": "2026-07-16T02:55:50.931543+00:00",
+  "generated_at_end": "2026-07-16T02:57:04.970206+00:00",
+  "evaluation_condition": "no_rag",
+  "total_case_count": 28,
+  "generated_case_count": 28,
+  "failed_case_count": 0,
+  "warning_case_count": 0,
+  "empty_answer_count": 0,
+  "citation_case_count": 0,
+  "input_context_count": 0,
+  "model_name": "gpt-5.4-mini",
+  "prompt_version": "answer-generation-v1.1-miss-citation-strict",
+  "dataset_status": "draft",
+  "result_level": "reference",
+  "official_benchmark": false,
+  "input_tokens": 37943,
+  "output_tokens": 1881,
+  "total_tokens": 39824,
+  "estimated_cost_usd": null
+}

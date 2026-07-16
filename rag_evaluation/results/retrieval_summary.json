@@ -1,0 +1,318 @@
+{
+  "case_count": 28,
+  "category_breakdown": {
+    "fault_cause": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "evaluated_case_count": 7,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "operating_standard": {
+      "case_count": 8,
+      "evaluated_case_count": 8,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.41666666666666663,
+        "precision_at_5": 0.25,
+        "recall_at_1": 0.875,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.5555555555555555,
+        "precision_at_5": 0.3333333333333333,
+        "recall_at_1": 0.6666666666666666,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "safety_caution": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.4444444444444444,
+        "precision_at_5": 0.26666666666666666,
+        "recall_at_1": 0.8333333333333334,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "similar_case": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "unanswerable": {
+      "case_count": 3,
+      "evaluated_case_count": 0,
+      "macro_average_metrics": {
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "mrr": null,
+        "ndcg_at_5": null,
+        "precision_at_1": null,
+        "precision_at_3": null,
+        "precision_at_5": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null
+      }
+    }
+  },
+  "dataset_path": "rag_evaluation\\review\\retrieval_eval.review.jsonl",
+  "dataset_status": "draft",
+  "difficulty_breakdown": {
+    "easy": {
+      "case_count": 8,
+      "evaluated_case_count": 6,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.20000000000000004,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "hard": {
+      "case_count": 4,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.6666666666666666,
+        "precision_at_5": 0.4000000000000001,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "medium": {
+      "case_count": 16,
+      "evaluated_case_count": 16,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.375,
+        "precision_at_5": 0.225,
+        "recall_at_1": 0.9375,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    }
+  },
+  "evaluated_case_count": 25,
+  "excluded_unanswerable_count": 3,
+  "macro_average_metrics": {
+    "hit_rate_at_1": 1.0,
+    "hit_rate_at_3": 1.0,
+    "hit_rate_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_1": 1.0,
+    "precision_at_3": 0.4,
+    "precision_at_5": 0.24,
+    "recall_at_1": 0.9,
+    "recall_at_3": 1.0,
+    "recall_at_5": 1.0
+  },
+  "official_benchmark": false,
+  "query_intent_breakdown": {
+    "comparison": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.5,
+        "precision_at_5": 0.30000000000000004,
+        "recall_at_1": 0.75,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "fault_cause": {
+      "case_count": 4,
+      "evaluated_case_count": 4,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "evaluated_case_count": 7,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "operating_standard": {
+      "case_count": 6,
+      "evaluated_case_count": 6,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.38888888888888884,
+        "precision_at_5": 0.23333333333333336,
+        "recall_at_1": 0.9166666666666666,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.5555555555555555,
+        "precision_at_5": 0.3333333333333333,
+        "recall_at_1": 0.6666666666666666,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "safety": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.4444444444444444,
+        "precision_at_5": 0.26666666666666666,
+        "recall_at_1": 0.8333333333333334,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "unknown": {
+      "case_count": 3,
+      "evaluated_case_count": 0,
+      "macro_average_metrics": {
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "mrr": null,
+        "ndcg_at_5": null,
+        "precision_at_1": null,
+        "precision_at_3": null,
+        "precision_at_5": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null
+      }
+    }
+  },
+  "result_level": "reference",
+  "warning_case_count": 0
+}

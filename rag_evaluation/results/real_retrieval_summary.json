@@ -1,0 +1,326 @@
+{
+  "average_retrieval_latency_ms": 16.78571428471644,
+  "backend_usage_counts": {
+    "jsonl": 28
+  },
+  "case_count": 28,
+  "category_breakdown": {
+    "fault_cause": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.5,
+        "hit_rate_at_3": 0.5,
+        "hit_rate_at_5": 0.5,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.31939394323979897,
+        "precision_at_1": 0.5,
+        "precision_at_3": 0.16666666666666666,
+        "precision_at_5": 0.1,
+        "recall_at_1": 0.5,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.5
+      }
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "evaluated_case_count": 7,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.14285714285714285,
+        "hit_rate_at_3": 0.2857142857142857,
+        "hit_rate_at_5": 0.2857142857142857,
+        "mrr": 0.21428571428571427,
+        "ndcg_at_5": 0.1771160666525902,
+        "precision_at_1": 0.14285714285714285,
+        "precision_at_3": 0.09523809523809523,
+        "precision_at_5": 0.05714285714285715,
+        "recall_at_1": 0.14285714285714285,
+        "recall_at_3": 0.2857142857142857,
+        "recall_at_5": 0.2857142857142857
+      }
+    },
+    "operating_standard": {
+      "case_count": 8,
+      "evaluated_case_count": 8,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.25,
+        "hit_rate_at_3": 0.25,
+        "hit_rate_at_5": 0.375,
+        "mrr": 0.28125,
+        "ndcg_at_5": 0.3504383231556379,
+        "precision_at_1": 0.25,
+        "precision_at_3": 0.08333333333333333,
+        "precision_at_5": 0.07500000000000001,
+        "recall_at_1": 0.25,
+        "recall_at_3": 0.25,
+        "recall_at_5": 0.375
+      }
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.0,
+        "hit_rate_at_3": 0.0,
+        "hit_rate_at_5": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_5": 0.0,
+        "precision_at_1": 0.0,
+        "precision_at_3": 0.0,
+        "precision_at_5": 0.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.0,
+        "recall_at_5": 0.0
+      }
+    },
+    "safety_caution": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.3333333333333333,
+        "hit_rate_at_3": 0.6666666666666666,
+        "hit_rate_at_5": 0.6666666666666666,
+        "mrr": 0.4444444444444444,
+        "ndcg_at_5": 0.4346595917807241,
+        "precision_at_1": 0.3333333333333333,
+        "precision_at_3": 0.2222222222222222,
+        "precision_at_5": 0.13333333333333333,
+        "recall_at_1": 0.3333333333333333,
+        "recall_at_3": 0.6666666666666666,
+        "recall_at_5": 0.6666666666666666
+      }
+    },
+    "similar_case": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.6387878864795979,
+        "precision_at_1": 1.0,
+        "precision_at_3": 0.3333333333333333,
+        "precision_at_5": 0.2,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0
+      }
+    },
+    "unanswerable": {
+      "case_count": 3,
+      "evaluated_case_count": 0,
+      "macro_average_metrics": {
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "mrr": null,
+        "ndcg_at_5": null,
+        "precision_at_1": null,
+        "precision_at_3": null,
+        "precision_at_5": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null
+      }
+    }
+  },
+  "dataset_path": "C:\\project3.3_develop\\Heat_Grid_Agent\\rag_evaluation\\review\\retrieval_eval.review.jsonl",
+  "dataset_status": "draft",
+  "difficulty_breakdown": {
+    "easy": {
+      "case_count": 8,
+      "evaluated_case_count": 6,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.16666666666666666,
+        "hit_rate_at_3": 0.3333333333333333,
+        "hit_rate_at_5": 0.3333333333333333,
+        "mrr": 0.2222222222222222,
+        "ndcg_at_5": 0.16981360886592203,
+        "precision_at_1": 0.16666666666666666,
+        "precision_at_3": 0.1111111111111111,
+        "precision_at_5": 0.06666666666666667,
+        "recall_at_1": 0.16666666666666666,
+        "recall_at_3": 0.3333333333333333,
+        "recall_at_5": 0.3333333333333333
+      }
+    },
+    "hard": {
+      "case_count": 4,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.0,
+        "hit_rate_at_3": 0.0,
+        "hit_rate_at_5": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_5": 0.0,
+        "precision_at_1": 0.0,
+        "precision_at_3": 0.0,
+        "precision_at_5": 0.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.0,
+        "recall_at_5": 0.0
+      }
+    },
+    "medium": {
+      "case_count": 16,
+      "evaluated_case_count": 16,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.375,
+        "hit_rate_at_3": 0.4375,
+        "hit_rate_at_5": 0.5,
+        "mrr": 0.421875,
+        "ndcg_at_5": 0.3902987395874168,
+        "precision_at_1": 0.375,
+        "precision_at_3": 0.14583333333333331,
+        "precision_at_5": 0.1,
+        "recall_at_1": 0.375,
+        "recall_at_3": 0.4375,
+        "recall_at_5": 0.5
+      }
+    }
+  },
+  "evaluated_case_count": 25,
+  "excluded_unanswerable_count": 3,
+  "failed_case_count": 0,
+  "macro_average_metrics": {
+    "hit_rate_at_1": 0.28,
+    "hit_rate_at_3": 0.36,
+    "hit_rate_at_5": 0.4,
+    "mrr": 0.32333333333333336,
+    "ndcg_at_5": 0.29054645946376806,
+    "precision_at_1": 0.28,
+    "precision_at_3": 0.12,
+    "precision_at_5": 0.08,
+    "recall_at_1": 0.28,
+    "recall_at_3": 0.36,
+    "recall_at_5": 0.4
+  },
+  "official_benchmark": false,
+  "p50_retrieval_latency_ms": 15.999999828636646,
+  "p95_retrieval_latency_ms": 31.00000019185245,
+  "query_intent_breakdown": {
+    "comparison": {
+      "case_count": 2,
+      "evaluated_case_count": 2,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.5,
+        "hit_rate_at_3": 0.5,
+        "hit_rate_at_5": 0.5,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.4639525275725619,
+        "precision_at_1": 0.5,
+        "precision_at_3": 0.16666666666666666,
+        "precision_at_5": 0.1,
+        "recall_at_1": 0.5,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.5
+      }
+    },
+    "fault_cause": {
+      "case_count": 4,
+      "evaluated_case_count": 4,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.75,
+        "hit_rate_at_3": 0.75,
+        "hit_rate_at_5": 0.75,
+        "mrr": 0.75,
+        "ndcg_at_5": 0.47909091485969846,
+        "precision_at_1": 0.75,
+        "precision_at_3": 0.25,
+        "precision_at_5": 0.15000000000000002,
+        "recall_at_1": 0.75,
+        "recall_at_3": 0.75,
+        "recall_at_5": 0.75
+      }
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "evaluated_case_count": 7,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.14285714285714285,
+        "hit_rate_at_3": 0.2857142857142857,
+        "hit_rate_at_5": 0.2857142857142857,
+        "mrr": 0.21428571428571427,
+        "ndcg_at_5": 0.1771160666525902,
+        "precision_at_1": 0.14285714285714285,
+        "precision_at_3": 0.09523809523809523,
+        "precision_at_5": 0.05714285714285715,
+        "recall_at_1": 0.14285714285714285,
+        "recall_at_3": 0.2857142857142857,
+        "recall_at_5": 0.2857142857142857
+      }
+    },
+    "operating_standard": {
+      "case_count": 6,
+      "evaluated_case_count": 6,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.16666666666666666,
+        "hit_rate_at_3": 0.16666666666666666,
+        "hit_rate_at_5": 0.3333333333333333,
+        "mrr": 0.20833333333333334,
+        "ndcg_at_5": 0.3126002550166633,
+        "precision_at_1": 0.16666666666666666,
+        "precision_at_3": 0.05555555555555555,
+        "precision_at_5": 0.06666666666666667,
+        "recall_at_1": 0.16666666666666666,
+        "recall_at_3": 0.16666666666666666,
+        "recall_at_5": 0.3333333333333333
+      }
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.0,
+        "hit_rate_at_3": 0.0,
+        "hit_rate_at_5": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_5": 0.0,
+        "precision_at_1": 0.0,
+        "precision_at_3": 0.0,
+        "precision_at_5": 0.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.0,
+        "recall_at_5": 0.0
+      }
+    },
+    "safety": {
+      "case_count": 3,
+      "evaluated_case_count": 3,
+      "macro_average_metrics": {
+        "hit_rate_at_1": 0.3333333333333333,
+        "hit_rate_at_3": 0.6666666666666666,
+        "hit_rate_at_5": 0.6666666666666666,
+        "mrr": 0.4444444444444444,
+        "ndcg_at_5": 0.4346595917807241,
+        "precision_at_1": 0.3333333333333333,
+        "precision_at_3": 0.2222222222222222,
+        "precision_at_5": 0.13333333333333333,
+        "recall_at_1": 0.3333333333333333,
+        "recall_at_3": 0.6666666666666666,
+        "recall_at_5": 0.6666666666666666
+      }
+    },
+    "unknown": {
+      "case_count": 3,
+      "evaluated_case_count": 0,
+      "macro_average_metrics": {
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "mrr": null,
+        "ndcg_at_5": null,
+        "precision_at_1": null,
+        "precision_at_3": null,
+        "precision_at_5": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null
+      }
+    }
+  },
+  "requested_backend": "jsonl",
+  "result_level": "reference",
+  "warning_case_count": 0
+}

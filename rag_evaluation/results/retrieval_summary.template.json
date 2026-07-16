@@ -1,0 +1,26 @@
+{
+  "dataset_path": "rag_evaluation/review/retrieval_eval.review.jsonl",
+  "dataset_status": "draft",
+  "result_level": "reference",
+  "official_benchmark": false,
+  "case_count": 28,
+  "evaluated_case_count": 25,
+  "excluded_unanswerable_count": 3,
+  "warning_case_count": 0,
+  "macro_average_metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_3": 1.0,
+    "recall_at_5": 1.0,
+    "precision_at_1": 1.0,
+    "precision_at_3": 0.5,
+    "precision_at_5": 0.3,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "hit_rate_at_1": 1.0,
+    "hit_rate_at_3": 1.0,
+    "hit_rate_at_5": 1.0
+  },
+  "category_breakdown": {},
+  "difficulty_breakdown": {},
+  "query_intent_breakdown": {}
+}

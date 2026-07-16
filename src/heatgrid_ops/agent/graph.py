@@ -218,6 +218,7 @@ async def execute_agent_graph_v2_with_capture(
     graph: AgentGraphInvoker | None = None,
     resume: bool = False,
     target_stage: StageName | None = None,
+    broaden: bool = False,
 ) -> AgentGraphExecution:
     validated_input = validate_agent_input(prepared_input, request)
     if graph is None:
@@ -247,6 +248,7 @@ async def execute_agent_graph_v2_with_capture(
         "configurable": {
             "thread_id": request.run_id,
             "target_stage": target_stage,
+            "broaden": broaden,
         },
         "recursion_limit": 64,
     }

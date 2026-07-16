@@ -1,0 +1,195 @@
+{
+  "breakdown_by_category": {
+    "fault_cause": {
+      "case_count": 2,
+      "consensus_winner_counts": {
+        "with_rag": 2
+      },
+      "no_rag_expected_point_coverage_average": 0.0,
+      "with_rag_actionability_average": 3.0,
+      "with_rag_correctness_average": 3.5,
+      "with_rag_expected_point_coverage_average": 0.525
+    },
+    "inspection_action": {
+      "case_count": 7,
+      "consensus_winner_counts": {
+        "with_rag": 7
+      },
+      "no_rag_expected_point_coverage_average": 0.0071428571428571435,
+      "with_rag_actionability_average": 3.0,
+      "with_rag_correctness_average": 3.5714285714285716,
+      "with_rag_expected_point_coverage_average": 0.4064285714285715
+    },
+    "operating_standard": {
+      "case_count": 8,
+      "consensus_winner_counts": {
+        "with_rag": 8
+      },
+      "no_rag_expected_point_coverage_average": 0.0,
+      "with_rag_actionability_average": 2.6875,
+      "with_rag_correctness_average": 3.3125,
+      "with_rag_expected_point_coverage_average": 0.27625
+    },
+    "priority_reason": {
+      "case_count": 3,
+      "consensus_winner_counts": {
+        "with_rag": 3
+      },
+      "no_rag_expected_point_coverage_average": 0.008333333333333333,
+      "with_rag_actionability_average": 2.1666666666666665,
+      "with_rag_correctness_average": 3.1666666666666665,
+      "with_rag_expected_point_coverage_average": 0.19666666666666668
+    },
+    "safety_caution": {
+      "case_count": 3,
+      "consensus_winner_counts": {
+        "tie": 1,
+        "with_rag": 2
+      },
+      "no_rag_expected_point_coverage_average": 0.0,
+      "with_rag_actionability_average": 3.3333333333333335,
+      "with_rag_correctness_average": 4.333333333333333,
+      "with_rag_expected_point_coverage_average": 0.545
+    },
+    "similar_case": {
+      "case_count": 2,
+      "consensus_winner_counts": {
+        "with_rag": 2
+      },
+      "no_rag_expected_point_coverage_average": 0.025,
+      "with_rag_actionability_average": 3.75,
+      "with_rag_correctness_average": 4.5,
+      "with_rag_expected_point_coverage_average": 0.8250000000000001
+    },
+    "unanswerable": {
+      "case_count": 3,
+      "consensus_winner_counts": {
+        "contested": 1,
+        "with_rag": 2
+      },
+      "no_rag_expected_point_coverage_average": 0.7866666666666667,
+      "with_rag_actionability_average": 4.0,
+      "with_rag_correctness_average": 5.0,
+      "with_rag_expected_point_coverage_average": 0.8883333333333333
+    }
+  },
+  "breakdown_by_difficulty": {
+    "easy": {
+      "case_count": 8,
+      "consensus_winner_counts": {
+        "with_rag": 8
+      },
+      "no_rag_expected_point_coverage_average": 0.185625,
+      "with_rag_actionability_average": 3.3125,
+      "with_rag_correctness_average": 4.25,
+      "with_rag_expected_point_coverage_average": 0.590625
+    },
+    "hard": {
+      "case_count": 4,
+      "consensus_winner_counts": {
+        "contested": 1,
+        "tie": 1,
+        "with_rag": 2
+      },
+      "no_rag_expected_point_coverage_average": 0.21875,
+      "with_rag_actionability_average": 2.5,
+      "with_rag_correctness_average": 3.375,
+      "with_rag_expected_point_coverage_average": 0.23750000000000002
+    },
+    "medium": {
+      "case_count": 16,
+      "consensus_winner_counts": {
+        "with_rag": 16
+      },
+      "no_rag_expected_point_coverage_average": 0.0078125,
+      "with_rag_actionability_average": 3.0,
+      "with_rag_correctness_average": 3.59375,
+      "with_rag_expected_point_coverage_average": 0.43562500000000004
+    }
+  },
+  "breakdown_by_retrieval_hit": {
+    "False": {
+      "case_count": 18,
+      "consensus_winner_counts": {
+        "contested": 1,
+        "tie": 1,
+        "with_rag": 16
+      },
+      "no_rag_expected_point_coverage_average": 0.13527777777777777,
+      "with_rag_actionability_average": 2.4444444444444446,
+      "with_rag_correctness_average": 3.3333333333333335,
+      "with_rag_expected_point_coverage_average": 0.26
+    },
+    "True": {
+      "case_count": 10,
+      "consensus_winner_counts": {
+        "with_rag": 10
+      },
+      "no_rag_expected_point_coverage_average": 0.005,
+      "with_rag_actionability_average": 4.05,
+      "with_rag_correctness_average": 4.5,
+      "with_rag_expected_point_coverage_average": 0.7965000000000001
+    }
+  },
+  "consensus_winner_counts": {
+    "contested": 1,
+    "tie": 1,
+    "with_rag": 26
+  },
+  "dimension_averages": {
+    "actionability": {
+      "delta_with_minus_without": 1.5178571428571428,
+      "mean_absolute_position_delta": 0.19642857142857142,
+      "no_rag_average": 1.5,
+      "with_rag_average": 3.017857142857143
+    },
+    "calibration": {
+      "delta_with_minus_without": 0.375,
+      "mean_absolute_position_delta": 0.375,
+      "no_rag_average": 4.321428571428571,
+      "with_rag_average": 4.696428571428571
+    },
+    "completeness": {
+      "delta_with_minus_without": 1.482142857142857,
+      "mean_absolute_position_delta": 0.16071428571428573,
+      "no_rag_average": 1.3035714285714286,
+      "with_rag_average": 2.7857142857142856
+    },
+    "correctness": {
+      "delta_with_minus_without": 1.2321428571428572,
+      "mean_absolute_position_delta": 0.30357142857142855,
+      "no_rag_average": 2.517857142857143,
+      "with_rag_average": 3.75
+    },
+    "evidence_grounding": {
+      "delta_with_minus_without": 1.8214285714285716,
+      "mean_absolute_position_delta": 0.25,
+      "no_rag_average": 1.75,
+      "with_rag_average": 3.5714285714285716
+    },
+    "expected_point_coverage": {
+      "delta_with_minus_without": 0.36285714285714293,
+      "mean_absolute_position_delta": 0.030357142857142853,
+      "no_rag_average": 0.08875000000000001,
+      "with_rag_average": 0.45160714285714293
+    }
+  },
+  "methodology_notes": [
+    "Both passes used the same Judge and rubric with A/B positions reversed.",
+    "Opposite non-tie winners are marked contested instead of being forced to a winner.",
+    "Draft/Reference labels still require human approval before official use."
+  ],
+  "position_sensitive_case_ids": [
+    "retrieval_eval_019",
+    "retrieval_eval_028"
+  ],
+  "position_sensitive_count": 2,
+  "review_priority_counts": {
+    "HIGH": 1,
+    "LOW": 14,
+    "MEDIUM": 13
+  },
+  "shared_case_count": 28,
+  "stable_winner_count": 26,
+  "status": "complete"
+}

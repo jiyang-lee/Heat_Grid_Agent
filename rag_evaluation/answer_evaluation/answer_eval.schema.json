@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heatgrid.local/rag_evaluation/answer_eval.schema.json",
+  "title": "HeatGrid RAG Answer Evaluation Dataset",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "case_id",
+    "query",
+    "category",
+    "query_intent",
+    "difficulty",
+    "answerable",
+    "retrieval_hit_at_5",
+    "relevant_chunk_ids",
+    "retrieved_chunk_ids",
+    "retrieved_contexts",
+    "expected_answer_points",
+    "forbidden_claims",
+    "generated_answer",
+    "cited_chunk_ids",
+    "evaluation_metadata",
+    "automated_scores",
+    "human_scores",
+    "evaluation_notes",
+    "review_required",
+    "label_status"
+  ],
+  "properties": {
+    "case_id": {"type": "string"},
+    "query": {"type": "string"},
+    "category": {"type": "string"},
+    "query_intent": {"type": "string"},
+    "query_type": {"type": "string"},
+    "difficulty": {"type": "string"},
+    "answerable": {"type": "boolean"},
+    "retrieval_hit_at_5": {"type": "boolean"},
+    "relevant_chunk_ids": {"type": "array", "items": {"type": "string"}},
+    "partially_relevant_chunk_ids": {"type": "array", "items": {"type": "string"}},
+    "retrieved_chunk_ids": {"type": "array", "items": {"type": "string"}},
+    "retrieved_contexts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["chunk_id", "document_title", "section_title", "text"],
+        "properties": {
+          "chunk_id": {"type": "string"},
+          "document_title": {"type": "string"},
+          "section_title": {"type": "string"},
+          "rag_role": {"type": "string"},
+          "score": {"type": ["number", "integer", "null"]},
+          "rank": {"type": "integer"},
+          "text": {"type": "string"}
+        }
+      }
+    },
+    "expected_answer_points": {"type": "array", "items": {"type": "string"}},
+    "forbidden_claims": {"type": "array", "items": {"type": "string"}},
+    "generated_answer": {"type": ["string", "null"]},
+    "cited_chunk_ids": {"type": "array", "items": {"type": "string"}},
+    "evaluation_metadata": {
+      "type": "object",
+      "required": [
+        "dataset_status",
+        "result_level",
+        "official_benchmark",
+        "retrieval_backend",
+        "answer_model",
+        "prompt_version",
+        "generated_at"
+      ],
+      "properties": {
+        "dataset_status": {"type": "string"},
+        "result_level": {"type": "string"},
+        "official_benchmark": {"type": "boolean"},
+        "retrieval_backend": {"type": "string"},
+        "answer_model": {"type": ["string", "null"]},
+        "prompt_version": {"type": ["string", "null"]},
+        "generated_at": {"type": ["string", "null"]}
+      }
+    },
+    "automated_scores": {
+      "type": ["object", "null"],
+      "properties": {
+        "faithfulness": {"type": ["number", "null"]},
+        "grounding_coverage": {"type": ["number", "null"]},
+        "answer_relevance": {"type": ["number", "null"]},
+        "hallucination_rate": {"type": ["number", "null"]},
+        "citation_accuracy": {"type": ["number", "null"]},
+        "citation_completeness": {"type": ["number", "null"]},
+        "unanswerable_handling": {"type": ["number", "null"]},
+        "safety_compliance": {"type": ["number", "null"]}
+      }
+    },
+    "human_scores": {
+      "type": ["object", "null"],
+      "properties": {
+        "faithfulness": {"type": ["number", "null"]},
+        "answer_relevance": {"type": ["number", "null"]},
+        "operational_usefulness": {"type": ["number", "null"]},
+        "citation_correctness": {"type": ["number", "null"]},
+        "hallucination_severity": {"type": ["number", "null"]},
+        "reviewer_comment": {"type": ["string", "null"]}
+      }
+    },
+    "evaluation_notes": {"type": "string"},
+    "review_required": {"type": "boolean"},
+    "label_status": {"type": "string", "enum": ["draft", "reviewed", "approved"]}
+  }
+}

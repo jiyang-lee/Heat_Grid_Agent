@@ -1,0 +1,91 @@
+{
+  "baseline_id": "dev2-raglogic-e7c01d6-jsonl-reference-v1",
+  "created_at": "2026-07-16T02:37:02.6444276Z",
+  "git": {
+    "branch": "dev2-raglogic",
+    "commit": "e7c01d6c0b3a2c87aa134153d41f605c759e6022"
+  },
+  "dataset": {
+    "path": "rag_evaluation/review/retrieval_eval.review.jsonl",
+    "sha256": "6cd0c536d1c0c6465e4e70f9deec9d7a25310d15e0c1fd0ff460825b0e1ff17b",
+    "status": "draft",
+    "result_level": "reference",
+    "official_benchmark": false,
+    "case_count": 28,
+    "evaluated_case_count": 25,
+    "excluded_unanswerable_count": 3
+  },
+  "corpus": {
+    "path": "data/rag_sources/metadata/rag_chunks.jsonl",
+    "sha256": "7a8c380be702922352038173947691d3564633bc7b8c2791fbeae2c9d682b432"
+  },
+  "retrieval": {
+    "backend": "jsonl",
+    "primary_top_k": 5,
+    "failed_case_count": 0,
+    "warning_case_count": 0,
+    "macro_average_metrics": {
+      "recall_at_1": 0.28,
+      "recall_at_3": 0.36,
+      "recall_at_5": 0.4,
+      "precision_at_1": 0.28,
+      "precision_at_3": 0.12,
+      "precision_at_5": 0.08,
+      "hit_rate_at_1": 0.28,
+      "hit_rate_at_3": 0.36,
+      "hit_rate_at_5": 0.4,
+      "mrr": 0.32333333333333336,
+      "ndcg_at_5": 0.29054645946376806
+    },
+    "top_k_grid": [
+      {
+        "top_k": 5,
+        "hit_case_count": 10,
+        "hit_rate": 0.4,
+        "recall": 0.4,
+        "average_latency_ms": 15.607142854215843,
+        "p95_latency_ms": 31.65000006556511
+      },
+      {
+        "top_k": 10,
+        "hit_case_count": 13,
+        "hit_rate": 0.52,
+        "recall": 0.52,
+        "average_latency_ms": 17.285714275203645,
+        "p95_latency_ms": 30.999999959021807
+      },
+      {
+        "top_k": 20,
+        "hit_case_count": 17,
+        "hit_rate": 0.68,
+        "recall": 0.64,
+        "average_latency_ms": 18.392857147513755,
+        "p95_latency_ms": 30.999999959021807
+      }
+    ]
+  },
+  "answer_evaluation_reuse": {
+    "dataset_path": "rag_evaluation/answer_evaluation/answer_eval.draft.jsonl",
+    "dataset_sha256": "fb1a31e747172ee70d4c61a8ea6d702ebe879e2618e7659535eb43fbc8a105a4",
+    "retrieved_id_mismatch_case_count": 0,
+    "retrieved_context_mismatch_case_count": 0,
+    "generation_dry_run_warning_count": 0,
+    "api_rerun_performed": false,
+    "reuse_level": "reference_only"
+  },
+  "candidate_expansion_policy": {
+    "initial_top_k": 5,
+    "first_expansion_top_k": 10,
+    "maximum_top_k": 20,
+    "requires_reranking_before_generation": true,
+    "runtime_quality_proxy_status": "draft_calibrated",
+    "jsonl_min_top_score": 6.0,
+    "jsonl_min_unique_matches": 2,
+    "calibration": {
+      "precision": 0.75,
+      "recall": 0.9,
+      "f1": 0.82,
+      "dataset_status": "draft"
+    }
+  }
+}

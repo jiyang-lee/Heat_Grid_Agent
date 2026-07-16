@@ -50,7 +50,8 @@ def build_v2_graph_output(
         decision="finalize",
         confidence=1.0,
         evidence_score=100.0,
-        review_required=raw_state.parent_disposition.force_review,
+        review_required=raw_state.parent_disposition.force_review
+        or report.get("quality_status") in {"insufficient", "unavailable"},
         disposition=raw_state.parent_disposition.disposition,
         blocking_retry_exhausted=list(raw_state.parent_disposition.blocking_retry_exhausted),
         graph_contract_version="agent_graph_v2.v3",
@@ -206,7 +207,9 @@ async def _persist_report_model_call(connection, run_id: str, state: AgentV2Stat
         {"run_id": run_id, "attempt": stage_attempt},
     )
     snapshot_id = snapshot.scalar_one_or_none()
-    status = "completed" if usage.model_calls == 1 else "failed"
+    status = "completed" if usage.model_calls >= 1 else "failed"
+    max_model_turns = 6
+    actual_model_turns = min(usage.model_calls, max_model_turns)
     await connection.execute(
         text(
             "INSERT INTO agent_model_calls ("
@@ -217,8 +220,9 @@ async def _persist_report_model_call(connection, run_id: str, state: AgentV2Stat
             "total_tokens, operation_key, completed_at"
             ") VALUES ("
             ":run_id, :stage_snapshot_id, 'report_draft', :stage_attempt, "
-            "'report_snapshot_only', 'report_draft', 'configured', :status, "
-            ":input_hash, :bundle_hash, :output_hash, '[]'::jsonb, 0, 1, 0, "
+            "'report_snapshot_only', 'answer_quality_pipeline', 'configured', :status, "
+            ":input_hash, :bundle_hash, :output_hash, '[]'::jsonb, 0, "
+            ":max_model_turns, 0, "
             ":model_turns, :input_tokens, :cached_input_tokens, :output_tokens, "
             ":total_tokens, :operation_key, now()"
             ") ON CONFLICT (operation_key) DO NOTHING"
@@ -231,7 +235,8 @@ async def _persist_report_model_call(connection, run_id: str, state: AgentV2Stat
             "input_hash": bundle_hash or state.request.input_hash,
             "bundle_hash": bundle_hash,
             "output_hash": output_hash,
-            "model_turns": min(usage.model_calls, 1),
+            "max_model_turns": max_model_turns,
+            "model_turns": actual_model_turns,
             "input_tokens": usage.input_tokens,
             "cached_input_tokens": usage.cached_input_tokens,
             "output_tokens": usage.output_tokens,
@@ -255,9 +260,30 @@ async def _persist_report_model_call(connection, run_id: str, state: AgentV2Stat
                     "execution_profile": "report_snapshot_only",
                     "snapshot_bundle_hash": bundle_hash,
                     "actual_tool_calls": 0,
-                    "actual_model_turns": min(usage.model_calls, 1),
+                    "actual_model_turns": actual_model_turns,
                 }
             ).decode("utf-8"),
             "operation_key": f"event:{operation_key}",
         },
     )
+    comparison = report.get("answer_quality_comparison")
+    if isinstance(comparison, dict) and comparison.get("enabled_for_run") is True:
+        await connection.execute(
+            text(
+                "INSERT INTO agent_run_events ("
+                "run_id, event_type, message, payload, operation_key"
+                ") VALUES ("
+                ":run_id, 'answer_quality_compared', "
+                "'initial and regenerated report drafts compared', "
+                "CAST(:payload AS jsonb), :operation_key"
+                ") ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL DO NOTHING"
+            ),
+            {
+                "run_id": run_id,
+                "payload": orjson.dumps(comparison).decode("utf-8"),
+                "operation_key": (
+                    f"event:answer-quality:{run_id}:{stage_attempt}:"
+                    f"{bundle_hash or state.request.input_hash}"
+                ),
+            },
+        )

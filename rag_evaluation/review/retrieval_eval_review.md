@@ -1,0 +1,6913 @@
+﻿# Retrieval 평가 데이터셋 검수 문서
+
+이 문서는 `retrieval_eval.draft.jsonl`의 정답 라벨을 사람이 검수하기 위한 한국어 중심 지원 자료다. 원본 식별자, JSON field name, enum 값, `case_id`, `chunk_id`, `label_status`, `review_required`, `candidate_type`은 변경하지 않는다.
+
+## 검수자가 먼저 볼 내용
+
+- 평가 질문이 운영자 질문으로 자연스러운지 확인한다.
+- `relevant_chunk_ids`가 질문에 직접 답하는 핵심 근거인지 확인한다.
+- `partially_relevant_chunk_ids`가 보조 근거인지, 정답으로 승격해야 하는지 확인한다.
+- `irrelevant_but_confusable_chunk_ids`가 hard negative로 적절한지 확인한다.
+- `expected_answer_points`와 `forbidden_claims`가 Chunk 원문 근거를 벗어나지 않는지 확인한다.
+
+## 판정 enum 설명
+
+- `relevant`: 질문에 직접 답하는 핵심 근거
+- `partially_relevant`: 질문에 일부만 답하거나 배경/보조 근거를 제공
+- `irrelevant`: 질문과 직접 관련 없음
+- `remove`: 후보에서 제거 권장
+- `add_other_chunk`: 다른 Chunk 추가 필요
+- `needs_domain_review`: 도메인 전문가 검토 필요
+
+## 검수 우선순위
+
+1. `retrieval_eval_012`: strainer priority 근거가 질문에 직접 답하는지 우선 확인
+2. `retrieval_eval_014`: IEA와 Swedish F:101의 filter/strainer mesh 기준을 혼합하지 않았는지 확인
+3. `retrieval_eval_028`: 미래 날씨/설계 계산 질문이 답변 불가로 적절한지 확인
+4. hard 난이도 전체: `retrieval_eval_006`, `retrieval_eval_012`, `retrieval_eval_014`, `retrieval_eval_028`
+5. unanswerable 전체: `retrieval_eval_026`, `retrieval_eval_027`, `retrieval_eval_028`
+6. `relevant_chunk_ids` 복수 case: `retrieval_eval_006`, `retrieval_eval_011`, `retrieval_eval_012`, `retrieval_eval_014`, `retrieval_eval_016`
+7. 나머지 case
+
+## Case별 검수 자료
+
+### retrieval_eval_001
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_001`
+- 분류 (`category`): `fault_cause`
+- 평가 질문 (`query`): 난방이 전혀 안 될 때 스트레이너 막힘이나 차압제어 이상을 원인 후보로 봐도 돼?
+- 질문 의도 (`query_intent`): `fault_cause`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `no_heat_strainer_pressure`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["No heat can be associated with clogged dirt strainers or filters.","A defective or incorrectly set differential pressure controller is also listed as a possible cause.","The answer should keep the cause as a candidate, not a confirmed diagnosis."]
+- 금지 주장 (`forbidden_claims`): ["Do not state the strainer is definitely clogged.","Do not invent measured differential pressure.","Do not claim a technician already cleaned the filter."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row001"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_substation_operation_extract__p023__c01","iea_sh_dhw_substation_extract__p074__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row004"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row001","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"No heat row lists clogged dirt strainer/filter and differential pressure controller issues."}
+- 검수자 메모 (`reviewer_notes`): Gold label should verify whether operation manual troubleshooting page should be partial or relevant.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row001`
+
+- chunk_id: `danfoss_troubleshooting_table__row001`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 565 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Dirt strainer in the district heating or<br>heating return line clogged.<br>Filter in district heating meter clogged.<br>Defective or incorrectly set differential<br>pressure controller.<br>Air pockets in the system.
+Recommended action: Clean the filter/dirt strainer.<br>Cean the filter (in consultation with the<br>district heating plant).<br>Check the functions of the differential<br>pressure controller - if necessary, clean the<br>valve seat.<br>Vent the system thoroughly - see the<br>instructions.
+Component: strainer/filter
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p023__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p023__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 16. TROUBLE SHOOTING - HEATING
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2439 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+16. TROUBLE SHOOTING - HEATING
+Fundamental
+In the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check
+whether:
+• the system is correctly connected • there is a power supply to the system - pump and automatics
+• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean
+• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)
+heating supplier if necessary
+Problem Possible cause Solution
+No heat Dirt strainer in the district heating or Clean the filter/dirt strainer.
+heating return line clogged.
+Filter in district heating meter clogged. Cean the filter (in consultation with the
+district heating plant).
+Defective or incorrectly set differential Check the functions of the differential
+pressure controller. pressure controller - if necessary, clean the
+valve seat.
+Air pockets in the system. Vent the system thoroughly - see the
+instructions.
+Uneven distribution of heat Air pockets in the system. Vent the system thoroughly - see the
+instructions.
+Poor cooling Insufficient heating surface / radiators Increase total heating surface.
+too small compared to the total heating
+requirement of the building.
+Poor utilisation of the existing heating Turn on all radiators and prevent the
+sursurface. radiators in the system from becoming
+warm at the bottom.
+No heat Defective thermostat (sensor). Replace sensor.
+Defective actuator - or possibly dirt in Check that the actor is functioning
+the valve housing. correctly - clean the valve seat if necessary.
+Automatic components/controller Check that the controller setting is correct
+incorrectly adjusted or defective - or - see the separate instructions for the con-
+possibly power outage. troller.
+Check the power supply.
+Temporarily set the actuator to “manual”
+control - see the instructions for the heat-
+ing system.
+The pump is not working. Check that there is a power supply for the
+pump, and that it is operating.
+Check that there is no air in the pump
+housing - see pump manual.
+The pump is set at too low speed of Set the pump to a higher speed - see the
+rotation (not all system types). instructions for the heating system.
+Air pockets in the system. Vent the installation thoroughly - see the
+instructions.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 23
+```
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p074__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p074__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): 11.1.9 Heat Exchanger Substation Location
+- 페이지/출처 위치: p.74 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2829 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+A strainer with a mesh of 1.0 to 1.6 mm, preferably the smaller size, should be installed. In order
+to determine when the strainer should be cleaned, a pressure gauge should be connected to both
+sides of the strainer. The pressure drop through the strainer must be considered in the system
+design. If necessary, a larger diameter strainer should be considered so that the flow is not
+restricted.
+The DH operator will install draining and venting valves and these should be locked to prevent
+unauthorized operation. The DH operator will normally be the only key holder.
+All pipework used to interconnect the heat exchanger to the primary and secondary systems should
+be suitable for each system.
+11.1.9 Heat Exchanger Substation Location
+The DH operator should be consulted regarding the location of the building heat exchanger
+substation because this will determine the location of the primary system piping. The room size
+should be readily accessible for inspection and maintenance, and its size should be suitable for
+disconnection and removal of equipment for repair or replacement.
+As a rule, the room should be located adjacent to an external wall to avoid lengthy runs of primary
+pipework within the building. Clearly, this is not always possible. Therefore, isolating valves
+should be provided at the point of entry to the building, access to which should be maintained at all
+times. The valves should be lockable to avoid unauthorized operation, with the keys held by a
+responsible staff members of the customer organization and the DH operator. Personnel from the
+DH operator should be able to enter the room unassisted, but the room should be locked to keep
+out unauthorized personnel.
+As heat exchanger substations are significantly smaller than conventional boiler plants, large
+amounts of space are created when boilers are removed. This can be a significant benefit to the
+building owner.
+Connection Methods
+11.1.10 Indirect Connection Method
+The indirect connection method is normally used in large systems whose temperatures and
+pressures are not suitable for the direct connection method. This involves temperatures typically
+above 90°C and pressures above 6 bar. Connecting to a high pressure DH system should not be
+carried out unless specific heating appliances of large enough capacity warrant such treatment. In
+this situation, the equipment must be designed to the same standards as a heat exchanger.
+The indirect method ensures hydraulic separation between the DH water system (primary) and the
+central heating system (secondary) of the building, allowing the DH operator freedom to manage
+the DH system conditions without unduly disturbing the connected customers. The indirect method
+employs one or more heat exchangers to interface the building heating systems with the DH
+system.
+Part II Page 74 of 86
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row004`
+
+- chunk_id: `danfoss_troubleshooting_table__row004`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1048 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Defective thermostat (sensor).<br>Defective actuator - or possibly dirt in<br>the valve housing.<br>Automatic components/controller<br>incorrectly adjusted or defective - or<br>possibly power outage.<br>The pump is not working.<br>The pump is set at too low speed of<br>rotation (not all system types).<br>Air pockets in the system.
+Recommended action: Replace sensor.<br>Check that the actor is functioning<br>correctly - clean the valve seat if necessary.<br>Check that the controller setting is correct<br>- see the separate instructions for the con-<br>troller.<br>Check the power supply.<br>Temporarily set the actuator to “manual”<br>control - see the instructions for the heat-<br>ing system.<br>Check that there is a power supply for the<br>pump, and that it is operating.<br>Check that there is no air in the pump<br>housing - see pump manual.<br>Set the pump to a higher speed - see the<br>instructions for the heating system.<br>Vent the installation thoroughly - see the<br>instructions.
+Component: pump
+```
+
+### retrieval_eval_002
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_002`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 온수가 늦게 나오면 순환펌프 쪽에서는 무엇을 점검해야 해?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dhw_wait_pump`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Check whether the circulation pump is running.","Check whether power is supplied to the pump.","Check that there is no air in the pump housing."]
+- 금지 주장 (`forbidden_claims`): ["Do not say the pump has failed without inspection.","Do not invent electrical measurements.","Do not prescribe replacement unless documented evidence supports it."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row008"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_substation_operation_extract__p018__c01","danfoss_substation_operation_extract__p020__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row009"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row008","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"Long wait for hot water row names circulation pump out of order and pump/power/air checks."}
+- 검수자 메모 (`reviewer_notes`): Candidate is direct, but reviewer should confirm if DHW operation page is partial support.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row008`
+
+- chunk_id: `danfoss_troubleshooting_table__row008`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 261 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Long wait for hot water
+Possible cause: Circulation pump out of order.
+Recommended action: Check whether the pump is running -<br>and whether there is a power supply to<br>the pump. Make sure that there is no air<br>in the pump housing.
+Component: pump
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p018__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p018__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 13. HEATING CIRCUIT, PUMP
+- 페이지/출처 위치: p.18 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 954 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+13. HEATING CIRCUIT, PUMP
+Grundfos Pump UPM3
+Grundfos UPM3 Auto has 12 optional settings, which can be select-
+ed with the push-botton. See fig. 1 - User interface.
+The pump is set from factory to Proportional pressure AUTOadapt.
+Fig. 1. User interface
+with a push button and
+five LEDs.
+The user interface shows:
+* performance view (during operation)
+- operation status
+- alarm status
+* settings view (after pressing the button)
+During operation, the display shows the performance of the pump.
+By pressing the button, the display changes status or you can
+change settings.
+Fig. 2. Performance view
+The LEDs show the power consumption for the pump.
+When the pump is running, LED 1 is green. The four yellow Performance
+Green Yellow Yellow Yellow Yellow
+LEDs indicate the current power consumption. % of P max.
+0% (standby)
+See fig. 2 - Performance view.
+0 - 25%
+25 - 50%
+50 - 75%
+75 - 100 %
+18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p020__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p020__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 14. DOMESTIC HOT WATER
+- 페이지/출처 위치: p.20 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3252 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+14. DOMESTIC HOT WATER
+General information
+PLEASE NOTE! Some models may have a slightly different appearance,
+but the control function is in principle the same as described below.
+Commissioning
+Commission the substation in accordance with the instructions in
+this manual.
+Regulation of domestic hot water temperature
+The domestic hot water is prepared in the heat exchanger based on
+the flow principle and the temperature is controlled by a combined Fig. 1
+hydraulic and thermostatic self-acting controller PTC2+P with in-
+tegrated differential pressure controller, which blocks the flow of
+primary and secondary side flow through the heat exchanger im-
+mediately after completion of the tapping process.
+PTC2 controller for DHW (Fig. 1).
+Abb.
+Adjust the hot water temperature by moving the adjuster lever to-
+wards “+” (hotter) or “-” (colder). Start by turning the lever clockwise
+Adjuster lever
+– until it stops/until you cannot turn it any further. Then turn the lever
+counter-clockwise until the temperature of the tap water is approx.
+48°C during normal tapping flow (7–8 litres per min.). The temperature
+must never exceed 55°C to prevent limescale deposits building up
+in the water heater.
+Bypass thermostat (default) Fig. 2
+As a standard the substation is equipped with a bypass thermostat,
+Danfoss FJVR, so that when water is tapped, the water heater
+immediately starts to produce hot water. We recommend setting
+of the thermostat in pos.3. If you have to wait a long time (i.e. more
+than 20 sec.) for hot water, it may be necessary to set the thermostat
+at a higher value.
+If you want to avoid waiting time altogether, you will need to set up
+domestic hot water recirculation to the tapping points.
+Circulations thermostat / conversion to recirculation
+If the household piping system features domestic hot water recir-
+culation, the substation must be connected to the recirculation sys-
+tem.
+Scale setting (indicative)
+Pos. 2 = 30°C
+3 = 40°C
+4 = 45°C
+Conversion to recirculation requires only an additional circulation
+set. (This is not part of the delivery and must be purchased as extra
+equipment, - see photo on page 14).
+Connect the recirculation pipe from the fixed household piping sys-
+tem to the hexagon nipple at the bottom of the substation (please see
+page 14 for instructions about how to make recirculation connection).
+If a time-controlled pump is used, we recommend setting the circu-
+lation water temperature to approx. 35 °C.
+Fig. 3
+Alternative controller PM2+P
+As alternative the temperature can be controlled by a the pres-
+sure-controlled self-acting controller PM2+P with integrated differ-
+ential pressure controller. Set the DHW temperature by turning the
+adjuster lever towards red (hotter) or blue (colder). Start by turning
+the lever clockwise - until the pin is opposite the blue dot. Then turn
+the lever counter-clockwise until the temperature of the tap water Adjuster lever
+is approx. 48°C during normal tapping flow (7–8 litres per min.). The
+temperature must never exceed 55°C to prevent limescale deposits
+building up in the water heater. NB! The pin must be positioned be-
+tween the blue and red dot, otherwise the controller will shut down.
+20 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row009`
+
+- chunk_id: `danfoss_troubleshooting_table__row009`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 216 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Long wait for hot water
+Possible cause: Dirt strainer in the district heating sup-<br>ply line clogged.<br>Defective DHW controller.<br>Defective sensor. (PTC2)
+Recommended action:
+Component: strainer/filter
+```
+
+### retrieval_eval_003
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_003`
+- 분류 (`category`): `fault_cause`
+- 평가 질문 (`query`): 급탕 온도가 낮고 변동이 있으면 욕실 믹서의 역류방지밸브도 의심 대상이야?
+- 질문 의도 (`query_intent`): `fault_cause`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dhw_temperature_variation_mixer`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["A defective non-return valve in a thermostatic bathroom mixer can cause hot and cold water mixing.","The document notes fluctuating temperatures may occur at other tapping points.","The answer should recommend checking mixers for defects as a candidate action."]
+- 금지 주장 (`forbidden_claims`): ["Do not claim the bathroom mixer is confirmed defective.","Do not invent user complaints at other tapping points.","Do not prescribe non-documented repair steps."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row006"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_troubleshooting_table__row010","danfoss_troubleshooting_table__row011"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row007"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row006","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"Temperature too low/variations row identifies non-return valve in thermostatic mixer and mixing."}
+- 검수자 메모 (`reviewer_notes`): Semantic Korean query maps to English mixer row; review Korean wording for intended equivalence.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row006`
+
+- chunk_id: `danfoss_troubleshooting_table__row006`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 467 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Temperature too low / variations in<br>temperature
+Possible cause: Non-return valve in thermostatic mixer<br>in the bathroom defective - results in hot<br>and cold water mixing. Please note that<br>fluctuating temperatures may occur at<br>other tapping points in the system!<br>NB, Check all mixers in the house for<br>faults/defects!
+Recommended action: Replace the mixer or perhaps only the<br>non-return valve.
+Component: control valve/actuator/controller
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row010`
+
+- chunk_id: `danfoss_troubleshooting_table__row010`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 297 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Hot water temeprature too low
+Possible cause: As above.<br>Non-return valve in the circulation pipe<br>defective (leads to mixing - the circulation<br>water pipes become cold during ).
+Recommended action: As above.<br>Replace non-return valve.
+Component: control valve/actuator/controller
+```
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row011`
+
+- chunk_id: `danfoss_troubleshooting_table__row011`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 160 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Hot water temeprature too low
+Possible cause: Defective domestic hot water controller.
+Recommended action:
+Component: control valve/actuator/controller
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row007`
+
+- chunk_id: `danfoss_troubleshooting_table__row007`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 247 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Temperature too low / variations in<br>temperature
+Possible cause: Clogged strainer in the cold water meter<br>or possibly in the cold water supply in<br>the unit.<br>Calified heat exchanger.
+Recommended action:
+Component: strainer/filter
+```
+
+### retrieval_eval_004
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_004`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): DHW 온도가 tapping 중 떨어질 때 차압제어 capillary tube와 열교환기는 어떤 조치 후보가 있어?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dhw_capacity_drop_pressure_heat_exchanger`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Air in the capillary tube for the differential pressure controller is listed as a possible cause.","A calcified plate heat exchanger is listed as another possible cause.","Recommended actions include venting the capillary pipe and replacing the plate heat exchanger."]
+- 금지 주장 (`forbidden_claims`): ["Do not claim replacement is mandatory without inspection.","Do not invent scale thickness or water quality results.","Do not state the pressure controller is certainly defective."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row012"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "danfoss_substation_operation_extract__p021__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row007"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row012","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"Tapping capacity row mentions capillary tube air, calcified plate heat exchanger, venting, and replacement."}
+- 검수자 메모 (`reviewer_notes`): Replacement wording is present in source; human should decide if it belongs in expected answer for evaluation.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row012`
+
+- chunk_id: `danfoss_troubleshooting_table__row012`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 313 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Temperature falls during tapping (lack<br>of capacity)
+Possible cause: Air in the capillary tube for the differen-<br>tial pressure controller.<br>Calified plate heat exchanger.
+Recommended action: Vent the capillary pipe.<br>Replace the plate heat exchanger.
+Component: control valve/actuator/controller
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p021__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p021__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 15. MAINTENANCE
+- 페이지/출처 위치: p.21 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3287 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+15. MAINTENANCE
+Maintenance work
+Is only to be carried out by qualified and authorised personnel.
+Inspection
+The water heater should be checked regularly by authorised person-
+nel. Any necessary maintenance must be performed in accordance
+with the instructions in this manual and other sets of instructions.
+During service the dirt strainers are to be cleaned – including the
+filter on the controller, all pipe connections must be tightened and
+the safety valve must be function tested by turning the lever.
+Rinsing/cleaning of plate heat exchanger
+To clean the plate heat exchanger, rinse it by running clean water
+through the exchanger at high speed and in the opposite direction
+to the normal flow. This will remove any dirt deposits that may have
+built up in the exchanger. If rinsing with clean water is not sufficient,
+the exchanger can also be cleaned by circulating a cleaning agent
+approved by Danfoss (e.g. Kaloxi or Radiner Fl cleaning fluid) through
+the exchanger. Both these cleaning fluids are environmentally friendly
+and can be disposed off through the standard sewer system. After
+use of a cleaning fluid, the plate heat exchanger must be rinsed
+thoroughly with clean water.
+Acidification of brazed plate heat exchanger
+As a starting point, we do not recommend acidification of the
+exchanger. Deposits of limescale may build up in plate heat exchangers
+for domestic hot water on account of the large temperature
+fluctuations, and because aerated water is used on the secondary
+side. If it becomes necessary to clean the exchanger with acid, this
+can be done as shown on the drawing to the right. Brazed plate heat
+exchangers can withstand rinsing with a dilute acid solution - e.g.
+5% formic, acetic or phosphoric acid).
+Measures after maintenance work
+After maintenance work and before commissioning:
+– Check that all screwed connections are tight.
+– Check that all safety features, covers, that were removed, have
+been replaced properly.
+– Clean the working area and remove any spilled materials.
+– Clear all tools, materials and other equipment from the working
+area.
+– Connect to energy supply and check for leaks.
+– Vent the system.
+– Carry out any necessary adjustment again.
+– Make sure that all safety features on the device and the system
+work properly.
+Meter reading
+The caretaker/owner must perform visual checking and reading of
+the district heating meter at short, regular intervals. (The meter is
+not a part of the delivery from Danfoss).
+Service procedures must only be performed by trained, authorised
+personnel.
+NB! Excessive consumption for whatever reason is not covered by
+the Danfoss warranty.
+Cooling / Return temperature reading
+Cooling – i.e. the difference between the supply and return tempera-
+ture of the district heating water – has a significant effect on overall
+energy economy. Therefore, it is important to focus on the supply
+and return temperature in the heating system. The difference should
+typically be 30–35°C. Please note that a low district heating return
+temperature is directly related to the return temperature from the
+heating circuit and the return temperature of the circulation water.
+It is therefore important to focus on these return temperatures.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 21
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row007`
+
+- chunk_id: `danfoss_troubleshooting_table__row007`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 247 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Temperature too low / variations in<br>temperature
+Possible cause: Clogged strainer in the cold water meter<br>or possibly in the cold water supply in<br>the unit.<br>Calified heat exchanger.
+Recommended action:
+Component: strainer/filter
+```
+
+### retrieval_eval_005
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_005`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): 시운전 전에 배관 연결부와 누수 확인은 어떤 순서로 해야 해?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `commissioning_leak_check`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Pipe connections should be tightened because transport and handling can loosen them.","After filling with water, connections should be tightened again before pressure testing for leaks.","After heating, connections should be checked and retightened if necessary."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent a pressure test value if not in the cited chunk.","Do not say leak-free status was confirmed on site.","Do not omit the retightening-before-pressure-test sequence."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_substation_operation_extract__p010__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "danfoss_substation_operation_extract__p005__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_substation_operation_extract__p014__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_substation_operation_extract__p010__c01","document_title":"Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract","section_title":"6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES","evidence_note":"Test and connections section describes retightening before filling, after filling, before pressure test, and after heating."}
+- 검수자 메모 (`reviewer_notes`): Check if p005 startup quick guide should be partial or co-relevant.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p010__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p010__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+- 페이지/출처 위치: p.10 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3196 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+General
+The installation, connection and maintenance of the substation
+must be performed by qualified and authorised personnel.
+Installation must always be performed in accordance with the ap-
+plicable legislation and in compliance with these instructions.
+The substation must be installed so that it is freely accessible and can
+be maintained without unnecessary disruption. Lift the substation
+by its mounting plate/rear section and secure it to a solid wall using
+4 sturdy bolts (max. 8 mm), screws or expansion bolts positioned
+in the four keyholes.
+Before commissioning, rinse all the pipes in the household piping
+system thoroughly to remove any impurities, and check and clean
+the dirt strainers in the substation.
+Connect the substation to the household piping in accordance with
+the labelling at the bottom and/or in accordance with the instruc-
+tions in this manual.
+For fully insulated systems
+The insulation front panel on the VXe substations can be removed
+without using tools. Take hold of the air duct in the top and bottom
+of the front insulation section and pull carefully forward until the
+front insulation section releases from the rear section. Then pull
+gently until the front section is free from the components.
+Test and connections
+Before filling the system with water, retighten all the pipe connections
+because vibrations and shocks during transport and handling
+may have caused leaks. Once the system has been filled with water,
+tighten all the pipe connections once more before performing pres-
+sure test for leaks. After heating of the system, check all the connec- Meter
+tions and retighten if necessary. display
+Please note that the connections may feature EPDM rubber gaskets!
+Therefore, it is important that you DO NOT OVERTIGHTEN the
+union nuts. Overtightening may result in leaks. Leaks caused by
+overtightening or failure to retighten connections are not covered
+by the warranty.
+Heat meter, fitting pieces.
+The substation is equipped with fitting pieces for heat meter on
+the district heating return line. (Measurement: 3/4” x 110 mm).
+Fitting of heat meters
+- Close the four ball valves on the district heating and the
+heating sides.
+- Loosen the union nuts at both ends of the fitting piece (A + B)
+and remove it. A B
+- Fit the heat meter, - remember to insert gaskets.
+- Mount sensor, - remember to insert gaskets.
+- Mount temperature sensors in sensorpockets (according to
+heat meter instructions.
+- After mounting of heat meter remember to check and tighten
+all pipe connections before commissioning the substation.
+Meter display (reading unit)
+The meter reading unit is placed on the console together with
+the ECL regulator, as shown in the photo to the right, so that
+reading of the meter can be done without removing the insula-
+tion cover.
+Safety valve(s)
+Always lead the blow-off pipe from the safety valve to a drain in
+accordance with applicable legislation.
+The insulation cover is be prepared for this and blow-off pipe
+from the safety valves are led through the slit in the insulating
+cover as shown in the photo to the right.
+10 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p005__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p005__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 3. GETTING STARTED - QUICK GUIDE FOR EASY START-UP
+- 페이지/출처 위치: p.5 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2481 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+3. GETTING STARTED - QUICK GUIDE FOR EASY START-UP
+Mounting
+Note!
+Connect the substation to the household piping in accordance with
+Heating and cooling the substation may cause leaks. Therefore
+the labelling at the bottom and/or in accordance with the instructions
+in this manual. it may be necessary to retighten the connections in the period
+after commissioning.
+If the household piping system features domestic hot water
+recirculation, the substation must be connected to the recirculation Note!
+system. The circulation set for recirculation connection is not standard Never lift the station by its front insulation cover!
+equipment. The set must be purchased as extra equipment.
+We recommend establishing recirculation BEFORE mounting the
+substation on the wall.
+For instructions about recirculation connection, see page 14.
+GETTING STARTED is a quick guide and some details in connection with
+installation and commissioning may require additional information,
+which can be found elsewhere in this instruction manual.
+GETTING STARTED AKVA LUX II VXe
+If the household piping system features domestic hot water recircula-
+tion, the substation must be connected to the recirculation system,
+- according to instructions on page 14.
+1. Mount the substation on a solid wall using two sturdy bolts (max. 8
+mm), screws, expansion bolts or similar.
+2. Tighten all pipe connections, as they may have loosened during
+transport and handling.
+3. Mount the district heating meter (see page 11).
+4. On systems that feature a safety valve, establish a drain connection
+in compliance with the applicable legislation.
+5. Fill the heat exchanger / the system with water according to the
+instructions on page 12.
+6. Open the ball valve for the HE supply and return flow, as well as the
+DHW outlet and heat up the system.
+7. Check the substation and the household piping thoroughly for leaks.
+8. Pressure test the entire system for leaks in accordance with the ap-
+plicable regulations.
+9. Connect pump and automatic components to the electricity supply,
+but do not switch on the power.
+10. Heat the system and vent the radiator circuit/heating side tho-
+roughly on the radiators and the air valve, if any.
+11. Connection
+Now switch on the pump and automatic components, if any.
+12. Finish by adjusting the substation in accordance with the instruc-
+tion manuals and remember to fill out the Commissioning Certificate
+page 31.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 5
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p014__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p014__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 10. ADJUSTMENT AND COMMISSIONING
+- 페이지/출처 위치: p.14 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1063 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+10. ADJUSTMENT AND COMMISSIONING
+General information
+PLEASE NOTE! Some models may have a slightly different appear-
+ance, but the control function is in principle the same as described
+below.
+Commissioning
+Commission the substation in accordance with the instruction
+manual.
+Filling the system / operating pressure
+Fill the unit with water according to the instructions on page 11.
+If the pressure drops below 1 bar, water must be added to the sys-
+tem.
+The operating pressure should never exceed 1.5 bar.
+(The safety valve opens at 2,5 bar).
+The pressure is read on the manometer.
+If system pressure drops dramatically within a short time, heating
+system should be examined for leakage, - this includes checking
+the factory set pressure of the expansion vessel, which is normally
+0,5 bar.
+Manometer
+Differential pressure controller
+For Akva Lux II VXe the differential pressure controller is installed in
+the AVQM self-acting flow controller with integrated control valve.
+Please see page 16.
+AVQM
+14 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+### retrieval_eval_006
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_006`
+- 분류 (`category`): `safety_caution`
+- 평가 질문 (`query`): 안전밸브 배출관은 어디로 유도해야 하고 차단밸브를 넣어도 돼?
+- 질문 의도 (`query_intent`): `safety`
+- 난이도 (`difficulty`): `hard`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `safety_valve_discharge`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Manufacturer manual says blow-off pipe from the safety valve should be led to a drain according to applicable legislation.","Swedish F:101 says the discharge pipe from the safety valve must be run to the floor drain.","Swedish F:101 says no shut-off valves are allowed between the safety valve and the heat exchanger."]
+- 금지 주장 (`forbidden_claims`): ["Do not permit a shut-off valve between safety valve and heat exchanger.","Do not invent local legal requirements beyond the cited documents.","Do not state a specific pipe diameter unless cited."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): ["Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract","Swedish F:101 District Heating Substations - Selected Extract"]
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): ["danfoss_substation_operation_extract__p010__c01","swedish_f101_operation_extract__p025__c01"]
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p031__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p023__c01"
+- 원천 섹션 메모 (`source_sections`): [{"chunk_id":"danfoss_substation_operation_extract__p010__c01","document_title":"Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract","section_title":"6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES","evidence_note":"Safety valve blow-off pipe should be led to a drain."},{"chunk_id":"swedish_f101_operation_extract__p025__c01","document_title":"Swedish F:101 District Heating Substations - Selected Extract","section_title":"6.1.13 Drain valve 6.2.6 Filter","evidence_note":"Safety valve discharge pipe to floor drain and no shut-off valves between safety valve and heat exchanger."}]
+- 검수자 메모 (`reviewer_notes`): Multi-document gold label; human should verify p025 text extraction combines safety valve and filter sections clearly enough.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p010__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p010__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+- 페이지/출처 위치: p.10 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3196 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+General
+The installation, connection and maintenance of the substation
+must be performed by qualified and authorised personnel.
+Installation must always be performed in accordance with the ap-
+plicable legislation and in compliance with these instructions.
+The substation must be installed so that it is freely accessible and can
+be maintained without unnecessary disruption. Lift the substation
+by its mounting plate/rear section and secure it to a solid wall using
+4 sturdy bolts (max. 8 mm), screws or expansion bolts positioned
+in the four keyholes.
+Before commissioning, rinse all the pipes in the household piping
+system thoroughly to remove any impurities, and check and clean
+the dirt strainers in the substation.
+Connect the substation to the household piping in accordance with
+the labelling at the bottom and/or in accordance with the instruc-
+tions in this manual.
+For fully insulated systems
+The insulation front panel on the VXe substations can be removed
+without using tools. Take hold of the air duct in the top and bottom
+of the front insulation section and pull carefully forward until the
+front insulation section releases from the rear section. Then pull
+gently until the front section is free from the components.
+Test and connections
+Before filling the system with water, retighten all the pipe connections
+because vibrations and shocks during transport and handling
+may have caused leaks. Once the system has been filled with water,
+tighten all the pipe connections once more before performing pres-
+sure test for leaks. After heating of the system, check all the connec- Meter
+tions and retighten if necessary. display
+Please note that the connections may feature EPDM rubber gaskets!
+Therefore, it is important that you DO NOT OVERTIGHTEN the
+union nuts. Overtightening may result in leaks. Leaks caused by
+overtightening or failure to retighten connections are not covered
+by the warranty.
+Heat meter, fitting pieces.
+The substation is equipped with fitting pieces for heat meter on
+the district heating return line. (Measurement: 3/4” x 110 mm).
+Fitting of heat meters
+- Close the four ball valves on the district heating and the
+heating sides.
+- Loosen the union nuts at both ends of the fitting piece (A + B)
+and remove it. A B
+- Fit the heat meter, - remember to insert gaskets.
+- Mount sensor, - remember to insert gaskets.
+- Mount temperature sensors in sensorpockets (according to
+heat meter instructions.
+- After mounting of heat meter remember to check and tighten
+all pipe connections before commissioning the substation.
+Meter display (reading unit)
+The meter reading unit is placed on the console together with
+the ECL regulator, as shown in the photo to the right, so that
+reading of the meter can be done without removing the insula-
+tion cover.
+Safety valve(s)
+Always lead the blow-off pipe from the safety valve to a drain in
+accordance with applicable legislation.
+The insulation cover is be prepared for this and blow-off pipe
+from the safety valves are led through the slit in the insulating
+cover as shown in the photo to the right.
+10 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+##### Chunk 후보: `swedish_f101_operation_extract__p025__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p025__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 6.1.13 Drain valve 6.2.6 Filter
+- 페이지/출처 위치: p.25 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3338 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6.1.13 Drain valve 6.2.6 Filter
+A drain valve, together with its discharge The filter mesh size must not exceed 0.6 mm. It
+connection, must be fitted to the lowest point of the must be possible to clean the filter without having
+pipes. The drain pipes must be fitted with end to dismantle or remove the filter casing.
+plugs.
+6.3 Equipment for the domestic hot water
+6.2 Radiator and ventilation circuit circuit
+components
+6.3.1 Safety valve and check valve
+6.2.1 Circulation pump
+Fit the safety valve in the cold water connection to
+The pump must be capable of delivering the head, the domestic hot water heat exchanger. No shut off
+flow quantity and pressure class for which the valves are allowed between the safety valve and the
+radiator and ventilation heating system are heat exchanger. Fit the check valve between the
+designed, and must be speed-controlled. shut-off valve and the safety valve.
+The pump stop function must also close the main 6.3.2 Domestic hot water circulation pump
+heating circuit control valve.
+Pump capacity must be such that good performance
+is obtained throughout the domestic hot water
+6.2.2 Expansion vessel
+circulation system, maintaining a temperature of at
+The expansion vessel in secondary heating systems least 50 °C at taps, as required by the National
+must be able to accommodate normal thermal Board of Housing, Building and Planning’s
+volume variations, and must withstand the static regulations. The required temperature is different in
+pressure for which the radiator and ventilation other countries.
+heating system are designed.
+6.3.3 Domestic hot water circulation system capacity
+6.2.3 Pressure gauge
+Determine the necessary capacity of the domestic
+The pressure gauge is intended for manual reading hot water circulation system on the basis of the heat
+of the pressure in the radiator/ventilation circuits. It losses from the hot water pipes to each tap, as
+must be graduated between zero and the lower necessary, in order to maintain a minimum
+design rating pressure, and must be marked to temperature in the domestic hot water circulation
+indicate the pressure at which the system’s safety system in accordance with the National Board of
+valve operates. Pressure gauges must be of Class 1.0 Housing, Building and Planning’s regulations.
+accuracy, or better, in order to be reliable.
+6.3.4 Emergency connection
+6.2.4 Safety valve
+The emergency connection is a pipe that is
+The safety valve can most suitably be fitted to the intended, in the event of repairs to the system, to
+connection to the heat exchanger having the lowest keep the domestic hot water system pressurised.
+pressure. No shut off valves are allowed in the pipe The connection is normally closed, and is fitted
+between the safety valve and the heat exchanger. A with a shut-off valve and check valve.
+safety valve is not required for open expansion
+systems. The discharge pipe from the safety valve
+must be run to the floor drain.
+6.2.5 Filling valve and check valve
+This valve is used for filling the radiator and
+ventilation heating system with water (preferably
+hot water) to the correct working pressure. The
+equipment normally consists of a shut-off valve
+with the addition of a check valve function. Filling
+is performed manually and under supervision. This
+connection is closed during normal operation of the
+system.
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p031__c01`
+
+- chunk_id: `kdhc_inspection_extract__p031__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.3.7⑥ 안전밸브 : 안전밸브의 설치위치를 표기(열사용시설기준 제21조제3항)
+- 페이지/출처 위치: p.31 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1006 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.3.7⑥ 안전밸브 : 안전밸브의 설치위치를 표기(열사용시설기준 제21조제3항)
+가. 난방/급탕/냉방/설치위치(⑥-1) : 용도별로 규격 및 설치위치의 적합여부를 확인하여 표기
+◦ 안전밸브 설치기준
+- 열교환설비의 기기몸체 또는 2차측 공급관에 설치
+◦ 안전밸브의 종류 및 용량
+- 스프링식 안전밸브
+- 해당 배관계통의 설계운전압력 105～110%값 기준
+- 안전밸브의 명판에는 토출압력, 제작사 등이 반드시 표기되어야 함
+나. 유량도피 유도관 설치(⑥-2) : 설치 유무 표기
+◦ 분출시 안전을 고려한 유량도피 유도관을 기계실 바닥까지 연결 설치되었는지 여부 확인
+◦ 트랜치 배관에 연결시 누수 확인이 용이한 구조(깔때기 배관 방식 등)로 시공하여야 함
+<개정 2020.12.29.>
+2.3.8 DPV : 2차측 차압밸브(Differential Pressure Regulating Valve) <신설 2015. 1.14>
+(열사용시설기준 제21조 제4항)
+가. 설치관경(⑦-1) : 설치관경을 표기하며 승인관경과 불일치시에는 병행 표기
+(65A 또는 80A/부적합(65A))
+나. 설치위치(⑦-2) : 설치위치 확인 표기
+◦ 난방열교환기, 중온수흡수식냉동기 : 순환펌프의 흡입측 배관과 열교환장치 출구측 배
+관사이 또는 냉·난방 공급 및 환수헤더 사이(S ↔ R) <개정 2025.04.11.>
+◦ 부스터열교환기, 냉방열교환기 : 순환펌프의 토출측 배관과 흡입측 배관사이(P.P) <개정
+2025.04.11.>
+다. 도압관 연결상태(⑦-3) : 도압관 연결상태의 적합여부를 확인하여 표기
+◦ 도압관은 배관의 측면에서 연결이 이상적임
+◦ 도압관은 공기가 모이지 않도록 설치되어야 함
+- 도압관 또는 밸브몸체에 공기빼기밸브 설치
+◦ 2차측 공급/회수측 배관의 연결부위에 도압관 차단밸브를 설치하여야 함
+라. 제작사(모델)(⑦-4) : DPV의 제작사명 및 모델명을 표기
+◦ 신우밸브 : SDP-12, 22
+◦ 신한콘트롤밸브 : SHDC-01, 02
+◦ 삼양밸브 : YDP-1F, 20F
+- 31 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p023__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p023__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 6.1.5 Filters 6.1.10 Domestic hot water control system
+- 페이지/출처 위치: p.23 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3814 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6.1.5 Filters 6.1.10 Domestic hot water control system
+Filter mesh size must be 0.6 mm. It must be possible The system consists of a control valve, a valve
+to clean the filter without having to remove the actuator, sensors and a controller, although self-
+filter casing. The filter must be positioned so that acting thermo-mechanical valves may also be used
+there is no risk of water damaging electronic in detached house substations. The equipment must
+equipment when the filter is being cleaned. be capable of meeting the temperature performance
+requirements for domestic hot water as specified by
+6.1.6 Pressure sensors the National Board of Housing, Building and
+Pressure sensors read the static pressure and the Planning.
+differential pressure in the substation, and must
+It must be possible to check, by means of the menu
+display between atmospheric pressure and the
+function in the controller, which control software
+lowest design pressure. They may be either
+program is being used. Note and record the control
+analogue or electronic; if they are of analogue type,
+software setting values after adjusting/setting them
+the isolating valve in the connection to the sensor
+in the regulator: appropriate settings are noted in
+must be open only when reading.
+the test certificates supplied with certified
+6.1.7 Temperature display substations.
+Temperature may be displayed either directly by
+6.1.11 The meter position
+means of thermometers or by means of sensors
+The heat meter is supplied by, and is the property
+connected to control and/or supervisory equipment
+of, the district heating supplier. Its design and
+or to meters. Measurement ranges must cover at
+function comply with the Ordinance Concerning
+least the maximum temperature variation. As a
+Electricity, Water and Heat Meters. The heat
+safety measure, pockets for temperature sensors
+supplier must be able to connect the metering
+having a threaded connection must not be covered
+equipment to a communication system for remote
+by insulation. It must be possible to see whether a
+meter reading.
+sensor is fitted in a pocket. Both space heating and
+domestic hot water circuits must be fitted with
+Further information on heat meters is given in the
+temperature sensors.
+Swedish District Heating Association's Technical
+Regulations No. F:104.
+6.1.8 Space heating, ventilation and domestic hot
+water heat exchangers
+Arrange the meter position as shown in Figure 5. It
+The materials in heat exchangers must withstand
+incorporates a filter and temperature sensor in the
+the liquids in both sides of the system. Contact the
+supply connection, and a flow sensor and
+manufacturer for advice before carrying out
+temperature sensor in the return connection. In
+chemical cleaning. It must be possible to pressure-
+addition, space for an integrating meter and power
+test heat exchangers in their installed positions.
+supply must be provided. The temperature reading
+Heat exchangers must be resistant on the high-
+from the integrator is normally used to check the
+temperature side to oxygenated water.
+district heating water supply and return
+temperatures.
+6.1.9 Heating and ventilation control system
+The system consists of a control valve, a valve If the meter position is not in the substation
+actuator, sensors and a controller. The controller equipment room, shut-off valves must be fitted on
+must provide a menu function for selecting the each side of the flow sensors. The straight pipe
+required software. It must be possible to control the length upstream of flow sensors must be free of any
+valve manually. connections, valves or changes in pipe size.
+Note and record the values after adjusting/setting Flow sensors, temperature sensors and integrators
+the control parameters in the regulator. must be installed so that they are easy to read and
+to replace.
+```
+
+### retrieval_eval_007
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_007`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 국내 준공점검에서 1차측 열량계와 스트레이너는 어떤 설치 상태를 확인해야 해?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `domestic_completion_meter_strainer`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Check primary-side heat meter pipe diameter and installation position.","Check strainer specification and installation condition.","These items appear as part of completion inspection check targets."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent pass/fail result.","Do not add site-specific meter size.","Do not cite foreign standards as domestic inspection requirements."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p012__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["kdhc_inspection_extract__p034__c01","kdhc_inspection_extract__p044__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p023__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p012__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"다. 준공점검(열사용시설기준 제26조)","evidence_note":"Completion inspection list includes primary heat meter pipe diameter/position and strainer specification/installation status."}
+- 검수자 메모 (`reviewer_notes`): Direct Korean standard label; reviewer should confirm whether section includes all completion inspection context needed.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p012__c01`
+
+- chunk_id: `kdhc_inspection_extract__p012__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 다. 준공점검(열사용시설기준 제26조)
+- 페이지/출처 위치: p.12 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 807 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+- 1차측 차압유량조절밸브의 규격, 관경 및 설치상태
+- 1차측 열량계 관경 및 설치위치, 스트레이너 규격 및 설치상태
+- 열교환설비의 용량, 규격 및 설치상태
+- 순환펌프 및 팽창탱크의 용량, 규격 및 설치상태
+- 1․2차측 배관 및 열교환설비의 청소여부 및 상태
+- 안전밸브 설치규격, 설치위치 및 상태
+- 기타 중요한 승인사항
+다. 준공점검(열사용시설기준 제26조)
+◦ 1․2차측 배관 및 기기보온
+◦ 계장설비
+- 난방제어기기 및 그 부속시설
+- 급탕제어기기 및 그 부속시설
+- 흡수식냉동기(또는 냉방열교환기) 제어장치
+- 온도계, 압력계 등 계기류
+◦ 중간점검사항의 계속이행여부
+◦ 기계실 열량계 설치에 필요한 전원공급 등
+◦ 안전밸브 등 열사용시설 전반의 안전시설
+◦ 열사용시설기준에서 정하는 사항의 최종점검
+- 준공점검없이는 열사용시설을 사용할 수 없음(열사용시설기준 제26조제3항)
+<개정 2020.12.29>
+- 열사용시설기준 제22조제2항의 규정에 의하여 공사시행 이전에 한난의 변경승인을
+받아야 함.
+- 준공점검 후 점검필증 교부(열사용시설기준 제28조)
+- 이미 사용중인 열사용시설의 변경설치건은 점검필증 교부대상에서 제외
+- <삭제 2020.12.29>
+2.1.4 기계실 인입 매설배관 점검, 중간점검 및 준공점검 LIST 항목순으로 관련사항 나열
+가. 점검 LIST는 효율적인 점검을 위한 Check List로서 점검필증 교부에 필요한 사전 서
+류임(필요에 따라 생략할 수도 있으나 생략사유를 명시하여야 함)
+2.1.5 문서서식
+가. 중간점검(A4) :
+◦ 별지 제1호 서식
+◦ <삭제 2015. 1.14>
+- 12 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p034__c01`
+
+- chunk_id: `kdhc_inspection_extract__p034__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): ◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 페이지/출처 위치: p.34 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 932 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 기기류 보호용 스트레이너를 바이패스배관 전에 설치하여야 함
+- 스트레이너 관경은 1차측 주배관경과 동일해야 함
+- 스트레이너 기술규격 : 열량계 항목 참조
+◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 기계실내 공급/회수측 배관의 적정 차압 유지
+- 열교환설비의 적정유량 확보
+- 적정차압 유지로 1차측 온도조절밸브(TCV) 보호
+- 열교환설비 1차측 계통의 일정 압력이하 유지로 열사용시설 보호(열교환기 및 배관 등)
+2.3.11 열량계 주위배관
+가. <삭제 2015. 1.14>
+나. Reducing(5D/3D)(⑩-1) : 열사용시설기준 제13조제1항의 규정에 의한 유량부 전후의 직관
+거리를 확인하여 적합 또는 부적합으로 표기
+◦ 열량계유량부는 수평배관에 설치되어야 함
+◦ 유량부 지시부가 상부로 향할 수 있도록 유량부 상대 플랜지의 볼트구멍의 방향이 적
+절한지 확인 필요(열사용시설기준 별표 5,6)
+다. <삭제 2023.04.12>
+라. 플랜지 규격/볼트위치(⑩-3) : 열사용시설기준 별표5의 플랜지 규격과 일치 여부등을 확
+인 표기(적합, 부적합)
+◦ 열량계유량부 상대 플랜지 규격 : 열량계유량부 플랜지 규격과 동일
+- 플랜지 규격 : DIN 16bar(DIN 2543, 2633), 재질은 SF440A 이상
+- Slip-on Welding neck type
+◦ 볼트위치는 열사용시설기준 별표5의 그림과 비교하여 확인
+◦ 일반적인 DIN 규격 플랜지 사용 예
+- 열량계유량부
+- 1차측 온도조절밸브(유럽산의 경우)
+마. 사다리 설치/작업대 설치(⑩-4) : 유량부의 검정, 교체등 유지관리가 용이하도록 유량부
+하단에 작업대 및 사다리의 설치여부를 확인 표기(적합, 부적합)<개정 2015. 1.14>
+- 열사용시설기준 별표6(유량부 및 감지기연결구배관 설치 상세도)과 같이 바닥배관
+으로 하지 않고 부득이 상향배관으로 설치하는 경우
+- 34 -
+```
+
+##### Chunk 후보: `kdhc_inspection_extract__p044__c01`
+
+- chunk_id: `kdhc_inspection_extract__p044__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.5.7 원격검침
+- 페이지/출처 위치: p.44 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1100 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.5.7 원격검침
+가. 선로상태(기계실 연결여부)(⑦-1) : 우리공사에서 케이블을 기 포설한 경우 적합여부 및
+기계실 연결여부를 확인하여 표기(적합 또는 부적합)
+나. 통신준공(예정)일(⑦-2) : 통신준공(예정)일을 확인하여 표기<개정 2015. 1.14>
+2.5.8 ⑧ 계기류(열사용시설기준 제21조제1항 및 제2항) : 설치유무, 적합여부를 확인 표기
+가. 온도계 및 압력계 설치기준
+◦ 열교환설비 전후의 1․2차측 배관
+◦ 순환펌프의 흡입․토출측 배관(온도계는 토출측에만 설치)
+◦ 2개소 이상의 분기 및 집합배관(압력계는 부분적으로 생략 가능)
+◦ 공기조화기의 계통별 공급․회수관
+◦ 냉각탑의 공급․회수관
+◦ 1차측 PDCV의 압력계(설치기준은 열사용시설기준 제19조제2항제9호 참조)
+◦ 기타 운전상태 표시가 필요한 기기 및 배관
+나. 온도계 및 압력계 설치규격<개정 2015. 1.14>
+◦ 측정범위는 1․2차측 열매체 설계조건의 1.5배용으로 원형구조
+◦ 측정이 용이하도록 설치하되, 1․2차측을 구분하여 설치
+◦ 온도계는 보호용 설치구(Thermo-well 또는 Sensor Pocket) 안에 설치되어야 함
+(2차측의 경우도)
+- 바이메탈식 구조, 감온부가 배관내 1/2이상 삽입
+- 지시부의 크기 : 100mm
+- 온도측정범위 : 1차측 온수 0～150℃, 냉수 0～50℃, 2차측 난방·급탕 0～100℃,
+냉수·냉각수 0～50℃
+◦ 압력계의 도압관에는 차단밸브가 설치되어야 하고 사이폰관 설치시에는 열매체 조건에
+적합하여야 함.
+- 부르돈관식, 지시부의 크기 : 100mm
+- 압력측정범위 : 1차측 0～25bar, 2차측 0～10(또는 15)bar
+◦ 콤팩트설비유니트에 설치하는 온도계 및 압력계의 지시부도 동일 규격으로 설치하여야 함
+2.5.9 ⑨ 실내열교환설비 <개정 2020.12.29.>
+가. 설치공사(AHU, FCU 등)(⑧-1) : 실내열교한 설비 종류를 괄호 안에 표기하고, 설치공사 완료여부를
+확인하여 표기(적합 또는 부적합)
+2.5.10 ⑩ 준공도서 : 제출여부를 확인하여 표기 <개정 2020.12.29.>
+◦ 아파트의 경우 1,2차 분할 입주시는 2차분 준공시 일괄 제출 가능
+(2차 준공시 제출예정 명기)
+- 44 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p023__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p023__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 6.1.5 Filters 6.1.10 Domestic hot water control system
+- 페이지/출처 위치: p.23 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3814 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6.1.5 Filters 6.1.10 Domestic hot water control system
+Filter mesh size must be 0.6 mm. It must be possible The system consists of a control valve, a valve
+to clean the filter without having to remove the actuator, sensors and a controller, although self-
+filter casing. The filter must be positioned so that acting thermo-mechanical valves may also be used
+there is no risk of water damaging electronic in detached house substations. The equipment must
+equipment when the filter is being cleaned. be capable of meeting the temperature performance
+requirements for domestic hot water as specified by
+6.1.6 Pressure sensors the National Board of Housing, Building and
+Pressure sensors read the static pressure and the Planning.
+differential pressure in the substation, and must
+It must be possible to check, by means of the menu
+display between atmospheric pressure and the
+function in the controller, which control software
+lowest design pressure. They may be either
+program is being used. Note and record the control
+analogue or electronic; if they are of analogue type,
+software setting values after adjusting/setting them
+the isolating valve in the connection to the sensor
+in the regulator: appropriate settings are noted in
+must be open only when reading.
+the test certificates supplied with certified
+6.1.7 Temperature display substations.
+Temperature may be displayed either directly by
+6.1.11 The meter position
+means of thermometers or by means of sensors
+The heat meter is supplied by, and is the property
+connected to control and/or supervisory equipment
+of, the district heating supplier. Its design and
+or to meters. Measurement ranges must cover at
+function comply with the Ordinance Concerning
+least the maximum temperature variation. As a
+Electricity, Water and Heat Meters. The heat
+safety measure, pockets for temperature sensors
+supplier must be able to connect the metering
+having a threaded connection must not be covered
+equipment to a communication system for remote
+by insulation. It must be possible to see whether a
+meter reading.
+sensor is fitted in a pocket. Both space heating and
+domestic hot water circuits must be fitted with
+Further information on heat meters is given in the
+temperature sensors.
+Swedish District Heating Association's Technical
+Regulations No. F:104.
+6.1.8 Space heating, ventilation and domestic hot
+water heat exchangers
+Arrange the meter position as shown in Figure 5. It
+The materials in heat exchangers must withstand
+incorporates a filter and temperature sensor in the
+the liquids in both sides of the system. Contact the
+supply connection, and a flow sensor and
+manufacturer for advice before carrying out
+temperature sensor in the return connection. In
+chemical cleaning. It must be possible to pressure-
+addition, space for an integrating meter and power
+test heat exchangers in their installed positions.
+supply must be provided. The temperature reading
+Heat exchangers must be resistant on the high-
+from the integrator is normally used to check the
+temperature side to oxygenated water.
+district heating water supply and return
+temperatures.
+6.1.9 Heating and ventilation control system
+The system consists of a control valve, a valve If the meter position is not in the substation
+actuator, sensors and a controller. The controller equipment room, shut-off valves must be fitted on
+must provide a menu function for selecting the each side of the flow sensors. The straight pipe
+required software. It must be possible to control the length upstream of flow sensors must be free of any
+valve manually. connections, valves or changes in pipe size.
+Note and record the values after adjusting/setting Flow sensors, temperature sensors and integrators
+the control parameters in the regulator. must be installed so that they are easy to read and
+to replace.
+```
+
+### retrieval_eval_008
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_008`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 중간점검은 고객이 언제 신청해야 하고 미비하면 어떻게 처리돼?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `domestic_intermediate_inspection_process`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["The customer applies seven days before the requested intermediate inspection date.","The branch receives the intermediate inspection application by homepage, email, fax, or similar direct channels.","If deficiencies are found, re-inspection is performed."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent an approval date.","Do not say inspection already passed.","Do not replace the seven-day rule with another period."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p009__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["kdhc_inspection_extract__p007__c01","kdhc_inspection_extract__p022__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "kdhc_inspection_extract__p038__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p009__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"Selected extract page 9","evidence_note":"Intermediate inspection reception and implementation section includes seven-day request timing and re-inspection on deficiencies."}
+- 검수자 메모 (`reviewer_notes`): Process label should be checked against surrounding flowchart chunks for completeness.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p009__c01`
+
+- chunk_id: `kdhc_inspection_extract__p009__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): Selected extract page 9
+- 페이지/출처 위치: p.9 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1015 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+⑥ (중간점검 접수 및 실시)
+◦ 접수
+- 고객은 열사용시설기준 제27조의 규정에 의거하여 중간점검 요청일 7일 전에 신청한다.
+- 해당지사는 고객으로부터 중간점검신청서를 공사홈페이지, E-mail, FAX 등을 통해
+직접 접수한다.
+◦ 실시
+- 열사용시설기준 제25조의 규정에서 정하는 사항에 대하여 점검하며, 미비시 재점검한다.
+- 중간점검에 합격하였을 경우는 준공점검 일정 협의 및 준공도서를 해당지사 고객기
+술담당부서에 제출토록 구두 안내한다.
+- 고객은 중간점검시 감리업체 등 열사용시설분야 전문가를 입회시킬 수 있다.
+⑦ (준공도서 접수 및 확인)
+◦ 고객은 열사용시설기준 제24조의 규정에서 정하는 준공도서(1부)를 제출한다.
+◦ 고객은 상기 제3항 및 제4항을 반영한 준공도서를 작성하여 해당지사 고객기술담당부
+서에 제출한다.
+⑧ (준공점검 실시)
+◦ 열사용시설기준 제26조의 규정에서 정하는 사항을 점검하며, 미비시 재점검한다.
+◦ 해당지사는 상기 제7항의 준공도서가 접수되었는지 확인후 준공점검 실시한다.
+- 고객은 준공점검시 감리업체 등 열사용시설분야 전문가를 입회시킬 수 있다.
+⑨ (점검필증)
+◦ 해당지사는 집사법 시행규칙 제37조 제3항의 규정에 의하여 열사용시설기준 제26조의
+준공점검에 합격하였을 경우 고객에게 점검필증을 교부하고 그 사실에 대한 전산
+기록을 유지․관리 한다.
+⑩ (열공급 개시)
+◦ 공사비부담금을 완납하였을 경우, 열공급개시 예정일에 열공급을 개시한다.
+◦ 상기 제4항의 승인 열교환설비용량 및 기계실 연결열부하, 제7항의 열교환기 설치신고서
+(흡수식냉동기 설치신고서), 기계실에 설치된 열교환기(흡수식냉동기) 명판이 상호 일치
+하였을 경우 열공급개시 확인서에 열교환기(흡수식냉동기) 용량을 기록하고 열공급
+개시한다.
+⑪ (열사용시설 유지관리)
+◦ 열사용시설의 효율적인 운영관리를 위한 기술지도 및 교육을 실시한다.
+◦ 열사용시설의 기능 및 안전상태 등을 정기점검하여 안정적인 열공급을 도모한다.
+◦ 열사용시설의 시설개선 등을 통하여 에너지절약을 도모한다.
+- 9 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p007__c01`
+
+- chunk_id: `kdhc_inspection_extract__p007__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 1.4 열사용시설 점검업무 절차
+- 페이지/출처 위치: p.7 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 461 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+1.4 열사용시설 점검업무 절차
+1.4.1 열사용시설 점검업무 흐름도<개정 2015. 1.14, 2020.12.29>
+한난(한국지역난방공사)
+사 용 자
+지사(고객기술, 영업, 열배관)
+지사(고객기술)
+(본사 고객기술팀)
+①
+열사용신청 ② ① 접 수
+접 수
+설계도서 (본사 고객기술팀)
+검토승인
+③ (또는 조건부 승인) ④ 단위열부하자료
+승인 열교환설비용량 열량계 관련등(고객기술)
+공사비부담금등(영업)
+및 기계실연결열부하
+확정 열배관설계등(열배관)
+⑤
+기계실 인입 ⑤ 기계실 인입 매설배관
+접 수
+매설배관 점검List 시공자격ID 관리제공(열배관)
+⑤
+⑥
+중간 및
+중간점검 실시
+준공점검
+⑦
+준공도서 접수․확인
+⑧
+⑨ ⑨
+점검필증 준공점검 실시 점검필증 관리(고객기술)
+⑩ 열공급개시 확인서 관리
+열공급개시
+(영업)
+안전점검 및 ⑪ 열사용시설 ⑪ 기술지원, 시설개선 등
+기술지도 등 유지관리 (본사 고객기술팀)
+⑪
+- 7 -
+```
+
+##### Chunk 후보: `kdhc_inspection_extract__p022__c01`
+
+- chunk_id: `kdhc_inspection_extract__p022__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.2 열사용시설 중간점검 서식 작성기준<개정 2015. 1.14>
+- 페이지/출처 위치: p.22 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 907 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.2 열사용시설 중간점검 서식 작성기준<개정 2015. 1.14>
+* 일반사항 : 설계도서 승인시의 일반사항과 동일하게 작성
+2.2.1 지구/차수 : 해당지구 및 차수 표기
+가. 공동주택 및 공동주택 부대시설은 차수 병행 표기
+2.2.2 고객명 : 고객 표기
+2.2.3 단지명/세대수 : 블록단위의 단지명 및 세대수 표기
+2.2.4 점 검 일 : 점검년월일 표기
+2.2.5 기계실번호 : S-1,2,3…(필요시 고객 관리번호와 연계 표기)
+※ 일반건물의 경우 기계실 위치 병행 표기(B F 등)
+2.2.6 연결열부하 : 승인 연결열부하를 Mcal/hr 단위로 표기
+가. 해당 기계실에 대한 한난의 공급부하를 의미<개정 2015. 1.14>
+나. 공사비부담금의 부과기준(공동주택 제외)
+◦ 공사비부담금의 부과기준은 동계열부하로서 지역냉방 고객의 경우는 승인 연결열부하와
+상이할 수 있음
+다. 설계도서 승인과정에서 연결열부하, 인입관경, 열량계 관경 등이 결정됨
+◦ 별도의 변경신청 절차없이는 변경이 될 수 없음(열사용시설기준 제22조 제3항)
+라. 기계실 단위로 한난이 산정하며 인입관, PDCV, 열량계 유량부 관경의 선정기준임
+(열사용시설기준 제10조)
+2.2.7 승인 인입관경(A) : 기 승인된 해당 기계실의 인입관경을 표기
+가. 인입관경 선정기준은 기계실 1차측 인입관경 및 열부하기준표 참조
+◦ 동계열부하, 하계열부하 구분
+나. 승인관경과 실시공관경(②-1)을 비교
+다. 인입연결공사가 한난 대행시공인 경우 대행 시공사명을 함께 기록
+2.2.8 열량계(A) : 기 승인된 열량계의 유량부 관경을 표기
+가. 열량계의 유량부 관경 선정기준은 기계실 열량계 규격기준표 참조
+◦ 설치유량의 100%값을 Qn(연속사용 최대유량)값으로 관경선정
+◦ <삭제 2015. 1.14>
+◦ <삭제 2015. 1.14>
+- 22 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p038__c01`
+
+- chunk_id: `kdhc_inspection_extract__p038__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.4 열사용시설 준공점검 서식 작성기준
+- 페이지/출처 위치: p.38 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 629 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.4 열사용시설 준공점검 서식 작성기준
+* 일반사항 : 중간점검 서식 일반사항과 동일하게 작성
+2.4.1 지구/차수 : 해당지구 및 차수 표기
+2.4.2 고객명 : 고객 표기
+2.4.3 단지명 : 블록단위의 단지명 표기
+2.4.4 점검일 : 점검년월일 표기
+2.4.5 기계실번호 : S-1,2,3… (필요시 고객 관리번호와 연계표기)
+가. 일반건물의 경우 기계실 위치 병행 표기(B F 등)
+2.4.6 연결열부하 : 승인 연결열부하를 Mcal/h 단위로 표기
+2.4.7 인입관경 : 기계실 인입관경을 표기(중간점검시 확인 관경으로 표기)
+가. 인입연결공사가 한난대행공사인 경우 대행 시공사명 기록
+2.4.8 열공급개시예정일 : 개시예정일을 표기
+2.4.9 고객, 점검자, 확인자 : 중간점검 서식의 일반사항과 동일
+가. 중간 및 준공점검자는 동일인을 원칙으로 함
+2.5 준공점검사항 (점검서식 항목순)
+2.5.1 1차측배관 보온/보냉 (열사용시설기준 제17조제1항)
+가. 보온/보냉 두께(①-1) : 다음표의 최소두께 기준에 대한 적합유무를 표기
+◦ 보온
+관 경(A) 25 이하 32～50 65～100 125～200 250 이상
+유리면 등 40 50 75 75
+(복층시공)
+유리장섬유 30 35 40 45 45
+- 38 -
+```
+
+### retrieval_eval_009
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_009`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): DPV 바이패스 배관과 스트레이너 설치는 어떤 기준으로 봐야 해?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dpv_bypass_strainer`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["For DPV bypass piping, the bypass pipe and valve should have the same pipe diameter as the DPV.","The inspection should check whether a strainer is installed before the DPV.","Maintenance accessibility and installation suitability should be checked."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent actual pipe diameter.","Do not state the site is compliant.","Do not cite unrelated DHW controller requirements."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p032__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p034__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "kdhc_inspection_extract__p033__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p032__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"마. 기타(By-pass 등)(⑦-5) : DPV의 바이패스배관, DPV 전에 스트레이너 설치 여부","evidence_note":"Section covers DPV bypass pipe/valve diameter and pre-DPV strainer check."}
+- 검수자 메모 (`reviewer_notes`): Review whether p034 should be relevant rather than partial because it also mentions strainer before bypass piping.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p032__c01`
+
+- chunk_id: `kdhc_inspection_extract__p032__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 마. 기타(By-pass 등)(⑦-5) : DPV의 바이패스배관, DPV 전에 스트레이너 설치 여부
+- 페이지/출처 위치: p.32 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1140 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+마. 기타(By-pass 등)(⑦-5) : DPV의 바이패스배관, DPV 전에 스트레이너 설치 여부
+등을 확인하여 적합 또는 부적합으로 표기<개정 2023.04.12>
+◦ By-pass 배관 : 바이패스배관을 할 경우 DPV관경과 동일한 관경의 배관과 밸브를
+설치하여야 함
+◦ 점검 및 유지관리가 용이하도록 바닥배관(FL+1.2m)을 하거나, 부득이 높은 장소에 설치
+할 경우 밸브하부에 이동공간을 확보한 고정식 점검용 발판을 설치함<신설 2023.04.12>
+◦ DPV 설치와 관련 열사용시설기준 외의 사항은 제작사 기준에 따라야 함
+◦ 차압설정 : 순환펌프 설계양정 - 열교환기 설계압력 손실
+◦ 2차측 DPV의 역할
+- 펌프운전을 위한 최소유량 확보로 장비보호
+- 배관소음 및 Water Hammer 방지와 난방배관 보호
+2.3.9 ⑧ 수처리장비 : 난방배관의 수질관리를 위한 수처리장비 유무를 확인하여 표기(열사용시
+설기준 제20조 제6항) <개정 2020.12.29>
+2.3.10 PDCV : 1차측 차압유량조절밸브(Differential Pressure Control Valve)<개정 2015. 1.14>
+(열사용시설기준 제19조)
+가. 설치관경(⑨-1) : 설치관경을 표기하며 승인관경과 불일치시에는 병행 표기
+(80A 또는 100A/부적합(80A))
+나. 온도계설치(⑨-2) : 열사용시설기준 제19조제2항제3호의 온도계 설치기준으로 확인 표기
+(적합/부적합)
+◦ 격판(Diaphragm)의 파손여부를 쉽게 확인할 수 있도록 회수도압관 연결배관에 설치
+하여야 함
+다. 압력계 설치/PP규격(⑨-3) : 열사용시설기준 제19조제2항제3호의 배관압력 측정구 및
+제9호의 압력계 설치기준으로 확인 표기(적합/부적합)
+◦ 압력계 : PDCV의 조정된 운전차압 측정용으로 공급/회수측 배관에 압력계를 설치하
+여야 함(열교환기 1차측 배관의 PI 설치기준과 동일)
+◦ 압력계 설치위치(다음중 1개소에 설치)
+- 다이아프램의 상․하부
+- 공급․회수측의 도압관
+- 1차측 배관의 공급․회수측 도압관 연결부위
+◦ 배관압력 측정구(PP) 설치기준
+- PDCV 이후에 설치
+- 배관감지기 연결구배관의 PP 규격과 동일
+- 배관하부 또는 상부보다는 측면에 설치가 이상적임
+(상부는 공기가 모이고, 하부는 이물질의 침전으로 부적절)
+- 32 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p034__c01`
+
+- chunk_id: `kdhc_inspection_extract__p034__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): ◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 페이지/출처 위치: p.34 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 932 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 기기류 보호용 스트레이너를 바이패스배관 전에 설치하여야 함
+- 스트레이너 관경은 1차측 주배관경과 동일해야 함
+- 스트레이너 기술규격 : 열량계 항목 참조
+◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 기계실내 공급/회수측 배관의 적정 차압 유지
+- 열교환설비의 적정유량 확보
+- 적정차압 유지로 1차측 온도조절밸브(TCV) 보호
+- 열교환설비 1차측 계통의 일정 압력이하 유지로 열사용시설 보호(열교환기 및 배관 등)
+2.3.11 열량계 주위배관
+가. <삭제 2015. 1.14>
+나. Reducing(5D/3D)(⑩-1) : 열사용시설기준 제13조제1항의 규정에 의한 유량부 전후의 직관
+거리를 확인하여 적합 또는 부적합으로 표기
+◦ 열량계유량부는 수평배관에 설치되어야 함
+◦ 유량부 지시부가 상부로 향할 수 있도록 유량부 상대 플랜지의 볼트구멍의 방향이 적
+절한지 확인 필요(열사용시설기준 별표 5,6)
+다. <삭제 2023.04.12>
+라. 플랜지 규격/볼트위치(⑩-3) : 열사용시설기준 별표5의 플랜지 규격과 일치 여부등을 확
+인 표기(적합, 부적합)
+◦ 열량계유량부 상대 플랜지 규격 : 열량계유량부 플랜지 규격과 동일
+- 플랜지 규격 : DIN 16bar(DIN 2543, 2633), 재질은 SF440A 이상
+- Slip-on Welding neck type
+◦ 볼트위치는 열사용시설기준 별표5의 그림과 비교하여 확인
+◦ 일반적인 DIN 규격 플랜지 사용 예
+- 열량계유량부
+- 1차측 온도조절밸브(유럽산의 경우)
+마. 사다리 설치/작업대 설치(⑩-4) : 유량부의 검정, 교체등 유지관리가 용이하도록 유량부
+하단에 작업대 및 사다리의 설치여부를 확인 표기(적합, 부적합)<개정 2015. 1.14>
+- 열사용시설기준 별표6(유량부 및 감지기연결구배관 설치 상세도)과 같이 바닥배관
+으로 하지 않고 부득이 상향배관으로 설치하는 경우
+- 34 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p033__c01`
+
+- chunk_id: `kdhc_inspection_extract__p033__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+- 페이지/출처 위치: p.33 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 803 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+(적합 또는 부적합)
+◦ 열사용시설기준 제19조제2항제3호의 규정에 의하여 중온수 흐름방향 기준으로 공급측
+도압관은 PDCV이후, 회수측은 회수측 배관의 감지기 연결구배관 이후에 각각 연결
+◦ 도압관은 배관의 측면에서 연결이 이상적임
+◦ 도압관은 공기가 모이지 않도록 설치되어야 함
+- 도압관 또는 밸브몸체에 공기빼기밸브 설치
+◦ 1차측 공급/회수측 배관의 연결부위에 도압관 차단밸브를 설치하여야 함
+◦ 도압관 차단밸브는 KS 20K 또는 ANSI #300이상의 규격이어야 하며, 나사 또는 용접
+형의 볼밸브가 바람직함(도압관의 재질 및 규격도 120℃, 16bar에 적합하여야 함)
+- 어느 한쪽만 연결되었거나 한쪽의 밸브가 잠겼을 경우에는 PDCV 밸브 자체가 잠길수 있음
+마. 제작사(모델)(⑨-5) : PDCV의 제작사명 및 모델명을 표기
+◦ 신우밸브 : SDP-F22
+◦ 신한콘트롤밸브 : SHDFC-H02
+◦ 서울콘트롤(SAMSON : 독일) : 42-24A/B
+◦ 경영기계(CLORIUS : 덴마크) : TD-66
+◦ 삼양밸브 : YDF-20F
+바. 기타(By-pass 등)(⑨-6) : PDCV 의 바이패스배관, PDCV 전에 스트레이너 설치 여부
+등을 확인하여 적합 또는 부적합으로 표기
+◦ By-pass 배관 : 바이패스배관을 할 경우 PDCV관경과 동일한 관경의 배관과 밸브를
+설치하여야 함(열사용시설기준 제19조제2항) <개정 2015. 1.13>
+◦ PDCV 설치와 관련한 열사용시설기준외의 사항은 제작사 기준에 따라야 함
+- 33 -
+```
+
+### retrieval_eval_010
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_010`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): PDCV 도압관은 공급측과 회수측을 어디에 연결하는 게 적정해?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `pdcv_impulse_pipe_connection`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Supply-side impulse pipe should be connected after the PDCV based on medium-temperature water flow direction.","Return-side impulse pipe should be connected after the return-side pipe sensor connector pipe.","Side connection to the pipe is described as preferable."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent the actual connection condition.","Do not approve a non-inspected connection.","Do not add unsupported measurement tolerances."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p033__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p034__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "kdhc_inspection_extract__p032__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p033__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기","evidence_note":"Section states supply and return impulse pipe connection positions and side connection preference."}
+- 검수자 메모 (`reviewer_notes`): Technical Korean terminology should be reviewed by domain expert.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p033__c01`
+
+- chunk_id: `kdhc_inspection_extract__p033__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+- 페이지/출처 위치: p.33 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 803 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+(적합 또는 부적합)
+◦ 열사용시설기준 제19조제2항제3호의 규정에 의하여 중온수 흐름방향 기준으로 공급측
+도압관은 PDCV이후, 회수측은 회수측 배관의 감지기 연결구배관 이후에 각각 연결
+◦ 도압관은 배관의 측면에서 연결이 이상적임
+◦ 도압관은 공기가 모이지 않도록 설치되어야 함
+- 도압관 또는 밸브몸체에 공기빼기밸브 설치
+◦ 1차측 공급/회수측 배관의 연결부위에 도압관 차단밸브를 설치하여야 함
+◦ 도압관 차단밸브는 KS 20K 또는 ANSI #300이상의 규격이어야 하며, 나사 또는 용접
+형의 볼밸브가 바람직함(도압관의 재질 및 규격도 120℃, 16bar에 적합하여야 함)
+- 어느 한쪽만 연결되었거나 한쪽의 밸브가 잠겼을 경우에는 PDCV 밸브 자체가 잠길수 있음
+마. 제작사(모델)(⑨-5) : PDCV의 제작사명 및 모델명을 표기
+◦ 신우밸브 : SDP-F22
+◦ 신한콘트롤밸브 : SHDFC-H02
+◦ 서울콘트롤(SAMSON : 독일) : 42-24A/B
+◦ 경영기계(CLORIUS : 덴마크) : TD-66
+◦ 삼양밸브 : YDF-20F
+바. 기타(By-pass 등)(⑨-6) : PDCV 의 바이패스배관, PDCV 전에 스트레이너 설치 여부
+등을 확인하여 적합 또는 부적합으로 표기
+◦ By-pass 배관 : 바이패스배관을 할 경우 PDCV관경과 동일한 관경의 배관과 밸브를
+설치하여야 함(열사용시설기준 제19조제2항) <개정 2015. 1.13>
+◦ PDCV 설치와 관련한 열사용시설기준외의 사항은 제작사 기준에 따라야 함
+- 33 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p034__c01`
+
+- chunk_id: `kdhc_inspection_extract__p034__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): ◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 페이지/출처 위치: p.34 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 932 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 기기류 보호용 스트레이너를 바이패스배관 전에 설치하여야 함
+- 스트레이너 관경은 1차측 주배관경과 동일해야 함
+- 스트레이너 기술규격 : 열량계 항목 참조
+◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 기계실내 공급/회수측 배관의 적정 차압 유지
+- 열교환설비의 적정유량 확보
+- 적정차압 유지로 1차측 온도조절밸브(TCV) 보호
+- 열교환설비 1차측 계통의 일정 압력이하 유지로 열사용시설 보호(열교환기 및 배관 등)
+2.3.11 열량계 주위배관
+가. <삭제 2015. 1.14>
+나. Reducing(5D/3D)(⑩-1) : 열사용시설기준 제13조제1항의 규정에 의한 유량부 전후의 직관
+거리를 확인하여 적합 또는 부적합으로 표기
+◦ 열량계유량부는 수평배관에 설치되어야 함
+◦ 유량부 지시부가 상부로 향할 수 있도록 유량부 상대 플랜지의 볼트구멍의 방향이 적
+절한지 확인 필요(열사용시설기준 별표 5,6)
+다. <삭제 2023.04.12>
+라. 플랜지 규격/볼트위치(⑩-3) : 열사용시설기준 별표5의 플랜지 규격과 일치 여부등을 확
+인 표기(적합, 부적합)
+◦ 열량계유량부 상대 플랜지 규격 : 열량계유량부 플랜지 규격과 동일
+- 플랜지 규격 : DIN 16bar(DIN 2543, 2633), 재질은 SF440A 이상
+- Slip-on Welding neck type
+◦ 볼트위치는 열사용시설기준 별표5의 그림과 비교하여 확인
+◦ 일반적인 DIN 규격 플랜지 사용 예
+- 열량계유량부
+- 1차측 온도조절밸브(유럽산의 경우)
+마. 사다리 설치/작업대 설치(⑩-4) : 유량부의 검정, 교체등 유지관리가 용이하도록 유량부
+하단에 작업대 및 사다리의 설치여부를 확인 표기(적합, 부적합)<개정 2015. 1.14>
+- 열사용시설기준 별표6(유량부 및 감지기연결구배관 설치 상세도)과 같이 바닥배관
+으로 하지 않고 부득이 상향배관으로 설치하는 경우
+- 34 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p032__c01`
+
+- chunk_id: `kdhc_inspection_extract__p032__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 마. 기타(By-pass 등)(⑦-5) : DPV의 바이패스배관, DPV 전에 스트레이너 설치 여부
+- 페이지/출처 위치: p.32 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1140 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+마. 기타(By-pass 등)(⑦-5) : DPV의 바이패스배관, DPV 전에 스트레이너 설치 여부
+등을 확인하여 적합 또는 부적합으로 표기<개정 2023.04.12>
+◦ By-pass 배관 : 바이패스배관을 할 경우 DPV관경과 동일한 관경의 배관과 밸브를
+설치하여야 함
+◦ 점검 및 유지관리가 용이하도록 바닥배관(FL+1.2m)을 하거나, 부득이 높은 장소에 설치
+할 경우 밸브하부에 이동공간을 확보한 고정식 점검용 발판을 설치함<신설 2023.04.12>
+◦ DPV 설치와 관련 열사용시설기준 외의 사항은 제작사 기준에 따라야 함
+◦ 차압설정 : 순환펌프 설계양정 - 열교환기 설계압력 손실
+◦ 2차측 DPV의 역할
+- 펌프운전을 위한 최소유량 확보로 장비보호
+- 배관소음 및 Water Hammer 방지와 난방배관 보호
+2.3.9 ⑧ 수처리장비 : 난방배관의 수질관리를 위한 수처리장비 유무를 확인하여 표기(열사용시
+설기준 제20조 제6항) <개정 2020.12.29>
+2.3.10 PDCV : 1차측 차압유량조절밸브(Differential Pressure Control Valve)<개정 2015. 1.14>
+(열사용시설기준 제19조)
+가. 설치관경(⑨-1) : 설치관경을 표기하며 승인관경과 불일치시에는 병행 표기
+(80A 또는 100A/부적합(80A))
+나. 온도계설치(⑨-2) : 열사용시설기준 제19조제2항제3호의 온도계 설치기준으로 확인 표기
+(적합/부적합)
+◦ 격판(Diaphragm)의 파손여부를 쉽게 확인할 수 있도록 회수도압관 연결배관에 설치
+하여야 함
+다. 압력계 설치/PP규격(⑨-3) : 열사용시설기준 제19조제2항제3호의 배관압력 측정구 및
+제9호의 압력계 설치기준으로 확인 표기(적합/부적합)
+◦ 압력계 : PDCV의 조정된 운전차압 측정용으로 공급/회수측 배관에 압력계를 설치하
+여야 함(열교환기 1차측 배관의 PI 설치기준과 동일)
+◦ 압력계 설치위치(다음중 1개소에 설치)
+- 다이아프램의 상․하부
+- 공급․회수측의 도압관
+- 1차측 배관의 공급․회수측 도압관 연결부위
+◦ 배관압력 측정구(PP) 설치기준
+- PDCV 이후에 설치
+- 배관감지기 연결구배관의 PP 규격과 동일
+- 배관하부 또는 상부보다는 측면에 설치가 이상적임
+(상부는 공기가 모이고, 하부는 이물질의 침전으로 부적절)
+- 32 -
+```
+
+### retrieval_eval_011
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_011`
+- 분류 (`category`): `priority_reason`
+- 평가 질문 (`query`): risk score가 높은 지점의 점검 우선순위를 설명할 때 FMEA 기반으로 어떤 근거를 들 수 있어?
+- 질문 의도 (`query_intent`): `priority_reason`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `risk_priority_fmea`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["FMEA is used to determine causes and propose cost-effective, resource-aware solutions.","Fault priority can be reasoned from occurrence, severity, monitoring potential, and maintenance capability dimensions.","The answer should explain priority as a decision support rationale, not a live risk calculation."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent a numeric risk score for the current site.","Do not claim FMEA was run on live data.","Do not rank a component not supported by the cited chunks."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Prioritisation of faults in district heating substations - Selected Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): ["fault_priority_extract__p004__c01","fault_priority_extract__p005__c01"]
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["fault_priority_extract__p001__c01","fault_priority_extract__p008__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p049__c01"
+- 원천 섹션 메모 (`source_sections`): [{"chunk_id":"fault_priority_extract__p004__c01","document_title":"Prioritisation of faults in district heating substations - Selected Extract","section_title":"3.1. The original FMEA methodology failure modes of the network pipelines, aiming to determine causes","evidence_note":"FMEA methodology is introduced for determining causes and resource-aware solutions."},{"chunk_id":"fault_priority_extract__p005__c01","document_title":"Prioritisation of faults in district heating substations - Selected Extract","section_title":"Occurrence scale for district heating substations.","evidence_note":"Tables describe rating categories including occurrence, monitoring potential, and maintenance capability."}]
+- 검수자 메모 (`reviewer_notes`): Review whether p008 should be relevant for full priority explanation.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p004__c01`
+
+- chunk_id: `fault_priority_extract__p004__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): 3.1. The original FMEA methodology failure modes of the network pipelines, aiming to determine causes
+- 페이지/출처 위치: p.4 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 7595 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+3.1. The original FMEA methodology failure modes of the network pipelines, aiming to determine causes
+and propose cost-effective, resource-aware solutions to increase the
+Failure Mode and Effects Analysis (FMEA) is a systematic method reliability of the system. The methodology applied relies on occurrence
+used to identify, evaluate, and prioritise potential failure modes within and severity as factors for the calculation of the RPN. In a more recent
+a product, process, or system, while assessing the impact of these study, M. Valle et al. [21] apply an FMECA on district heating systems
+failures on functionality and performance. The origins of this method to select relevant faults for simulation. As a result of the analysis the
+trace back to the aerospace industry in the 1940s, where it was ini-
+fouling of heat exchanger is selected as most relevant fault in substa-
+tially employed to enhance reliability and safety. Over time, FMEA
+tions. However, details about the implementation of the methodology,
+has gained widespread acceptance across various sectors, including
+to the authors knowledge, are not publicly available.
+automotive, healthcare, and energy, due to its structured approach to
+A key application of FMEA lies in the prioritisation of critical
+risk assessment and mitigation [23]. The FMEA methodology can be
+described as follows:
+components for maintenance planning. Traditional FMEA emphasises
+the probability of failure, the severity of its impact, and detectability.
+1. First, the failure modes of the system under investigations are However, this approach can be enhanced by explicitly accounting for
+determined. the influence of maintenance on failure probability. Certain compo-
+2. Then, the probabilities of the failure modes Occurrences are nents may be more accessible for repair, thereby affecting their risk
+assessed. These probabilities are then categorised and assigned prioritisation. It is also essential to distinguish between sudden failures
+a scaling number, with the lowest number for the least probable and those that develop gradually over time, as this distinction can
+category. inform more effectively condition monitoring strategies and targeted
+3. The rate of Severity of each failure mode is assigned and scaled
+maintenance actions. By weighting criteria such as failure development
+due to the consequences of the failure and the amount of damage
+patterns and intervention feasibility, FMEA can provide a more tailored
+to the equipment.
+risk assessment that aligns with the operational realities of wind farms.
+4. Another scale number is assigned to the fault detection possibil-
+In summary, while FMEA offers a robust framework for identifying and
+ity or Detectability, with the lowest number to the most likely
+addressing potential failures, its adaptability is crucial for maximising
+detection of the failure.
+its utility in specific domains. Tailored approaches enable a deeper
+5. Finally, the outcome of the process is the Risk Priority Number
+integration of maintenance strategies, consideration of environmental
+(RPN) that is obtained by multiplying the three scale numbers
+(see Eq. (1)). The failure modes are then ranked according to
+factors, and advanced prioritisation methodologies. These refinements
+their RPN, with the highest RPN corresponding to the most ultimately ensure that the methodology remains a cornerstone for
+important failure. reliability and risk management in evolving industries.
+𝑅𝑃 𝑁 = 𝑂𝑐𝑐𝑢𝑟𝑟𝑒𝑛𝑐𝑒 × 𝑆𝑒𝑣𝑒𝑟𝑖𝑡𝑦 × 𝐷𝑒𝑡𝑒𝑐𝑡𝑎𝑏𝑖𝑙𝑖𝑡𝑦 (1)
+3.2. Adaptation of the original FMEA: the O&M-FMEA
+FMEA is widely recognised for its capacity to enhance reliability by
+identifying critical components that require focused monitoring. How- In order to prioritise faults that can actually be monitored and
+ever, its adaptability to diverse applications is what makes it particu- which can be influenced by O&M measures, the original FMEA has been
+larly powerful. In practice, FMEA is often tailored to address specific adapted. Occurrence and Severity are kept as important factors and
+challenges and contexts, a flexibility that has already proven essential
+Detectability has been replaced with a Monitoring & Maintenance
+in industries such as wind energy. Wind turbines, whether onshore or
+factor. For the ranking of failure modes a Maintenance Priority Num-
+offshore, present unique challenges due to their complex systems and
+ber (MPN) is introduced in contrast to the RPN of the original FMEA
+exposure to varying climatic conditions. As a result, FMEA has been
+(see Eq. (1)). The MPN is defined as shown in Eq. (2).
+adapted in numerous ways to enhance its applicability in this sector.
+For instance, FMEA has been employed to compare the reliability of 𝑀𝑃 𝑁 = 𝑂𝑐𝑐𝑢𝑟𝑟𝑒𝑛𝑐𝑒 × 𝑆𝑒𝑣𝑒𝑟𝑖𝑡𝑦 × 𝑀𝑜𝑛𝑖𝑡𝑜𝑟𝑖𝑛𝑔&𝑀𝑎𝑖𝑛𝑡𝑒𝑛𝑎𝑛𝑐𝑒 (2)
+different turbine designs, thereby aiding in design improvements. [24]
+effectively applied FMEA to evaluate the reliability of prospective wind The MPN is used to rank the failure modes, with the highest MPN
+turbine designs. Additionally, [25] expanded FMEA to include main- corresponding to the most relevant failure for O&M optimisation and
+tenance actions, facilitating a more integrated approach to reliability- predictive maintenance.
+centred maintenance strategies. Furthermore, [26] compared FMEA
+The adapted FMEA, or O&M-FMEA, focuses on supporting O&M
+results for on-shore and offshore wind turbines, highlighting differences
+optimisation from a technical perspective, by identifying relevant fail-
+in risk factors influenced by environmental conditions. Another exten-
+ure modes, which have the highest potential for the development of
+sion of this method, Failure Modes, Effects, and Criticality Analysis
+automatic detection systems for the early fault detection; and from
+(FMECA), adds a criticality assessment to quantify the severity and
+an organisational perspective, by helping district heating operators
+likelihood of each failure mode [27]. FMECA has been performed
+to prioritise component faults and hence focus their efforts in the
+to optimise maintenance strategies by taking climatic conditions into
+account, comparing geared and direct drive turbines [28]. The incor-
+optimisation of their maintenance strategies.
+poration of advanced techniques, such as fuzzy logic [29] and hybrid
+cost-FMEA approaches [30], has further enhanced the analysis. More
+3.2.1. Factors of the original FMEA
+recent studies have introduced machine learning techniques to improve
+The Occurrence represents the probability of the failure modes. The
+FMEA applications in predictive maintenance, enabling real-time data
+analysis and more accurate risk assessments [31,32].
+probabilities are categorised and rated on a scale from 1 to 10, with 10
+A. Rafati et al. [33] review reliability analysis techniques that have being the category for the highest probability. This factor accounts for
+been applied on district heating systems. In the paper two studies about a prioritisation of frequent faults. The Severity of the failure mode is
+FMEA in district heating are presented. The most relevant one is the assessed based on the potential or actual detrimental consequences of
+work of P. Gilski et al. [34]. In their work the authors analysed ten-year the failure, and is rated on a scale from 1 to 10, with 10 being the
+of failure and repair data from the Warsaw district heating network highest severity. This factor accounts for a prioritisation of faults with
+using statistics and the FMEA method to identify key factors and critical high risk.
+```
+
+##### Chunk 후보: `fault_priority_extract__p005__c01`
+
+- chunk_id: `fault_priority_extract__p005__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): Occurrence scale for district heating substations.
+- 페이지/출처 위치: p.5 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 7084 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Table 1 Table 2
+Rating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by
+condition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component
+component condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected
+(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.
+fault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault
+potential is given by rating 5.
+Repair 5 2
+Detection Before the fault After the fault No detection
+Deferment 3
+With existing instrumentation 5 3 Replacement 4 1
+With additional effort 4 2
+Table 3
+Occurrence scale for district heating substations.
+3.2.2. The monitoring & maintenance factor Occurrence
+The third factor in the O&M-FMEA accounts for the handling po- Very frequent - every 1 year 10
+tential on the fault during system operation. It is defined with two Every 2 years 9
+concepts: the Monitoring Potential and the Maintenance Capability. Every 3 years 8
+Every 4 years 7
+From the perspective of O&M optimisation, interesting failure modes
+Every 5 years 6
+are those which can inherently be monitored either through appropri- Every 6 years 5
+ate instrumentation or practicable inspection measures. For instance, Every 7 years 4
+changes in the state of components due to degradation processes, which Unlikely - low likelihood but could occur at some time 3
+can be detected through monitoring are more relevant than randomly
+Rare - may only occur in exceptional circumstances 2
+Extremely rare - has never or rarely happened 1
+occurring failures. This is because the Monitoring Potential of the
+failure is the basis for the development of data-driven methods for
+early fault detection and in turn for predictive maintenance. The second Table 4
+concept, Maintenance Capability, is related with the capability to
+Severity scale for district heating substations.
+prevent or correct the fault through maintenance measures. Faults that
+Severity
+can be prevented by means of preventive refurbishment or timely repair Risk of customer injury 10
+offer more potential for predictive maintenance than those that can
+M
+M
+a
+a
+t
+t
+e
+e
+r
+r
+i
+i
+a
+a
+l
+l
+d
+d
+a
+a
+m
+m
+a
+a
+g
+g
+e
+e
+t
+t
+o
+o
+c
+u
+u
+ti
+s
+l
+t
+i
+o
+ty
+mer 9
+only be corrected. Therefore, the Monitoring & Maintenance factor Customer gets no heat 7
+accounts for a prioritisation of faults with high monitoring potential Customer does not get enough heat 6
+and high maintenance capability. – Separation between faults and efficiency losses – 5
+The Monitoring & Maintenance factor is calculated according Poor control (e.g. slightly oscillating control of ± 5K) 4
+Unsuitable load profile (unsuitable heating curve, unsuitable time schedule) 3
+to Eq. (3).
+Efficiency losses 2
+√ No noticeable effect 1
+𝑀𝑜𝑛𝑖𝑡𝑜𝑟𝑖𝑛𝑔&𝑀𝑎𝑖𝑛𝑡𝑒𝑛𝑎𝑛𝑐𝑒 = 2 × 𝑀𝑜𝑛𝑖𝑡𝑜𝑟𝑖𝑛𝑔 × 𝑀𝑎𝑖𝑛𝑡𝑒𝑛𝑎𝑛𝑐𝑒 (3)
+The factor 2 is included, so that all three factors, Severity, Occur-
+rence and Monitoring & Maintenance have a range to a maximum
+3.3. Rating scale for district heating substations
+of 10. This produces a maximum possible MPN of 1000, which is
+consistent with other FMEA implementations.
+Together with industry experts, the assessment criteria and rating
+Monitoring potential. The monitoring potential of a fault is categorised scale for the Occurrence and Severity factors to be applied to district
+and assigned a rating on a scale from 1 to 5 according to Table 1. heating substations have been defined. The Occurrence factor is based
+The categorisation follows the criteria that failure modes, which can on the frequency of the failure mode per single substation and is cate-
+potentially be detected before the failure occurs have higher rating gorised on a scale from 1 to 10, with 10 being the highest frequency. As
+than those which can only be detected after the fault. Additionally, a
+can be seen in the scale definition in Table 3, a rating of 10 corresponds
+second criteria categorises failure modes depending on the detection
+to faults that happen every year, whereas a rating of 1 corresponds to
+efforts or costs required. Failure modes or faults, which can potentially
+extremely rare faults, that has never or rarely happened.
+be detected by existing instrumentation have higher rating than those
+The Severity of the failure mode is assessed based on the potential
+that require additional efforts to detect e.g., installation of additional
+or actual detrimental consequences of the failure, not only in terms
+instrumentation for the monitoring of system variables not yet covered
+of safety and damage to equipment, but also considering the effect
+or manual inspection of the related component.
+on efficiency losses. It is also rated on a scale from 1 to 10, with
+10 being the highest severity (Table 4). The rating scale differentiates
+Maintenance capability. The maintenance capability is categorised and, between actual faults on the upper part of the scale, which can yield
+similarly to the monitoring potential, assigned a rating on a scale from 1 into interruption of the heat supply or even pose a risk of injury at the
+to 5, as presented in Table 2. The categorisation criteria is also twofold. highest rating and faults that only have an effect on the performance
+On the one hand, degradation processes that can be mitigated by or efficiency of the system, which are located on the lower part of
+preventive maintenance (e.g. adjustment, lubrication, corrosion protec- the scale. A rating of 5 in severity is not used. This builds a needed
+tion, cleaning, repair, replacement of component part), hence avoiding gap between the faults and efficiency losses, in order to separates both
+a failure (before the fault), get a higher rating than faults that can only effects more clearly.
+be corrected (after the fault). On the other hand, it is differentiated
+between repair, deferment and replacement activities, whereby faults 3.4. Relevant faults in district heating substations
+that can be handled by refurbishment or repair measures get a higher
+rating than faults that demand replacement of components or parts To apply the previously described O&M-FMEA methodology to the
+of it. In the middle of the rating scale are faults that can be delayed use case of district heating substations in Germany, the relevant faults
+(deferment) to be corrected at a later time, by means of suitable oper- need to be identified and structured.
+ation (e.g. deferment of heat exchanger fouling, by means of suitable To identify relevant faults in substations a literature review has
+operation, for a replacement at a later time). been conducted (see 2.2) and the faults have been associated with the
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p001__c01`
+
+- chunk_id: `fault_priority_extract__p001__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): Prioritisation of faults in district heating substations: Towards predictive
+- 페이지/출처 위치: p.1 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 4866 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Contents lists available at ScienceDirect
+Energy
+journal homepage: www.elsevier.com/locate/energy
+Prioritisation of faults in district heating substations: Towards predictive
+maintenance and optimised operation
+Edison Guevara Bastidas a ,∗, Stefan Faulstich a , Holger Dittmer a, Martin Neumayer b,
+Gowtham Sakthivel Mohan a , Kibriye Sercan-Calismaz c, Frank Hosenfelder d,
+Thilo Glenewinkel d, Karsten Fischer-Florschütz e, Anna Cadenbach a
+a Fraunhofer IEE, Joseph-Beuys-Straße 8, D-34117 Kassel, Germany
+b Institut für nachhaltige Energieversorgung GmbH - INEV, Anton-Kathrein-Str. 1, D-83022 Rosenheim, Germany
+c Der Energieeffizienzverband für Wärme, Kälte und KWK e. V. - AGFW, Stresemannallee 30, D-60596 Frankfurt am Main, Germany
+d Enercity Netz GmbH, Auf der Papenburg 18 D-30459 Hannover, Germany
+e YADOS GmbH, Yados-Straße 1 D-02977 Hoyerswerda, Germany
+A R T I C L E I N F O A B S T R A C T
+Keywords: Effectively detecting and handling faults in district heating substations is vital to ensure the security of heat
+District heating substations supply and improve system efficiency. This is a challenging task due to the growing number of substations and
+Predictive maintenance limited monitoring and service personnel. Digitalisation on the demand side offers an opportunity to develop
+Operation optimisation data-driven methods for automatic fault detection, enabling utilities to optimise maintenance interventions
+Fault detection methods
+across multiple customers. A variety of different faults can occur in substations, which can reflect differently
+FMEA
+Prioritisation of faults
+on operational data. It is then necessary to prioritise faults to address the most relevant ones in developing
+adequate detection methods and supporting operators in their Operation and Maintenance (O&M) processes.
+Failure Modes and Effects Analysis (FMEA) is a widely used methodology to prioritise potential failures,
+but it misses aspects relevant to O&M. In this study, we propose an adaptation of the original FMEA for
+the prioritisation of faults with focus on O&M optimisation. The methodology uses a Maintenance Priority
+Number (MPN) for the ranking of faults based on severity, occurrence, monitoring potential and maintenance
+capability of the fault. Severe and frequent faults, which have a potential to be monitored and maintained
+yield the highest MPNs and should be in focus from an O&M perspective. Using the proposed methodology
+the most relevant faults for predictive maintenance in substations in Germany have been identified. These are
+the contamination of strainers, pump failures and fouling of heat exchangers. These faults should be in focus
+when developing automatic fault detection and diagnosis methods.
+1. Introduction benefits, the efficiency of district heating networks need to be increased
+and the distribution temperatures decreased [4]. Current temperature
+The first implementation of district heating in Germany took place levels in district heating networks account not only for the customers’
+in the 1920s [1]. Over the years, these systems have undergone var- temperature demand but also for faults in the system [5]. Detecting
+ious changes in heat supply, distribution, and consumption. While and correcting faults that increase the network return temperatures
+the first implementations were typically fossil fuel-based, by gradually from substations is essential to achieving lower network supply temper-
+reducing the operational temperatures from generation to generation,
+atures, while decreasing distribution flows and increasing the overall
+modern district heating systems enable an environmentally friendly and
+efficiency of the system [6].
+resource-saving heat supply by integrating industrial waste heat, re-
+On the other hand, district heating systems can supply heat to thou-
+newable energy sources, and combined heat and power plants [2]. Fur-
+sands of consumers and the demand is increasing. The scenario ‘‘Kli-
+thermore, they contribute to the large-scale integration of the increas-
+maneutrales Deutschland 2045’’ (Climate neutral Germany 2045) [7]
+ing deployment of intermittent renewable energy by combining the
+various energy sectors, e.g., heat and electricity (sector coupling) [3]
+foresees an increase from currently 15% to one third of households in
+and using the associated potential for flexibility [4]. To achieve those Germany that will be supplied by district heating in the future. Due
+∗ Corresponding author.
+E-mail address: edison.guevara@iee.fraunhofer.de (E. Guevara Bastidas).
+https://doi.org/10.1016/j.energy.2025.137210
+Received 20 December 2024; Received in revised form 22 May 2025; Accepted 18 June 2025
+Available online 1 July 2025
+0360-5442/© 2025 The Authors. Published by Elsevier Ltd. This is an open access article under the CC BY license ( http://creativecommons.org/licenses/by/4.0/ ).
+```
+
+##### Chunk 후보: `fault_priority_extract__p008__c01`
+
+- chunk_id: `fault_priority_extract__p008__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): monitoring potential (grey) and maintenance capability (light orange).
+- 페이지/출처 위치: p.8 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 4093 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),
+monitoring potential (grey) and maintenance capability (light orange).
+Table A.5
+List of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)
+ratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.
+Rank Component Fault description MPN Occ Sev Mon Main
+1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2
+2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1
+3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6
+4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8
+5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3
+6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2
+7 Piping system Air in the piping system 198 6.1 6.7 2.1 2.8
+8 Domestic hot water electric 3-way valve Actuator of the domestic hot water electric 3-way valve defective 192 4.9 6.8 3.5 2.3
+9 Outdoor temperature sensor Outdoor temperature sensor in the wrong place 171 4.3 5.6 4.2 3.0
+10 Domestic hot water electric 3-way valve Valve of the domestic hot water electric 3-way valve defective 170 5.3 6.5 3.3 1.9
+11 Expansion vessel Low pre-charge at the expansion vessel 160 4.9 5.0 2.9 3.6
+12 Domestic hot water circulation pump Circulation flow rate too low (e.g. inadequate hydronic balancing of 142 4.3 5.8 3.2 2.5
+domestic hot water circulation circuit)
+13 Domestic hot water circulation pump Failure of domestic hot water circulation pump 142 4.1 5.5 3.4 2.9
+14 Pressure reducer (direct substation) Pressure fluctuations in the system 141 3.0 7.5 3.1 3.1
+15 Motorised control valve (primary side) Actuator defective 140 3.6 7.4 3.4 2.0
+16 Control unit Control unit defective 138 4.0 6.5 3.5 2.0
+17 Differential pressure regulator Incorrect setting of the differential pressure regulator 138 4.3 5.3 3.1 2.9
+18 Motorised control valve (3-way valve, Actuator defective 131 4.1 6.1 3.2 2.1
+secondary side)
+19 Motorised control valve (primary side) Oversized control valve (inadequate valve authority) 129 4.3 5.8 3.3 2.0
+20 Differential pressure regulator Differential pressure regulator jams when closed 127 3.4 6.8 3.3 2.3
+21 Temperature sensor (secondary side) Temperature sensor is defective and gives no signal 125 3.3 6.4 3.5 2.5
+22 Temperature sensor (primary side) Temperature sensor gives wrong signal 124 3.3 6.2 3.4 2.7
+23 Domestic hot water circulation pump Domestic hot water circulation flow rate too high (e.g. due to 123 4.5 4.4 3.3 3.0
+inadequate hydronic balancing of domestic hot water circulation
+circuit)
+24 Heat exchanger Incorrect design: flow rate too high for the heat exchanger, low 119 3.8 5.9 3.2 2.2
+heat transfer
+25 Heat exchanger Leakage, inside (cracking) 118 3.3 7.2 2.8 2.2
+26 Motorised control valve (primary side) Control valve jams when closed 116 3.5 6.6 3.2 1.9
+27 Temperature sensor (primary side) Temperature sensor in the wrong place 115 3.3 5.6 3.2 3.0
+28 Safety relief valve Water loss, does not close properly 113 3.9 6.9 2.0 2.2
+29 Volume flow limiter Incorrect setting of the volume flow limiter 112 3.4 4.8 3.5 3.4
+30 Outdoor temperature sensor Outdoor temperature sensor is defective and does not give a signal 112 3.4 5.1 4.2 2.5
+31 Volume flow controller Incorrect setting of the volume flow controller 111 3.2 5.0 3.5 3.5
+32 Pressure independent control valve Actuator defective 110 3.2 6.7 3.3 2.0
+33 Safety temperature limiter Safety temperature limiter defective 110 3.0 8.1 2.4 2.1
+34 Outdoor temperature sensor Outdoor temperature sensor is giving the wrong signal 108 2.9 5.7 3.6 2.9
+35 Shut-off valve Shut-off valve closed 108 2.4 7.4 2.8 3.4
+(continued on next page)
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p049__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p049__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): Indicators for District Heating Substations
+- 페이지/출처 위치: p.49 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1990 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Kvr: Minimum flow through the valve in m3/h and Key performance indicators
+the pressure drop at 1 bar and preserved flow
+The Association’s report, Key Performance
+characteristic.
+Indicators for District Heating Substations
+(1998:12), lists appropriate key indicators for the
+Kvs: The chosen valve’s Kv-value and with fully
+district heating sector. SS-EN 15341 describes a
+open valve, usually with 30 % safety margin to the
+system for applying key performance indicators to
+calculation.
+measure maintenance performance in connection
+with other factors of influence, such as economic,
+Sv: Set factor (Adjustment factor/nicety) (k /k , e.g.
+vs vr technical and organisational, with the aim of
+1:100).
+evaluating and improving efficiency in order to
+maintain optimum performance of physical plants.
+The system efficiency: The Greek letter eta (η), and
+These key indicators should be used for measuring
+is expressed in %.
+status, making comparisons (at national and
+international levels), diagnosis (analysis of strengths
+and weaknesses), identifying and defining targets,
+planning improvement work and regularly
+monitoring changes over time.
+Size and energy sold: [no., MW] No. of customers,
+No. of detached houses, Contracted efficiency,
+Average efficiency at 63% of ODT, Energy sold.
+Installation cost: [SEK/building] Detached houses
+<25 kW (SEK/building), 30-50 kW (SEK/kW), 200-
+400 kW (SEK/kW).
+Technical lifetime: [Years] Weighted value, Min.,
+Max., Median, Control equipment, Heat exchanger
+installation.
+Running costs: [SEK/year per kW] (contracted
+power), meter measurement, maintenance and
+inspection.
+Average temperature difference: [C°] Yearly
+average, Winter, Summer, Winter ODT max.,
+Summer Min.
+Unavailability statistics: [h/year] Weighted value,
+Min., Max., Median, Planned downtime (MTTR
+Mean time to total repair), Unplanned downtime
+(MDT Mean time down time), Meter replacement.
+Average downtime duration per customer,
+calculated from the company’s total number of
+customers.
+```
+
+### retrieval_eval_012
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_012`
+- 분류 (`category`): `priority_reason`
+- 평가 질문 (`query`): strainer fault priority를 설명할 때 발생도, 심각도, 모니터링 가능성 같은 축을 같이 써야 해?
+- 질문 의도 (`query_intent`): `priority_reason`
+- 난이도 (`difficulty`): `hard`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `strainer_priority_dimensions`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Prioritisation uses dimensions such as occurrence, severity, monitoring potential, and maintenance capability.","Faults are grouped by affected component and fault type in the research extract.","The answer should avoid overstating a precise priority unless the relevant table row is directly retrieved."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent MPN for a strainer if not in the cited chunk text.","Do not claim the current site has the same priority as the paper.","Do not create a new fault ranking."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Prioritisation of faults in district heating substations - Selected Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): ["fault_priority_extract__p006__c01","fault_priority_extract__p008__c01"]
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["fault_priority_extract__p005__c01","fault_priority_extract__p007__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row001"
+- 원천 섹션 메모 (`source_sections`): [{"chunk_id":"fault_priority_extract__p006__c01","document_title":"Prioritisation of faults in district heating substations - Selected Extract","section_title":"Fig. 2. Excerpt of the faults in substations grouped by the affected component and coloured by fault type.","evidence_note":"Chunk discusses fault grouping by affected component and fault type."},{"chunk_id":"fault_priority_extract__p008__c01","document_title":"Prioritisation of faults in district heating substations - Selected Extract","section_title":"monitoring potential (grey) and maintenance capability (light orange).","evidence_note":"Chunk references prioritised faults with occurrence, severity, monitoring potential, and maintenance capability bars."}]
+- 검수자 메모 (`reviewer_notes`): High review priority: source may not expose enough strainer-specific text after PDF extraction.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p006__c01`
+
+- chunk_id: `fault_priority_extract__p006__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): Fig. 2. Excerpt of the faults in substations grouped by the affected component and coloured by fault type.
+- 페이지/출처 위치: p.6 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3693 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Fig. 2. Excerpt of the faults in substations grouped by the affected component and coloured by fault type.
+affected components in a preliminary list. Previous research work is range of professional expertise. Emphasising quality, the survey was
+mainly based on substations in district heating networks of Sweden and designed to get in-depth responses.
+Denmark. In a workshop with industry experts of Germany, the pre- After the data collection and pre-processing, the following pro-
+liminary list has been extended, including the experiences in German cedure was carried out for the ranking of faults: firstly, the mean
+district heating. occurrence, severity, monitoring potential and maintenance capability
+The O&M-FMEA methodology described in this study, in contrast was computed for each fault over all participants; secondly, an MPN for
+to the original FMEA, omits an extensive analysis of all possible faults, each fault was calculated based on the computed means of the different
+their effects on the functionality, connections between components factors and using Eqs. (2) and (3); and thirdly, faults were ranked
+and their relations. Instead, only faults actually occurring in practice according to the calculated MPN. By calculating first the means of the
+are considered, since from an O&M point of view, only faults with a individual factors, the method accounts for the different subjectivity
+minimum of occurrence are relevant. An excerpt of all identified faults among the participants to get a mean opinion on the different factors.
+grouped by the affected component is presented in Fig. 2. The identified The use of mean over median is also preferred, in order to consider all
+faults cover installation errors (dark orange), wrong settings (grey) participant’s rating the same way and to not exclude any outlier. The
+and actual faults during operation (light orange). On the other hand, list of faults ranked according to the calculated MPN is shown in Table
+it is differentiated between components installed on the primary and A.5 together with the mean occurrence, severity, monitoring potential
+secondary side. The full list, containing a total of 81 faults, including and maintenance capability used for the calculation.
+the affected component and a short description, is presented in Table
+A.5. 4. Prioritisation of faults
+3.5. Survey study Fig. 3 shows the frequency distribution of the MPNs presented in
+Table A.5, as a result of the survey. The histogram shows a right-skewed
+By means of a survey study, German practitioners were asked to distribution with a tail containing few faults with the highest MPNs.
+evaluate each one of the identified 81 faults in substations using the Fig. 4 shows the results for the 10 highest ranked faults. As can be
+defined rating criteria for Occurrence, Severity, Monitoring Poten- seen in the figure, the occurrence rating (blue bar) goes from 4.3 to
+tial and Maintenance Capability. The survey study is conceived as 6.1, meaning a frequency of fault of 5 to 7 years for those faults. The
+an online questionnaire covering four scales (one separate scale per severity rating (orange bar) goes from 5.6 to 7.5, meaning the faults
+each rating criteria) for each fault and space for comments, requiring a have an effect on the delivery of heat to the customer, partially or even
+total of around 1.5 h from each of the 13 participating German experts. completely.
+Each participating expert belong to either one of the groups Operator, There are different types of faults present in the table. Two faults
+representative from Expert Associations or OEM, ensuring a diverse are not related with O&M: incorrect parameterisation of the control
+```
+
+##### Chunk 후보: `fault_priority_extract__p008__c01`
+
+- chunk_id: `fault_priority_extract__p008__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): monitoring potential (grey) and maintenance capability (light orange).
+- 페이지/출처 위치: p.8 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 4093 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),
+monitoring potential (grey) and maintenance capability (light orange).
+Table A.5
+List of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)
+ratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.
+Rank Component Fault description MPN Occ Sev Mon Main
+1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2
+2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1
+3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6
+4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8
+5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3
+6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2
+7 Piping system Air in the piping system 198 6.1 6.7 2.1 2.8
+8 Domestic hot water electric 3-way valve Actuator of the domestic hot water electric 3-way valve defective 192 4.9 6.8 3.5 2.3
+9 Outdoor temperature sensor Outdoor temperature sensor in the wrong place 171 4.3 5.6 4.2 3.0
+10 Domestic hot water electric 3-way valve Valve of the domestic hot water electric 3-way valve defective 170 5.3 6.5 3.3 1.9
+11 Expansion vessel Low pre-charge at the expansion vessel 160 4.9 5.0 2.9 3.6
+12 Domestic hot water circulation pump Circulation flow rate too low (e.g. inadequate hydronic balancing of 142 4.3 5.8 3.2 2.5
+domestic hot water circulation circuit)
+13 Domestic hot water circulation pump Failure of domestic hot water circulation pump 142 4.1 5.5 3.4 2.9
+14 Pressure reducer (direct substation) Pressure fluctuations in the system 141 3.0 7.5 3.1 3.1
+15 Motorised control valve (primary side) Actuator defective 140 3.6 7.4 3.4 2.0
+16 Control unit Control unit defective 138 4.0 6.5 3.5 2.0
+17 Differential pressure regulator Incorrect setting of the differential pressure regulator 138 4.3 5.3 3.1 2.9
+18 Motorised control valve (3-way valve, Actuator defective 131 4.1 6.1 3.2 2.1
+secondary side)
+19 Motorised control valve (primary side) Oversized control valve (inadequate valve authority) 129 4.3 5.8 3.3 2.0
+20 Differential pressure regulator Differential pressure regulator jams when closed 127 3.4 6.8 3.3 2.3
+21 Temperature sensor (secondary side) Temperature sensor is defective and gives no signal 125 3.3 6.4 3.5 2.5
+22 Temperature sensor (primary side) Temperature sensor gives wrong signal 124 3.3 6.2 3.4 2.7
+23 Domestic hot water circulation pump Domestic hot water circulation flow rate too high (e.g. due to 123 4.5 4.4 3.3 3.0
+inadequate hydronic balancing of domestic hot water circulation
+circuit)
+24 Heat exchanger Incorrect design: flow rate too high for the heat exchanger, low 119 3.8 5.9 3.2 2.2
+heat transfer
+25 Heat exchanger Leakage, inside (cracking) 118 3.3 7.2 2.8 2.2
+26 Motorised control valve (primary side) Control valve jams when closed 116 3.5 6.6 3.2 1.9
+27 Temperature sensor (primary side) Temperature sensor in the wrong place 115 3.3 5.6 3.2 3.0
+28 Safety relief valve Water loss, does not close properly 113 3.9 6.9 2.0 2.2
+29 Volume flow limiter Incorrect setting of the volume flow limiter 112 3.4 4.8 3.5 3.4
+30 Outdoor temperature sensor Outdoor temperature sensor is defective and does not give a signal 112 3.4 5.1 4.2 2.5
+31 Volume flow controller Incorrect setting of the volume flow controller 111 3.2 5.0 3.5 3.5
+32 Pressure independent control valve Actuator defective 110 3.2 6.7 3.3 2.0
+33 Safety temperature limiter Safety temperature limiter defective 110 3.0 8.1 2.4 2.1
+34 Outdoor temperature sensor Outdoor temperature sensor is giving the wrong signal 108 2.9 5.7 3.6 2.9
+35 Shut-off valve Shut-off valve closed 108 2.4 7.4 2.8 3.4
+(continued on next page)
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p005__c01`
+
+- chunk_id: `fault_priority_extract__p005__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): Occurrence scale for district heating substations.
+- 페이지/출처 위치: p.5 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 7084 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Table 1 Table 2
+Rating of the categories for monitoring potential: (5) a change in the component Rating of the categories for maintenance capability: (5) the fault can be prevented by
+condition could be detected before the fault by existing instrumentation; (4) a change in timely refurbishment or repair; (4) the fault can be prevented by replacing a component
+component condition could have been detected before the fault with additional effort; part; (3) the fault can be deferred by suitable operation; (2) the fault can be corrected
+(3) the fault could be detected by existing instrumentation; (2) the detection of the by repair; (1) the fault can only be corrected by replacing the component.
+fault requires additional efforts; (1) no fault detection possible. The highest monitoring Maintenance measure Before the fault After the fault
+potential is given by rating 5.
+Repair 5 2
+Detection Before the fault After the fault No detection
+Deferment 3
+With existing instrumentation 5 3 Replacement 4 1
+With additional effort 4 2
+Table 3
+Occurrence scale for district heating substations.
+3.2.2. The monitoring & maintenance factor Occurrence
+The third factor in the O&M-FMEA accounts for the handling po- Very frequent - every 1 year 10
+tential on the fault during system operation. It is defined with two Every 2 years 9
+concepts: the Monitoring Potential and the Maintenance Capability. Every 3 years 8
+Every 4 years 7
+From the perspective of O&M optimisation, interesting failure modes
+Every 5 years 6
+are those which can inherently be monitored either through appropri- Every 6 years 5
+ate instrumentation or practicable inspection measures. For instance, Every 7 years 4
+changes in the state of components due to degradation processes, which Unlikely - low likelihood but could occur at some time 3
+can be detected through monitoring are more relevant than randomly
+Rare - may only occur in exceptional circumstances 2
+Extremely rare - has never or rarely happened 1
+occurring failures. This is because the Monitoring Potential of the
+failure is the basis for the development of data-driven methods for
+early fault detection and in turn for predictive maintenance. The second Table 4
+concept, Maintenance Capability, is related with the capability to
+Severity scale for district heating substations.
+prevent or correct the fault through maintenance measures. Faults that
+Severity
+can be prevented by means of preventive refurbishment or timely repair Risk of customer injury 10
+offer more potential for predictive maintenance than those that can
+M
+M
+a
+a
+t
+t
+e
+e
+r
+r
+i
+i
+a
+a
+l
+l
+d
+d
+a
+a
+m
+m
+a
+a
+g
+g
+e
+e
+t
+t
+o
+o
+c
+u
+u
+ti
+s
+l
+t
+i
+o
+ty
+mer 9
+only be corrected. Therefore, the Monitoring & Maintenance factor Customer gets no heat 7
+accounts for a prioritisation of faults with high monitoring potential Customer does not get enough heat 6
+and high maintenance capability. – Separation between faults and efficiency losses – 5
+The Monitoring & Maintenance factor is calculated according Poor control (e.g. slightly oscillating control of ± 5K) 4
+Unsuitable load profile (unsuitable heating curve, unsuitable time schedule) 3
+to Eq. (3).
+Efficiency losses 2
+√ No noticeable effect 1
+𝑀𝑜𝑛𝑖𝑡𝑜𝑟𝑖𝑛𝑔&𝑀𝑎𝑖𝑛𝑡𝑒𝑛𝑎𝑛𝑐𝑒 = 2 × 𝑀𝑜𝑛𝑖𝑡𝑜𝑟𝑖𝑛𝑔 × 𝑀𝑎𝑖𝑛𝑡𝑒𝑛𝑎𝑛𝑐𝑒 (3)
+The factor 2 is included, so that all three factors, Severity, Occur-
+rence and Monitoring & Maintenance have a range to a maximum
+3.3. Rating scale for district heating substations
+of 10. This produces a maximum possible MPN of 1000, which is
+consistent with other FMEA implementations.
+Together with industry experts, the assessment criteria and rating
+Monitoring potential. The monitoring potential of a fault is categorised scale for the Occurrence and Severity factors to be applied to district
+and assigned a rating on a scale from 1 to 5 according to Table 1. heating substations have been defined. The Occurrence factor is based
+The categorisation follows the criteria that failure modes, which can on the frequency of the failure mode per single substation and is cate-
+potentially be detected before the failure occurs have higher rating gorised on a scale from 1 to 10, with 10 being the highest frequency. As
+than those which can only be detected after the fault. Additionally, a
+can be seen in the scale definition in Table 3, a rating of 10 corresponds
+second criteria categorises failure modes depending on the detection
+to faults that happen every year, whereas a rating of 1 corresponds to
+efforts or costs required. Failure modes or faults, which can potentially
+extremely rare faults, that has never or rarely happened.
+be detected by existing instrumentation have higher rating than those
+The Severity of the failure mode is assessed based on the potential
+that require additional efforts to detect e.g., installation of additional
+or actual detrimental consequences of the failure, not only in terms
+instrumentation for the monitoring of system variables not yet covered
+of safety and damage to equipment, but also considering the effect
+or manual inspection of the related component.
+on efficiency losses. It is also rated on a scale from 1 to 10, with
+10 being the highest severity (Table 4). The rating scale differentiates
+Maintenance capability. The maintenance capability is categorised and, between actual faults on the upper part of the scale, which can yield
+similarly to the monitoring potential, assigned a rating on a scale from 1 into interruption of the heat supply or even pose a risk of injury at the
+to 5, as presented in Table 2. The categorisation criteria is also twofold. highest rating and faults that only have an effect on the performance
+On the one hand, degradation processes that can be mitigated by or efficiency of the system, which are located on the lower part of
+preventive maintenance (e.g. adjustment, lubrication, corrosion protec- the scale. A rating of 5 in severity is not used. This builds a needed
+tion, cleaning, repair, replacement of component part), hence avoiding gap between the faults and efficiency losses, in order to separates both
+a failure (before the fault), get a higher rating than faults that can only effects more clearly.
+be corrected (after the fault). On the other hand, it is differentiated
+between repair, deferment and replacement activities, whereby faults 3.4. Relevant faults in district heating substations
+that can be handled by refurbishment or repair measures get a higher
+rating than faults that demand replacement of components or parts To apply the previously described O&M-FMEA methodology to the
+of it. In the middle of the rating scale are faults that can be delayed use case of district heating substations in Germany, the relevant faults
+(deferment) to be corrected at a later time, by means of suitable oper- need to be identified and structured.
+ation (e.g. deferment of heat exchanger fouling, by means of suitable To identify relevant faults in substations a literature review has
+operation, for a replacement at a later time). been conducted (see 2.2) and the faults have been associated with the
+```
+
+##### Chunk 후보: `fault_priority_extract__p007__c01`
+
+- chunk_id: `fault_priority_extract__p007__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): Monitoring & Maintenance potential: air in the piping system has a This study has presented a novel methodology for the prioritisation
+- 페이지/출처 위치: p.7 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 6248 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Fig. 3. Frequency distribution of MPNs.
+unit and the wrong placement of the outdoor temperature sensor. 5. Conclusions
+Other faults, which are at the bottom of the list, have a relative low
+Monitoring & Maintenance potential: air in the piping system has a This study has presented a novel methodology for the prioritisation
+monitoring potential (grey bar) of 2.1, meaning it can only be detected of faults, aimed at supporting the optimisation of O&M. The methodol-
+after the fault occurred and only with additional efforts; and two faults ogy, which is based on the FMEA process, introduces a monitoring and
+associated with the three-way valve for domestic hot water have a maintenance evaluation factor. Based on a literature review of previous
+maintenance capability (yellow bar) of around 2, meaning they can research, the relevant faults of district heating substations in the north
+be repaired but only through corrective actions after fault occurred. European countries have been extended including the experiences in
+And finally, 5 faults have a high potential for predictive maintenance. German district heating. The rating criteria for substations has been
+These are poor flow rate through the strainer on both the primary defined, and the methodology has been applied on all identified faults
+and the secondary side, failure of the heating circuit pump, failure by means of a survey study with the participation of German practition-
+of the storage charging pump for domestic hot water and the fouling ers. In the survey study all faults have been evaluated according to their
+of heat exchangers. These faults have a Monitoring Potential in the occurrence, severity, monitoring potential and maintenance capability,
+range from 3.6 (contamination of the strainer on the secondary side) and ranked according to the calculated priority indicator MPN. The 10
+to 4.2 (fouling of heat exchanger), meaning a detection before fault is faults with the highest MPNs have been discussed in detail, considering
+possible and a Maintenance Capability in the range from 2.6 (failure their impact on O&M optimisation.
+of the heating circuit pump) to 4.2 (contamination of the strainer on The study has identified relevant faults for predictive maintenance,
+the primary side), meaning a deferment of the fault or even preventive these are the contamination of strainers, failure of the heating circuit
+actions are possible. pump, failure of the storage charging pump for domestic hot water and
+The information gathered in the comments field of the survey help the fouling of heat exchangers. These faults and their failure modes
+to further interpret the survey results. For instance, one participant need to be further investigated to support the development of early
+argued that cleaning a brazed heat exchanger only works in an ultra- fault detection methods.
+sonic bath, which is often more expensive than a new heat exchanger. The study has identified relevant faults with low monitoring and
+This supports the obtained maintenance capability for the fouling of maintenance potential, these are air in the piping system and defective
+heat exchanger of 3.2, meaning the fault can be deferred by suitable actuator or valve of the domestic hot water electric 3-way valve. In this
+operation. If the preventive action of cleaning the heat exchanger is case, operators need to develop organisational measures to optimise
+not economically feasible, then the next best strategy would be to defer O&M, like strategies to prevent or correct relevant faults and optimal
+the fault for the replacement of the component at a convenient time logistics and supply chain management.
+(i.e. out of the heating period in case of a heat exchanger in the heating The study has identified relevant faults that are not related to
+circuit). O&M, these are the incorrect parameterisation of control unit and
+Other comments concerned the ambiguity of some fault descrip- wrong placement of outdoor temperature sensor. In this case, utilities
+tions. While some of those fault descriptions were corrected and need to develop adequate strategies for installation, commissioning and
+rephrased in a more concrete way during the survey study, some others auto-commissioning.
+remained ambiguous, that is the case of the failures of the pumps. A Since the results reflect the general situation in district heating
+failure of the pump can be many different things and can have different substations in Germany, the recommendations presented here are par-
+causes: can be a failure of the motor (e.g. rotor is blocked), a failure in ticularly relevant for district heating operators in Germany and for
+the pump itself (e.g. wearing or blockage of the impeller) or an issue researchers and developers working on fault detection methods with
+with the sensors or electronics. Each fault of the list in Table A.5 can a focus on the German market. At the same time, the results lay the
+potentially be further divided into specific faults, making it longer and foundation for the design of experimental set-ups to further investigate
+more complex to evaluate. Therefore, the level of detail covered in in detail the failure modes of the identified relevant faults, in the
+the list is considered appropriate. Prioritised faults, such as the failure context of the research project PreDist ‘‘Predictive Maintenance for
+of the heating circulation pump and failure of the charging pump for District Heating’’, founded by the Federal Ministry of Economic Affairs
+domestic hot water, can and should be further investigated to identify and Climate Action of Germany.
+relevant failure modes in order to support the development of fault Furthermore, this study presents a novel methodology that can
+detection methods. be directly applied to evaluate substations in other district heating
+There has been no limitations to the substation typology when scenarios, e.g. substation in other countries. At the same time, the
+asking the German practitioners. Hence, the results of the prioritisation methodology can be easily adapted to other areas of the industry to
+reflect the general situation of district heating substations in Germany. prioritise faults and support in the optimisation of O&M strategies.
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row001`
+
+- chunk_id: `danfoss_troubleshooting_table__row001`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 565 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Dirt strainer in the district heating or<br>heating return line clogged.<br>Filter in district heating meter clogged.<br>Defective or incorrectly set differential<br>pressure controller.<br>Air pockets in the system.
+Recommended action: Clean the filter/dirt strainer.<br>Cean the filter (in consultation with the<br>district heating plant).<br>Check the functions of the differential<br>pressure controller - if necessary, clean the<br>valve seat.<br>Vent the system thoroughly - see the<br>instructions.
+Component: strainer/filter
+```
+
+### retrieval_eval_013
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_013`
+- 분류 (`category`): `priority_reason`
+- 평가 질문 (`query`): control valve actuator travel time 설정 오류는 우선순위 연구에서 어느 정도 위험 사례로 언급돼?
+- 질문 의도 (`query_intent`): `priority_reason`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `control_valve_actuator_travel_time`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["The appendix row mentions motorised control valve on the primary side with incorrect actuator travel time setting.","The row includes MPN and component/fault ranking data in the extracted text.","The answer should cite the extracted row rather than infer field risk."]
+- 금지 주장 (`forbidden_claims`): ["Do not apply the row to a current site without evidence.","Do not invent additional actuator symptoms.","Do not change the MPN values beyond the extracted text."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Prioritisation of faults in district heating substations - Selected Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "fault_priority_extract__p009__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "fault_priority_extract__p008__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_substation_operation_extract__p016__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"fault_priority_extract__p009__c01","document_title":"Prioritisation of faults in district heating substations - Selected Extract","section_title":"36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6","evidence_note":"Appendix row directly names actuator travel time setting fault and ranking values."}
+- 검수자 메모 (`reviewer_notes`): Numeric extraction should be human-verified before approved labels.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p009__c01`
+
+- chunk_id: `fault_priority_extract__p009__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): 36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6
+- 페이지/출처 위치: p.9 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 6346 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Table A.5 (continued).
+Rank Component Fault description MPN Occ Sev Mon Main
+36 Motorised control valve (primary side) Incorrect setting of the actuator travel time in the control unit 107 4.0 4.5 3.3 2.6
+37 Temperature sensor (secondary side) Temperature sensor gives wrong signal 107 3.3 6.0 3.0 2.5
+38 Motorised control valve (primary side) Control valve jammed in open state (imminent danger if type-tested 106 2.2 9.0 3.6 2.0
+unit with safety function)
+39 Temperature sensor (primary side) Temperature sensor is defective and gives no signal 106 3.5 4.7 3.6 2.7
+40 Safety temperature monitor Safety temperature monitor defective 105 3.1 7.9 2.6 1.8
+41 Shut-off valve Leakage, external 104 3.0 7.2 2.1 2.8
+42 Motorised control valve (primary side) External leakage (e.g. stuffing box leaking, seal leaking) 103 3.5 6.9 1.5 3.0
+43 Control unit Incorrect control sequence (incorrect connection) 100 2.5 6.7 3.1 2.9
+44 Heat exchanger Leakage, external 100 3.0 7.5 2.0 2.5
+45 Motorised control valve (3-way valve, External leakage (e.g. stuffing box leaking, seal leaking) 99 3.5 6.7 1.6 2.8
+secondary side)
+46 Pressure independent control valve Differential pressure regulator jams when closed 96 2.9 6.9 2.9 2.0
+47 Pressure independent control valve Incorrect setting of the actuator travel time in the control unit 94 3.8 4.2 3.2 2.7
+48 Motorised control valve (3-way valve, Oversized control valve (inadequate valve authority) 92 4.3 4.8 3.1 1.7
+secondary side)
+49 Temperature monitor/controller Temperature monitor/controller defective 88 2.8 7.0 3.0 1.8
+50 Pressure reducer (direct substation) Diaphragm rupture: Leakage to the outside 85 2.5 7.6 2.0 2.5
+51 Motorised control valve (primary side) Control valve leaking when closed (leakage volume above standard) 85 2.9 5.0 3.4 2.5
+52 Motorised control valve (3-way valve, Control valve jammed when closed 84 3.2 5.8 2.9 1.8
+secondary side)
+53 Expansion vessel No pre-charge (membrane rupture) 84 2.8 6.2 2.5 2.4
+54 Differential pressure regulator Differential pressure regulator jams when open 84 2.9 5.0 3.2 2.6
+55 Pressure independent control valve Control valve jammed when open (imminent danger if type-tested 81 2.0 8.1 3.1 2.0
+unit with safety function)
+56 Motorised control valve (primary side) Actuator cannot change the position of the valve (incorrectly 78 2.0 7.7 3.6 1.8
+designed)
+57 Safety relief valve does not open, risk of over-pressure 78 2.0 9.5 1.9 2.2
+58 Pressure independent control valve Incorrect setting of volume flow limiter 76 2.8 4.8 3.0 2.6
+59 Pressure reducer (direct substation) Incorrect setting 76 1.8 8.3 2.8 2.2
+60 Temperature sensor (secondary side) Temperature sensor in the wrong place 72 2.5 5.2 2.7 2.8
+61 Motorised control valve (3-way valve, Control valve leaking when closed 72 3.0 5.4 2.8 1.8
+secondary side)
+62 Shut-off valve Leakage inside 70 2.8 5.5 2.1 2.4
+63 Motorised control valve (3-way valve, Incorrect actuator travel time (built-in actuator does not match the 70 3.2 4.4 3.0 2.0
+secondary side) travel time set in the control unit)
+64 Motorised control valve (3-way valve, Control valve jammed when open 70 2.6 5.6 2.9 2.1
+secondary side)
+65 Pressure independent control valve External leakage (e.g. stuffing box leaking, seal leaking) 62 2.7 5.6 1.6 2.7
+66 Motorised control valve (primary side) Incorrect actuator installed (travel time not suitable in the context 61 3.1 4.5 3.1 1.5
+of the control circuit)
+67 Pressure independent control valve Control valve jammed when closed 61 2.4 5.5 3.0 1.8
+68 Pressure independent control valve Oversized control valve (inadequate valve authority) 61 2.6 5.1 2.7 2.0
+69 Motorised control valve (3-way valve, Poor connection between actuator and valve (force-fit) 54 2.3 5.1 2.0 2.6
+secondary side)
+70 Motorised control valve (primary side) Poor connection between actuator and valve (form-fit) 54 2.3 5.2 2.2 2.3
+71 Motorised control valve (primary side) Poor connection between actuator and valve (force-fit) 53 2.3 5.1 2.2 2.3
+72 Motorised control valve (3-way valve, Actuator cannot change the position of the valve (incorrectly 53 2.2 5.2 2.9 1.8
+secondary side) designed)
+73 Pressure independent control valve Actuator cannot change the position of the valve (incorrectly 50 1.9 5.8 3.2 1.6
+designed)
+74 Motorised control valve (3-way valve, Poor connection between actuator and valve (form-fit) 48 2.4 4.3 2.0 2.6
+secondary side)
+75 Pressure independent control valve Control valve leaks when closed 44 2.1 4.1 3.0 2.2
+76 Pressure independent control valve Poor connection between actuator and valve (force-fit) 43 1.9 4.7 2.1 2.8
+77 Thermal energy meter Leakage outside (leaking) 41 2.0 4.9 1.7 2.5
+78 Pressure independent control valve Poor connection between actuator and valve (form-fit) 41 1.8 4.7 2.1 2.8
+79 Pressure independent control valve Incorrect actuator installed (travel time not suitable in the context 41 2.1 4.3 3.0 1.7
+of the control circuit)
+80 Thermal energy meter Failure of the thermal energy meter 24 2.4 2.1 3.2 1.8
+81 Thermal energy meter Gateway defective 23 2.4 1.9 3.6 1.8
+CRediT authorship contribution statement Frank Hosenfelder: Writing – review & editing, Validation, Resources,
+Methodology. Thilo Glenewinkel: Writing – review & editing,
+Edison Guevara Bastidas: Writing – original draft, Visualization, Validation, Resources, Methodology. Karsten Fischer-Florschütz:
+Validation, Software, Methodology, Investigation, Formal analysis, Data Writing – review & editing, Validation, Resources, Methodology.
+curation, Conceptualization. Stefan Faulstich: Writing – review & Anna Cadenbach: Writing – review & editing, Resources, Project
+editing, Writing – original draft, Validation, Supervision, Methodology, administration, Funding acquisition.
+Investigation, Conceptualization. Holger Dittmer: Writing – review
+& editing, Writing – original draft, Validation, Formal analysis. Declaration of competing interest
+Martin Neumayer: Writing – review & editing, Writing – original
+draft, Visualization, Validation. Gowtham Sakthivel Mohan: Writing The authors declare that they have no known competing finan-
+– review & editing, Investigation, Data curation, Conceptualization. cial interests or personal relationships that could have appeared to
+Kibriye Sercan-Calismaz: Writing – review & editing, Investigation. influence the work reported in this paper.
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `fault_priority_extract__p008__c01`
+
+- chunk_id: `fault_priority_extract__p008__c01`
+- document_id: `prioritisation_faults_substations.pdf`
+- 문서 제목 (`document_title`): Prioritisation of faults in district heating substations - Selected Extract
+- 섹션 (`section`): monitoring potential (grey) and maintenance capability (light orange).
+- 페이지/출처 위치: p.8 / prioritisation_faults_substations.pdf
+- RAG 역할 (`rag_role`): `fault_priority_research`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 4093 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Fig. 4. Prioritised faults in district heating substations with MPN results. To the right of each fault there is a bar chart showing: occurrence (blue), severity (dark orange),
+monitoring potential (grey) and maintenance capability (light orange).
+Table A.5
+List of faults in district heating substations along with the affected component and their occurrence (Occ), severity (Sev), monitoring potential (Mon) maintenance capability (Main)
+ratings ranked by their maintenance priority number (MPN). Displayed values are rounded, which might result in slight deviations when recalculating the MPN.
+Rank Component Fault description MPN Occ Sev Mon Main
+1 Strainer (primary side) Poor flow rate (strainer contaminated) 326 5.8 7.0 3.9 4.2
+2 Strainer (secondary side) Poor flow rate (strainer contaminated) 294 5.8 6.5 3.6 4.1
+3 Heating circuit pump Failure of the heating circuit pump 237 5.0 7.5 3.8 2.6
+4 Domestic hot water storage charging pump Failure of the domestic hot water storage charging pump 234 5.1 7.3 3.7 2.8
+5 Control unit Incorrect parameterisation 230 5.2 6.1 4.0 3.3
+6 Heat exchanger Poor heat transfer, poor flow (contamination) 212 4.8 6.0 4.2 3.2
+7 Piping system Air in the piping system 198 6.1 6.7 2.1 2.8
+8 Domestic hot water electric 3-way valve Actuator of the domestic hot water electric 3-way valve defective 192 4.9 6.8 3.5 2.3
+9 Outdoor temperature sensor Outdoor temperature sensor in the wrong place 171 4.3 5.6 4.2 3.0
+10 Domestic hot water electric 3-way valve Valve of the domestic hot water electric 3-way valve defective 170 5.3 6.5 3.3 1.9
+11 Expansion vessel Low pre-charge at the expansion vessel 160 4.9 5.0 2.9 3.6
+12 Domestic hot water circulation pump Circulation flow rate too low (e.g. inadequate hydronic balancing of 142 4.3 5.8 3.2 2.5
+domestic hot water circulation circuit)
+13 Domestic hot water circulation pump Failure of domestic hot water circulation pump 142 4.1 5.5 3.4 2.9
+14 Pressure reducer (direct substation) Pressure fluctuations in the system 141 3.0 7.5 3.1 3.1
+15 Motorised control valve (primary side) Actuator defective 140 3.6 7.4 3.4 2.0
+16 Control unit Control unit defective 138 4.0 6.5 3.5 2.0
+17 Differential pressure regulator Incorrect setting of the differential pressure regulator 138 4.3 5.3 3.1 2.9
+18 Motorised control valve (3-way valve, Actuator defective 131 4.1 6.1 3.2 2.1
+secondary side)
+19 Motorised control valve (primary side) Oversized control valve (inadequate valve authority) 129 4.3 5.8 3.3 2.0
+20 Differential pressure regulator Differential pressure regulator jams when closed 127 3.4 6.8 3.3 2.3
+21 Temperature sensor (secondary side) Temperature sensor is defective and gives no signal 125 3.3 6.4 3.5 2.5
+22 Temperature sensor (primary side) Temperature sensor gives wrong signal 124 3.3 6.2 3.4 2.7
+23 Domestic hot water circulation pump Domestic hot water circulation flow rate too high (e.g. due to 123 4.5 4.4 3.3 3.0
+inadequate hydronic balancing of domestic hot water circulation
+circuit)
+24 Heat exchanger Incorrect design: flow rate too high for the heat exchanger, low 119 3.8 5.9 3.2 2.2
+heat transfer
+25 Heat exchanger Leakage, inside (cracking) 118 3.3 7.2 2.8 2.2
+26 Motorised control valve (primary side) Control valve jams when closed 116 3.5 6.6 3.2 1.9
+27 Temperature sensor (primary side) Temperature sensor in the wrong place 115 3.3 5.6 3.2 3.0
+28 Safety relief valve Water loss, does not close properly 113 3.9 6.9 2.0 2.2
+29 Volume flow limiter Incorrect setting of the volume flow limiter 112 3.4 4.8 3.5 3.4
+30 Outdoor temperature sensor Outdoor temperature sensor is defective and does not give a signal 112 3.4 5.1 4.2 2.5
+31 Volume flow controller Incorrect setting of the volume flow controller 111 3.2 5.0 3.5 3.5
+32 Pressure independent control valve Actuator defective 110 3.2 6.7 3.3 2.0
+33 Safety temperature limiter Safety temperature limiter defective 110 3.0 8.1 2.4 2.1
+34 Outdoor temperature sensor Outdoor temperature sensor is giving the wrong signal 108 2.9 5.7 3.6 2.9
+35 Shut-off valve Shut-off valve closed 108 2.4 7.4 2.8 3.4
+(continued on next page)
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p016__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p016__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 12. CONTROL OF HEATING CIRCUIT
+- 페이지/출처 위치: p.16 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1489 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+12. CONTROL OF HEATING CIRCUIT
+Self-acting flow controller with integrated control valve and ac AVQM AMV 150
+tuator - Manual override
+For controlling the heating circuit the Akva Lux II VXe is supplied with
+a self-acting flow controller with integrated control valve Danfoss
+AVQM and a Danfoss AMV actuator placed in the primary return flow
+line. The AMV actuator is electrically wired to the controller from
+the plant.
+The control valve closes on rising differential pressure and opens on
+falling differential pressure to control max flow. The controller closes
+when set max. flow is exceeded.
+Press and hold the button (on
+In a combination with electrical actuators AMV and ECL electronic the bottom side of the actuator)
+during manual operation.
+controllers the flow and temperature can be controlled to achieve
+highest energy savings. The controller is equipped with excess pres-
+sure safety valve, which protects control diaphragm for flow control
+from too high differential pressure.
+AMV 150
+The actuator has undergone a functional test and is preset from
+factory.
+In the event of operating disturbances the actuator can be shut off
+manually by turning the manual override knob on top of the actuator
+clockwise. Please note that the knob can be “tight” to turn.
+For additional information see the enclosed manuals:
+Self-acting flow controller with integrated control valve and
+actuator AVQM
+Electronic actuator AMV 150
+16 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+### retrieval_eval_014
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_014`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): 지역난방 기계실 strainer mesh는 국제 기준에서 어느 정도로 잡고 압력계는 왜 양쪽에 달아?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `hard`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `strainer_mesh_pressure_gauge`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["IEA handbook states a strainer mesh of 1.0 to 1.6 mm, preferably smaller, should be installed.","IEA handbook recommends pressure gauges on both sides of the strainer to determine when cleaning is needed.","Swedish F:101 has stricter extracted filter mesh references around 0.6 mm, so the answer should distinguish source context."]
+- 금지 주장 (`forbidden_claims`): ["Do not merge 1.0-1.6 mm and 0.6 mm into one universal rule.","Do not state a local Korean legal requirement from these international sources.","Do not invent measured pressure drop."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): ["IEA DHC Connection Handbook - Selected DH/Substation Extract","Swedish F:101 District Heating Substations - Selected Extract"]
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): ["iea_sh_dhw_substation_extract__p074__c01","swedish_f101_operation_extract__p023__c01"]
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "swedish_f101_operation_extract__p025__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row001"
+- 원천 섹션 메모 (`source_sections`): [{"chunk_id":"iea_sh_dhw_substation_extract__p074__c01","document_title":"IEA DHC Connection Handbook - Selected DH/Substation Extract","section_title":"11.1.9 Heat Exchanger Substation Location","evidence_note":"Chunk states strainer mesh 1.0 to 1.6 mm and pressure gauges on both sides for cleaning indication."},{"chunk_id":"swedish_f101_operation_extract__p023__c01","document_title":"Swedish F:101 District Heating Substations - Selected Extract","section_title":"6.1.5 Filters 6.1.10 Domestic hot water control system","evidence_note":"Chunk states filter mesh size must be 0.6 mm."}]
+- 검수자 메모 (`reviewer_notes`): Review source-context distinction carefully; this is a useful hard retrieval case.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p074__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p074__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): 11.1.9 Heat Exchanger Substation Location
+- 페이지/출처 위치: p.74 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2829 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+A strainer with a mesh of 1.0 to 1.6 mm, preferably the smaller size, should be installed. In order
+to determine when the strainer should be cleaned, a pressure gauge should be connected to both
+sides of the strainer. The pressure drop through the strainer must be considered in the system
+design. If necessary, a larger diameter strainer should be considered so that the flow is not
+restricted.
+The DH operator will install draining and venting valves and these should be locked to prevent
+unauthorized operation. The DH operator will normally be the only key holder.
+All pipework used to interconnect the heat exchanger to the primary and secondary systems should
+be suitable for each system.
+11.1.9 Heat Exchanger Substation Location
+The DH operator should be consulted regarding the location of the building heat exchanger
+substation because this will determine the location of the primary system piping. The room size
+should be readily accessible for inspection and maintenance, and its size should be suitable for
+disconnection and removal of equipment for repair or replacement.
+As a rule, the room should be located adjacent to an external wall to avoid lengthy runs of primary
+pipework within the building. Clearly, this is not always possible. Therefore, isolating valves
+should be provided at the point of entry to the building, access to which should be maintained at all
+times. The valves should be lockable to avoid unauthorized operation, with the keys held by a
+responsible staff members of the customer organization and the DH operator. Personnel from the
+DH operator should be able to enter the room unassisted, but the room should be locked to keep
+out unauthorized personnel.
+As heat exchanger substations are significantly smaller than conventional boiler plants, large
+amounts of space are created when boilers are removed. This can be a significant benefit to the
+building owner.
+Connection Methods
+11.1.10 Indirect Connection Method
+The indirect connection method is normally used in large systems whose temperatures and
+pressures are not suitable for the direct connection method. This involves temperatures typically
+above 90°C and pressures above 6 bar. Connecting to a high pressure DH system should not be
+carried out unless specific heating appliances of large enough capacity warrant such treatment. In
+this situation, the equipment must be designed to the same standards as a heat exchanger.
+The indirect method ensures hydraulic separation between the DH water system (primary) and the
+central heating system (secondary) of the building, allowing the DH operator freedom to manage
+the DH system conditions without unduly disturbing the connected customers. The indirect method
+employs one or more heat exchangers to interface the building heating systems with the DH
+system.
+Part II Page 74 of 86
+```
+
+##### Chunk 후보: `swedish_f101_operation_extract__p023__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p023__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 6.1.5 Filters 6.1.10 Domestic hot water control system
+- 페이지/출처 위치: p.23 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3814 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6.1.5 Filters 6.1.10 Domestic hot water control system
+Filter mesh size must be 0.6 mm. It must be possible The system consists of a control valve, a valve
+to clean the filter without having to remove the actuator, sensors and a controller, although self-
+filter casing. The filter must be positioned so that acting thermo-mechanical valves may also be used
+there is no risk of water damaging electronic in detached house substations. The equipment must
+equipment when the filter is being cleaned. be capable of meeting the temperature performance
+requirements for domestic hot water as specified by
+6.1.6 Pressure sensors the National Board of Housing, Building and
+Pressure sensors read the static pressure and the Planning.
+differential pressure in the substation, and must
+It must be possible to check, by means of the menu
+display between atmospheric pressure and the
+function in the controller, which control software
+lowest design pressure. They may be either
+program is being used. Note and record the control
+analogue or electronic; if they are of analogue type,
+software setting values after adjusting/setting them
+the isolating valve in the connection to the sensor
+in the regulator: appropriate settings are noted in
+must be open only when reading.
+the test certificates supplied with certified
+6.1.7 Temperature display substations.
+Temperature may be displayed either directly by
+6.1.11 The meter position
+means of thermometers or by means of sensors
+The heat meter is supplied by, and is the property
+connected to control and/or supervisory equipment
+of, the district heating supplier. Its design and
+or to meters. Measurement ranges must cover at
+function comply with the Ordinance Concerning
+least the maximum temperature variation. As a
+Electricity, Water and Heat Meters. The heat
+safety measure, pockets for temperature sensors
+supplier must be able to connect the metering
+having a threaded connection must not be covered
+equipment to a communication system for remote
+by insulation. It must be possible to see whether a
+meter reading.
+sensor is fitted in a pocket. Both space heating and
+domestic hot water circuits must be fitted with
+Further information on heat meters is given in the
+temperature sensors.
+Swedish District Heating Association's Technical
+Regulations No. F:104.
+6.1.8 Space heating, ventilation and domestic hot
+water heat exchangers
+Arrange the meter position as shown in Figure 5. It
+The materials in heat exchangers must withstand
+incorporates a filter and temperature sensor in the
+the liquids in both sides of the system. Contact the
+supply connection, and a flow sensor and
+manufacturer for advice before carrying out
+temperature sensor in the return connection. In
+chemical cleaning. It must be possible to pressure-
+addition, space for an integrating meter and power
+test heat exchangers in their installed positions.
+supply must be provided. The temperature reading
+Heat exchangers must be resistant on the high-
+from the integrator is normally used to check the
+temperature side to oxygenated water.
+district heating water supply and return
+temperatures.
+6.1.9 Heating and ventilation control system
+The system consists of a control valve, a valve If the meter position is not in the substation
+actuator, sensors and a controller. The controller equipment room, shut-off valves must be fitted on
+must provide a menu function for selecting the each side of the flow sensors. The straight pipe
+required software. It must be possible to control the length upstream of flow sensors must be free of any
+valve manually. connections, valves or changes in pipe size.
+Note and record the values after adjusting/setting Flow sensors, temperature sensors and integrators
+the control parameters in the regulator. must be installed so that they are easy to read and
+to replace.
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p025__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p025__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 6.1.13 Drain valve 6.2.6 Filter
+- 페이지/출처 위치: p.25 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3338 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6.1.13 Drain valve 6.2.6 Filter
+A drain valve, together with its discharge The filter mesh size must not exceed 0.6 mm. It
+connection, must be fitted to the lowest point of the must be possible to clean the filter without having
+pipes. The drain pipes must be fitted with end to dismantle or remove the filter casing.
+plugs.
+6.3 Equipment for the domestic hot water
+6.2 Radiator and ventilation circuit circuit
+components
+6.3.1 Safety valve and check valve
+6.2.1 Circulation pump
+Fit the safety valve in the cold water connection to
+The pump must be capable of delivering the head, the domestic hot water heat exchanger. No shut off
+flow quantity and pressure class for which the valves are allowed between the safety valve and the
+radiator and ventilation heating system are heat exchanger. Fit the check valve between the
+designed, and must be speed-controlled. shut-off valve and the safety valve.
+The pump stop function must also close the main 6.3.2 Domestic hot water circulation pump
+heating circuit control valve.
+Pump capacity must be such that good performance
+is obtained throughout the domestic hot water
+6.2.2 Expansion vessel
+circulation system, maintaining a temperature of at
+The expansion vessel in secondary heating systems least 50 °C at taps, as required by the National
+must be able to accommodate normal thermal Board of Housing, Building and Planning’s
+volume variations, and must withstand the static regulations. The required temperature is different in
+pressure for which the radiator and ventilation other countries.
+heating system are designed.
+6.3.3 Domestic hot water circulation system capacity
+6.2.3 Pressure gauge
+Determine the necessary capacity of the domestic
+The pressure gauge is intended for manual reading hot water circulation system on the basis of the heat
+of the pressure in the radiator/ventilation circuits. It losses from the hot water pipes to each tap, as
+must be graduated between zero and the lower necessary, in order to maintain a minimum
+design rating pressure, and must be marked to temperature in the domestic hot water circulation
+indicate the pressure at which the system’s safety system in accordance with the National Board of
+valve operates. Pressure gauges must be of Class 1.0 Housing, Building and Planning’s regulations.
+accuracy, or better, in order to be reliable.
+6.3.4 Emergency connection
+6.2.4 Safety valve
+The emergency connection is a pipe that is
+The safety valve can most suitably be fitted to the intended, in the event of repairs to the system, to
+connection to the heat exchanger having the lowest keep the domestic hot water system pressurised.
+pressure. No shut off valves are allowed in the pipe The connection is normally closed, and is fitted
+between the safety valve and the heat exchanger. A with a shut-off valve and check valve.
+safety valve is not required for open expansion
+systems. The discharge pipe from the safety valve
+must be run to the floor drain.
+6.2.5 Filling valve and check valve
+This valve is used for filling the radiator and
+ventilation heating system with water (preferably
+hot water) to the correct working pressure. The
+equipment normally consists of a shut-off valve
+with the addition of a check valve function. Filling
+is performed manually and under supervision. This
+connection is closed during normal operation of the
+system.
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row001`
+
+- chunk_id: `danfoss_troubleshooting_table__row001`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 565 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Dirt strainer in the district heating or<br>heating return line clogged.<br>Filter in district heating meter clogged.<br>Defective or incorrectly set differential<br>pressure controller.<br>Air pockets in the system.
+Recommended action: Clean the filter/dirt strainer.<br>Cean the filter (in consultation with the<br>district heating plant).<br>Check the functions of the differential<br>pressure controller - if necessary, clean the<br>valve seat.<br>Vent the system thoroughly - see the<br>instructions.
+Component: strainer/filter
+```
+
+### retrieval_eval_015
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_015`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): two-port control valve를 쓰는 이유와 self-acting/electric control valve 선택 기준을 설명할 근거가 있어?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `control_valve_selection`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Two-port control valves are generally used rather than three-port because circulating water through the heat exchanger only once is economical.","Control valves can be electrically driven or self-acting with temperature sensors.","Selection should consider precise control, service life, and minimum maintenance according to extracted text."]
+- 금지 주장 (`forbidden_claims`): ["Do not state one valve type is always mandatory for all systems.","Do not invent manufacturer-specific model requirements.","Do not provide a site design without design data."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "IEA DHC Connection Handbook - Selected DH/Substation Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "iea_sh_dhw_substation_extract__p073__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["iea_sh_dhw_substation_extract__p072__c01","danfoss_substation_operation_extract__p016__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p018__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"iea_sh_dhw_substation_extract__p073__c01","document_title":"IEA DHC Connection Handbook - Selected DH/Substation Extract","section_title":"selected for more precise control, longer service life and minimum maintenance.","evidence_note":"Chunk explains two-port valves, electrically driven/self-acting options, and selection rationale."}
+- 검수자 메모 (`reviewer_notes`): Review section title is fragmentary due PDF extraction but chunk text is relevant.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p073__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p073__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): selected for more precise control, longer service life and minimum maintenance.
+- 페이지/출처 위치: p.73 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2704 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Two-port control valves are used rather than three-port because in general, it is most economical to
+circulate the water in the heat exchanger only once.
+Control valves can be either electrically driven or self-acting with no external power supply. All
+control valves should be capable of being manually overridden, providing the operator with the
+option of controlling the flow.
+Control valves on domestic hot water heat exchangers must be designed to close upon a power
+failure. In cases where too high a water temperature is critical, a non-resetting valve should be
+placed in the common ‘secondary’ flow operating on loss of power as well as over temperature.
+Temperature sensors should be located close to the exchangers being controlled in order to get a
+fast reacting control system.
+It is imperative that the heat exchanger control valves be selected to match the building loads as
+oversizing will reduce valve life and cause valve hunting. Control valves should be selected with
+high rangeability, low leakage, and proportional plus integrating control for close adjustment,
+balancing, temperature accuracy and response time. Control valves should have enough power to
+open and close under the maximum differential pressure in the system, and should be selected to
+perform well with the characteristic of the heat exchanger.
+Control valves are normally installed in the primary return because the lower temperature in the
+line reduces the risk of cavitation and increases valve life. Control valves are for temperature
+control only, and are not intended to be used as pressure reducing valves.
+Where high or very variable differential pressures can be expected, it is advisable to install a
+pressure regulator in order to obtain constant differential pressure. This will improve the
+conditions of the control system.
+Primary control valves are the most important single element in the interface with the DH system.
+Proper valve adjustment and calibration will save energy. High quality control valves should be
+selected for more precise control, longer service life and minimum maintenance.
+11.1.8 Ancillary Equipment
+Pressure gauges, thermometers and shut-off valves should be installed to enable proper
+monitoring, balancing and equipment isolation for maintenance. A balancing valve should be
+installed if deemed appropriate by the DH operator. This would normally be installed if the
+pressure difference between the primary and secondary pipes is greater than 400kPa.
+CONTROLS TC TC
+ALARMS EIA TA EIA PA
+TE
+PI TI
+TE
+F TE HF
+PI TI
+M TI
+TV
+R
+TV M
+PI TI
+HR
+TV
+CWS PI TI
+PI
+PI
+D.H.
+PI TI S
+P
+y
+re
+s
+s
+te
+s
+m
+ure
+Part II Figure 11.6: Schematic of a heat exchanger substation
+Part II Page 73 of 86
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p072__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p072__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): 11.1.7 Controls
+- 페이지/출처 위치: p.72 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3013 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+The two key factors in heat exchanger sizing are heat transfer area and pressure loss. Heat capacity
+is dependent on mass flow rate and the temperature profile. Clearly, a reduced temperature
+difference will increase the mass flow and pressure loss. As pressure losses are aimed to be kept to
+a minimum, this will have the effect of requiring the surface area to be increased with the
+subsequent increase in the number of plates and cost. Permissible pressure losses across the heat
+exchanger can be summarized as shown in Table 11.4.
+Part II Table 11.4: Permissible pressure losses through a heat exchanger
+Primary Secondary
+DHW <20kPa 10kPa/<50kPa*
+LPHW <20kPa 20kPa
+*when fed directly from MCW
+Additional equipment such as strainers and control valves also presents a pressure loss and it is
+advisable for these to be kept to a minimum. DH operators will seek to achieve a 50-60kPa
+difference between primary supply and return pipes so it is important that there is careful choice of
+equipment.
+The choice of heat exchanger material is essential. Carbon steel should at all times be avoided,
+AISI 316 stainless steel being the preference. AISI 304 is an acceptable alternative in many cases.
+Heat exchangers should always contain a rating plate fixed to the end plate and, as they should be
+supplied with an insulative casing, one visible on the outside. The following data should be
+included;
+• manufacturer
+• type
+• serial number
+• maximum output (kW)
+• primary and secondary design temperatures (°C)
+• primary and secondary operating pressures (MPa)
+• primary and secondary test pressures (MPa)
+• primary and secondary side pressure drop (kPa)
+• primary and secondary flow rates (dm3s-1)
+• primary and secondary water volumes (dm3)
+The end plate shall clearly indicate the function of each pipe connection – incorrect installation can
+have serious consequences.
+11.1.7 Controls
+The secondary side of the hot water district heating systems is often designed so that the forward
+temperature varies according to the outdoor temperature. This control method reduces energy costs
+and helps to optimize conditions for the control valves because a certain minimum flow is
+maintained. A temperature transmitter in the secondary supply pipe measures the process value
+and this value is held up against a specified set point condition in the control system.
+A control valve, located in the primary heating mains, achieves control of the secondary water
+temperature. Generally, only one control valve is installed, but if the required valve size is large, it
+is advisable to use two valves - a winter and a summer valve - connected in parallel and operating
+in sequence. For best control, in most cases, the two valves should be sized to handle one-third and
+two-thirds of the total capacity, the smaller being the lead valve. When redundancy requirements
+are high or equal loads are required for all heat exchangers, it is advisable to install separate
+control equipment for each heat exchanger.
+Part II Page 72 of 86
+```
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p016__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p016__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 12. CONTROL OF HEATING CIRCUIT
+- 페이지/출처 위치: p.16 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1489 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+12. CONTROL OF HEATING CIRCUIT
+Self-acting flow controller with integrated control valve and ac AVQM AMV 150
+tuator - Manual override
+For controlling the heating circuit the Akva Lux II VXe is supplied with
+a self-acting flow controller with integrated control valve Danfoss
+AVQM and a Danfoss AMV actuator placed in the primary return flow
+line. The AMV actuator is electrically wired to the controller from
+the plant.
+The control valve closes on rising differential pressure and opens on
+falling differential pressure to control max flow. The controller closes
+when set max. flow is exceeded.
+Press and hold the button (on
+In a combination with electrical actuators AMV and ECL electronic the bottom side of the actuator)
+during manual operation.
+controllers the flow and temperature can be controlled to achieve
+highest energy savings. The controller is equipped with excess pres-
+sure safety valve, which protects control diaphragm for flow control
+from too high differential pressure.
+AMV 150
+The actuator has undergone a functional test and is preset from
+factory.
+In the event of operating disturbances the actuator can be shut off
+manually by turning the manual override knob on top of the actuator
+clockwise. Please note that the knob can be “tight” to turn.
+For additional information see the enclosed manuals:
+Self-acting flow controller with integrated control valve and
+actuator AVQM
+Electronic actuator AMV 150
+16 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p018__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p018__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): pressure across the substation should be dropped in source type, independent of manufacturer/supplier
+- 페이지/출처 위치: p.18 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3610 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+performance is that at least 50% of the differential The communication protocol must be of open-
+pressure across the substation should be dropped in source type, independent of manufacturer/supplier
+the valve when the valve is fully open (known as the and freely available. Information from the
+valve authority), and that the valve should have a substation control system’s sensors and from the
+control range of at least 1:100. The size of the valve heat meter can be used in order to ensure effective
+must include allowance for the total differential operational and system supervision.
+pressure, i.e. allowing for other components such as
+filters and heat exchangers. 5.3 Domestic hot water systems
+The National Board of Housing, Building and
+Check the performance of the control equipment at
+Planning's Building Regulations require a sub-
+the design rating power and at the operating point
+station to be able to supply domestic hot water at a
+where the primary supply temperature changes to
+temperature of at least 50 °C at the taps. In order to
+constant temperature, known as the ‘knee point’.
+ensure compliance with this requirement, it is
+Sequentially controlled valves should be used if
+recommended that the output temperature of the
+flows exceed 7.5 l/s. For such cases, k for parallel-
+vs water from the substation is in the range 53-55 °C.
+connected sequentially controlled valves = k + k .
+vs1 vs2
+Some installations use a hot water storage tank, and
+For smaller valves, choose a kv value between ¼
+in such cases the domestic hot water temperature
+and ⅓ of the entire k value, so that the desired kvs
+vs must not be less than 60 °C, and held for a
+value is delivered by the smaller valve and the larger
+sufficiently long time to ensure that bacteria are
+valve together.
+eliminated. (See Appendix 7, Water Quality in
+District Heating Systems.) This is also the maxi-
+5.2.4 Valve actuators
+mum permissible temperature at the taps under the
+Valve actuators must permit manual operation so Board's regulations, in order to avoid the risk of
+that control valves can be manually operated. In the scalding.
+event of a power failure, the actuator for the
+domestic hot water valve should self-close. Control equipment and heat exchangers must be
+Actuators’ torque or force must be suited to the suited to each other in order to give good
+type and size of valve as required by the temperature control. If the system includes hot
+temperature, pressure and flow in the system. Valve water circulation, the temperature throughout the
+actuator manufacturers must state at what circulation system must not be less than 50 °C
+maximum differential pressure the actuator can
+close the specified control valve. 5.3.1 Design temperatures for domestic hot water
+heat exchangers
+5.2.5 Communication
+Rate the heat exchanger in accordance with the
+Equipment for load management, operational temperatures shown in the following Table 2. These
+supervision and remote metering should be suitable temperatures are for heat exchangers with clean
+for connection to the substation. heat transfer surfaces.
+District heat- District heating Cold water Domestic hot Vid Domestic
+ing water water temp., water temp. at hot water
+temp., return return substation temp. at taps
+output
+Apartment buildings, 65°C* ≤22°C 10°C 55°C 50°C
+commercial premises, etc.
+Detached houses, 65°C* ≤22°C 10°C 50°C** 50°C
+apartment units
+If a hot water storage tank 65°C ≤25°C** 10°C 60°C 50°C
+is used
+Table 2. Design rating temperatures for heat exchangers.
+*60 °C for low-temperature systems
+**55 °C for detached houses with hot water circulation systems
+```
+
+### retrieval_eval_016
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_016`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): brazed plate heat exchanger와 gasket type은 어떤 상황에서 다르게 선택해?
+- 질문 의도 (`query_intent`): `comparison`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `heat_exchanger_type_selection`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Brazed plate heat exchangers are sealed units that cannot be disassembled and cleaned in the same way as gasketed units.","Gasketed heat exchangers can be preferable in swimming pool systems because chlorinated water attacks brazing.","The answer should describe design suitability, not prescribe replacement for a current site."]
+- 금지 주장 (`forbidden_claims`): ["Do not claim the current site has chlorinated water.","Do not say brazed units never require maintenance.","Do not invent lifecycle cost numbers."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "IEA DHC Connection Handbook - Selected DH/Substation Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): ["iea_sh_dhw_substation_extract__p070__c01","iea_sh_dhw_substation_extract__p071__c01"]
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "danfoss_substation_operation_extract__p021__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row012"
+- 원천 섹션 메모 (`source_sections`): [{"chunk_id":"iea_sh_dhw_substation_extract__p070__c01","document_title":"IEA DHC Connection Handbook - Selected DH/Substation Extract","section_title":"Part II Figure 11.2: A complete heat exchanger substation","evidence_note":"Chunk describes brazed and gasket plate heat exchanger options."},{"chunk_id":"iea_sh_dhw_substation_extract__p071__c01","document_title":"IEA DHC Connection Handbook - Selected DH/Substation Extract","section_title":"transfer. This type of heat exchanger has no gaskets, so they require less maintenance than","evidence_note":"Chunk states gasketed exchangers are preferable for swimming pool systems due chlorinated water attacking brazing."}]
+- 검수자 메모 (`reviewer_notes`): Question is design comparison; reviewer should ensure it is not too broad for retrieval metric.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p070__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p070__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): Part II Figure 11.2: A complete heat exchanger substation
+- 페이지/출처 위치: p.70 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1327 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Part II Figure 11.2: A complete heat exchanger substation
+Plate heat exchanger design has two options;
+• brazed plate
+• gasket
+Brazed plate heat exchangers are sealed units that cannot be disassembled and, hence, cleaned like
+a gasketed plate heat exchanger. They tend to be smaller than gasketed heat exchangers as more
+surface area is devoted to heat exchange. They also do not require the level of maintenance
+required by the gasketed option. Care does need to be taken, however, to avoid fouling. This can
+be achieved by the use of strainers (always recommended) and occasional flushing. Generally
+though, the DH heating water must be treated to a high level of purity to ensure longevity of the
+pipework. Therefore, flushing heat exchangers are rarely necessary. Brazed plate heat exchangers,
+by their very nature, cannot be internally inspected.
+Part II Figure 11.3: Brazed plate heat exchangers
+The gasket option tends to be more expensive and the cost of a full service – required every five
+years or so - may outweigh the cost of a brazed plate unit itself. The gasket material often degrades
+losing its flexibility and hence its ability to seal. The result of this is water leaks. Gasketed heat
+exchangers especially tend to suffer in systems where the heating is frequently switched on and
+off.
+Part II Page 70 of 86
+```
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p071__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p071__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): transfer. This type of heat exchanger has no gaskets, so they require less maintenance than
+- 페이지/출처 위치: p.71 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2206 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+An exception when gasketed heat exchangers are preferable to brazed plate units is when used
+within a swimming pool system. Heavily chlorinated water attacks and breaks down the brazing so
+a gasket type should be used. For safety, it may be advantageous to have an intermediate heat
+exchanger, although this design will mean the return water temperatures will be higher than
+desired.
+Shell and tube heat exchangers are still being used in some DH systems but are gradually being
+phased out, as they do not provide sufficiently low approach temperatures between primary and
+secondary side water. They also take up a lot of space.
+Shell and spiral tube heat exchangers do not share the disadvantages of other types of shell and
+tube heat exchangers, and are excellent for district heating applications. These exchangers are
+comparable to plate exchangers with low fouling resistance and high turbulence for high heat
+transfer. This type of heat exchanger has no gaskets, so they require less maintenance than
+gasketed units.
+Part II Figure 11.4: Typical shell and spiral tube heat exchanger
+The size and number of heat exchangers to suit the building load should be carefully selected.
+Using two or more exchangers, in parallel, is only needed when security of supply is critical or the
+customer has strong views. In this instance, total redundancy should be assumed and each heat
+exchanger should be capable of full load operation and full isolation without affecting the other.
+Normally, however, one heat exchanger is sufficient to satisfy the building needs.
+11.1.6 Heat Exchanger Specification
+Heat exchangers should ultimately be sized in accordance with the temperatures at peak demand
+and should be sized, in all instances, to effect as low a DH return water temperature as possible in
+all conditions. This can be easily achieved if a more relaxed view of the secondary water
+temperatures is taken.
+The heat exchanger should in all instances be designed to suit the maximum pressure rating of the
+DH system. In the avoidance of any doubt, the DH operator should be consulted for the primary
+conditions, unless strict rules in this respect is already available from the operator.
+Part II Page 71 of 86
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p021__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p021__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 15. MAINTENANCE
+- 페이지/출처 위치: p.21 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3287 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+15. MAINTENANCE
+Maintenance work
+Is only to be carried out by qualified and authorised personnel.
+Inspection
+The water heater should be checked regularly by authorised person-
+nel. Any necessary maintenance must be performed in accordance
+with the instructions in this manual and other sets of instructions.
+During service the dirt strainers are to be cleaned – including the
+filter on the controller, all pipe connections must be tightened and
+the safety valve must be function tested by turning the lever.
+Rinsing/cleaning of plate heat exchanger
+To clean the plate heat exchanger, rinse it by running clean water
+through the exchanger at high speed and in the opposite direction
+to the normal flow. This will remove any dirt deposits that may have
+built up in the exchanger. If rinsing with clean water is not sufficient,
+the exchanger can also be cleaned by circulating a cleaning agent
+approved by Danfoss (e.g. Kaloxi or Radiner Fl cleaning fluid) through
+the exchanger. Both these cleaning fluids are environmentally friendly
+and can be disposed off through the standard sewer system. After
+use of a cleaning fluid, the plate heat exchanger must be rinsed
+thoroughly with clean water.
+Acidification of brazed plate heat exchanger
+As a starting point, we do not recommend acidification of the
+exchanger. Deposits of limescale may build up in plate heat exchangers
+for domestic hot water on account of the large temperature
+fluctuations, and because aerated water is used on the secondary
+side. If it becomes necessary to clean the exchanger with acid, this
+can be done as shown on the drawing to the right. Brazed plate heat
+exchangers can withstand rinsing with a dilute acid solution - e.g.
+5% formic, acetic or phosphoric acid).
+Measures after maintenance work
+After maintenance work and before commissioning:
+– Check that all screwed connections are tight.
+– Check that all safety features, covers, that were removed, have
+been replaced properly.
+– Clean the working area and remove any spilled materials.
+– Clear all tools, materials and other equipment from the working
+area.
+– Connect to energy supply and check for leaks.
+– Vent the system.
+– Carry out any necessary adjustment again.
+– Make sure that all safety features on the device and the system
+work properly.
+Meter reading
+The caretaker/owner must perform visual checking and reading of
+the district heating meter at short, regular intervals. (The meter is
+not a part of the delivery from Danfoss).
+Service procedures must only be performed by trained, authorised
+personnel.
+NB! Excessive consumption for whatever reason is not covered by
+the Danfoss warranty.
+Cooling / Return temperature reading
+Cooling – i.e. the difference between the supply and return tempera-
+ture of the district heating water – has a significant effect on overall
+energy economy. Therefore, it is important to focus on the supply
+and return temperature in the heating system. The difference should
+typically be 30–35°C. Please note that a low district heating return
+temperature is directly related to the return temperature from the
+heating circuit and the return temperature of the circulation water.
+It is therefore important to focus on these return temperatures.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 21
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row012`
+
+- chunk_id: `danfoss_troubleshooting_table__row012`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 313 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Temperature falls during tapping (lack<br>of capacity)
+Possible cause: Air in the capillary tube for the differen-<br>tial pressure controller.<br>Calified plate heat exchanger.
+Recommended action: Vent the capillary pipe.<br>Replace the plate heat exchanger.
+Component: control valve/actuator/controller
+```
+
+### retrieval_eval_017
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_017`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 급탕제어기는 난방제어와 연계해서 과부하시 어떻게 동작해야 해?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dhw_control_overload_interlock`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["For instantaneous hot-water circuits, the DHW controller should be linked with the heating controller.","During DHW overload, the heating temperature control valve should be momentarily shut off by the control circuit.","The answer should not infer current controller configuration without inspection."]
+- 금지 주장 (`forbidden_claims`): ["Do not claim the control circuit exists at the site.","Do not invent DDC program details.","Do not state overload occurred."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p043__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p042__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_substation_operation_extract__p020__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p043__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"2.5.5 급탕제어기기 (열사용시설기준 제18조제1항제2호)","evidence_note":"Section states DHW control should link with heating control and shut heating temperature control valve during DHW overload."}
+- 검수자 메모 (`reviewer_notes`): Review Korean technical phrasing before approval.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p043__c01`
+
+- chunk_id: `kdhc_inspection_extract__p043__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.5.5 급탕제어기기 (열사용시설기준 제18조제1항제2호)
+- 페이지/출처 위치: p.43 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1178 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.5.5 급탕제어기기 (열사용시설기준 제18조제1항제2호)
+가. 형식(DDC, 전자식)(⑤-1) : 난방제어기기와 동일
+나. 순간급탕회로(⑤-2) : 열사용시설기준 제18조제2항의 규정에 의하여 급탕제어기기는 난
+방제어기기와 연계하여 급탕 과부하시 난방용 온도조절밸브가 순간 차단되도록 제어회
+로를 갖추어야 함(순간가열급탕방식)
+◦ DDC형의 경우 시공자로부터 확인하거나 모니터에 관련사항을 출력시켜 확인하여야 함
+◦ 순간급탕회로의 의무설치에 해당되지 않는 경우
+- 저탕조방식
+- 급탕부하가 난방부하의 30% 이내인 순간가열급탕방식의 경우
+- 급탕 2단열교환방식
+◦ 순간급탕회로 구성 방법
+- 1 : 1 대응의 경우 : 대응되는 난방열교환기가 순간차단되도록 구성
+- 1 : 1 대응이 아닌 경우 : 급탕열교환기측의 설계유량이 확보될 수 있도록 대수 제한
+없이 난방열교환기를 순간차단하는 방법과 급탕열교환기와 동일한 난방열교환기 대
+수를 순간차단시키는 방법이 있음
+다. 설정값(⑤-3) : 급탕 과부하 설정단위 및 범위를 확인하여 표기
+◦ 설정단위 : ℃ 또는 %
+2.5.6 열량계 설치 : 유량부 주위배관을 제외한 기타 관련사항을 점검
+가. 전원 인출위치(⑥-1) : 전원 인출위치를 확인하여 표기<개정 2015. 1.14>
+나. 전원공급(⑥-2) : 열사용시설기준 제13조제1항제6호의 규정에 의하여 열량계용 전원을
+한난 전용의 단자함까지 설치․공급하여야 하며 UPS에서 전원공급가능시 우선 반영
+( 설치유무 및 규격의 적합여부를 확인하여 표기 ) <개정 2020.12.29.>
+◦ 전원규격 : AC 단상 220V, 60Hz (고객 기계실 전동기제어판넬(MCC) 주개폐기의 후단에
+전용개폐기를 설치 후 분기)
+◦ 전선규격
+- 전원용 : 600V급, F-CV 2C×2.5㎟ (금속전선관에 수용, 말단부 50㎝는 후렉시블전선관 시공)
+- 접지용 : F-GV 2.5㎟ 이상(접지저항은 10Ω이하를 기준으로 한다.[접지설비・구내통신
+설비・선로설비 및 통신공동구등에 대한 기술기준 제5조 참조])
+◦ 단자함 설치기준 : 열량계 연산부 설치위치 근처의 벽 또는 기둥에 위치
+(필요시 설치위치 지정 필요)
+- 열량계 연산부의 설치위치 : 유량부와 연결케이블 제한길이(8m) 및 연산부 설치 높이
+(1.2～1.5m)가 고려되었는지 여부 확인
+◦ 전원의 인출부위에 열량계 전원임이 확인 가능토록 표식 부착
+- 43 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p042__c01`
+
+- chunk_id: `kdhc_inspection_extract__p042__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): ◦ 공동주택에서 난방 및 급탕제어장치를 DDC(직접디지탈제어) 방식으로 할 경우에는
+- 페이지/출처 위치: p.42 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1147 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 공동주택에서 난방 및 급탕제어장치를 DDC(직접디지탈제어) 방식으로 할 경우에는
+기계실에서 고객 임의로 운전프로그램을 조작할 수 있어야 함
+(열사용시설기준 제18조제5항)
+나. 외기보상(④-2) : 외기보상기능의 내장유무를 확인 표기
+◦ 외기온도감지기는 직사광선이나 열을 받지 아니하는 장소에 설치되어야 함, 기타 세부
+사항은 기상청이 고시하는 「기상측기별 설치기준」에 따름 (열사용시설기준 제18조제6항)
+<개정 2023.04.12>
+◦기상측기별 설치기준(온․습도계)
+가. 지면이 잔디로 조성된 백엽상 또는 차광통 내부에 설치하여야 하며, 건물 옥상인 경우 차광통
+내부에 설치하여야 한다.
+나. 백엽상의 밑면은 지면에서 1.0 m ∼ 1.2 m 높이에 위치되도록 설치되어야 하며, 온․습도
+계는 백엽상 내부에서 지면으로부터 1.2 m ∼ 1.5 m 높이 되는 곳에 설치하여야 한다.
+다. 차광통은 지면 또는 옥상 바닥면에서 1.2 m ∼ 2.0 m 높이에 설치되어야 하며, 2.5 m/s
+∼ 10 m/s의 통풍 속도를 유지하여야 한다. 단, 옥상 설치는 주변의 환경을 고려하여 조절
+할 수 있다.
+라. 지면온도계와 초상온도계는 지상에 설치하여야 하며, 온도계 주위 30 cm 이상의 공간을
+확보하여 지면과 잔디에 설치하여야 한다.
+마. 온․습도계는 주변 장애물로부터 그 장애물 높이의 최소 3 배 이상 이격하여 설치하여야
+한다.
+바. 습도센서는 습도센서에 묻을 수 있는 오염물의 영향과 외부 충격을 최소화하기 위해 얇은
+금속보호막으로 보호해야 한다.
+다. 운전프로그램(④-3) : 일별, 시간대별 요일 또는 요일별 2차측 난방/냉수공급온도의 임
+의설정 등 운전프로그램기능의 내장유무를 확인 표기
+라. 난방/냉수순환펌프 연계(④-4) : 난방/냉수순환펌프는 난방/냉방제어기기와 연계되어 자
+동 ON/OFF 제어되어야 함. 연계유무를 확인하여 표기
+마. 제작사(모델)(④-5) : 난방/냉방제어기기의 제작사명(국내판매사 포함) 및 모델명을 표기
+※ 흡수식냉동기의 냉방제어기기는 제작사 기준 준용
+바. 비독점표준프로토콜 Bacnet 설치여부(냉수)(④-6) : 냉수 직접공급 건물의 경우 1,2차측
+온도, 밸브개도, 실내외 온도 등을 공급자에게 제공할 수 있는 Bacnet 또는 Lonwork 등
+비독점 표준프로토콜설치 여부를 확인 표기
+- 42 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p020__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p020__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 14. DOMESTIC HOT WATER
+- 페이지/출처 위치: p.20 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3252 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+14. DOMESTIC HOT WATER
+General information
+PLEASE NOTE! Some models may have a slightly different appearance,
+but the control function is in principle the same as described below.
+Commissioning
+Commission the substation in accordance with the instructions in
+this manual.
+Regulation of domestic hot water temperature
+The domestic hot water is prepared in the heat exchanger based on
+the flow principle and the temperature is controlled by a combined Fig. 1
+hydraulic and thermostatic self-acting controller PTC2+P with in-
+tegrated differential pressure controller, which blocks the flow of
+primary and secondary side flow through the heat exchanger im-
+mediately after completion of the tapping process.
+PTC2 controller for DHW (Fig. 1).
+Abb.
+Adjust the hot water temperature by moving the adjuster lever to-
+wards “+” (hotter) or “-” (colder). Start by turning the lever clockwise
+Adjuster lever
+– until it stops/until you cannot turn it any further. Then turn the lever
+counter-clockwise until the temperature of the tap water is approx.
+48°C during normal tapping flow (7–8 litres per min.). The temperature
+must never exceed 55°C to prevent limescale deposits building up
+in the water heater.
+Bypass thermostat (default) Fig. 2
+As a standard the substation is equipped with a bypass thermostat,
+Danfoss FJVR, so that when water is tapped, the water heater
+immediately starts to produce hot water. We recommend setting
+of the thermostat in pos.3. If you have to wait a long time (i.e. more
+than 20 sec.) for hot water, it may be necessary to set the thermostat
+at a higher value.
+If you want to avoid waiting time altogether, you will need to set up
+domestic hot water recirculation to the tapping points.
+Circulations thermostat / conversion to recirculation
+If the household piping system features domestic hot water recir-
+culation, the substation must be connected to the recirculation sys-
+tem.
+Scale setting (indicative)
+Pos. 2 = 30°C
+3 = 40°C
+4 = 45°C
+Conversion to recirculation requires only an additional circulation
+set. (This is not part of the delivery and must be purchased as extra
+equipment, - see photo on page 14).
+Connect the recirculation pipe from the fixed household piping sys-
+tem to the hexagon nipple at the bottom of the substation (please see
+page 14 for instructions about how to make recirculation connection).
+If a time-controlled pump is used, we recommend setting the circu-
+lation water temperature to approx. 35 °C.
+Fig. 3
+Alternative controller PM2+P
+As alternative the temperature can be controlled by a the pres-
+sure-controlled self-acting controller PM2+P with integrated differ-
+ential pressure controller. Set the DHW temperature by turning the
+adjuster lever towards red (hotter) or blue (colder). Start by turning
+the lever clockwise - until the pin is opposite the blue dot. Then turn
+the lever counter-clockwise until the temperature of the tap water Adjuster lever
+is approx. 48°C during normal tapping flow (7–8 litres per min.). The
+temperature must never exceed 55°C to prevent limescale deposits
+building up in the water heater. NB! The pin must be positioned be-
+tween the blue and red dot, otherwise the controller will shut down.
+20 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+### retrieval_eval_018
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_018`
+- 분류 (`category`): `safety_caution`
+- 평가 질문 (`query`): Vent와 Drain 밸브 설치 확인에서 공기빼기밸브는 어떤 위치 기준을 봐야 해?
+- 질문 의도 (`query_intent`): `safety`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `vent_drain_air_valve`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Vent/Drain valve installation should be checked for compliance and marked suitable/unsuitable.","Air vent valve criteria include distinguishing primary and secondary sides by piping system.","Air vents are installed on equipment bodies and upper parts of piping; primary main-pipe air vent is referenced for the machine room main shutoff area."]
+- 금지 주장 (`forbidden_claims`): ["Do not state the actual site is compliant.","Do not invent missing valve count.","Do not recommend field manipulation without safety procedure."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p027__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p031__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row002"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p027__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"마. Vent/Drain 배관(②-4) : 열사용시설기준 제14조제3항 내지 제6항 규정에 의한 Vent/Drain","evidence_note":"Section includes Vent/Drain check and air vent valve installation criteria."}
+- 검수자 메모 (`reviewer_notes`): Text extraction truncates the final clause; human should inspect curated source if needed.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p027__c01`
+
+- chunk_id: `kdhc_inspection_extract__p027__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 마. Vent/Drain 배관(②-4) : 열사용시설기준 제14조제3항 내지 제6항 규정에 의한 Vent/Drain
+- 페이지/출처 위치: p.27 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1215 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+마. Vent/Drain 배관(②-4) : 열사용시설기준 제14조제3항 내지 제6항 규정에 의한 Vent/Drain
+밸브의 설치를 확인하여 표기(적합/부적합)
+◦ 공기빼기밸브(Air Vent Valve) 설치기준
+- 배관계통별로 1․2차측 구분
+- 기기몸체 및 배관상부 설치
+- 1차측 주배관의 공기빼기는 기계실 주차단밸브전에 설치(열사용시설기준 별표11참조)
+- 1차측 공기빼기 배관은 밸브이후에 배관 연장 필요
+◦ 물빼기밸브(Water Drain Valve) 설치기준
+- 배관계통별로 1․2차측 구분
+- 기기몸체 및 배관하부 설치
+- 밸브관경은 20A이상이 바람직함(15A는 이물질로 막힐 수 있음)
+◦ 배관구배는 1차측의 경우 기계실 위치가 지하층이므로 하향구배(1/50～1/100), 2차측은
+상향구배가 바람직함.
+◦ 공기빼기밸브 및 물빼기밸브는 25A이하의 소구경으로써 게이트 및 볼밸브가 바람직하
+며 나사이음도 가능하고, 1차측은 KS 20K 또는 ANSI #300이상의 규격이어야 함.
+(밸브이후 연장배관은 SPP도 가능)
+◦ 트랜치 배관에 연결시 누수 확인이 용이한 구조(깔때기 배관 방식 등)로 시공하여야 함
+<개정 2020.12.29.>
+바. Hanger/Support(②-5) : 배관의 지지상태 등을 확인하여 적합유무 표기(적합/부적합)
+◦ 배관중 반드시 지지가 필요한 곳
+- 열교환설비, 펌프 등 기기 연결부위(기기분리 보수시 필요)
+- 열량계유량부 주위배관(양측지지 필요)
+- 벽체 관통부위(배관자중이 벽체에 영향이 없도록 고정점이 바람직함)
+- 횡주관에 대한 일반적인 최대지지간격은 다음과 같음
+관경(mm) 20이하 25～40 50 65 80 100 125 150
+이상
+강관 1.8 2.0 3.0 3.0 3.0 4.0 4.0 4.0 5.0이내
+최대간격
+(M)
+동관 1.0 1.5 2.0 2.5 2.5 2.5 3.0이내 3.0이내 3.0이내
+◦ 건물내 1차측 배관의 직선길이가 10m 이상일 경우 검토사항
+- 15m이상의 직선배관은 가급적 피할 것(입상, 횡주배관)
+- 현장여건상 신축을 보정해 주는 기계적장치(신축이음 조인트 등)를 적용시에는 공인
+기관의 성능인증 제품일 것 <개정 2015.1.14>
+* 배관의 안정성을 보장하기위한 배관응력 해석 레포트 제출
+- 배관지지와 고정점을 반드시 검토할 것(외벽 관통부위를 고정점으로 할 것)
+- 건물에서 지하4층 이하의 기계실의 경우 입상피트내 배관의 지지 및 열응력을 별도
+고려할 것
+- 27 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p031__c01`
+
+- chunk_id: `kdhc_inspection_extract__p031__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.3.7⑥ 안전밸브 : 안전밸브의 설치위치를 표기(열사용시설기준 제21조제3항)
+- 페이지/출처 위치: p.31 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1006 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.3.7⑥ 안전밸브 : 안전밸브의 설치위치를 표기(열사용시설기준 제21조제3항)
+가. 난방/급탕/냉방/설치위치(⑥-1) : 용도별로 규격 및 설치위치의 적합여부를 확인하여 표기
+◦ 안전밸브 설치기준
+- 열교환설비의 기기몸체 또는 2차측 공급관에 설치
+◦ 안전밸브의 종류 및 용량
+- 스프링식 안전밸브
+- 해당 배관계통의 설계운전압력 105～110%값 기준
+- 안전밸브의 명판에는 토출압력, 제작사 등이 반드시 표기되어야 함
+나. 유량도피 유도관 설치(⑥-2) : 설치 유무 표기
+◦ 분출시 안전을 고려한 유량도피 유도관을 기계실 바닥까지 연결 설치되었는지 여부 확인
+◦ 트랜치 배관에 연결시 누수 확인이 용이한 구조(깔때기 배관 방식 등)로 시공하여야 함
+<개정 2020.12.29.>
+2.3.8 DPV : 2차측 차압밸브(Differential Pressure Regulating Valve) <신설 2015. 1.14>
+(열사용시설기준 제21조 제4항)
+가. 설치관경(⑦-1) : 설치관경을 표기하며 승인관경과 불일치시에는 병행 표기
+(65A 또는 80A/부적합(65A))
+나. 설치위치(⑦-2) : 설치위치 확인 표기
+◦ 난방열교환기, 중온수흡수식냉동기 : 순환펌프의 흡입측 배관과 열교환장치 출구측 배
+관사이 또는 냉·난방 공급 및 환수헤더 사이(S ↔ R) <개정 2025.04.11.>
+◦ 부스터열교환기, 냉방열교환기 : 순환펌프의 토출측 배관과 흡입측 배관사이(P.P) <개정
+2025.04.11.>
+다. 도압관 연결상태(⑦-3) : 도압관 연결상태의 적합여부를 확인하여 표기
+◦ 도압관은 배관의 측면에서 연결이 이상적임
+◦ 도압관은 공기가 모이지 않도록 설치되어야 함
+- 도압관 또는 밸브몸체에 공기빼기밸브 설치
+◦ 2차측 공급/회수측 배관의 연결부위에 도압관 차단밸브를 설치하여야 함
+라. 제작사(모델)(⑦-4) : DPV의 제작사명 및 모델명을 표기
+◦ 신우밸브 : SDP-12, 22
+◦ 신한콘트롤밸브 : SHDC-01, 02
+◦ 삼양밸브 : YDP-1F, 20F
+- 31 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row002`
+
+- chunk_id: `danfoss_troubleshooting_table__row002`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 176 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Uneven distribution of heat
+Possible cause: Air pockets in the system.
+Recommended action: Vent the system thoroughly - see the<br>instructions.
+Component: air/venting
+```
+
+### retrieval_eval_019
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_019`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 준공점검 서식에서 난방순환펌프와 판형열교환기는 무엇을 확인해서 적어야 해?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `completion_pump_heat_exchanger_form`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Capacity should be recorded in Mcal/hr and checked against approved capacity.","Pipe diameter should be recorded based on marked body diameter of valves/flanges, not only design approval.","For plate heat exchangers including DHW, model name and number of plates should be recorded."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent capacity value.","Do not invent model name or plate count.","Do not mark pass/fail status without inspection."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p046__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p036__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_substation_operation_extract__p018__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p046__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"나. 난방순환펌프\u003c개정 2015. 1.14\u003e","evidence_note":"Section covers capacity, pipe diameter recording, and plate heat exchanger model/plate count."}
+- 검수자 메모 (`reviewer_notes`): Good candidate for domestic inspection form retrieval; review exact field boundaries.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p046__c01`
+
+- chunk_id: `kdhc_inspection_extract__p046__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 나. 난방순환펌프<개정 2015. 1.14>
+- 페이지/출처 위치: p.46 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 899 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 용량은 Mcal/hr 단위로 표기하며 승인용량과 확인
+◦ 배관경은 밸브, 플랜지등의 몸체 각인 관경 기준으로 확인하여 표기
+- 설계도서의 승인사항과 관계없이 점검시 확인관경으로 표기
+- 2차측 배관경은 열교환기와 연결된 주배관경(연결부위 아님)으로 표기
+◦ 판형열교환기의 경우(급탕포함) 모델명과 열판의 설치매수를 반드시 표기
+나. 난방순환펌프<개정 2015. 1.14>
+◦ 순환펌프의 예비대수는 괄호안에 별도 표기(대수에는 예비대수 포함 표기)
+다. 밀폐식팽창탱크
+◦ 용량은 정격용량 표기
+라. 급탕열교환기
+◦ 급탕열교환기는 난방열교환기와 동일기준으로 작성
+◦ 차단 HE는 급탕과부하시 순간 차단되는 난방열교환기의 기기번호를 표기
+마. 급탕순환펌프<신설 2015. 1.14>
+◦ 순환펌프의 예비대수는 괄호안에 별도 표기(대수에는 예비대수 포함 표기)
+2.6.3 건물 주요설비 설치규격
+가. 아파트 주요설비와 동일기준으로 작성<개정 2015. 1.14>
+◦ 난방열교환기, 난방순환펌프, 밀폐식팽창탱크
+◦ 급탕열교환기
+나. 흡수식냉동기(냉방열교환기)를 기준으로 하여 관련 냉각탑, 냉수 및 냉각수 순환펌프,
+냉수 팽창탱크 등을 작성<개정 2015. 1.14>
+◦ 기기번호는 CH(공기조화기의 경우 AHU) 또는 고객의 기부여번호로 표기
+- 냉방열교환기를 적용한 경우에는 제목인 흡수식냉동기(냉방열교환기)에서 냉방열교
+환기 글씨에 ○ 표기 (냉방열교환기의 용량단위는 Mcal/hr로 표기)
+◦ 용량×대수는 관련냉각탑, 냉수펌프등의 표기를 고려하여 필요시 동일용량을 반복 나열
+- 냉방열교환기를 적용한 지역냉방의 경우에는 냉각탑 및 냉각수순환펌프 불필요
+◦ 팽창탱크의 괄호안에는 팽창탱크 형식을 표기 (개방, 밀폐형)
+◦ 순환펌프의 동력은 kW로 표기
+- kW = 1.34 HP = 1.36 PS
+- 46 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p036__c01`
+
+- chunk_id: `kdhc_inspection_extract__p036__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 나. 일체형 급탕열교환기<개정 2015. 1.14>
+- 페이지/출처 위치: p.36 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1139 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+나. 일체형 급탕열교환기<개정 2015. 1.14>
+◦ 급탕2단열교환방식에서 급탕열교환기를 일체형(재열열교환기+예열열교환기)으로 제작
+한 경우에는 분해·조립시 이동프레임판이 열교환기에 연결된 배관에 걸리지 않도록(이
+동프레임판의 탈착에 지장이 없도록) 제작하였는지 여부 확인
+다. 부스터 열교환기<개정 2015. 1.14>
+◦ 부스터 열교환기 적용시 ‘주요설비설치규격’에 용도(난방․급탕용, 난방용, 급탕용, 냉
+방용)를 구분하여 부스터 열교환기임을 표기
+2.3.14⑫ CIP밸브 : 설치 여부 등을 확인하여 적합 또는 부적합으로 표기<신설 2015. 1.14>
+(열사용시설기준 제14조제6항)
+◦ 물빼기밸브와는 별도로 열교환기 분해없이 세척(CIP : Cleaning-In Place)이 가능하도록
+2차측 공급관과 회수관에 각각 관경 40A(2차측 주배관 관경이 50A이하인 경우는 25A
+이하)의 밸브를 설치하여야 함
+2.3.15 공기배출기(제작사) : Air Vent Valve와는 별도로 공기배출기기(Air Separator, Air
+Eliminator 등)의 설치 여부 등을 확인하여 적합 또는 부적합으로 표기<개정 2015. 1.14>
+(열사용시설기준 제20조제4항)
+가. Air Separator, 팽창기수분리기(⑬-1) : Air Separator와 팽창기수분리기 중 공기분리기로
+설치된 기기의 적합여부 등을 표기
+나. Air Eliminator 설치(⑬-2) : Air Eliminator 설치의 적합여부를 표기
+다. 유량도피 유도관 설치(⑬-3) : 설치 유무 표기
+◦ 기계실 바닥까지 배관이 연결 설치되었는지 여부 확인
+2.3.16 ⑭ 저탕조 설치 : 저탕조 설치 유무 및 용량 표기(열사용시설기준 제11조제2항)<개정 2015. 1.14>
+가. 설치 유무(⑭-1) : 해당 난에 표기
+나. 용량(⑭-2) : 저탕조 설치용량을 표기
+◦ 저탕조가 여러대인 경우에는 각각 기재
+2.3.17 난방보급수 수도미터⑮ : 수도미터 설치의 적합여부를 확인하여 표기<신설 2015. 1.14>
+(열사용시설기준 제20조제7항)
+◦ 난방보급수 배관에는 유지관리를 위한 수도미터를 설치하여야 하며, 수도미터가 2m이상
+높은 장소에 설치될 경우에는 검침용 지시부 또는 고정식 발판을 설치하여야 함.<개정
+2023.04.12>
+- 36 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p018__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p018__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 13. HEATING CIRCUIT, PUMP
+- 페이지/출처 위치: p.18 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 954 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+13. HEATING CIRCUIT, PUMP
+Grundfos Pump UPM3
+Grundfos UPM3 Auto has 12 optional settings, which can be select-
+ed with the push-botton. See fig. 1 - User interface.
+The pump is set from factory to Proportional pressure AUTOadapt.
+Fig. 1. User interface
+with a push button and
+five LEDs.
+The user interface shows:
+* performance view (during operation)
+- operation status
+- alarm status
+* settings view (after pressing the button)
+During operation, the display shows the performance of the pump.
+By pressing the button, the display changes status or you can
+change settings.
+Fig. 2. Performance view
+The LEDs show the power consumption for the pump.
+When the pump is running, LED 1 is green. The four yellow Performance
+Green Yellow Yellow Yellow Yellow
+LEDs indicate the current power consumption. % of P max.
+0% (standby)
+See fig. 2 - Performance view.
+0 - 25%
+25 - 50%
+50 - 75%
+75 - 100 %
+18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+
+### retrieval_eval_020
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_020`
+- 분류 (`category`): `safety_caution`
+- 평가 질문 (`query`): 기계실 인입 1차측 배관 용접 후면비드는 어떤 용접 방식이어야 해?
+- 질문 의도 (`query_intent`): `safety`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `primary_pipe_welding_back_bead`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Primary-side pipe welding back bead should use inert gas welding such as TIG or MIG welding.","The work should follow district heating pipe construction standards and qualified construction ID requirements.","The answer should not certify a weld without inspection."]
+- 금지 주장 (`forbidden_claims`): ["Do not state the weld passed inspection.","Do not invent welder certificate number.","Do not substitute another welding method not in the chunk."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p049__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p048__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p026__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p049__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"2.7.4 고객 안내서\u003c개정 2020. 4.29, 2020.12.29.\u003e","evidence_note":"Customer guide states primary-side pipe welding back bead should use inert gas welding such as TIG or MIG."}
+- 검수자 메모 (`reviewer_notes`): Review if Swedish welding certificate chunk should be included as partial for cross-standard comparison only.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p049__c01`
+
+- chunk_id: `kdhc_inspection_extract__p049__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.7.4 고객 안내서<개정 2020. 4.29, 2020.12.29.>
+- 페이지/출처 위치: p.49 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 622 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.7.4 고객 안내서<개정 2020. 4.29, 2020.12.29.>
+가. 기계실 인입(1차측) 공사시 지역난방 열배관공사 기준에 맞는 자재 및 시방(열배관 시
+공절차 참조)을 적용해야하며 시공자격ID를 가진 자격자(열수송확인)가 시공합니다.
+나. 1차측배관 용접부위의 후면비드(Back Bead)는 불활성가스용접(TIG 또는 MIG Welding)
+으로 하여야 합니다.
+다. 1차측 배관의 용접이음 부위는 10% 이상(매설배관구간은 100%) 방사선 투과시험(NDT)
+및 위상배열초음파(PAUT)를 하여야 하며, 기술용역 전문업체에서 발행한 검사성적서를
+건설사 품질담당자(감리자)가 확인후 우리공사에 제출하여야 합니다.
+라. 매설구간의 공장보온관 이음부분에 대한 현장보온 최종마감재는 지중의 수분 등에 충분한
+내구성이 있도록 열수축재(Shrink Sleeve) 등을 사용하여야 합니다.
+마. 고객 기계실 인입배관(공장보온관) 연결부분의 공종별 작업사진(Welding, Foaming,
+Wrapping, 외부방수공사, 비파괴시험) 각 1장씩을 중간검사시 점검 LIST(별지 제4-1,
+4-2호 서식)와 함께 제출하여야 합니다.
+바. 기타 사항은 우리공사 열사용시설기준을 필히 숙지하시기 바랍니다.
+- 49 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p048__c01`
+
+- chunk_id: `kdhc_inspection_extract__p048__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.7.3 지역난방 열배관 시공절차<개정 2020. 4.29, 2020.12.29.>
+- 페이지/출처 위치: p.48 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 490 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.7.3 지역난방 열배관 시공절차<개정 2020. 4.29, 2020.12.29.>
+시공전 확인사항 점검 및 굴착
+- 매설현황 사전확인(열수송)
+- 적정자재 유무등
+시공자격ID 확인
+- 밸브 잠김상태 점검 (외부, 내부)
+- 시공자격ID 확인(열수송) 및 주의사항 안내
+터파기
+- 일반토사 굴착구배 H=2.0m 미만 → 1 : 0.3
+H=2.0～4.0m → 1 : 0.5
+H=4.0m 이상 → 1 : 0.7
+모래깔기 (t=10cm)
+배관용접 (지역난방용 공장
+이중보온관)
+- 용접패스수 파이프두께 9.5mm → 3
+10.3mm → 3 또는 4
+11.9mm → 4
+방사선 투과시험 (NDT)
+- 기술용역 전문업체 검사
+보온 (Foaming)
+- POLYOL + MDI (1 : 1.4)
+- Foam의 밀도 (60～100Kg/㎥이상)
+연결부마감 (Wrapping)
+모래채움(t=20cm) 및 물다짐
+되메우기 및 경고테이프 포설
+공사완료 - 건설사, 시공사 최종 확인
+- 48 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p026__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p026__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 7 installation
+- 페이지/출처 위치: p.26 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2784 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+7 installation
+7.1 Design and specification Components, piping parts and joint/sealing
+materials must be of at least the pressure and tem-
+Contact the heat supplier for information on
+perature ratings required for the system concerned.
+connection to the district heating system and on
+Piping and components must be capable of
+choice of suitable substation units. The necessary
+withstanding the dynamic pressure variations that
+power requirement for the substation should be
+can occur in district heating systems; examples of
+discussed with the supplier. When performing work
+suitable materials are steel, steel castings and
+such as modification or conversion of an existing
+dezincification resistant brass.
+substation, obtain energy statistics for the building
+in order to determine the new design capacity or
+All components must be installed in such a manner
+requirements.
+that they can be easily serviced and/or replaced.
+Ways of reducing the return temperature from the
+7.3 Selection of heat exchangers
+secondary system should be investigated. An
+example of one such way can be to adjust the Manufacturers of heat exchangers and water
+heating system and investigate the feasibility of heaters must be able to prove that their heat ex-
+introducing a low-flow system for the radiator changers and equipment fulfil the requirements of
+circuit. Swedish Standard SS-EN 1148. The Swedish
+District Heating Association's Technical
+Certification and CE-marking of substations Regulations No. F:109 describe the test procedure.
+confirm the function, quality and performance of
+the units as a whole and of the components in Inspection also includes checking to ensure that the
+them. CE marked substations must always be performance of the manufactured products is in
+accompanied by a printed declaration of accordance with the results of the manufacturer's
+conformity, which must be handed over to the heat computer design/rating program(s).
+supplier and to user of the substation.
+7.4 Welding and brazing
+7.2 Piping and its installation
+Work on the primary side must be performed by
+Various standards for selection of district heating companies meeting the requirements of the
+piping are recommended by the Association; see the following standards for welding and brazing. All
+Association’s website 1. According to the welders performing erection work must hold a valid
+Association’s regulations for laying district heating certificate for the particular welding or brazing
+and district cooling mains, all joints of steel pipes method in use.
+must be made by personnel who hold welders’
+certificates in accordance with SS-EN 287-1
+Qualification tests of welders – Fusion welding –
+Part 1: Steel.
+1 http://www.svenskfjarrvarme.se/Medlem/Fokusomraden-
+/Distribution/Standardisering/Standarder/
+```
+
+### retrieval_eval_021
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_021`
+- 분류 (`category`): `similar_case`
+- 평가 질문 (`query`): 난방 불량인데 펌프 전원, actuator, thermostat까지 같이 봐야 하는 유사 troubleshooting row가 있어?
+- 질문 의도 (`query_intent`): `fault_cause`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `no_heat_pump_actuator_controller`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["No heat can be associated with defective thermostat sensor, actuator dirt/fault, incorrectly adjusted or defective automatic controller, power outage, pump not working, low pump speed, or air pockets.","Recommended checks include controller setting, power supply, pump operation, pump air, and venting.","The row is a similar troubleshooting case, not proof of current site cause."]
+- 금지 주장 (`forbidden_claims`): ["Do not say all listed causes are present.","Do not invent controller setpoints.","Do not claim power outage occurred."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row004"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_substation_operation_extract__p023__c01","danfoss_substation_operation_extract__p018__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row001"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row004","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"No heat row covers thermostat, actuator, controller, power supply, pump, pump speed, and air pockets."}
+- 검수자 메모 (`reviewer_notes`): Similar-case category intentionally tests retrieval beyond exact keyword strainer query.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row004`
+
+- chunk_id: `danfoss_troubleshooting_table__row004`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1048 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Defective thermostat (sensor).<br>Defective actuator - or possibly dirt in<br>the valve housing.<br>Automatic components/controller<br>incorrectly adjusted or defective - or<br>possibly power outage.<br>The pump is not working.<br>The pump is set at too low speed of<br>rotation (not all system types).<br>Air pockets in the system.
+Recommended action: Replace sensor.<br>Check that the actor is functioning<br>correctly - clean the valve seat if necessary.<br>Check that the controller setting is correct<br>- see the separate instructions for the con-<br>troller.<br>Check the power supply.<br>Temporarily set the actuator to “manual”<br>control - see the instructions for the heat-<br>ing system.<br>Check that there is a power supply for the<br>pump, and that it is operating.<br>Check that there is no air in the pump<br>housing - see pump manual.<br>Set the pump to a higher speed - see the<br>instructions for the heating system.<br>Vent the installation thoroughly - see the<br>instructions.
+Component: pump
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p023__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p023__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 16. TROUBLE SHOOTING - HEATING
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2439 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+16. TROUBLE SHOOTING - HEATING
+Fundamental
+In the event of disruptions to operation, you should fundamentally - before commencing the actual troubleshooting - check
+whether:
+• the system is correctly connected • there is a power supply to the system - pump and automatics
+• the district heating supply temperature is at its normal level • the dirt strainer in the district heating supply pipe is clean
+• the differential pressure is at its normal level. Ask your district • there is air in the system (if the system is vented)
+heating supplier if necessary
+Problem Possible cause Solution
+No heat Dirt strainer in the district heating or Clean the filter/dirt strainer.
+heating return line clogged.
+Filter in district heating meter clogged. Cean the filter (in consultation with the
+district heating plant).
+Defective or incorrectly set differential Check the functions of the differential
+pressure controller. pressure controller - if necessary, clean the
+valve seat.
+Air pockets in the system. Vent the system thoroughly - see the
+instructions.
+Uneven distribution of heat Air pockets in the system. Vent the system thoroughly - see the
+instructions.
+Poor cooling Insufficient heating surface / radiators Increase total heating surface.
+too small compared to the total heating
+requirement of the building.
+Poor utilisation of the existing heating Turn on all radiators and prevent the
+sursurface. radiators in the system from becoming
+warm at the bottom.
+No heat Defective thermostat (sensor). Replace sensor.
+Defective actuator - or possibly dirt in Check that the actor is functioning
+the valve housing. correctly - clean the valve seat if necessary.
+Automatic components/controller Check that the controller setting is correct
+incorrectly adjusted or defective - or - see the separate instructions for the con-
+possibly power outage. troller.
+Check the power supply.
+Temporarily set the actuator to “manual”
+control - see the instructions for the heat-
+ing system.
+The pump is not working. Check that there is a power supply for the
+pump, and that it is operating.
+Check that there is no air in the pump
+housing - see pump manual.
+The pump is set at too low speed of Set the pump to a higher speed - see the
+rotation (not all system types). instructions for the heating system.
+Air pockets in the system. Vent the installation thoroughly - see the
+instructions.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 23
+```
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p018__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p018__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 13. HEATING CIRCUIT, PUMP
+- 페이지/출처 위치: p.18 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 954 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+13. HEATING CIRCUIT, PUMP
+Grundfos Pump UPM3
+Grundfos UPM3 Auto has 12 optional settings, which can be select-
+ed with the push-botton. See fig. 1 - User interface.
+The pump is set from factory to Proportional pressure AUTOadapt.
+Fig. 1. User interface
+with a push button and
+five LEDs.
+The user interface shows:
+* performance view (during operation)
+- operation status
+- alarm status
+* settings view (after pressing the button)
+During operation, the display shows the performance of the pump.
+By pressing the button, the display changes status or you can
+change settings.
+Fig. 2. Performance view
+The LEDs show the power consumption for the pump.
+When the pump is running, LED 1 is green. The four yellow Performance
+Green Yellow Yellow Yellow Yellow
+LEDs indicate the current power consumption. % of P max.
+0% (standby)
+See fig. 2 - Performance view.
+0 - 25%
+25 - 50%
+50 - 75%
+75 - 100 %
+18 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row001`
+
+- chunk_id: `danfoss_troubleshooting_table__row001`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.23 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 565 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: No heat
+Possible cause: Dirt strainer in the district heating or<br>heating return line clogged.<br>Filter in district heating meter clogged.<br>Defective or incorrectly set differential<br>pressure controller.<br>Air pockets in the system.
+Recommended action: Clean the filter/dirt strainer.<br>Cean the filter (in consultation with the<br>district heating plant).<br>Check the functions of the differential<br>pressure controller - if necessary, clean the<br>valve seat.<br>Vent the system thoroughly - see the<br>instructions.
+Component: strainer/filter
+```
+
+### retrieval_eval_022
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_022`
+- 분류 (`category`): `similar_case`
+- 평가 질문 (`query`): 온수 대기시간이 긴 경우 DHW controller나 PTC2 sensor 쪽과 strainer 쪽을 같이 볼 수 있는 사례가 있어?
+- 질문 의도 (`query_intent`): `fault_cause`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `dhw_wait_strainer_controller_sensor`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Long wait for hot water can be associated with clogged district heating supply strainer, defective DHW controller, or defective PTC2 sensor.","The answer should treat these as candidate causes from a troubleshooting table.","It should distinguish this row from the circulation pump row."]
+- 금지 주장 (`forbidden_claims`): ["Do not say the PTC2 sensor is confirmed defective.","Do not invent sensor readings.","Do not omit that row008 is a different pump-related case."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Danfoss Troubleshooting Table - Heating and Domestic Hot Water"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "danfoss_troubleshooting_table__row009"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_troubleshooting_table__row008","danfoss_substation_operation_extract__p020__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "danfoss_troubleshooting_table__row005"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"danfoss_troubleshooting_table__row009","document_title":"Danfoss Troubleshooting Table - Heating and Domestic Hot Water","section_title":"Symptom-cause-action table","evidence_note":"Long wait for hot water row lists clogged district heating supply strainer, defective DHW controller, and defective PTC2 sensor."}
+- 검수자 메모 (`reviewer_notes`): Review whether row008 should be partial for same symptom or confusable; current choice is partial.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row009`
+
+- chunk_id: `danfoss_troubleshooting_table__row009`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 216 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Long wait for hot water
+Possible cause: Dirt strainer in the district heating sup-<br>ply line clogged.<br>Defective DHW controller.<br>Defective sensor. (PTC2)
+Recommended action:
+Component: strainer/filter
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row008`
+
+- chunk_id: `danfoss_troubleshooting_table__row008`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 261 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: Long wait for hot water
+Possible cause: Circulation pump out of order.
+Recommended action: Check whether the pump is running -<br>and whether there is a power supply to<br>the pump. Make sure that there is no air<br>in the pump housing.
+Component: pump
+```
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p020__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p020__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 14. DOMESTIC HOT WATER
+- 페이지/출처 위치: p.20 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3252 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+14. DOMESTIC HOT WATER
+General information
+PLEASE NOTE! Some models may have a slightly different appearance,
+but the control function is in principle the same as described below.
+Commissioning
+Commission the substation in accordance with the instructions in
+this manual.
+Regulation of domestic hot water temperature
+The domestic hot water is prepared in the heat exchanger based on
+the flow principle and the temperature is controlled by a combined Fig. 1
+hydraulic and thermostatic self-acting controller PTC2+P with in-
+tegrated differential pressure controller, which blocks the flow of
+primary and secondary side flow through the heat exchanger im-
+mediately after completion of the tapping process.
+PTC2 controller for DHW (Fig. 1).
+Abb.
+Adjust the hot water temperature by moving the adjuster lever to-
+wards “+” (hotter) or “-” (colder). Start by turning the lever clockwise
+Adjuster lever
+– until it stops/until you cannot turn it any further. Then turn the lever
+counter-clockwise until the temperature of the tap water is approx.
+48°C during normal tapping flow (7–8 litres per min.). The temperature
+must never exceed 55°C to prevent limescale deposits building up
+in the water heater.
+Bypass thermostat (default) Fig. 2
+As a standard the substation is equipped with a bypass thermostat,
+Danfoss FJVR, so that when water is tapped, the water heater
+immediately starts to produce hot water. We recommend setting
+of the thermostat in pos.3. If you have to wait a long time (i.e. more
+than 20 sec.) for hot water, it may be necessary to set the thermostat
+at a higher value.
+If you want to avoid waiting time altogether, you will need to set up
+domestic hot water recirculation to the tapping points.
+Circulations thermostat / conversion to recirculation
+If the household piping system features domestic hot water recir-
+culation, the substation must be connected to the recirculation sys-
+tem.
+Scale setting (indicative)
+Pos. 2 = 30°C
+3 = 40°C
+4 = 45°C
+Conversion to recirculation requires only an additional circulation
+set. (This is not part of the delivery and must be purchased as extra
+equipment, - see photo on page 14).
+Connect the recirculation pipe from the fixed household piping sys-
+tem to the hexagon nipple at the bottom of the substation (please see
+page 14 for instructions about how to make recirculation connection).
+If a time-controlled pump is used, we recommend setting the circu-
+lation water temperature to approx. 35 °C.
+Fig. 3
+Alternative controller PM2+P
+As alternative the temperature can be controlled by a the pres-
+sure-controlled self-acting controller PM2+P with integrated differ-
+ential pressure controller. Set the DHW temperature by turning the
+adjuster lever towards red (hotter) or blue (colder). Start by turning
+the lever clockwise - until the pin is opposite the blue dot. Then turn
+the lever counter-clockwise until the temperature of the tap water Adjuster lever
+is approx. 48°C during normal tapping flow (7–8 litres per min.). The
+temperature must never exceed 55°C to prevent limescale deposits
+building up in the water heater. NB! The pin must be positioned be-
+tween the blue and red dot, otherwise the controller will shut down.
+20 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_troubleshooting_table__row005`
+
+- chunk_id: `danfoss_troubleshooting_table__row005`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Troubleshooting Table - Heating and Domestic Hot Water
+- 섹션 (`section`): Symptom-cause-action table
+- 페이지/출처 위치: p.24 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `symptom_cause_action_table`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 276 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Symptom: DHW*, no hot water
+Possible cause: Non-return valve in the circulation pipe<br>defective (leads to mixing - the circula-<br>tion water pipes become cold during<br>tapping).
+Recommended action: Replace the non-return valve.
+Component: control valve/actuator/controller
+```
+
+### retrieval_eval_023
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_023`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): parallel connection과 two-stage connection은 return temperature 측면에서 어떻게 달라?
+- 질문 의도 (`query_intent`): `comparison`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `connection_principle_return_temperature`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Parallel connection uses heat exchangers in parallel across supply and return, one for radiator circuit and one for DHW.","Two-stage connection uses return water from the radiator circuit heat exchanger to preheat DHW.","For substantial hot-water demand, two-stage connection generally results in lower return temperature than parallel connection."]
+- 금지 주장 (`forbidden_claims`): ["Do not claim the current building has substantial hot-water demand.","Do not prescribe a retrofit without design data.","Do not invent energy savings percentage."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Swedish F:101 District Heating Substations - Selected Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "swedish_f101_operation_extract__p029__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "iea_sh_dhw_substation_extract__p079__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "iea_sh_dhw_substation_extract__p078__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"swedish_f101_operation_extract__p029__c01","document_title":"Swedish F:101 District Heating Substations - Selected Extract","section_title":"9 connection principles","evidence_note":"Chunk compares parallel and two-stage connection and notes lower return temperature for substantial hot-water demand."}
+- 검수자 메모 (`reviewer_notes`): Category enum has no comparison value, so this comparison query is categorized as operating_standard and query_intent=comparison.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p029__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p029__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 9 connection principles
+- 페이지/출처 위치: p.29 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1302 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+9 connection principles
+Various connection arrangements are possible, The Swedish District Heating Association has
+depending on the building's power require-ments, published a report, No. 2009:3, entitled 'Substa-
+heating requirements and the design of its heating tions - Connection Principles', which describes
+system. different arrangements and their characteristics.
+The two commonest principles are shown in the
+diagrams below:
+Parallel connection Two-stage connection
+Parallel connection is an arrangement of district heating Two stage connection is also commonly used. The return
+substation connections in which the heat exchangers are water from the radiator circuit heat exchanger is used to
+connected in parallel across the supply’s incoming and preheat the domestic hot water. The proportions of heat
+return connections. One heat exchanger supplies the supplied as pre-heating and post-heating respectively are
+radiator circuit, and the other supplies the domestic hot set in such a way as to make best use of the return
+water circuit. This arrangement is that which is most temperature from the radiator circuit. If the building has a
+commonly used. substantial demand for hot water, this connection
+arrangement generally results in a lower return temperature
+than from parallel connection.
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p079__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p079__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): PRIMARY SECONDARY
+- 페이지/출처 위치: p.79 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1280 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+PRIMARY SECONDARY
+PI TI
+PI TI PI TE1
+PRV
+C2 TE2 PI TI
+CHF
+C1 PI
+PI TI PI TI
+CHR
+PRIMARY SECONDARY
+Part II Figure 11.13: Schematic representation of domestic hot water generation in a direct connection through a heat exchanger
+It is common to provide a control station that interfaces with the DH system. The control station is
+generally made up of isolating valves, gauges, thermometers, control valves and a heat meter.
+A number of manufacturers produce heating control stations specifically designed for use in
+domestic dwellings and can include a heat exchanger for generation of hot water.
+Part II Figure 11.14: Domestic substation
+Secondary Heating Systems
+11.1.12 General Considerations
+One heat exchanger can serve several sub-circuits and more than one type of sub-circuit. In larger
+buildings, however, it may be advantageous to have separate heat exchangers for different types of
+demand or when temperature requirements are significantly different.
+11.1.13 Distribution
+As two-port control is recommended, distribution should be carried out by variable speed driven
+circulating pumps. The benefits of variable speed pumping have been demonstrated in many
+systems including improved air elimination, elimination of balancing devices for pumps, sub-
+Part II Page 79 of 86
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p078__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p078__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): PRIMARY SECONDARY
+- 페이지/출처 위치: p.78 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1579 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+PRIMARY SECONDARY
+PI TI PI TE2 PI TI
+PRV
+CHF
+C2
+PI TI PI TI
+CHR
+PRIMARY SECONDARY
+Part II Figure 11.11: Schematic representation of a compensated direct connection
+Depending on the size and design of the main system, elevation differences, types of customers
+and building systems, additional safety equipment such as automatic shut-off valves on both
+supply and return lines may be required.
+Domestic hot water generation can be achieved in two ways:
+• conventional storage tanks, or
+• secondary heat exchanger.
+Most buildings with existing hot water generation will utilize storage tanks. When connecting to a
+DH system, it is important to ensure that the DHW tank coil is sufficiently sized to cater for any
+changes in supply and return water temperatures as the regeneration time may be affected.
+Generally, the existing system can be left in tact, reducing the need for investment. However, it
+will normally prove more economical in the long run to replace existing installations with systems
+specifically designed for DH, whereby the optimal temperature conditions can be obtained.
+PRIMARY SECONDARY PI TI
+PI TI
+PI TI PI TE1
+PRV
+C2 TE2
+CHF
+PI
+C1
+PI TI TE3 PI TI
+CHR
+PRIMARY SECONDARY
+Part II Figure 11.12: Schematic representation of domestic hot water generation in a direct connection
+The use of a heat exchanger to generate hot water does provide an alternative. With hot water
+generated through a heat exchanger, the customer is furnished with an unlimited supply of hot
+water as there is no regeneration time – the water is heated instantaneously.
+Part II Page 78 of 86
+```
+
+### retrieval_eval_024
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_024`
+- 분류 (`category`): `operating_standard`
+- 평가 질문 (`query`): commissioning 때 난방과 급탕 밸런싱 후 어떤 기록과 기능점검이 필요해?
+- 질문 의도 (`query_intent`): `operating_standard`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `commissioning_balancing_function_check`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Space heating and domestic hot water systems, including circulation system if included, should be balanced and results recorded.","Function inspection with temperature measurement should confirm promised performance after installation and setup.","Commissioning includes checking and adjusting control parameters, pump, heating curve, DHW circulation flow, and tightening connections/gaskets if necessary."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent recorded balancing values.","Do not say performance was confirmed without measurement.","Do not omit that instructions should exist before use."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "Swedish F:101 District Heating Substations - Selected Extract"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "swedish_f101_operation_extract__p028__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["danfoss_substation_operation_extract__p005__c01","danfoss_substation_operation_extract__p010__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p026__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"swedish_f101_operation_extract__p028__c01","document_title":"Swedish F:101 District Heating Substations - Selected Extract","section_title":"8 commissioning and maintenance","evidence_note":"Chunk covers operating instructions, commissioning, balancing, recording results, function checking, temperature measurement, and tightening."}
+- 검수자 메모 (`reviewer_notes`): Strong international standard retrieval case; check expected answer length for metric use.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p028__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p028__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 8 commissioning and maintenance
+- 페이지/출처 위치: p.28 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2137 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+8 commissioning and maintenance
+8.1 Operating and care instructions 8.3 Function checking
+Written operating and maintenance instructions When installation is concluded, and the system has
+must be available before the substation is taken into been properly set up and balanced, a function
+use. These instructions must include: inspection should be carried out, with measurement
+of temperatures, in order to confirm that the
+• A description of the equipment’s function, with
+promised performance has been achieved.
+associated drawings, flow diagrams and
+operation cards with instructions.
+Appendix 4 describes the necessary function checks.
+• Data sheets and manufacturers’ instructions for
+components.
+• A list of components that need periodic
+inspection or attention.
+• A description of inspection and maintenance
+procedures that are regarded as necessary for
+problem-free and uninterrupted operation.
+• Addresses and telephone numbers for calling for
+service and/or corrective maintenance.
+Operating and maintenance instructions are
+intended to facilitate good performance of the
+substation and the building’s heating system. The
+Association’s report “Your district heating
+substation” (2004:1) describes how to prepare such
+instructions.
+8.2 Commissioning
+Balance the space heating and domestic hot water
+systems, including any circulation system that may
+be included, in order to ensure a properly operating
+system. Record the results.
+Commissioning involves:
+• Checking and, if necessary, adjusting the control
+parameters.
+• Appropriate setting values for controlling the
+domestic hot water system are given in the test
+record form supplied with certified substations.
+• Adjust the heating system circulation pump and
+the heating characteristic curve to provide
+efficient return water cooling. Note that it is the
+building’s secondary systems that determine
+whether efficient cooling can be delivered.
+• Adjust the domestic hot water circulation flow
+as required by the National Board of Housing,
+Building and Planning’s Building Regulations.
+• Checking, and tightening if necessary, all
+connections and face seals or flange gaskets.
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p005__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p005__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 3. GETTING STARTED - QUICK GUIDE FOR EASY START-UP
+- 페이지/출처 위치: p.5 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2481 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+3. GETTING STARTED - QUICK GUIDE FOR EASY START-UP
+Mounting
+Note!
+Connect the substation to the household piping in accordance with
+Heating and cooling the substation may cause leaks. Therefore
+the labelling at the bottom and/or in accordance with the instructions
+in this manual. it may be necessary to retighten the connections in the period
+after commissioning.
+If the household piping system features domestic hot water
+recirculation, the substation must be connected to the recirculation Note!
+system. The circulation set for recirculation connection is not standard Never lift the station by its front insulation cover!
+equipment. The set must be purchased as extra equipment.
+We recommend establishing recirculation BEFORE mounting the
+substation on the wall.
+For instructions about recirculation connection, see page 14.
+GETTING STARTED is a quick guide and some details in connection with
+installation and commissioning may require additional information,
+which can be found elsewhere in this instruction manual.
+GETTING STARTED AKVA LUX II VXe
+If the household piping system features domestic hot water recircula-
+tion, the substation must be connected to the recirculation system,
+- according to instructions on page 14.
+1. Mount the substation on a solid wall using two sturdy bolts (max. 8
+mm), screws, expansion bolts or similar.
+2. Tighten all pipe connections, as they may have loosened during
+transport and handling.
+3. Mount the district heating meter (see page 11).
+4. On systems that feature a safety valve, establish a drain connection
+in compliance with the applicable legislation.
+5. Fill the heat exchanger / the system with water according to the
+instructions on page 12.
+6. Open the ball valve for the HE supply and return flow, as well as the
+DHW outlet and heat up the system.
+7. Check the substation and the household piping thoroughly for leaks.
+8. Pressure test the entire system for leaks in accordance with the ap-
+plicable regulations.
+9. Connect pump and automatic components to the electricity supply,
+but do not switch on the power.
+10. Heat the system and vent the radiator circuit/heating side tho-
+roughly on the radiators and the air valve, if any.
+11. Connection
+Now switch on the pump and automatic components, if any.
+12. Finish by adjusting the substation in accordance with the instruc-
+tion manuals and remember to fill out the Commissioning Certificate
+page 31.
+xxxxxxxxxxxxxxx © Danfoss | Produced by Danfoss Redan A/S | 2021.02 | 5
+```
+
+##### Chunk 후보: `danfoss_substation_operation_extract__p010__c01`
+
+- chunk_id: `danfoss_substation_operation_extract__p010__c01`
+- document_id: `danfoss_vxe_manual.pdf`
+- 문서 제목 (`document_title`): Danfoss Akva Lux II VXe Manual - Selected Operation and Maintenance Extract
+- 섹션 (`section`): 6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+- 페이지/출처 위치: p.10 / danfoss_vxe_manual.pdf
+- RAG 역할 (`rag_role`): `troubleshooting_manual`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3196 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+6. GENERAL, MOUNTING OF HEAT METER AND SAFETY VALVES
+General
+The installation, connection and maintenance of the substation
+must be performed by qualified and authorised personnel.
+Installation must always be performed in accordance with the ap-
+plicable legislation and in compliance with these instructions.
+The substation must be installed so that it is freely accessible and can
+be maintained without unnecessary disruption. Lift the substation
+by its mounting plate/rear section and secure it to a solid wall using
+4 sturdy bolts (max. 8 mm), screws or expansion bolts positioned
+in the four keyholes.
+Before commissioning, rinse all the pipes in the household piping
+system thoroughly to remove any impurities, and check and clean
+the dirt strainers in the substation.
+Connect the substation to the household piping in accordance with
+the labelling at the bottom and/or in accordance with the instruc-
+tions in this manual.
+For fully insulated systems
+The insulation front panel on the VXe substations can be removed
+without using tools. Take hold of the air duct in the top and bottom
+of the front insulation section and pull carefully forward until the
+front insulation section releases from the rear section. Then pull
+gently until the front section is free from the components.
+Test and connections
+Before filling the system with water, retighten all the pipe connections
+because vibrations and shocks during transport and handling
+may have caused leaks. Once the system has been filled with water,
+tighten all the pipe connections once more before performing pres-
+sure test for leaks. After heating of the system, check all the connec- Meter
+tions and retighten if necessary. display
+Please note that the connections may feature EPDM rubber gaskets!
+Therefore, it is important that you DO NOT OVERTIGHTEN the
+union nuts. Overtightening may result in leaks. Leaks caused by
+overtightening or failure to retighten connections are not covered
+by the warranty.
+Heat meter, fitting pieces.
+The substation is equipped with fitting pieces for heat meter on
+the district heating return line. (Measurement: 3/4” x 110 mm).
+Fitting of heat meters
+- Close the four ball valves on the district heating and the
+heating sides.
+- Loosen the union nuts at both ends of the fitting piece (A + B)
+and remove it. A B
+- Fit the heat meter, - remember to insert gaskets.
+- Mount sensor, - remember to insert gaskets.
+- Mount temperature sensors in sensorpockets (according to
+heat meter instructions.
+- After mounting of heat meter remember to check and tighten
+all pipe connections before commissioning the substation.
+Meter display (reading unit)
+The meter reading unit is placed on the console together with
+the ECL regulator, as shown in the photo to the right, so that
+reading of the meter can be done without removing the insula-
+tion cover.
+Safety valve(s)
+Always lead the blow-off pipe from the safety valve to a drain in
+accordance with applicable legislation.
+The insulation cover is be prepared for this and blow-off pipe
+from the safety valves are led through the slit in the insulating
+cover as shown in the photo to the right.
+10 | © Danfoss | Produced by Danfoss Redan A/S | 2021.02 xxxxxxx
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p026__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p026__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 7 installation
+- 페이지/출처 위치: p.26 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2784 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+7 installation
+7.1 Design and specification Components, piping parts and joint/sealing
+materials must be of at least the pressure and tem-
+Contact the heat supplier for information on
+perature ratings required for the system concerned.
+connection to the district heating system and on
+Piping and components must be capable of
+choice of suitable substation units. The necessary
+withstanding the dynamic pressure variations that
+power requirement for the substation should be
+can occur in district heating systems; examples of
+discussed with the supplier. When performing work
+suitable materials are steel, steel castings and
+such as modification or conversion of an existing
+dezincification resistant brass.
+substation, obtain energy statistics for the building
+in order to determine the new design capacity or
+All components must be installed in such a manner
+requirements.
+that they can be easily serviced and/or replaced.
+Ways of reducing the return temperature from the
+7.3 Selection of heat exchangers
+secondary system should be investigated. An
+example of one such way can be to adjust the Manufacturers of heat exchangers and water
+heating system and investigate the feasibility of heaters must be able to prove that their heat ex-
+introducing a low-flow system for the radiator changers and equipment fulfil the requirements of
+circuit. Swedish Standard SS-EN 1148. The Swedish
+District Heating Association's Technical
+Certification and CE-marking of substations Regulations No. F:109 describe the test procedure.
+confirm the function, quality and performance of
+the units as a whole and of the components in Inspection also includes checking to ensure that the
+them. CE marked substations must always be performance of the manufactured products is in
+accompanied by a printed declaration of accordance with the results of the manufacturer's
+conformity, which must be handed over to the heat computer design/rating program(s).
+supplier and to user of the substation.
+7.4 Welding and brazing
+7.2 Piping and its installation
+Work on the primary side must be performed by
+Various standards for selection of district heating companies meeting the requirements of the
+piping are recommended by the Association; see the following standards for welding and brazing. All
+Association’s website 1. According to the welders performing erection work must hold a valid
+Association’s regulations for laying district heating certificate for the particular welding or brazing
+and district cooling mains, all joints of steel pipes method in use.
+must be made by personnel who hold welders’
+certificates in accordance with SS-EN 287-1
+Qualification tests of welders – Fusion welding –
+Part 1: Steel.
+1 http://www.svenskfjarrvarme.se/Medlem/Fokusomraden-
+/Distribution/Standardisering/Standarder/
+```
+
+### retrieval_eval_025
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_025`
+- 분류 (`category`): `inspection_action`
+- 평가 질문 (`query`): 원격검침과 계기류 항목은 준공점검에서 어떤 선로 상태나 연결 여부를 봐야 해?
+- 질문 의도 (`query_intent`): `inspection_action`
+- 난이도 (`difficulty`): `medium`
+- 답변 가능 여부 (`answerable`): `True`
+- fault_group: `remote_metering_instrument_check`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["Remote metering line status should check whether the machine room is connected if the corporation has pre-installed the cable.","Communication completion or planned completion date should be checked and recorded.","The answer should not invent communication status."]
+- 금지 주장 (`forbidden_claims`): ["Do not state communication is complete.","Do not invent a completion date.","Do not cite heat meter KPI chunks as domestic inspection procedure."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): "열사용시설 점검업무 기술 기준서 - 선별 추출본"
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): "kdhc_inspection_extract__p044__c01"
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p012__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p049__c01"
+- 원천 섹션 메모 (`source_sections`): {"chunk_id":"kdhc_inspection_extract__p044__c01","document_title":"열사용시설 점검업무 기술 기준서 - 선별 추출본","section_title":"2.5.7 원격검침","evidence_note":"Section covers remote metering line status, machine room connection, and communication completion date."}
+- 검수자 메모 (`reviewer_notes`): Review if question should mention 계기류 less broadly to avoid needing additional chunks.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 정답 관련 Chunk 후보 (`candidate_type=relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p044__c01`
+
+- chunk_id: `kdhc_inspection_extract__p044__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.5.7 원격검침
+- 페이지/출처 위치: p.44 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1100 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.5.7 원격검침
+가. 선로상태(기계실 연결여부)(⑦-1) : 우리공사에서 케이블을 기 포설한 경우 적합여부 및
+기계실 연결여부를 확인하여 표기(적합 또는 부적합)
+나. 통신준공(예정)일(⑦-2) : 통신준공(예정)일을 확인하여 표기<개정 2015. 1.14>
+2.5.8 ⑧ 계기류(열사용시설기준 제21조제1항 및 제2항) : 설치유무, 적합여부를 확인 표기
+가. 온도계 및 압력계 설치기준
+◦ 열교환설비 전후의 1․2차측 배관
+◦ 순환펌프의 흡입․토출측 배관(온도계는 토출측에만 설치)
+◦ 2개소 이상의 분기 및 집합배관(압력계는 부분적으로 생략 가능)
+◦ 공기조화기의 계통별 공급․회수관
+◦ 냉각탑의 공급․회수관
+◦ 1차측 PDCV의 압력계(설치기준은 열사용시설기준 제19조제2항제9호 참조)
+◦ 기타 운전상태 표시가 필요한 기기 및 배관
+나. 온도계 및 압력계 설치규격<개정 2015. 1.14>
+◦ 측정범위는 1․2차측 열매체 설계조건의 1.5배용으로 원형구조
+◦ 측정이 용이하도록 설치하되, 1․2차측을 구분하여 설치
+◦ 온도계는 보호용 설치구(Thermo-well 또는 Sensor Pocket) 안에 설치되어야 함
+(2차측의 경우도)
+- 바이메탈식 구조, 감온부가 배관내 1/2이상 삽입
+- 지시부의 크기 : 100mm
+- 온도측정범위 : 1차측 온수 0～150℃, 냉수 0～50℃, 2차측 난방·급탕 0～100℃,
+냉수·냉각수 0～50℃
+◦ 압력계의 도압관에는 차단밸브가 설치되어야 하고 사이폰관 설치시에는 열매체 조건에
+적합하여야 함.
+- 부르돈관식, 지시부의 크기 : 100mm
+- 압력측정범위 : 1차측 0～25bar, 2차측 0～10(또는 15)bar
+◦ 콤팩트설비유니트에 설치하는 온도계 및 압력계의 지시부도 동일 규격으로 설치하여야 함
+2.5.9 ⑨ 실내열교환설비 <개정 2020.12.29.>
+가. 설치공사(AHU, FCU 등)(⑧-1) : 실내열교한 설비 종류를 괄호 안에 표기하고, 설치공사 완료여부를
+확인하여 표기(적합 또는 부적합)
+2.5.10 ⑩ 준공도서 : 제출여부를 확인하여 표기 <개정 2020.12.29.>
+◦ 아파트의 경우 1,2차 분할 입주시는 2차분 준공시 일괄 제출 가능
+(2차 준공시 제출예정 명기)
+- 44 -
+```
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p012__c01`
+
+- chunk_id: `kdhc_inspection_extract__p012__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 다. 준공점검(열사용시설기준 제26조)
+- 페이지/출처 위치: p.12 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 807 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+- 1차측 차압유량조절밸브의 규격, 관경 및 설치상태
+- 1차측 열량계 관경 및 설치위치, 스트레이너 규격 및 설치상태
+- 열교환설비의 용량, 규격 및 설치상태
+- 순환펌프 및 팽창탱크의 용량, 규격 및 설치상태
+- 1․2차측 배관 및 열교환설비의 청소여부 및 상태
+- 안전밸브 설치규격, 설치위치 및 상태
+- 기타 중요한 승인사항
+다. 준공점검(열사용시설기준 제26조)
+◦ 1․2차측 배관 및 기기보온
+◦ 계장설비
+- 난방제어기기 및 그 부속시설
+- 급탕제어기기 및 그 부속시설
+- 흡수식냉동기(또는 냉방열교환기) 제어장치
+- 온도계, 압력계 등 계기류
+◦ 중간점검사항의 계속이행여부
+◦ 기계실 열량계 설치에 필요한 전원공급 등
+◦ 안전밸브 등 열사용시설 전반의 안전시설
+◦ 열사용시설기준에서 정하는 사항의 최종점검
+- 준공점검없이는 열사용시설을 사용할 수 없음(열사용시설기준 제26조제3항)
+<개정 2020.12.29>
+- 열사용시설기준 제22조제2항의 규정에 의하여 공사시행 이전에 한난의 변경승인을
+받아야 함.
+- 준공점검 후 점검필증 교부(열사용시설기준 제28조)
+- 이미 사용중인 열사용시설의 변경설치건은 점검필증 교부대상에서 제외
+- <삭제 2020.12.29>
+2.1.4 기계실 인입 매설배관 점검, 중간점검 및 준공점검 LIST 항목순으로 관련사항 나열
+가. 점검 LIST는 효율적인 점검을 위한 Check List로서 점검필증 교부에 필요한 사전 서
+류임(필요에 따라 생략할 수도 있으나 생략사유를 명시하여야 함)
+2.1.5 문서서식
+가. 중간점검(A4) :
+◦ 별지 제1호 서식
+◦ <삭제 2015. 1.14>
+- 12 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p049__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p049__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): Indicators for District Heating Substations
+- 페이지/출처 위치: p.49 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1990 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+Kvr: Minimum flow through the valve in m3/h and Key performance indicators
+the pressure drop at 1 bar and preserved flow
+The Association’s report, Key Performance
+characteristic.
+Indicators for District Heating Substations
+(1998:12), lists appropriate key indicators for the
+Kvs: The chosen valve’s Kv-value and with fully
+district heating sector. SS-EN 15341 describes a
+open valve, usually with 30 % safety margin to the
+system for applying key performance indicators to
+calculation.
+measure maintenance performance in connection
+with other factors of influence, such as economic,
+Sv: Set factor (Adjustment factor/nicety) (k /k , e.g.
+vs vr technical and organisational, with the aim of
+1:100).
+evaluating and improving efficiency in order to
+maintain optimum performance of physical plants.
+The system efficiency: The Greek letter eta (η), and
+These key indicators should be used for measuring
+is expressed in %.
+status, making comparisons (at national and
+international levels), diagnosis (analysis of strengths
+and weaknesses), identifying and defining targets,
+planning improvement work and regularly
+monitoring changes over time.
+Size and energy sold: [no., MW] No. of customers,
+No. of detached houses, Contracted efficiency,
+Average efficiency at 63% of ODT, Energy sold.
+Installation cost: [SEK/building] Detached houses
+<25 kW (SEK/building), 30-50 kW (SEK/kW), 200-
+400 kW (SEK/kW).
+Technical lifetime: [Years] Weighted value, Min.,
+Max., Median, Control equipment, Heat exchanger
+installation.
+Running costs: [SEK/year per kW] (contracted
+power), meter measurement, maintenance and
+inspection.
+Average temperature difference: [C°] Yearly
+average, Winter, Summer, Winter ODT max.,
+Summer Min.
+Unavailability statistics: [h/year] Weighted value,
+Min., Max., Median, Planned downtime (MTTR
+Mean time to total repair), Unplanned downtime
+(MDT Mean time down time), Meter replacement.
+Average downtime duration per customer,
+calculated from the company’s total number of
+customers.
+```
+
+### retrieval_eval_026
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_026`
+- 분류 (`category`): `unanswerable`
+- 평가 질문 (`query`): S-14 기계실의 현재 열량계 통신준공 예정일은 언제야?
+- 질문 의도 (`query_intent`): `unknown`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `False`
+- fault_group: `site_specific_remote_metering_date`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["The static corpus can describe that communication completion or planned completion date should be checked and recorded.","It cannot know the current S-14 site-specific planned date.","The answer should request project records or live site data instead of inventing a date."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent a date.","Do not claim access to S-14 project records.","Do not answer with a generic revision date as if it were the site date."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): 
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): 
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p044__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "kdhc_inspection_extract__p038__c01"
+- 원천 섹션 메모 (`source_sections`): 
+- 검수자 메모 (`reviewer_notes`): execution_validation_required: static code cannot determine whether runtime logs contain site-specific dates; label intentionally unanswerable.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p044__c01`
+
+- chunk_id: `kdhc_inspection_extract__p044__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.5.7 원격검침
+- 페이지/출처 위치: p.44 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 1100 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.5.7 원격검침
+가. 선로상태(기계실 연결여부)(⑦-1) : 우리공사에서 케이블을 기 포설한 경우 적합여부 및
+기계실 연결여부를 확인하여 표기(적합 또는 부적합)
+나. 통신준공(예정)일(⑦-2) : 통신준공(예정)일을 확인하여 표기<개정 2015. 1.14>
+2.5.8 ⑧ 계기류(열사용시설기준 제21조제1항 및 제2항) : 설치유무, 적합여부를 확인 표기
+가. 온도계 및 압력계 설치기준
+◦ 열교환설비 전후의 1․2차측 배관
+◦ 순환펌프의 흡입․토출측 배관(온도계는 토출측에만 설치)
+◦ 2개소 이상의 분기 및 집합배관(압력계는 부분적으로 생략 가능)
+◦ 공기조화기의 계통별 공급․회수관
+◦ 냉각탑의 공급․회수관
+◦ 1차측 PDCV의 압력계(설치기준은 열사용시설기준 제19조제2항제9호 참조)
+◦ 기타 운전상태 표시가 필요한 기기 및 배관
+나. 온도계 및 압력계 설치규격<개정 2015. 1.14>
+◦ 측정범위는 1․2차측 열매체 설계조건의 1.5배용으로 원형구조
+◦ 측정이 용이하도록 설치하되, 1․2차측을 구분하여 설치
+◦ 온도계는 보호용 설치구(Thermo-well 또는 Sensor Pocket) 안에 설치되어야 함
+(2차측의 경우도)
+- 바이메탈식 구조, 감온부가 배관내 1/2이상 삽입
+- 지시부의 크기 : 100mm
+- 온도측정범위 : 1차측 온수 0～150℃, 냉수 0～50℃, 2차측 난방·급탕 0～100℃,
+냉수·냉각수 0～50℃
+◦ 압력계의 도압관에는 차단밸브가 설치되어야 하고 사이폰관 설치시에는 열매체 조건에
+적합하여야 함.
+- 부르돈관식, 지시부의 크기 : 100mm
+- 압력측정범위 : 1차측 0～25bar, 2차측 0～10(또는 15)bar
+◦ 콤팩트설비유니트에 설치하는 온도계 및 압력계의 지시부도 동일 규격으로 설치하여야 함
+2.5.9 ⑨ 실내열교환설비 <개정 2020.12.29.>
+가. 설치공사(AHU, FCU 등)(⑧-1) : 실내열교한 설비 종류를 괄호 안에 표기하고, 설치공사 완료여부를
+확인하여 표기(적합 또는 부적합)
+2.5.10 ⑩ 준공도서 : 제출여부를 확인하여 표기 <개정 2020.12.29.>
+◦ 아파트의 경우 1,2차 분할 입주시는 2차분 준공시 일괄 제출 가능
+(2차 준공시 제출예정 명기)
+- 44 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p038__c01`
+
+- chunk_id: `kdhc_inspection_extract__p038__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 2.4 열사용시설 준공점검 서식 작성기준
+- 페이지/출처 위치: p.38 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 629 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+2.4 열사용시설 준공점검 서식 작성기준
+* 일반사항 : 중간점검 서식 일반사항과 동일하게 작성
+2.4.1 지구/차수 : 해당지구 및 차수 표기
+2.4.2 고객명 : 고객 표기
+2.4.3 단지명 : 블록단위의 단지명 표기
+2.4.4 점검일 : 점검년월일 표기
+2.4.5 기계실번호 : S-1,2,3… (필요시 고객 관리번호와 연계표기)
+가. 일반건물의 경우 기계실 위치 병행 표기(B F 등)
+2.4.6 연결열부하 : 승인 연결열부하를 Mcal/h 단위로 표기
+2.4.7 인입관경 : 기계실 인입관경을 표기(중간점검시 확인 관경으로 표기)
+가. 인입연결공사가 한난대행공사인 경우 대행 시공사명 기록
+2.4.8 열공급개시예정일 : 개시예정일을 표기
+2.4.9 고객, 점검자, 확인자 : 중간점검 서식의 일반사항과 동일
+가. 중간 및 준공점검자는 동일인을 원칙으로 함
+2.5 준공점검사항 (점검서식 항목순)
+2.5.1 1차측배관 보온/보냉 (열사용시설기준 제17조제1항)
+가. 보온/보냉 두께(①-1) : 다음표의 최소두께 기준에 대한 적합유무를 표기
+◦ 보온
+관 경(A) 25 이하 32～50 65～100 125～200 250 이상
+유리면 등 40 50 75 75
+(복층시공)
+유리장섬유 30 35 40 45 45
+- 38 -
+```
+#### 답변 불가 검수 (`candidate_type=unanswerable_check`)
+
+- 이 case는 `answerable=false`다. 정적 RAG corpus로 답할 수 없는 질문인지 확인한다.
+- `relevant_chunk_ids`는 비어 있어야 하며, partial/confusable 후보는 기준 설명용으로만 사용한다.
+- 현장 계측값, 미래 일정, 실시간 데이터, 설계 계산값을 임의 생성하지 않도록 `forbidden_claims`를 확인한다.
+
+
+### retrieval_eval_027
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_027`
+- 분류 (`category`): `unanswerable`
+- 평가 질문 (`query`): 오늘 우리 현장 PDCV 도압관 연결상태가 적합인지 부적합인지 바로 판정해줘.
+- 질문 의도 (`query_intent`): `unknown`
+- 난이도 (`difficulty`): `easy`
+- 답변 가능 여부 (`answerable`): `False`
+- fault_group: `site_specific_pdcv_compliance`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["The corpus can explain what PDCV impulse pipe connection criteria are.","It cannot determine whether the current field installation is compliant without inspection evidence.","The answer should request inspection photos, drawings, or field records."]
+- 금지 주장 (`forbidden_claims`): ["Do not mark 적합 or 부적합 without field evidence.","Do not invent inspection photos or measurements.","Do not claim the site was inspected."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): 
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): 
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): "kdhc_inspection_extract__p033__c01"
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "kdhc_inspection_extract__p034__c01"
+- 원천 섹션 메모 (`source_sections`): 
+- 검수자 메모 (`reviewer_notes`): Good negative retrieval case: partial chunk can support criteria but not site verdict.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p033__c01`
+
+- chunk_id: `kdhc_inspection_extract__p033__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): 라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+- 페이지/출처 위치: p.33 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 803 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+라. 도압관 연결상태(⑨-4) : 도압관 연결상태의 적정유무를 확인하여 표기
+(적합 또는 부적합)
+◦ 열사용시설기준 제19조제2항제3호의 규정에 의하여 중온수 흐름방향 기준으로 공급측
+도압관은 PDCV이후, 회수측은 회수측 배관의 감지기 연결구배관 이후에 각각 연결
+◦ 도압관은 배관의 측면에서 연결이 이상적임
+◦ 도압관은 공기가 모이지 않도록 설치되어야 함
+- 도압관 또는 밸브몸체에 공기빼기밸브 설치
+◦ 1차측 공급/회수측 배관의 연결부위에 도압관 차단밸브를 설치하여야 함
+◦ 도압관 차단밸브는 KS 20K 또는 ANSI #300이상의 규격이어야 하며, 나사 또는 용접
+형의 볼밸브가 바람직함(도압관의 재질 및 규격도 120℃, 16bar에 적합하여야 함)
+- 어느 한쪽만 연결되었거나 한쪽의 밸브가 잠겼을 경우에는 PDCV 밸브 자체가 잠길수 있음
+마. 제작사(모델)(⑨-5) : PDCV의 제작사명 및 모델명을 표기
+◦ 신우밸브 : SDP-F22
+◦ 신한콘트롤밸브 : SHDFC-H02
+◦ 서울콘트롤(SAMSON : 독일) : 42-24A/B
+◦ 경영기계(CLORIUS : 덴마크) : TD-66
+◦ 삼양밸브 : YDF-20F
+바. 기타(By-pass 등)(⑨-6) : PDCV 의 바이패스배관, PDCV 전에 스트레이너 설치 여부
+등을 확인하여 적합 또는 부적합으로 표기
+◦ By-pass 배관 : 바이패스배관을 할 경우 PDCV관경과 동일한 관경의 배관과 밸브를
+설치하여야 함(열사용시설기준 제19조제2항) <개정 2015. 1.13>
+◦ PDCV 설치와 관련한 열사용시설기준외의 사항은 제작사 기준에 따라야 함
+- 33 -
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `kdhc_inspection_extract__p034__c01`
+
+- chunk_id: `kdhc_inspection_extract__p034__c01`
+- document_id: `kdhc_inspection_standard.pdf`
+- 문서 제목 (`document_title`): 열사용시설 점검업무 기술 기준서 - 선별 추출본
+- 섹션 (`section`): ◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 페이지/출처 위치: p.34 / kdhc_inspection_standard.pdf
+- RAG 역할 (`rag_role`): `domestic_inspection_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 932 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+◦ 기기류 보호용 스트레이너를 바이패스배관 전에 설치하여야 함
+- 스트레이너 관경은 1차측 주배관경과 동일해야 함
+- 스트레이너 기술규격 : 열량계 항목 참조
+◦ 1차측 PDCV의 역할(공급측 설치기준)
+- 기계실내 공급/회수측 배관의 적정 차압 유지
+- 열교환설비의 적정유량 확보
+- 적정차압 유지로 1차측 온도조절밸브(TCV) 보호
+- 열교환설비 1차측 계통의 일정 압력이하 유지로 열사용시설 보호(열교환기 및 배관 등)
+2.3.11 열량계 주위배관
+가. <삭제 2015. 1.14>
+나. Reducing(5D/3D)(⑩-1) : 열사용시설기준 제13조제1항의 규정에 의한 유량부 전후의 직관
+거리를 확인하여 적합 또는 부적합으로 표기
+◦ 열량계유량부는 수평배관에 설치되어야 함
+◦ 유량부 지시부가 상부로 향할 수 있도록 유량부 상대 플랜지의 볼트구멍의 방향이 적
+절한지 확인 필요(열사용시설기준 별표 5,6)
+다. <삭제 2023.04.12>
+라. 플랜지 규격/볼트위치(⑩-3) : 열사용시설기준 별표5의 플랜지 규격과 일치 여부등을 확
+인 표기(적합, 부적합)
+◦ 열량계유량부 상대 플랜지 규격 : 열량계유량부 플랜지 규격과 동일
+- 플랜지 규격 : DIN 16bar(DIN 2543, 2633), 재질은 SF440A 이상
+- Slip-on Welding neck type
+◦ 볼트위치는 열사용시설기준 별표5의 그림과 비교하여 확인
+◦ 일반적인 DIN 규격 플랜지 사용 예
+- 열량계유량부
+- 1차측 온도조절밸브(유럽산의 경우)
+마. 사다리 설치/작업대 설치(⑩-4) : 유량부의 검정, 교체등 유지관리가 용이하도록 유량부
+하단에 작업대 및 사다리의 설치여부를 확인 표기(적합, 부적합)<개정 2015. 1.14>
+- 열사용시설기준 별표6(유량부 및 감지기연결구배관 설치 상세도)과 같이 바닥배관
+으로 하지 않고 부득이 상향배관으로 설치하는 경우
+- 34 -
+```
+#### 답변 불가 검수 (`candidate_type=unanswerable_check`)
+
+- 이 case는 `answerable=false`다. 정적 RAG corpus로 답할 수 없는 질문인지 확인한다.
+- `relevant_chunk_ids`는 비어 있어야 하며, partial/confusable 후보는 기준 설명용으로만 사용한다.
+- 현장 계측값, 미래 일정, 실시간 데이터, 설계 계산값을 임의 생성하지 않도록 `forbidden_claims`를 확인한다.
+
+
+### retrieval_eval_028
+
+#### 기본 정보
+
+- case_id: `retrieval_eval_028`
+- 분류 (`category`): `unanswerable`
+- 평가 질문 (`query`): 다음 달 평균 외기온도를 기준으로 열교환기 용량을 몇 kW로 바꿔야 하는지 계산해줘.
+- 질문 의도 (`query_intent`): `unknown`
+- 난이도 (`difficulty`): `hard`
+- 답변 가능 여부 (`answerable`): `False`
+- fault_group: `future_weather_capacity_sizing`
+- 현재 label_status: `draft`
+- 현재 review_required: `True`
+
+#### 기대 답변 및 금지 주장
+
+- 기대 답변 핵심 포인트 (`expected_answer_points`): ["The static RAG corpus contains design and operating standards but not future weather or site load calculations.","The answer should not compute a kW capacity without load data, design assumptions, and calculation method.","It may cite that heat exchanger sizing depends on heat transfer area, pressure loss, mass flow rate, and temperature profile if retrieved as context."]
+- 금지 주장 (`forbidden_claims`): ["Do not invent future outdoor temperature.","Do not invent kW capacity.","Do not claim a design calculation was performed."]
+
+#### 현재 라벨 후보
+
+- 관련 문서 후보 (`relevant_document_ids`): 
+- 정답 관련 Chunk 후보 (`relevant_chunk_ids`): 
+- 부분 관련 Chunk 후보 (`partially_relevant_chunk_ids`): ["iea_sh_dhw_substation_extract__p072__c01","swedish_f101_operation_extract__p017__c01"]
+- 혼동 가능 Chunk 후보 (`irrelevant_but_confusable_chunk_ids`): "swedish_f101_operation_extract__p014__c01"
+- 원천 섹션 메모 (`source_sections`): 
+- 검수자 메모 (`reviewer_notes`): Hard unanswerable case; review whether partially relevant chunks create too much ambiguity for retrieval metrics.
+
+#### 검수자가 확인해야 하는 질문
+
+- 현재 `relevant_chunk_ids`가 평가 질문에 직접 답하는가?
+- `expected_answer_points`가 Chunk 원문과 일치하는가?
+- `forbidden_claims`가 현장 결과 날조, 고장 확정, 임의 수치 생성을 충분히 막는가?
+- 이 case를 `reviewed` 또는 `approved`로 올리기 전에 도메인 전문가 확인이 필요한가?
+
+#### 부분 관련 Chunk 후보 (`candidate_type=partially_relevant`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `iea_sh_dhw_substation_extract__p072__c01`
+
+- chunk_id: `iea_sh_dhw_substation_extract__p072__c01`
+- document_id: `iea_dhc_connection_handbook.pdf`
+- 문서 제목 (`document_title`): IEA DHC Connection Handbook - Selected DH/Substation Extract
+- 섹션 (`section`): 11.1.7 Controls
+- 페이지/출처 위치: p.72 / iea_dhc_connection_handbook.pdf
+- RAG 역할 (`rag_role`): `dhc_structure_handbook`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3013 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+The two key factors in heat exchanger sizing are heat transfer area and pressure loss. Heat capacity
+is dependent on mass flow rate and the temperature profile. Clearly, a reduced temperature
+difference will increase the mass flow and pressure loss. As pressure losses are aimed to be kept to
+a minimum, this will have the effect of requiring the surface area to be increased with the
+subsequent increase in the number of plates and cost. Permissible pressure losses across the heat
+exchanger can be summarized as shown in Table 11.4.
+Part II Table 11.4: Permissible pressure losses through a heat exchanger
+Primary Secondary
+DHW <20kPa 10kPa/<50kPa*
+LPHW <20kPa 20kPa
+*when fed directly from MCW
+Additional equipment such as strainers and control valves also presents a pressure loss and it is
+advisable for these to be kept to a minimum. DH operators will seek to achieve a 50-60kPa
+difference between primary supply and return pipes so it is important that there is careful choice of
+equipment.
+The choice of heat exchanger material is essential. Carbon steel should at all times be avoided,
+AISI 316 stainless steel being the preference. AISI 304 is an acceptable alternative in many cases.
+Heat exchangers should always contain a rating plate fixed to the end plate and, as they should be
+supplied with an insulative casing, one visible on the outside. The following data should be
+included;
+• manufacturer
+• type
+• serial number
+• maximum output (kW)
+• primary and secondary design temperatures (°C)
+• primary and secondary operating pressures (MPa)
+• primary and secondary test pressures (MPa)
+• primary and secondary side pressure drop (kPa)
+• primary and secondary flow rates (dm3s-1)
+• primary and secondary water volumes (dm3)
+The end plate shall clearly indicate the function of each pipe connection – incorrect installation can
+have serious consequences.
+11.1.7 Controls
+The secondary side of the hot water district heating systems is often designed so that the forward
+temperature varies according to the outdoor temperature. This control method reduces energy costs
+and helps to optimize conditions for the control valves because a certain minimum flow is
+maintained. A temperature transmitter in the secondary supply pipe measures the process value
+and this value is held up against a specified set point condition in the control system.
+A control valve, located in the primary heating mains, achieves control of the secondary water
+temperature. Generally, only one control valve is installed, but if the required valve size is large, it
+is advisable to use two valves - a winter and a summer valve - connected in parallel and operating
+in sequence. For best control, in most cases, the two valves should be sized to handle one-third and
+two-thirds of the total capacity, the smaller being the lead valve. When redundancy requirements
+are high or equal loads are required for all heat exchangers, it is advisable to install separate
+control equipment for each heat exchanger.
+Part II Page 72 of 86
+```
+
+##### Chunk 후보: `swedish_f101_operation_extract__p017__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p017__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 5 design rating of district heating substations
+- 페이지/출처 위치: p.17 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 3457 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+5 design rating of district heating substations
+5.1 Heat exchanger performance 5.2.2.1 Temperature sensors for tap water temperature at
+the output from the substation in systems not
+Manufacturers of heat exchangers must show the
+having a tap water circulation system
+heat exchangers’ performance data. If requested,
+they must supply a copy of the test report for each The sensor position is important when the domestic
+type of heat exchanger. Heat exchangers must be hot water system does not have a circulation
+tested in accordance with SS-EN 1148. Test system. It must be fitted as close to the heat
+procedures are set out in the Association’s rules for exchanger as possible.
+testing, “F:109 – Testing Heat Exchangers and
+Water Heaters”. The sensor’s time constant must be as short as
+possible: a maximum of eight seconds is
+Tables 3 and 5 show the temperatures for clean recommended.
+heat exchangers. If the temperature difference
+between the primary and secondary side return From a control point of view, the sensor’s accuracy
+temperatures of the heat exchangers in Table 5 of measurement is not as important as its time
+increases from 3° C to +5 °C at the design ambient constant.
+temperature, the heat exchangers are no longer
+efficient.
+5.2.2.2 Temperature sensors for tap water temperature at
+the output from the substation in systems having
+Heat exchangers for domestic hot water are a tap water circulation system
+sensitive to clogging if there is lime in the water. The valves in a system incorporating tap water
+Faults in other equipment, such as a leaking control circulation are normally electronically controlled.
+valve or poor regulation, can cause the heat The use of thermally controlled valves is less
+exchanger to overheat and thus build up lime common.
+deposits.
+The sensor should be installed further from the heat
+5.2 Control equipment – general exchanger in order to give smoother control. In
+requirements systems with high design rating powers but low
+actual power demands, it may be necessary to
+It is important that all components in the control
+install the temperature sensor about a meter from
+system are suited for working together in order to
+the heat exchanger in order to prevent hunting of
+provide optimum operation and comfort.
+the domestic hot water temperature control.
+5.2.1 Controllers
+The sensor’s time constant must be as short as
+It is recommended, when deciding on the choice of
+possible: a maximum of eight seconds is
+controller, to consider the possibility of its
+recommended.
+connection to a higher level control system.
+5.2.2.3 Temperature sensors for space heating systems
+5.2.2 Temperature sensors
+If there is a risk of laminar flow past the
+The uncertainty of measurement of temperature
+temperature sensor, it should be installed after the
+sensors must not exceed ±0.8°K over the operating
+space heating circulation pump in order to ensure
+range concerned. Sensors must be installed at
+turbulent flow past the sensor.
+positions shown in the system flow diagram.
+5.2.3 Control valve
+Particularly important parameters for ensuring that
+The Pump Stop function must be interlocked with
+temperature sensors work as intended are:
+the space heating control valve such that the valve
+closes when the pump stops.
+1. The position of the sensor
+2. The sensor’s time constant
+Select the control valve on the basis of the necessary
+3. The sensor’s accuracy of measurement.
+design power capacity. The condition for good
+```
+#### 혼동 가능 Chunk 후보 (`candidate_type=irrelevant_but_confusable`)
+
+- 판정 안내: 아래 Chunk가 평가 질문과 어떤 관련이 있는지 확인한다. `candidate_type` 값은 변경하지 않고, 판단은 CSV의 `reviewer_decision` 또는 별도 메모에 기록한다.
+
+##### Chunk 후보: `swedish_f101_operation_extract__p014__c01`
+
+- chunk_id: `swedish_f101_operation_extract__p014__c01`
+- document_id: `swedish_f101_substations.pdf`
+- 문서 제목 (`document_title`): Swedish F:101 District Heating Substations - Selected Extract
+- 섹션 (`section`): 3.3 Rating and design data
+- 페이지/출처 위치: p.14 / swedish_f101_substations.pdf
+- RAG 역할 (`rag_role`): `international_substation_standard`
+- fault_group: `not_in_chunk_metadata`
+- Chunk 원문 길이: 2514 chars
+
+검수자가 확인할 질문:
+- 이 Chunk가 평가 질문에 직접 답하는가?
+- 일부 근거라면 `partially_relevant`가 더 적절한가?
+- 키워드는 비슷하지만 질문의 핵심 조건에는 답하지 못하는가?
+
+Chunk 원문:
+
+```text
+3.3 Rating and design data
+Swedish district heating systems are generally designed as high-temperature systems.
+District heating system Rating data Design data
+Conventional system ≤100 oC, 1.6 MPa 120 oC, 1.6 MPa
+Primary system diff. pressure 0.1 –0.6 MPa**
+Low-temperature system ≤80 oC, 1.6 MPa 120 oC, 1.6 MPa
+Primary system diff. pressure 0.1 – 0.6 MPa
+Secondary system * ≤80oC, 0.60–1.0 MPa ≤80oC, 0.6 -1.0 MPa
+diff. pressure 0.1 – 0.2 MPa
+Table 1. Rating and design data for district heating systems.
+* For ‘secondary-connected’ substations.
+** Higher differential pressures can be encountered, so the functionality of control valves cannot be guaranteed at all differen-
+tial pressures.
+In order to determine applicable inspection 3.5 Differential pressure
+requirements, district heating systems are classified
+The district heating supplier will provide
+by an accredited inspection body in accordance
+information on the actual minimum and maximum
+with the Swedish Work Environment Authority's
+differential pressures, as measured at the delivery
+Pressure Vessel Regulations. The maximum
+boundary. This data must be used when designing
+operating temperature and pressure limits are
+the substation unit and for determining the
+determined by the classification of the district
+necessary sizes and capacities of control valves. The
+heating system, and these values must not be
+control valves must be suitable for use with the
+exceeded during normal operation. Inspection
+local differential pressure in order to be able to
+requirements can vary, depending on the applicable
+provide optimum control. If the differential
+temperature and pressure limits.
+pressure is changed, it may be necessary to replace
+the control valves in order to maintain full capacity.
+3.4 The importance of return temperature
+in district heating systems
+Note that allowance must be made for the pressure
+In addition to benefiting the environment, good drop across the heat meter when determining the
+cooling of the return water is also in the interests of necessary control valve rating and capacity. The
+both the customer and the heat supplier. Good pressure drop across the meter can vary, depending
+cooling is dependent on the design and adjustment on the type of meter.
+of the building's heating systems, as well as on the
+capacity rating, performance and function and
+condition of the substation, as described in
+Regulations F:103 and F:109. The test report of a
+certified district heating substation shows the
+documented performance.
+```
+#### 답변 불가 검수 (`candidate_type=unanswerable_check`)
+
+- 이 case는 `answerable=false`다. 정적 RAG corpus로 답할 수 없는 질문인지 확인한다.
+- `relevant_chunk_ids`는 비어 있어야 하며, partial/confusable 후보는 기준 설명용으로만 사용한다.
+- 현장 계측값, 미래 일정, 실시간 데이터, 설계 계산값을 임의 생성하지 않도록 `forbidden_claims`를 확인한다.
+

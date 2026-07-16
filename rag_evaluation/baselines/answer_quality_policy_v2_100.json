@@ -1,0 +1,57 @@
+{
+  "calibration_source": "rag_evaluation\\results\\answer_quality_rule_calibration_100.json",
+  "candidate_observation_count": 400,
+  "hard_rules": [
+    "judge_low_correctness",
+    "judge_low_grounding",
+    "judge_over_abstention",
+    "judge_unsupported_risk"
+  ],
+  "judge_stability": {
+    "candidate_count": 200,
+    "candidate_recommendation_agreement_count": 177,
+    "candidate_recommendation_agreement_rate": 0.885,
+    "case_count": 100,
+    "disagreement_count": 23,
+    "disagreement_score_range": [
+      49.0,
+      87.0
+    ],
+    "maximum_absolute_score_delta": 28.0,
+    "mean_absolute_score_delta": 5.28,
+    "winner_agreement_count": 72,
+    "winner_agreement_rate": 0.72
+  },
+  "limitations": [
+    "Labels are produced by an LLM Judge and require human review.",
+    "The 400 observations come from 100 unique operational cases judged twice.",
+    "Runtime production logs should be used for the next policy revision."
+  ],
+  "maximum_regenerations": 1,
+  "offline_threshold_stability_range": [
+    72.0,
+    75.0
+  ],
+  "out_of_fold_metrics": {
+    "accuracy": 0.9475,
+    "bad_answer_capture_rate": 0.9559748427672956,
+    "count": 400,
+    "false_pass_rate": 0.0440251572327044,
+    "fn": 14,
+    "fp": 7,
+    "tn": 152,
+    "tp": 227,
+    "unnecessary_regeneration_rate": 0.058091286307053944
+  },
+  "policy_version": "answer-quality-policy.v2-100-rag-single-judge-draft",
+  "status": "draft_reference",
+  "threshold": 75.0,
+  "tie_policy": "keep_initial",
+  "weights": {
+    "actionability": 0.2,
+    "calibration": 0.1,
+    "completeness": 0.15,
+    "correctness": 0.3,
+    "evidence_grounding": 0.25
+  }
+}

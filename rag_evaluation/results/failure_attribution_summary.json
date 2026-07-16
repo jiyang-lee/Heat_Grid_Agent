@@ -1,0 +1,55 @@
+{
+  "classification_policy_version": "failure-attribution-v1",
+  "dataset_status": "draft",
+  "failure_origin_counts": {
+    "generation": 5,
+    "mixed": 3,
+    "none": 8,
+    "retrieval": 12
+  },
+  "generation_status_counts": {
+    "failed": 3,
+    "needs_review": 14,
+    "passed": 11
+  },
+  "human_review_case_ids": [
+    "retrieval_eval_002",
+    "retrieval_eval_003",
+    "retrieval_eval_005",
+    "retrieval_eval_006",
+    "retrieval_eval_007",
+    "retrieval_eval_008",
+    "retrieval_eval_009",
+    "retrieval_eval_010",
+    "retrieval_eval_011",
+    "retrieval_eval_012",
+    "retrieval_eval_013",
+    "retrieval_eval_014",
+    "retrieval_eval_015",
+    "retrieval_eval_016",
+    "retrieval_eval_017",
+    "retrieval_eval_018",
+    "retrieval_eval_019",
+    "retrieval_eval_020",
+    "retrieval_eval_023",
+    "retrieval_eval_024"
+  ],
+  "human_review_required_count": 20,
+  "input_automatic_path": "C:\\Project3\\Heat_Grid_Alpha\\rag_evaluation\\automatic_evaluation\\automatic_answer_eval_results.jsonl",
+  "input_dataset_path": "C:\\Project3\\Heat_Grid_Alpha\\rag_evaluation\\answer_evaluation\\answer_eval.draft.jsonl",
+  "input_judge_path": "C:\\Project3\\Heat_Grid_Alpha\\rag_evaluation\\llm_judge\\llm_judge_results.jsonl",
+  "missing_case_ids": {
+    "automatic": [],
+    "judge": []
+  },
+  "official_benchmark": false,
+  "output_results_path": "C:\\Project3\\Heat_Grid_Alpha\\rag_evaluation\\results\\failure_attribution_results.jsonl",
+  "result_level": "reference",
+  "retrieval_status_counts": {
+    "hit": 10,
+    "miss": 15,
+    "not_applicable": 3
+  },
+  "safe_abstention_count": 18,
+  "total_case_count": 28
+}

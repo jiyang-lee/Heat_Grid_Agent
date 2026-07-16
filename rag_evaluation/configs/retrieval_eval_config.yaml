@@ -1,0 +1,45 @@
+# HeatGrid Retrieval Evaluation Draft/Reference config
+
+dataset_path: "rag_evaluation/review/retrieval_eval.review.jsonl"
+approved_dataset_path: "rag_evaluation/datasets/retrieval_eval.approved.jsonl"
+results_path: "rag_evaluation/results/retrieval_results.jsonl"
+summary_path: "rag_evaluation/results/retrieval_summary.json"
+mock_retrieval_path: ""
+
+top_k: [1, 3, 5]
+ndcg_k: 5
+
+metrics:
+  - recall_at_1
+  - recall_at_3
+  - recall_at_5
+  - precision_at_1
+  - precision_at_3
+  - precision_at_5
+  - mrr
+  - ndcg_at_5
+  - hit_rate_at_1
+  - hit_rate_at_3
+  - hit_rate_at_5
+
+relevance_gain:
+  relevant: 2
+  partially_relevant: 1
+  irrelevant: 0
+
+draft_dataset_policy:
+  dataset_status: draft
+  result_level: reference
+  official_benchmark: false
+
+approved_dataset_policy:
+  dataset_status: approved
+  result_level: official
+  official_benchmark: true
+
+future_extensions:
+  rag_searcher_adapter: "Inject RagSearcher or InternalRagEvidenceAdapter outputs as retrieved_chunk_ids JSONL."
+  grounding: "Not implemented in this stage."
+  faithfulness: "Not implemented in this stage."
+  hallucination: "Not implemented in this stage."
+  latency: "Not implemented in this stage."
