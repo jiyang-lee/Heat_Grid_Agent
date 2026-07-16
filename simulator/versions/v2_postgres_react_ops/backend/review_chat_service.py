@@ -7,6 +7,7 @@ from typing import Literal, cast
 from uuid import uuid4
 
 import orjson
+from openai import AsyncOpenAI, OpenAIError
 from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -140,6 +141,9 @@ async def submit_review_chat_message(
     engine: AsyncEngine,
     thread_id: str,
     request: ReviewChatMessageRequest,
+    *,
+    api_key: str | None = None,
+    model: str = "gpt-5.4-mini",
 ) -> ReviewChatSubmissionResponse:
     async with engine.begin() as connection:
         thread = await _locked_thread(connection, thread_id)
@@ -195,12 +199,19 @@ async def submit_review_chat_message(
                 idempotency_key=None,
             )
         else:
+            fallback = _clarification_message(parsed, context)
             assistant = await _append_message(
                 connection,
                 thread_id=thread_id,
                 role="assistant",
                 message_kind="explanation",
-                content=_clarification_message(parsed, context),
+                content=await _natural_language_reply(
+                    api_key=api_key,
+                    model=model,
+                    question=request.content,
+                    context=context,
+                    fallback=fallback,
+                ),
                 structured_payload={"mode": parsed.kind},
                 citations=context.citations,
                 context_hash=context.context_hash,
@@ -219,6 +230,40 @@ async def submit_review_chat_message(
             assistant_message=assistant,
             proposal=proposal,
         )
+
+
+async def _natural_language_reply(
+    *,
+    api_key: str | None,
+    model: str,
+    question: str,
+    context: ReviewChatContext,
+    fallback: str,
+) -> str:
+    if api_key is None:
+        return fallback
+    prompt = orjson.dumps(
+        {
+            "question": question,
+            "ops_output": context.output,
+            "citations": context.citations,
+        }
+    ).decode("utf-8")
+    try:
+        async with AsyncOpenAI(api_key=api_key) as client:
+            response = await client.responses.create(
+                model=model,
+                input=(
+                    "Answer in Korean using only the supplied operational context. "
+                    "Do not approve, reject, or execute an action; explain the evidence and "
+                    "tell the operator when confirmation is required.\n\n"
+                    + prompt
+                ),
+            )
+    except OpenAIError:
+        return fallback
+    reply = response.output_text.strip()
+    return reply or fallback
 
 
 async def confirm_review_chat_proposal(

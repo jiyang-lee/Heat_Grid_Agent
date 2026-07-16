@@ -7,8 +7,10 @@ from sqlalchemy import text
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from agent_run_artifact_repository import ensure_agent_run_artifact_table
 from agent_run_event_repository import (
     AgentRunEventRecord,
+    ensure_agent_run_event_table,
     insert_agent_run_event,
 )
 from schemas import (
@@ -64,6 +66,16 @@ AGENT_RUNS_COMPATIBILITY_DDL: Final = (
 
 DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
 ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_status_check
+"""
+
+ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = (
+    "ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check "
+    "CHECK (status IN ('queued', 'running', 'completed', 'failed'))"
+)
+
+ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
+ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check
+CHECK (status IN ('queued', 'running', 'completed', 'failed'))
 """
 
 class AgentRunLineageLimitError(RuntimeError):

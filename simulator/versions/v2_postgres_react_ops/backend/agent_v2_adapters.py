@@ -36,7 +36,7 @@ def make_v2_adapters(
         "rag_retrieval": _rag_retrieval(runtime, rag_quality_enabled),
         "rag_interpretation": _rag_interpretation(),
         "fault_analysis": _fault(),
-        "higher_model_reassessment": _escalation(),
+        "higher_model_reassessment": _escalation(runtime),
         "parent_disposition": _disposition(),
         "report_draft": _report(runtime),
         "report_fidelity": _fidelity(),

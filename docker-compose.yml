@@ -42,6 +42,13 @@ services:
       dockerfile: Dockerfile.backend
     environment:
       HEATGRID_DATABASE_URL: postgresql+asyncpg://heatgrid_app:${HEATGRID_APP_PASSWORD:-heatgrid_app}@heatgrid-pgvector:5432/heatgrid_ops
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      HEATGRID_NATURAL_CHAT_MODEL: ${HEATGRID_NATURAL_CHAT_MODEL:-gpt-5.4-mini}
+      HEATGRID_WORK_ORDER_MODEL: ${HEATGRID_WORK_ORDER_MODEL:-gpt-5.4-nano}
+      HEATGRID_REPORT_MODEL: ${HEATGRID_REPORT_MODEL:-gpt-5.4-nano}
+      HEATGRID_INTEGRATED_AGENT_MODEL: ${HEATGRID_INTEGRATED_AGENT_MODEL:-gpt-5.4-mini}
+      HEATGRID_INDEPENDENT_AGENT_MODEL: ${HEATGRID_INDEPENDENT_AGENT_MODEL:-gpt-5.4-mini}
+      HEATGRID_REJUDGE_MODEL: ${HEATGRID_REJUDGE_MODEL:-gpt-5.4}
       LANGGRAPH_STRICT_MSGPACK: "true"
     depends_on:
       heatgrid-db-migrate:

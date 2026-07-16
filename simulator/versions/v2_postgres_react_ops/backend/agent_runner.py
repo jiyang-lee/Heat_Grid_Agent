@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 
+from fastapi import HTTPException
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_execution_repository import (
@@ -35,9 +38,9 @@ from heatgrid_ops.agent.contracts import (
 from heatgrid_ops.agent.errors import AgentCoreError
 from heatgrid_ops.agent.graph import (
     AgentGraphContext,
-    SimulateCard,
-    execute_reserved_agent_graph,
-    run_persistent_agent_graph,
+    AgentGraphInvoker,
+    execute_agent_graph_with_capture,
+    execute_agent_graph_v2_with_capture,
 )
 from heatgrid_ops.agent.review_models import AgentRunReviewCaptureSource
 from heatgrid_ops.agent.models import JsonObject
@@ -52,20 +55,39 @@ logger = logging.getLogger(__name__)
 _BACKGROUND_AGENT_TASKS: dict[str, asyncio.Task[AgentRunResponse]] = {}
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedTaskInput:
+    snapshot: JsonObject
+    schema_version: str | None
+    input_hash: str | None
+    origin: str
+    status: str
+
+
 async def run_agent_graph(
     engine: AsyncEngine,
     request: AgentRunRequest,
     simulate_card: SimulateCard | None = None,
     runtime: AgentRuntime | None = None,
+    graph: AgentGraphInvoker | None = None,
+    *,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
 ) -> AgentRunResponse:
-    runtime = runtime or AgentRuntime(settings=Settings(), rag_searcher=RagSearcher())
-    return await run_persistent_agent_graph(
-        AgentGraphContext(
-            engine=engine,
-            runtime=runtime,
-            legacy_simulate_card=simulate_card,
-        ),
+    queued, created = await reserve_agent_run(
+        engine,
+        run_id=request.run_id,
+        alert_id=request.alert_id,
+        card_id=request.card_id,
+    )
+    if not created:
+        return queued
+    return await run_reserved_agent_graph(
+        engine,
         request,
+        simulate_card,
+        runtime,
+        graph,
+        task_key=task_key,
     )
 
 
@@ -74,16 +96,104 @@ async def run_reserved_agent_graph(
     request: AgentRunRequest,
     simulate_card: SimulateCard | None = None,
     runtime: AgentRuntime | None = None,
+    graph: AgentGraphInvoker | None = None,
+    *,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
 ) -> AgentRunResponse:
-    runtime = runtime or AgentRuntime(settings=Settings(), rag_searcher=RagSearcher())
-    return await execute_reserved_agent_graph(
-        AgentGraphContext(
-            engine=engine,
-            runtime=runtime,
-            legacy_simulate_card=simulate_card,
-        ),
-        request,
-    )
+    active_runtime = runtime or create_agent_runtime(Settings(), engine)
+    context = create_agent_graph_context(engine, active_runtime, simulate_card)
+    prepared_input = await _prepare_task_input(context, engine, request, task_key)
+    while True:
+        claim = await claim_agent_graph_task(
+            engine,
+            run_id=request.run_id,
+            input_snapshot=prepared_input.snapshot,
+            task_key=task_key,
+            input_schema_version=prepared_input.schema_version,
+            input_hash=prepared_input.input_hash,
+            input_snapshot_origin=prepared_input.origin,
+            input_snapshot_status=prepared_input.status,
+        )
+        if not claim.claimed or claim.lease_owner is None:
+            existing = await get_agent_run(engine, request.run_id)
+            if existing is None:
+                raise RuntimeError("reserved agent run no longer exists")
+            return existing
+        try:
+            if task_key == AGENT_GRAPH_TASK_KEY_V2:
+                execution = await execute_agent_graph_v2_with_capture(
+                    context,
+                    request,
+                    AgentInputSnapshot(source_input=prepared_input.snapshot),
+                    graph=graph,
+                    resume=claim.resume_from_checkpoint,
+                    target_stage=await _target_stage(engine, request.run_id),
+                )
+            else:
+                execution = await execute_agent_graph_with_capture(
+                    context,
+                    request,
+                    graph=graph,
+                    resume=claim.resume_from_checkpoint,
+                )
+        except HTTPException as exc:
+            error = str(exc.detail)
+        except AgentCoreError as exc:
+            error = str(exc)
+        except Exception as exc:
+            error = str(exc)
+        else:
+            result = execution.result
+            usage = result.token_usage
+            marker_recorded = True
+            if execution.review_capture_source is not None:
+                marker_recorded = await _record_review_snapshot_pending(
+                    engine,
+                    execution.review_capture_source.run_id
+                )
+            elif execution.review_capture_failure is not None:
+                marker_recorded = await _record_review_capture_build_failure(
+                    engine,
+                    request.run_id,
+                    execution.review_capture_failure.error_type,
+                )
+            await complete_agent_graph_task(
+                engine,
+                run_id=request.run_id,
+                lease_owner=claim.lease_owner,
+                output_snapshot=_result_snapshot(result.status),
+                tokens_used=0 if usage is None else usage.total_tokens,
+                task_key=task_key,
+            )
+            if execution.review_capture_source is not None:
+                if not marker_recorded:
+                    await _record_review_snapshot_pending(
+                        engine,
+                        execution.review_capture_source.run_id,
+                    )
+                await _capture_completed_review_snapshot(
+                    engine,
+                    execution.review_capture_source,
+                )
+            elif (
+                execution.review_capture_failure is not None
+                and not marker_recorded
+            ):
+                await _record_review_capture_build_failure(
+                    engine,
+                    request.run_id,
+                    execution.review_capture_failure.error_type,
+                )
+            return AgentRunResponse.model_validate(result.model_dump(mode="json"))
+        retryable = await release_agent_graph_task(
+            engine,
+            run_id=request.run_id,
+            lease_owner=claim.lease_owner,
+            error=error,
+            task_key=task_key,
+        )
+        if not retryable:
+            return await fail_agent_run(engine, request.run_id, error)
 
 
 def schedule_reserved_agent_graph(
@@ -91,6 +201,9 @@ def schedule_reserved_agent_graph(
     request: AgentRunRequest,
     simulate_card: SimulateCard | None = None,
     runtime: AgentRuntime | None = None,
+    graph: AgentGraphInvoker | None = None,
+    *,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
 ) -> asyncio.Task[AgentRunResponse]:
     existing = _BACKGROUND_AGENT_TASKS.get(request.run_id)
     if existing is not None and not existing.done():
@@ -101,6 +214,8 @@ def schedule_reserved_agent_graph(
             request,
             simulate_card,
             runtime,
+            graph,
+            task_key=task_key,
         )
     )
     _BACKGROUND_AGENT_TASKS[request.run_id] = task
@@ -111,6 +226,32 @@ def schedule_reserved_agent_graph(
         )
     )
     return task
+
+
+async def resume_reclaimable_agent_runs(
+    engine: AsyncEngine,
+    *,
+    runtime: AgentRuntime,
+    graph: AgentGraphInvoker,
+    v2_graph: AgentGraphInvoker | None = None,
+) -> int:
+    runs = await list_reclaimable_agent_runs(engine)
+    for run in runs:
+        active_graph = v2_graph if run.task_key == AGENT_GRAPH_TASK_KEY_V2 else graph
+        schedule_reserved_agent_graph(
+            engine,
+            AgentRunRequest(
+                run_id=run.run_id,
+                alert_id=run.alert_id,
+                card_id=run.card_id,
+            ),
+            runtime=runtime,
+            graph=active_graph or graph,
+            task_key=run.task_key,
+        )
+        if run.task_key == AGENT_GRAPH_TASK_KEY_V2:
+            await mark_child_rescheduled(engine, run.run_id)
+    return len(runs)
 
 
 def is_agent_run_scheduled(run_id: str) -> bool:
@@ -134,3 +275,129 @@ def _finish_background_agent_task(
             run_id,
             exc_info=error,
         )
+
+
+def _request_snapshot(request: AgentRunRequest) -> JsonObject:
+    return {
+        "run_id": request.run_id,
+        "alert_id": request.alert_id,
+        "card_id": request.card_id,
+    }
+
+
+async def _target_stage(engine: AsyncEngine, run_id: str) -> StageName | None:
+    async with engine.connect() as connection:
+        result = await connection.execute(
+            text("SELECT target_stage FROM agent_runs WHERE run_id = :run_id"),
+            {"run_id": run_id},
+        )
+    value = result.scalar_one_or_none()
+    if not isinstance(value, str) or value not in STAGE_ORDER:
+        return None
+    return value
+
+
+async def _prepare_task_input(
+    context: AgentGraphContext,
+    engine: AsyncEngine,
+    request: AgentRunRequest,
+    task_key: str,
+) -> PreparedTaskInput:
+    lineage = await get_agent_input_lineage(engine, request.run_id)
+    if lineage is None:
+        raise RuntimeError("reserved agent run no longer exists")
+    if task_key == AGENT_GRAPH_TASK_KEY_V1:
+        if lineage.status == "available":
+            return _prepared_lineage(lineage)
+        return PreparedTaskInput(
+            snapshot=_request_snapshot(request),
+            schema_version=None,
+            input_hash=None,
+            origin=lineage.origin,
+            status="unavailable",
+        )
+    if lineage.status == "available":
+        return _prepared_lineage(lineage)
+    if lineage.origin == "legacy_v1":
+        raise RuntimeError("blocked_legacy_input_unavailable")
+    snapshot = await context.inputs.load(request)
+    if snapshot is None:
+        raise RuntimeError("agent input is unavailable")
+    source_input = validate_agent_input(snapshot, request)
+    return _prepared_lineage(
+        await persist_native_agent_input(
+            engine,
+            run_id=request.run_id,
+            source_input=source_input,
+        )
+    )
+
+
+def _prepared_lineage(lineage: AgentInputLineage) -> PreparedTaskInput:
+    if lineage.source_input is None:
+        raise RuntimeError("available agent input snapshot is missing")
+    return PreparedTaskInput(
+        snapshot=lineage.source_input,
+        schema_version=lineage.input_schema_version,
+        input_hash=lineage.input_hash,
+        origin=lineage.origin,
+        status=lineage.status,
+    )
+
+
+def _result_snapshot(status: str) -> JsonObject:
+    return {"status": status}
+
+
+async def _capture_completed_review_snapshot(
+    engine: AsyncEngine,
+    source: AgentRunReviewCaptureSource,
+) -> None:
+    adapter = PostgresReviewSnapshotAdapter(engine)
+    try:
+        lineage = await load_review_snapshot_lineage(engine, source.run_id)
+        await adapter.capture(assemble_review_snapshot(source, lineage))
+    except Exception as exc:  # noqa: BLE001 - completion boundary isolates review capture
+        reason = f"{type(exc).__name__}: review snapshot capture failed"[:1000]
+        logger.warning("review snapshot unavailable for run %s", source.run_id)
+        try:
+            await adapter.mark_unavailable(source.run_id, reason)
+        except Exception:  # noqa: BLE001 - run completion must remain durable
+            logger.exception(
+                "review snapshot unavailable event failed for run %s",
+                source.run_id,
+            )
+
+
+async def _record_review_capture_build_failure(
+    engine: AsyncEngine,
+    run_id: str,
+    error_type: str,
+) -> bool:
+    try:
+        await PostgresReviewSnapshotAdapter(engine).mark_unavailable(
+            run_id,
+            f"{error_type}: review snapshot source unavailable",
+        )
+    except Exception:  # noqa: BLE001 - run completion must remain durable
+        logger.warning(
+            "review snapshot build failure event failed for run %s",
+            run_id,
+        )
+        return False
+    return True
+
+
+async def _record_review_snapshot_pending(
+    engine: AsyncEngine,
+    run_id: str,
+) -> bool:
+    try:
+        await PostgresReviewSnapshotAdapter(engine).mark_pending(run_id)
+    except Exception:  # noqa: BLE001 - run completion must remain durable
+        logger.warning(
+            "review snapshot pending event failed for run %s",
+            run_id,
+        )
+        return False
+    return True

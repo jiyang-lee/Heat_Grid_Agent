@@ -9,7 +9,7 @@
 cd frontend
 npm install
 cp .env.example .env      # 사용자 지정 지도/백엔드가 필요할 때
-npm run dev               # → http://localhost:5173
+npm run dev               # → http://127.0.0.1:5173 및 같은 네트워크의 http://내_PC_IP:5173
 ```
 
 > `.env`는 커밋되지 않습니다. 파일이 없어도 기본 CARTO 지도와 `http://127.0.0.1:8003` 실백엔드를 사용합니다. 사용자 지정 지도나 mock 모드가 필요할 때만 `.env.example`을 복사해 설정합니다.
@@ -23,6 +23,8 @@ npm run dev               # → http://localhost:5173
 | `VITE_MAP_STYLE_URL` | 선택 사항. 전체 MapLibre style JSON URL을 지정하며, 비워두면 기본 CARTO 다크 지도를 사용. |
 | `VITE_USE_MOCK` | `true`면 백엔드 없이 mock 데이터로 전체 화면 구동(데모 권장). 미설정/`false`면 실백엔드(`VITE_BACKEND_URL`) 호출. |
 | `VITE_BACKEND_URL` | 실백엔드 프록시 대상. 기본 `http://127.0.0.1:8003`. |
+
+Vite 개발 서버는 LAN 접속을 위해 `host: true`로 설정되어 있습니다. 다른 PC에서 접속할 때는 이 PC의 IPv4 주소를 사용하고, Windows 방화벽에서 TCP 5173 인바운드를 허용해야 합니다.
 
 **백엔드 없이 전체 화면을 보려면** `.env`에 다음 두 줄이면 충분합니다:
 

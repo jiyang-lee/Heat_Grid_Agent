@@ -32,8 +32,16 @@ class Settings(BaseSettings):
     )
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8003, ge=1, le=65535)
-    openai_model: str = "gpt-5.4-mini"
     openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
+    natural_chat_model: str = "gpt-5.4-mini"
+    work_order_model: str = "gpt-5.4-nano"
+    report_model: str = "gpt-5.4-nano"
+    integrated_agent_model: str = "gpt-5.4-mini"
+    independent_agent_model: str = "gpt-5.4-mini"
+    rejudge_model: str = "gpt-5.4"
+    replay_enabled: bool = False
+    replay_import_enabled: bool = False
+    replay_storage_root: str = "/var/lib/heatgrid/replay"
     rag_top_k: int = 5
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)

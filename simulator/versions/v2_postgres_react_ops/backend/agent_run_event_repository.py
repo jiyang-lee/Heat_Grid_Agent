@@ -17,14 +17,7 @@ class AgentRunEventRecord:
 
 
 async def ensure_agent_run_event_table(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(AGENT_RUN_EVENTS_DDL))
-        await connection.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS agent_run_events_run_idx "
-                "ON agent_run_events(run_id, event_id)"
-            )
-        )
+    del engine
 
 
 async def record_agent_run_event(

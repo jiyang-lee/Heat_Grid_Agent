@@ -51,19 +51,65 @@ def _fault() -> StageAdapter:
     return execute
 
 
-def _escalation() -> StageAdapter:
+def _escalation(runtime: AgentRuntime) -> StageAdapter:
     async def execute(state: AgentV2State) -> StageSnapshotEnvelope:
-        value: JsonObject = {
-            "execution_status": "skipped",
-            "quality_status": "skipped",
-            "score": None,
-            "triggered": False,
+        triggered = state.ml_validation.get("quality_status") in {
+            "insufficient",
+            "unavailable",
         }
+        if triggered:
+            bundle_data: JsonObject = {
+                "ml_validation": state.ml_validation,
+                "weather_context": state.weather_context,
+                "rag_retrieval": state.rag_retrieval,
+                "rag_interpretation": state.rag_interpretation,
+                "fault_analysis": state.fault_analysis,
+            }
+            bundle = ReportDraftSnapshotBundle(
+                run_id=state.request.run_id,
+                root_run_id=state.request.run_id,
+                target_stage="higher_model_reassessment",
+                source_input_hash=state.request.input_hash,
+                bundle_hash=canonical_json_hash(bundle_data),
+                stages=bundle_data,
+            )
+            try:
+                output = await runtime.reassess_with_high_model(
+                    state.request.source_input,
+                    bundle_data,
+                    state.request.card_id,
+                    run_id=state.request.run_id,
+                    snapshot_bundle=bundle,
+                )
+            except AgentDependencyError:
+                value: JsonObject = {
+                    "execution_status": "unavailable",
+                    "quality_status": "insufficient",
+                    "score": None,
+                    "triggered": True,
+                }
+            else:
+                value = {
+                    "execution_status": "passed",
+                    "quality_status": "passed",
+                    "score": 100.0,
+                    "triggered": True,
+                    "summary": output.summary,
+                    "action_plan": output.action_plan,
+                    "caution": output.caution,
+                }
+        else:
+            value = {
+                "execution_status": "skipped",
+                "quality_status": "skipped",
+                "score": None,
+                "triggered": False,
+            }
         updated = state.model_copy(update={"higher_model_reassessment": value})
         return StageSnapshotEnvelope(
             stage_name="higher_model_reassessment",
             data=updated.model_dump(mode="json"),
-            control=StageControlEnvelope(force_review=False),
+            control=StageControlEnvelope(force_review=value["quality_status"] != "passed"),
         )
 
     return execute

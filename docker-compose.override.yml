@@ -5,7 +5,7 @@ services:
       HEATGRID_REPLAY_IMPORT_ENABLED: "true"
       HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
     volumes:
-      - C:/Users/flfkr/Downloads:/var/lib/heatgrid/incoming:ro
+      - ${USERPROFILE}/Downloads:/var/lib/heatgrid/incoming:ro
       - heatgrid_replay_storage:/var/lib/heatgrid/replay
 
 volumes:

@@ -50,6 +50,7 @@ from repository import (
     make_engine,
 )
 from priority_evaluation_routes import make_priority_evaluation_router
+from replay_routes import make_replay_router
 from retrain_routes import make_retrain_router
 from retrain_repository import ensure_retrain_tables
 from review_repository import ensure_review_tables
@@ -108,6 +109,14 @@ app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))
+app.include_router(
+    make_replay_router(
+        engine,
+        storage_root=settings.replay_storage_root,
+        replay_enabled=settings.replay_enabled,
+        replay_import_enabled=settings.replay_import_enabled,
+    )
+)
 
 
 @app.get("/", include_in_schema=False)

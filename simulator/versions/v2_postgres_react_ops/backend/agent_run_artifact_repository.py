@@ -1,3 +1,4 @@
+from typing import Final
 from uuid import uuid4
 
 from sqlalchemy import text

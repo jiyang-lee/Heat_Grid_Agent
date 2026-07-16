@@ -40,25 +40,39 @@ def create_agent_runtime(
     key = settings.openai_api_key
     key_value = None if key is None else key.get_secret_value().strip()
     api_key = key_value or None
-    chat_model = OpenAIChatModelAdapter(
+    integrated_model = OpenAIChatModelAdapter(
         api_key=api_key,
-        model=settings.openai_model,
+        model=settings.integrated_agent_model,
+    )
+    work_order_model = OpenAIChatModelAdapter(
+        api_key=api_key,
+        model=settings.work_order_model,
+    )
+    independent_model = OpenAIChatModelAdapter(
+        api_key=api_key,
+        model=settings.independent_agent_model,
+    )
+    rejudge_model = OpenAIChatModelAdapter(
+        api_key=api_key,
+        model=settings.rejudge_model,
     )
     return AgentRuntime(
         config=agent_runtime_config(settings),
         rag=InternalRagEvidenceAdapter(searcher),
         external_data=StructuredExternalDataAdapter(searcher),
-        chat_model=chat_model,
+        chat_model=integrated_model,
+        work_order_model=work_order_model,
+        rejudge_model=rejudge_model,
         model_verification=ActiveModelVerificationAdapter(
             model_data=input_model,
             tolerance=settings.model_score_tolerance,
         ),
         report_writer=LocalReportWriterAdapter(
             api_key=api_key,
-            model=settings.openai_model,
+            model=settings.report_model,
             output_root=default_report_output_root(),
         ),
-        diagnostic_model=chat_model,
+        diagnostic_model=independent_model,
     )
 
 
@@ -82,7 +96,7 @@ def create_agent_graph_context(
 
 def agent_runtime_config(settings: Settings) -> AgentRuntimeConfig:
     return AgentRuntimeConfig(
-        openai_model=settings.openai_model,
+        openai_model=settings.integrated_agent_model,
         rag_top_k=settings.rag_top_k,
         agent_max_iterations=settings.agent_max_iterations,
         agent_evidence_threshold=settings.agent_evidence_threshold,

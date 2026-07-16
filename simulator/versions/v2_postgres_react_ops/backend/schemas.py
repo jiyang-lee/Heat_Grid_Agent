@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue as PydanticJsonValue
 
-JsonPrimitive: TypeAlias = str | int | float | bool | None
-JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+JsonValue: TypeAlias = PydanticJsonValue
 JsonObject: TypeAlias = dict[str, Any]
 AlertStatus: TypeAlias = Literal["open", "acked", "resolved"]
 AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed"]

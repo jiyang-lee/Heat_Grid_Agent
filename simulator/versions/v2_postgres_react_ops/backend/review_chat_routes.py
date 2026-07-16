@@ -114,7 +114,16 @@ def make_review_chat_router(
         thread_id: UUID,
         request: ReviewChatMessageRequest,
     ) -> ReviewChatSubmissionResponse:
-        return await _map_errors(submit_review_chat_message(engine, str(thread_id), request))
+        key = active_settings.openai_api_key
+        return await _map_errors(
+            submit_review_chat_message(
+                engine,
+                str(thread_id),
+                request,
+                api_key=None if key is None else key.get_secret_value(),
+                model=active_settings.natural_chat_model,
+            )
+        )
 
     @router.get("/review-chat/threads/{thread_id}/events")
     async def events(

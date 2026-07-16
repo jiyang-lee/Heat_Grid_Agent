@@ -320,7 +320,9 @@ async def grant_application_role(
     await connection.execute(
         sql.SQL("REVOKE CREATE ON SCHEMA public FROM {}").format(role)
     )
-    await connection.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
+    await connection.execute(
+        sql.SQL("GRANT USAGE, CREATE ON SCHEMA public TO {}").format(role)
+    )
     await connection.execute(
         sql.SQL("GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {}").format(role)
     )
