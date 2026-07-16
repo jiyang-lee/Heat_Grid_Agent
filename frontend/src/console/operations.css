@@ -478,3 +478,150 @@
   .scenario-chat-input label { grid-column: auto; }
   .scenario-candidate { align-items: flex-start; flex-wrap: wrap; }
 }
+
+/* ===== 이용자 개인 설정 페이지 (내 프로필 / 화면 및 알림 / 로그인 및 보안) =====
+   .settings-page/.settings-tabbar/.settings-actions/.settings-layout 골격은 scenario.css가 정의.
+   여기서는 신규 요소(프로필 카드·접속 기록 등) 전용 클래스만 추가한다. */
+.settings-main { min-width: 0; }
+
+/* 내 프로필 탭 — 좌측 프로필 카드 + 우측 폼(기본 정보/개인 환경) + 하단 액션 바 */
+.settings-profile-view { min-height: 0; overflow: auto; }
+/* 내 프로필 카드 높이를 화면 및 알림 카드와 동일하게 맞춤(본문이 늘어나고 하단 버튼은 바닥에 고정). */
+.settings-profile-card { display: flex; flex-direction: column; min-height: 670px; }
+.settings-profile-card .profile-body { flex: 1; }
+.profile-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: var(--space-4) 1cm; padding: var(--space-4); }
+.profile-side { display: grid; align-content: start; justify-items: center; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--ops-border); border-radius: 12px; background: var(--ops-surface-muted); text-align: center; }
+.profile-avatar-lg { display: grid; place-items: center; width: 92px; height: 92px; margin-bottom: var(--space-1); border: 1px solid var(--ops-border); border-radius: 99px; color: var(--ops-text-muted); background: var(--ops-surface); }
+.profile-avatar-lg svg { width: 46px; height: 46px; }
+.profile-name { color: var(--ops-text); font-size: 22px; font-weight: 800; }
+.profile-dept { color: var(--ops-text); font-size: 14px; }
+.profile-active { display: inline-flex; align-items: center; gap: 6px; color: var(--ops-text-muted); font-size: 13px; }
+.profile-active i { width: 8px; height: 8px; border-radius: 99px; background: var(--ops-success); }
+.profile-divider { width: 100%; height: 1px; margin: var(--space-3) 0; border: 0; background: var(--ops-border); }
+.profile-meta { display: grid; gap: var(--space-3); width: 100%; margin: 0; padding: 0; list-style: none; }
+.profile-meta li { display: grid; grid-template-columns: 18px auto minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.profile-meta svg { width: 16px; height: 16px; color: var(--ops-text-muted); }
+.profile-meta .k { color: var(--ops-text-muted); font-size: 13px; }
+.profile-meta .v { overflow: hidden; color: var(--ops-text); font-size: 13px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.profile-fields { display: grid; align-content: start; gap: var(--space-4); }
+.profile-fields h3 { margin: 0 0 var(--space-3); color: var(--ops-text); font-size: 17px; }
+.profile-field { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.profile-field + .profile-field { margin-top: var(--space-3); }
+.profile-field-label { color: var(--ops-text-muted); font-size: 15px; white-space: nowrap; }
+.profile-field-control { position: relative; min-width: 0; }
+.profile-field-control input, .profile-field-control select { width: 100%; min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; outline-color: var(--ops-primary); color: var(--ops-text); background: #fff; font: inherit; }
+.profile-field-control select { padding-right: var(--space-5); }
+.profile-field-control input[readonly] { padding-right: 34px; color: var(--ops-text-muted); }
+.profile-lock { position: absolute; top: 50%; right: 12px; width: 15px; height: 15px; color: var(--ops-text-muted); transform: translateY(-50%); pointer-events: none; }
+.profile-footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--ops-border); }
+:root[data-theme='dark'] .profile-field-control input, :root[data-theme='dark'] .profile-field-control select { background: var(--ops-surface-muted); }
+@media (max-width: 1040px) { .profile-body { grid-template-columns: 1fr; } }
+
+/* 화면 및 알림 탭 — 2열(화면 모드·표시 옵션 / 시작 화면·알림 수신) + 목록 표시 선호 + 하단 액션 */
+.sn-body { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-5); padding: var(--space-4); }
+.sn-col { display: grid; align-content: start; gap: var(--space-4); }
+.sn-col:last-child { padding-left: var(--space-5); border-left: 1px solid var(--ops-border); }
+.sn-col section { display: grid; align-content: start; gap: var(--space-3); }
+.sn-col section + section { padding-top: var(--space-4); border-top: 1px solid var(--ops-border); }
+.sn-body h3, .sn-fullwidth h3 { margin: 0; color: var(--ops-text); font-size: 17px; }
+.mode-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+.mode-card { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-2); border: 1px solid var(--ops-border); border-radius: 10px; color: var(--ops-text); background: var(--ops-surface-muted); cursor: pointer; }
+.mode-card.active { border-color: var(--ops-primary); background: var(--ops-primary-soft); }
+.mode-card > svg { width: 28px; height: 28px; color: var(--ops-text-muted); }
+.mode-card.active > svg { color: var(--ops-primary); }
+.mode-card-foot { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.mode-card input, .view-card input { accent-color: var(--ops-primary); }
+.sn-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.sn-row > span { color: var(--ops-text-muted); font-size: 15px; }
+.sn-row select { flex: 0 0 auto; width: 200px; }
+.sn-row select, .sn-select-block, .sn-dnd input { min-height: 38px; padding: 0 var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; outline-color: var(--ops-primary); color: var(--ops-text); background: #fff; font: inherit; }
+.sn-select-block { width: 100%; min-height: 40px; }
+.sn-dnd { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sn-dnd input { width: 88px; padding: 0 var(--space-2); text-align: center; }
+.sn-dnd input::-webkit-calendar-picker-indicator { display: none; }
+.sn-dnd em { color: var(--ops-text-muted); font-style: normal; }
+.sn-dnd > svg { width: 16px; height: 16px; color: var(--ops-text-muted); }
+.sn-fullwidth { display: grid; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--ops-border); }
+.view-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.view-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--ops-border); border-radius: 10px; background: var(--ops-surface-muted); cursor: pointer; }
+.view-card.active { border-color: var(--ops-primary); background: var(--ops-primary-soft); }
+.view-card-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; color: var(--ops-text-muted); background: var(--ops-surface); }
+.view-card.active .view-card-icon { color: var(--ops-primary); }
+.view-card-icon svg { width: 20px; height: 20px; }
+.view-card-text { display: grid; gap: 2px; min-width: 0; }
+.view-card-text strong { color: var(--ops-text); font-size: 15px; }
+.view-card-text small { color: var(--ops-text-muted); font-size: 13px; }
+:root[data-theme='dark'] .sn-row select, :root[data-theme='dark'] .sn-select-block, :root[data-theme='dark'] .sn-dnd input { background: var(--ops-surface-muted); }
+:root[data-theme='dark'] .view-card-icon { background: var(--ops-canvas); }
+@media (max-width: 1040px) {
+  .sn-body { grid-template-columns: 1fr; }
+  .sn-col:last-child { padding-left: 0; padding-top: var(--space-4); border-top: 1px solid var(--ops-border); border-left: 0; }
+  .view-cards { grid-template-columns: 1fr; }
+}
+
+/* 로그인 및 보안 탭 — 보안 설정 박스 + 로그인 기기/기록 테이블 + 보안 작업 경고 + 하단 액션 */
+.sec-body { display: grid; gap: var(--space-4); padding: var(--space-4); }
+.sec-body h3 { margin: 0; color: var(--ops-text); font-size: 17px; }
+.sec-card { display: grid; padding: 0 var(--space-4); border: 1px solid var(--ops-border); border-radius: 10px; }
+.sec-card > h3 { padding: var(--space-3) 0; }
+.sec-card .sn-row { padding: var(--space-3) 0; border-top: 1px solid var(--ops-border); }
+.sec-section { display: grid; gap: var(--space-3); }
+.sec-table { width: 100%; border-collapse: collapse; }
+.sec-table th { padding: var(--space-2) var(--space-3); color: var(--ops-text-muted); font-size: 13px; font-weight: 600; text-align: left; border-bottom: 1px solid var(--ops-border); }
+.sec-table td { padding: var(--space-3); color: var(--ops-text); font-size: 14px; border-top: 1px solid var(--ops-border); }
+.sec-table tbody tr:first-child td { border-top: 0; }
+.sec-device { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ops-text); }
+.sec-device svg { width: 17px; height: 17px; color: var(--ops-text-muted); }
+.sec-ip { color: var(--ops-text-muted); font-variant-numeric: tabular-nums; }
+.sec-table .status-badge { min-height: 22px; padding: 2px 9px; border: 1px solid currentColor; border-radius: 6px; font-size: 13px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.sec-alert { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--ops-critical) 45%, var(--ops-border)); border-radius: 10px; background: color-mix(in srgb, var(--ops-critical) 8%, var(--ops-surface)); }
+.sec-alert-info { display: grid; gap: 5px; min-width: 0; }
+.sec-alert-info strong { display: inline-flex; align-items: center; gap: 7px; color: var(--ops-critical); font-size: 15px; }
+.sec-alert-info strong svg { width: 17px; height: 17px; }
+.sec-alert-info span { color: var(--ops-text-muted); font-size: 13px; }
+.sec-alert-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+@media (max-width: 760px) { .sec-alert { flex-direction: column; align-items: stretch; } }
+
+/* ===== 설정 페이지 글자 크기 스케일 (기준 대비 +0.5pt ≈ +0.67px) =====
+   설정 화면 전반의 글자 크기를 한곳에서 조정한다. 더 키우려면 아래 값들만 바꾸면 된다.
+   탭(.activity-tabs button)은 버튼 UA 기본값(13.33px)이라 상속을 받지 않아 별도 지정한다. */
+.settings-page { font-size: 16.67px; }                       /* 16 → 16.67 (입력·선택 등 상속 텍스트) */
+.settings-page .activity-tabs button { font-size: 14px; }     /* 13.33 → 14 (탭) */
+.settings-page .surface-heading h2 { font-size: 16.67px; }    /* 카드 제목 */
+.settings-page .ops-button { font-size: 18.67px; }            /* 버튼 */
+.settings-page .status-badge { font-size: 16.67px; }          /* 배지 */
+.settings-page .profile-name { font-size: 22.67px; }
+.settings-page .profile-fields h3,
+.settings-page .sn-body h3,
+.settings-page .sn-fullwidth h3,
+.settings-page .sec-body h3 { font-size: 17.67px; }           /* 섹션 제목 */
+.settings-page .profile-field-label,
+.settings-page .sn-row > span,
+.settings-page .view-card-text strong,
+.settings-page .sec-alert-info strong { font-size: 15.67px; } /* 라벨 */
+.settings-page .profile-dept,
+.settings-page .mode-card-foot,
+.settings-page .sec-table td { font-size: 14.67px; }
+.settings-page .profile-active,
+.settings-page .profile-meta .k,
+.settings-page .profile-meta .v,
+.settings-page .view-card-text small,
+.settings-page .sec-table th,
+.settings-page .sec-table .status-badge,
+.settings-page .sec-alert-info span { font-size: 13.67px; }
+
+.settings-theme-row { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-3); color: var(--ops-text); font-size: 16px; }
+.settings-inline-action { margin-top: var(--space-3); }
+.settings-session-list li { justify-content: space-between; }
+.settings-session-list li > span { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ops-text); }
+.settings-session-list li > span svg { width: 16px; height: 16px; color: var(--ops-primary); }
+.settings-access-log { display: grid; margin: 0; padding: 0; list-style: none; }
+.settings-access-log li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--ops-border); }
+.settings-access-log li:first-child { border-top: 0; }
+.access-icon { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border-radius: 99px; color: var(--ops-text-muted); background: var(--ops-surface-muted); }
+.access-icon svg { width: 16px; height: 16px; }
+.access-main { flex: 1; min-width: 0; }
+.access-main strong { display: block; color: var(--ops-text); font-size: 16px; }
+.access-main small { display: block; margin-top: 2px; color: var(--ops-text-muted); font-size: 14px; }
+.access-side { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+.access-side time { color: var(--ops-text-muted); font-size: 14px; }
