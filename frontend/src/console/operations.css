@@ -235,10 +235,11 @@
 .policy-note { margin: 0; padding: var(--space-3) var(--space-4); color: var(--ops-text-muted); font-size: 15px; }
 
 /* ===== AI 활동 페이지 (실행 활동/작업지시서/보고서) ===== */
-.activity-page .activity-tabs { background: transparent; }
-.activity-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-items: start; }
+.activity-page { grid-template-rows: 44px minmax(0, 1fr); }
+.activity-page .activity-tabs { align-items: end; background: transparent; }
+.activity-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-items: stretch; height: 100%; min-height: 0; }
 .activity-workspace.split { grid-template-columns: minmax(620px, 1.15fr) minmax(420px, 0.9fr); }
-.activity-main { min-width: 0; }
+.activity-main, .activity-list-card { min-width: 0; min-height: 0; height: 100%; }
 .activity-detail-pane { position: sticky; top: var(--space-4); min-width: 0; }
 .activity-filter-bar { display: grid; grid-template-columns: 170px 260px 170px minmax(240px, 1fr) auto; gap: var(--space-2); align-items: end; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--ops-border); }
 .activity-filter-bar label { display: grid; gap: var(--space-1); color: var(--ops-text-muted); font-size: 15px; font-weight: 600; }
@@ -281,6 +282,7 @@
 .activity-evidence-card em { color: var(--ops-text-muted); font-size: 13px; font-style: normal; }
 .activity-evidence-card.highlight { border-color: rgb(22 119 234 / 40%); background: var(--ops-primary-soft); }
 .activity-evidence-card.highlight p { color: var(--ops-text); }
+.work-order-guide p { word-break: keep-all; overflow-wrap: break-word; }
 .activity-evidence-card.caution { border-color: #f2d492; background: #fffaf0; }
 .confidence-chip { flex: 0 0 auto; padding: 2px 10px; border: 1px solid var(--ops-primary); border-radius: 99px; color: var(--ops-primary); font-size: 13px; font-weight: 700; }
 .activity-stage-log { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
@@ -446,6 +448,15 @@
 .scenario-ai-shortcut { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 60; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-5); border: 0; border-radius: 9px; color: #fff; background: var(--ops-primary); box-shadow: 0 12px 28px rgb(15 23 42 / 22%); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
 .scenario-ai-shortcut:hover, .scenario-ai-shortcut:focus-visible { background: color-mix(in srgb, var(--ops-primary) 84%, #000); }
 .scenario-ai-shortcut svg { width: 18px; height: 18px; }
+.scenario-analysis-progress { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 60; width: min(320px, calc(100vw - var(--space-8))); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--ops-primary) 32%, var(--ops-border)); border-radius: 9px; color: var(--ops-text); background: var(--ops-surface); box-shadow: 0 12px 28px color-mix(in srgb, var(--ops-text) 18%, transparent); }
+.scenario-analysis-progress > strong { display: block; margin-bottom: var(--space-3); color: var(--ops-primary); font-size: 16px; }
+.scenario-analysis-progress ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.scenario-analysis-progress li { display: flex; align-items: center; gap: var(--space-2); color: var(--ops-text-muted); font-size: 13px; font-weight: 700; }
+.scenario-analysis-progress li span { display: grid; flex: 0 0 auto; width: 22px; height: 22px; place-items: center; border-radius: 99px; color: var(--ops-text-muted); background: var(--ops-surface-muted); font-size: 12px; }
+.scenario-analysis-progress li.active { color: var(--ops-primary); }
+.scenario-analysis-progress li.active span { color: var(--ops-surface); background: var(--ops-primary); }
+.scenario-analysis-progress li.complete { color: var(--ops-text); }
+.scenario-analysis-progress li.complete span { color: var(--ops-surface); background: var(--ops-success); }
 
 @media (max-width: 1180px) {
   .alerts-workspace.has-detail { grid-template-columns: minmax(460px, 1fr) minmax(360px, .9fr); }
@@ -459,7 +470,7 @@
   .alerts-filter-bar .filter-search { grid-column: 1 / -1; }
   .alerts-filter-bar > strong { position: absolute; visibility: hidden; }
   .alerts-table th:nth-child(3), .alerts-table td:nth-child(3) { display: none; }
-  .scenario-ai-shortcut { right: var(--space-3); bottom: var(--space-3); }
+  .scenario-ai-shortcut, .scenario-analysis-progress { right: var(--space-3); bottom: var(--space-3); }
 }
 @keyframes scenario-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -590,6 +601,11 @@
   .scenario-chat-input { grid-template-columns: 1fr; }
   .scenario-chat-input label { grid-column: auto; }
   .scenario-candidate { align-items: flex-start; flex-wrap: wrap; }
+  .activity-workspace.split .activity-main { display: none; }
+  .activity-detail-pane, .activity-detail, .activity-detail .detail-body, .work-order-guide { min-width: 0; max-width: 100%; }
+  .activity-evidence-card header { align-items: flex-start; flex-wrap: wrap; }
+  .work-order-guide { overflow: hidden; }
+  .work-order-guide p { overflow-wrap: anywhere; }
 }
 
 /* ===== 이용자 개인 설정 페이지 (내 프로필 / 화면 및 알림 / 로그인 및 보안) =====

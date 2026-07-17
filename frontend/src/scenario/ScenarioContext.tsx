@@ -174,7 +174,7 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     backToModeSelection()
   }, [backToModeSelection, sensor])
   const selectAlert = useCallback((selectedAlertId: string) => setState((current) => ({ ...current, selectedAlertId })), [])
-  const startAnalysis = useCallback((analysisAlertId: string) => setState((current) => ({ ...current, selectedAlertId: analysisAlertId, analysisAlertId, analysisState: 'running' })), [])
+  const startAnalysis = useCallback((analysisAlertId: string) => setState((current) => ({ ...current, selectedAlertId: analysisAlertId, analysisAlertId, analysisState: 'running', analysisToastVisible: false })), [])
   const completeAnalysis = useCallback(() => setState((current) => current.analysisAlertId == null ? current : ({
     ...current,
     analysisState: 'complete',

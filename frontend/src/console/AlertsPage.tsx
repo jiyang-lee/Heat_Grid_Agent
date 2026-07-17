@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import type { AlertSummary, PriorityLevel } from '../api/contracts'
 import { useAlerts, useCreateAgentRun, useResolveAlert } from '../api/hooks'
 import { complexNameOf } from '../domain/model'
+import { AgentAnalysisProgress } from './AgentAnalysisProgress'
+import { useAgentAnalysis } from './agentAnalysisProgressState'
 import { Icon } from './icons'
 import { ApiState, Button, StatusBadge, SurfaceCard, type Tone } from './ui'
 
@@ -31,6 +33,7 @@ export function AlertsPage({ onRunCreated }: Props) {
   const [scope, setScope] = useState<AlertScope>('active')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [createdRunId, setCreatedRunId] = useState<string | null>(null)
+  const analysis = useAgentAnalysis(createdRunId)
   const alerts = useAlerts({ status: 'all' })
   const resolve = useResolveAlert()
   const createRun = useCreateAgentRun()
@@ -49,10 +52,11 @@ export function AlertsPage({ onRunCreated }: Props) {
   }
   const startAgentRun = () => {
     if (!selected) return
+    createRun.reset()
     createRun.mutate({ alertId: selected.alert_id, requestedBy: 'ops-manager', reason: '운영 콘솔에서 AI 조치 생성을 요청했습니다.' }, { onSuccess: (run) => setCreatedRunId(run.run_id) })
   }
   const openAiAction = () => {
-    if (createdRunId == null) return
+    if (createdRunId == null || analysis.status !== 'completed') return
     const runId = createdRunId
     setCreatedRunId(null)
     onRunCreated(runId)
@@ -75,11 +79,12 @@ export function AlertsPage({ onRunCreated }: Props) {
           <div className="detail-title"><StatusBadge tone={selected.status === 'resolved' ? 'success' : alertTone(selected)}>{statusLabel(selected)}</StatusBadge><h2>{selected.enqueue_reason}</h2><p>{complexNameOf(selected.substation_id, selected.manufacturer_id)} · 기계실 {selected.substation_id ?? '-'}</p></div>
           <section><h3>알림 판단 정보</h3><div className="alert-detail-facts"><div><span>우선순위</span><strong>{selected.priority_level}</strong></div><div><span>점수</span><strong>{selected.priority_score?.toFixed(1) ?? '-'}</strong></div><div><span>순위</span><strong>{selected.priority_rank ?? '-'}</strong></div><div><span>데이터 상태</span><strong>{selected.freshness_status ?? '-'}</strong></div><div><span>발생 시간</span><strong>{dateTime(selected.created_at)}</strong></div><div><span>기준 시각</span><strong>{dateTime(selected.as_of_time)}</strong></div></div></section>
           <section><h3>연결 정보</h3><p>카드 ID: {selected.card_id}</p><p>평가 실행 ID: {selected.evaluation_run_id ?? '-'}</p></section>
-          {createRun.isError && <p className="form-error">AI 실행을 시작하지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</p>}
-          <div className="detail-actions">{createdRunId == null && selected.status !== 'resolved' && <Button disabled={createRun.isPending} icon="activity" onClick={startAgentRun} tone="primary">{createRun.isPending ? 'AI 분석 진행 중' : 'AI 조치 분석'}</Button>}{selected.status !== 'resolved' && <Button disabled={resolve.isPending} onClick={() => resolveAlert(selected)} tone="danger">종결</Button>}</div>
+          {(createRun.isError || analysis.status === 'failed') && <p className="form-error">{analysis.error ?? 'AI 실행을 시작하지 못했습니다. 백엔드 연결 상태를 확인해 주세요.'}</p>}
+          <div className="detail-actions">{analysis.status !== 'completed' && selected.status !== 'resolved' && <Button disabled={createRun.isPending || analysis.status === 'running'} icon="activity" onClick={startAgentRun} tone="primary">{createRun.isPending || analysis.status === 'running' ? 'AI 분석 진행 중' : 'AI 조치 분석'}</Button>}{selected.status !== 'resolved' && <Button disabled={resolve.isPending} onClick={() => resolveAlert(selected)} tone="danger">종결</Button>}</div>
         </div>
       </SurfaceCard>}
     </div>
-    {createdRunId && <button className="scenario-ai-shortcut" onClick={openAiAction} type="button">AI 조치 바로가기 <Icon name="arrow" /></button>}
+    {(createRun.isPending || analysis.status === 'running') && <AgentAnalysisProgress phase={analysis.phase} />}
+    {createdRunId && analysis.status === 'completed' && <button className="scenario-ai-shortcut" onClick={openAiAction} type="button">AI 조치 바로가기 <Icon name="arrow" /></button>}
   </div>
 }

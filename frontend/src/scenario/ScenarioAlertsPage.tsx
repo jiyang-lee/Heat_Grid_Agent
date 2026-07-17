@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { agentRunsApi, scenarioAlertsApi } from '../api/client'
+import { AgentAnalysisProgress } from '../console/AgentAnalysisProgress'
+import { agentAnalysisErrorMessage, useAgentAnalysis } from '../console/agentAnalysisProgressState'
 import { Icon } from '../console/icons'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { ScenarioSensorEvidenceChart } from './ScenarioSensorEvidenceChart'
@@ -43,6 +45,7 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
   const [priority, setPriority] = useState<'all' | ScenarioAlert['priority']>('all')
   const [createdRunId, setCreatedRunId] = useState<string | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const analysis = useAgentAnalysis(createdRunId)
   const allAlerts = useMemo(() => [...alerts, ...alertHistory], [alertHistory, alerts])
   const source = scope === 'active' ? alerts : alertHistory
   const rows = useMemo(() => source.filter((alert) => {
@@ -64,6 +67,15 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
   useEffect(() => {
     if (selected != null && selected.status !== 'active') setScope('history')
   }, [selected])
+
+  useEffect(() => {
+    if (state.analysisState !== 'running') return
+    if (analysis.status === 'completed') completeAnalysis()
+    else if (analysis.status === 'failed') {
+      failAnalysis()
+      setAnalysisError(analysis.error)
+    }
+  }, [analysis.error, analysis.status, completeAnalysis, failAnalysis, state.analysisState])
 
   const openDetail = (alert: ScenarioTimelineAlert) => {
     selectAlert(alert.id)
@@ -97,10 +109,9 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
         reason: '고장 시나리오 알림에서 AI 조치 분석 실행',
       })
       setCreatedRunId(run.run_id)
-      completeAnalysis()
     } catch (error: unknown) {
       failAnalysis()
-      setAnalysisError(error instanceof Error ? error.message : 'AI 조치 실행을 시작하지 못했습니다.')
+      setAnalysisError(agentAnalysisErrorMessage(error))
     }
   }
   const analyzed = selected != null && state.analyzedAlertIds.includes(selected.id)
@@ -128,6 +139,7 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
         </div>
       </SurfaceCard>}
     </div>
-    {state.analysisToastVisible && <button className="scenario-ai-shortcut" onClick={moveToAiAction} type="button">AI 조치 바로가기 <Icon name="arrow" /></button>}
+    {state.analysisState === 'running' && <AgentAnalysisProgress phase={analysis.phase} />}
+    {state.analysisToastVisible && state.analysisState === 'complete' && <button className="scenario-ai-shortcut" onClick={moveToAiAction} type="button">AI 조치 바로가기 <Icon name="arrow" /></button>}
   </div>
 }

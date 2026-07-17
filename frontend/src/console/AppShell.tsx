@@ -21,10 +21,10 @@ const navigation: readonly NavigationItem[] = [
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const
 
-const pageLabels: Record<ConsolePage, { readonly title: string; readonly summary: string }> = {
+const pageLabels: Record<ConsolePage, { readonly title: string; readonly summary?: string }> = {
   dashboard: { title: '홈', summary: '현재 시스템 요약과 주요 현황을 한눈에 확인하세요.' },
   alerts: { title: '알림', summary: '경보를 선택해 출동 기한과 판단 근거를 확인하세요.' },
-  reports: { title: 'AI 조치', summary: '위험도와 리드타임을 기준으로 조치와 문서를 관리합니다.' },
+  reports: { title: 'AI 조치' },
   settings: { title: '설정', summary: '개인 운영 환경과 알림 수신, 업무 화면 기본 설정을 관리합니다.' },
 }
 
@@ -108,7 +108,7 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
       </aside>
       <div className="ops-content-shell">
         <header className="ops-topbar">
-          <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong>{page !== 'dashboard' && <span>{pageLabel.summary}</span>}</div></div>
+          <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong>{page !== 'dashboard' && pageLabel.summary && <span>{pageLabel.summary}</span>}</div></div>
           <div className="topbar-tools">
             <span className={`topbar-mode mode-${mode}`}><i />{mode === 'fault' ? '고장 시나리오' : '정상 운영'}</span>
             <div className="topbar-clock">

@@ -106,6 +106,8 @@ export function ExecutionDetail({ item, onClose }: Props) {
   const replayProbe = useReplayRunSnapshot(completedRunId)
 
   const createRun = useCreateAgentRun()
+  const [workOrderRunId, setWorkOrderRunId] = useState<string | null>(null)
+  const workOrderRun = useAgentRun(workOrderRunId)
 
   const [tab, setTab] = useState<DetailTab>('summary')
   const [action, setAction] = useState<OperatorDecision | null>(null)
@@ -248,11 +250,39 @@ export function ExecutionDetail({ item, onClose }: Props) {
     )
   }
 
+  const createWorkOrder = () => {
+    if (createRun.isPending || workOrderRun.data?.status === 'queued' || workOrderRun.data?.status === 'running') return
+    setRunStatusMessage(null)
+    createRun.mutate(
+      {
+        alertId: item.alert_id,
+        forceNew: true,
+        requestedBy: 'ops-manager',
+        reason: 'AI 분석 결과 기반 작업지시서 생성',
+      },
+      {
+        onSuccess: (newRun) => {
+          setWorkOrderRunId(newRun.run_id)
+          setRunStatusMessage('LLM이 작업지시서를 생성하고 있습니다.')
+        },
+        onError: () => setRunStatusMessage('작업지시서 생성을 시작하지 못했습니다.'),
+      },
+    )
+  }
+
   useEffect(() => {
     if (activeProposalView == null && activeProposal != null) {
       setActiveProposal(null)
     }
   }, [activeProposal, activeProposalView])
+
+  useEffect(() => {
+    if (workOrderRun.data?.status === 'completed') {
+      setRunStatusMessage('작업지시서 생성이 완료되었습니다. 상단 작업지시서 탭에서 확인할 수 있습니다.')
+    } else if (workOrderRun.data?.status === 'failed') {
+      setRunStatusMessage('작업지시서 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    }
+  }, [workOrderRun.data?.status])
 
   return (
     <SurfaceCard action={<Button aria-label="상세 닫기" icon="x" onClick={onClose} />} className="activity-detail" title="실행 상세">
@@ -303,6 +333,26 @@ export function ExecutionDetail({ item, onClose }: Props) {
             />
             {run.data && (
               <>
+                <article className="activity-evidence-card highlight work-order-guide">
+                  <header>
+                    <h3>작업지시서 가이드</h3>
+                    <span>{run.data.token_usage?.cost_estimate?.model ?? '백엔드 작업지시서 모델'}</span>
+                  </header>
+                  <p>분석 근거와 권장 조치를 확인한 뒤 생성하세요. 생성 버튼을 누르면 LLM이 이 알림 전용 작업지시서를 작성합니다.</p>
+                  <p><strong>대상:</strong> {facilityName(run.data.substation_id, run.data.manufacturer_id)}</p>
+                  <p><strong>분석 요약:</strong> {run.data.ops_output?.summary ?? result.data?.situation ?? '분석 결과를 준비 중입니다.'}</p>
+                  <div className="policy-actions">
+                    <Button
+                      disabled={createRun.isPending || workOrderRun.data?.status === 'queued' || workOrderRun.data?.status === 'running'}
+                      onClick={createWorkOrder}
+                      tone="primary"
+                    >
+                      {createRun.isPending || workOrderRun.data?.status === 'queued' || workOrderRun.data?.status === 'running'
+                        ? '작업지시서 생성 중'
+                        : '작업지시서 생성'}
+                    </Button>
+                  </div>
+                </article>
                 <article className="activity-evidence-card">
                   <header>
                     <h3>실행 정보</h3>

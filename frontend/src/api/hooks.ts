@@ -113,7 +113,11 @@ export function useCreateAgentRun() {
   return useMutation({
     mutationFn: (v: { alertId: string; forceNew?: boolean; requestedBy?: string; reason?: string }) =>
       agentRunsApi.create({ alert_id: v.alertId, force_new: v.forceNew, requested_by: v.requestedBy, reason: v.reason }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['alerts'] })
+      qc.invalidateQueries({ queryKey: qk.runs })
+      qc.invalidateQueries({ queryKey: ['work-orders'] })
+    },
   })
 }
 
