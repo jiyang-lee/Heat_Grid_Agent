@@ -72,6 +72,7 @@ import type {
   ReplayRunCreateRequest,
   ReplayRunCreateResponse,
   ReplayRunSnapshot,
+  ScenarioAlertCreateRequest,
   RunLineageResponse,
   CostBreakdownProjection,
   ModelCallProjection,
@@ -238,6 +239,14 @@ export const agentRunsApi = {
     }),
   iterations: (runId: string) =>
     apiFetch<AgentLoopIteration[]>(`/agent-runs/${runId}/iterations`),
+}
+
+export const scenarioAlertsApi = {
+  create: (body: ScenarioAlertCreateRequest) =>
+    apiFetch<AlertSummary>('/scenario-alerts', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }
 
 export const reviewChatApi = {

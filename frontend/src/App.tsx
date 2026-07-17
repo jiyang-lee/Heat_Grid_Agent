@@ -5,7 +5,6 @@ import { AppShell, type ConsolePage } from './console/AppShell'
 import { DashboardPage } from './console/DashboardPage'
 import { SettingsPage } from './console/SettingsPage'
 import { EntryGate } from './scenario/EntryGate'
-import { ScenarioAiPage } from './scenario/ScenarioAiPage'
 import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
 import { ScenarioProvider } from './scenario/ScenarioContext'
 import { useScenario } from './scenario/useScenario'
@@ -28,10 +27,7 @@ function ConsoleApp() {
   }
   const navigate = (next: ConsolePage) => {
     // 사이드바/벨로 AI 활동에 들어오는 경로는 항상 목록 전용으로 시작한다.
-    if (next === 'reports') {
-      setPendingRunId(null)
-      if (scenario.state.mode === 'fault') scenario.setAiEntry('overview')
-    }
+    if (next === 'reports') setPendingRunId(null)
     if (next === 'alerts') setInitialScenarioAlertId(null)
     setPage(next)
   }
@@ -61,8 +57,8 @@ function ConsoleApp() {
     simulatedAt={faultMode ? scenario.sensor.state.simulatedAt : null}
   >
     {page === 'dashboard' && <DashboardPage onOpenAlerts={(alertId) => { if (faultMode && alertId != null) scenario.selectAlert(alertId); setInitialScenarioAlertId(alertId ?? null); setPage('alerts') }} theme={theme.resolvedTheme} />}
-    {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialScenarioAlert} onOpenAiAction={() => { scenario.setAiEntry('detail'); setPage('reports') }} /> : <AlertsPage onRunCreated={openRun} />)}
-    {page === 'reports' && (faultMode ? <ScenarioAiPage /> : <AiActivityPage initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />)}
+    {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialScenarioAlert} onOpenAiAction={openRun} /> : <AlertsPage onRunCreated={openRun} />)}
+    {page === 'reports' && <AiActivityPage initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
     {page === 'settings' && <SettingsPage onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
   </AppShell>
 }

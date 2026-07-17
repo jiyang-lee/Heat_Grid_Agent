@@ -181,6 +181,12 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     analyzedAlertIds: current.analyzedAlertIds.includes(current.analysisAlertId) ? current.analyzedAlertIds : [...current.analyzedAlertIds, current.analysisAlertId],
     analysisToastVisible: true,
   })), [])
+  const failAnalysis = useCallback(() => setState((current) => current.analysisState !== 'running' ? current : ({
+    ...current,
+    analysisState: 'idle',
+    analysisAlertId: null,
+    analysisToastVisible: false,
+  })), [])
   const dismissAnalysisToast = useCallback(() => setState((current) => ({ ...current, analysisToastVisible: false })), [])
   const dismissIncidentAlert = useCallback((alertId: string) => setState((current) => ({ ...current, dismissedIncidentAlertIds: current.dismissedIncidentAlertIds.includes(alertId) ? current.dismissedIncidentAlertIds : [...current.dismissedIncidentAlertIds, alertId] })), [])
   const dismissIncidentPopup = useCallback(() => setState((current) => ({ ...current, incidentPopupVisible: false })), [])
@@ -220,8 +226,8 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => ({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
-  }), [acceptWorkOrder, alertHistory, alerts, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, issueReport, postChatMessage, resolveAlert, restartScenario, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, issueReport, postChatMessage, resolveAlert, restartScenario, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }

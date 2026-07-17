@@ -199,13 +199,13 @@ export function AiActivityPage({ initialRunId, onConsumeInitialRun }: Props) {
     <div className="page-stack activity-page">
       <header className="page-title">
         <div>
-          <h1>AI 활동</h1>
-          <p>AI가 알림을 분석하고 진단 근거와 실행 결과·작업지시서·보고서를 한곳에서 검토합니다.</p>
+          <h1>AI 조치</h1>
+          <p>알림별 조치 계획, 작업지시서 버전과 발행 보고서를 확인합니다.</p>
         </div>
       </header>
 
       <div className="activity-tabs" role="tablist">
-        {([['execution', '실행 활동'], ['orders', '작업지시서'], ['reports', '보고서']] as const).map(([key, label]) => (
+        {([['execution', '조치 계획'], ['orders', '작업지시서'], ['reports', '보고서']] as const).map(([key, label]) => (
           <button aria-selected={tab === key} className={tab === key ? 'active' : ''} key={key} onClick={() => changeTab(key)} role="tab" type="button">{label}</button>
         ))}
       </div>

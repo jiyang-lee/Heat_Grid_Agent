@@ -114,7 +114,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
 
         <SurfaceCard action={<button className="text-link" onClick={() => onOpenAlerts()} type="button">자세히 보기</button>} className="home-alerts" title="주요 알림">
         {!faultMode && <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />}
-        {faultMode && !incidentActive && <div className="home-alert-empty"><Icon name="shield" /><div><strong>운영 알림 없음</strong><span>센서 흐름을 정상 수신 중입니다.</span></div></div>}
+        {faultMode && !incidentActive && <div className="home-alert-empty"><Icon name="shield" /><div><strong>현재 주요 알림 없음</strong><span>모든 설비를 정상 모니터링 중입니다.</span></div></div>}
         {faultMode && incidentActive ? scenario.alerts.map((alert) => (
           <button aria-pressed={scenario.state.selectedAlertId === alert.id} className={`home-alert-row ${scenario.state.selectedAlertId === alert.id ? 'selected' : ''}`.trim()} key={alert.id} onClick={() => scenario.selectAlert(alert.id)} type="button">
             <span className={`alert-symbol tone-${alert.priority === 'urgent' ? 'critical' : 'warning'}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span>

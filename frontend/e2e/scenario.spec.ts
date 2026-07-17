@@ -16,7 +16,7 @@ async function expectNoPageScroll(page: Page) {
 }
 
 async function waitForIncident(page: Page) {
-  await expect(page.getByText('운영 알림 없음', { exact: true })).toBeVisible()
+  await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
 }
 
@@ -80,14 +80,19 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
 
   await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
   await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
-  await expect(page.getByRole('region', { name: '환수온도 이상 시계열' })).toBeVisible()
+  const evidenceChart = page.getByRole('region', { name: '환수온도 이상 시계열' })
+  await expect(evidenceChart).toBeVisible()
+  await expect(evidenceChart).toHaveCSS('background-image', 'none')
+  await expect.poll(() => evidenceChart.locator('.scenario-evidence-point').first().evaluate((point) => getComputedStyle(point).vectorEffect)).toBe('non-scaling-stroke')
   await expect(page.getByRole('heading', { name: '환수온도 이상 감지' })).toBeVisible()
   await page.getByRole('button', { name: '상세 정보 닫기' }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toHaveCount(0)
   await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
   await page.getByRole('button', { name: 'AI 조치 분석' }).click()
-  await expect(page.getByRole('button', { name: 'AI 조치 바로가기' })).toBeVisible({ timeout: 3_000 })
-  await page.getByRole('button', { name: 'AI 조치 바로가기' }).click()
+  const aiShortcut = page.getByRole('button', { name: 'AI 조치 바로가기' })
+  await expect(aiShortcut).toBeVisible({ timeout: 3_000 })
+  await expect.poll(() => aiShortcut.evaluate((button) => button.getBoundingClientRect().height)).toBeGreaterThanOrEqual(50)
+  await aiShortcut.click()
   await expect(page.locator('.topbar-page-context')).toContainText('AI 조치')
   await expect(page.getByRole('heading', { name: 'AI 권장 조치' })).toBeVisible()
   await expectNoPageScroll(page)
@@ -104,7 +109,9 @@ test('refresh keeps the current page and clears resolved alerts', async ({ page 
   await page.getByRole('button', { name: '종결', exact: true }).click()
   await expect(page.getByText('종결', { exact: true }).first()).toBeVisible()
 
-  await page.getByRole('button', { name: '새로고침', exact: true }).click()
+  const refreshButton = page.getByRole('button', { name: '새로고침', exact: true })
+  await refreshButton.click()
+  await expect(refreshButton).not.toBeFocused()
   await expect(page.locator('.topbar-page-context')).toContainText('알림')
   await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
   await expect(page.getByRole('combobox', { name: '표시 범위' })).toHaveValue('active')

@@ -119,7 +119,7 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
               <Icon name="bell" />
               {openCount > 0 && <b>{openCount}</b>}
             </button>
-            <button className="refresh-button" onClick={refreshAll} type="button">
+            <button className="refresh-button" onClick={refreshAll} onPointerUp={(event) => event.currentTarget.blur()} type="button">
               <Icon name="refresh" />
               새로고침
             </button>

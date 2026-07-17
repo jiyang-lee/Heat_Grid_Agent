@@ -35,6 +35,13 @@ export interface AlertSummary {
   acked_by: string | null
 }
 
+export interface ScenarioAlertCreateRequest {
+  readonly scenario_alert_id: string
+  readonly substation_id: number
+  readonly priority_level: 'urgent' | 'high'
+  readonly reason: string
+}
+
 /** POST /api/alerts/{alert_id}/ack, /resolve 요청 body */
 export interface AlertAckRequest {
   acked_by: string

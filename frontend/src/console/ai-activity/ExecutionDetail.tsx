@@ -53,6 +53,22 @@ function decisionTone(status: string): Tone {
   return 'neutral'
 }
 
+function runStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    queued: '대기',
+    running: '실행 중',
+    completed: '완료',
+    failed: '실패',
+    cancelled: '취소',
+  }
+  return labels[status] ?? status
+}
+
+function priorityLabel(priority: string | null): string {
+  const labels: Record<string, string> = { urgent: '심각', high: '경고', normal: '일반' }
+  return priority == null ? '-' : (labels[priority] ?? priority)
+}
+
 interface Props {
   readonly item: { run_id: string; status: string; priority: string | null; operator_review_status: any; alert_id: string; substation_id: number | null; manufacturer_id: string | null; created_at: string }
   readonly onClose: () => void
@@ -76,7 +92,8 @@ const PROPOSAL_TONES: Record<string, Tone> = {
 export function ExecutionDetail({ item, onClose }: Props) {
   const runId = item.run_id
   const run = useAgentRun(runId)
-  const result = useAgentRunResult(runId)
+  const completedRunId = item.status === 'completed' ? runId : null
+  const result = useAgentRunResult(completedRunId)
   const review = useAgentRunReviewSnapshot(runId)
   const iterations = useAgentIterations(runId)
   const reviewHistory = useOperatorReviews(runId)
@@ -86,7 +103,7 @@ export function ExecutionDetail({ item, onClose }: Props) {
   const toolCalls = useRunToolCalls(runId)
   const cost = useRunCostBreakdown(runId)
   const artifacts = useArtifacts(runId)
-  const replayProbe = useReplayRunSnapshot(runId)
+  const replayProbe = useReplayRunSnapshot(completedRunId)
 
   const createRun = useCreateAgentRun()
 
@@ -141,9 +158,9 @@ export function ExecutionDetail({ item, onClose }: Props) {
       {
         onSuccess: (thread) => {
           setThreadId(thread.thread_id)
-          setRunStatusMessage('Review chat opened.')
+          setRunStatusMessage('검토 대화가 열렸습니다.')
         },
-        onError: () => setRunStatusMessage('Failed to open review chat. Try again.'),
+        onError: () => setRunStatusMessage('검토 대화를 열지 못했습니다. 다시 시도해 주세요.'),
       },
     )
   }
@@ -166,7 +183,7 @@ export function ExecutionDetail({ item, onClose }: Props) {
           setMessageText('')
           void chatMessages.refetch()
         },
-        onError: () => setRunStatusMessage('Failed to send review chat message.'),
+        onError: () => setRunStatusMessage('검토 의견을 전송하지 못했습니다.'),
       },
     )
   }
@@ -185,12 +202,12 @@ export function ExecutionDetail({ item, onClose }: Props) {
       },
       {
         onSuccess: (payload) => {
-          setRunStatusMessage(payload.child_run_id ? `Child run created: ${payload.child_run_id}` : 'Proposal confirmed.')
+          setRunStatusMessage(payload.child_run_id ? `후속 실행이 생성되었습니다: ${payload.child_run_id}` : '제안이 승인되었습니다.')
           setActiveProposal(null)
           void reviewHistory.refetch()
           void run.refetch()
         },
-        onError: () => setRunStatusMessage('Failed to confirm proposal.'),
+        onError: () => setRunStatusMessage('제안을 승인하지 못했습니다.'),
       },
     )
   }
@@ -204,11 +221,11 @@ export function ExecutionDetail({ item, onClose }: Props) {
       },
       {
         onSuccess: () => {
-          setRunStatusMessage('Proposal cancelled.')
+          setRunStatusMessage('제안이 취소되었습니다.')
           setActiveProposal(null)
           void chatMessages.refetch()
         },
-        onError: () => setRunStatusMessage('Failed to cancel proposal.'),
+        onError: () => setRunStatusMessage('제안을 취소하지 못했습니다.'),
       },
     )
   }
@@ -220,13 +237,13 @@ export function ExecutionDetail({ item, onClose }: Props) {
         alertId: item.alert_id,
         forceNew: rerunForceNew,
         requestedBy: rerunRequestedBy,
-        reason: rerunReason.trim() || 'manual rerun from UI',
+        reason: rerunReason.trim() || '운영자 화면에서 재실행',
       },
       {
         onSuccess: (newRun) => {
-          setRunStatusMessage(`New run created: ${newRun.run_id}`)
+          setRunStatusMessage(`새 실행이 생성되었습니다: ${newRun.run_id}`)
         },
-        onError: () => setRunStatusMessage('Failed to create rerun.'),
+        onError: () => setRunStatusMessage('재실행을 생성하지 못했습니다.'),
       },
     )
   }
@@ -238,25 +255,25 @@ export function ExecutionDetail({ item, onClose }: Props) {
   }, [activeProposal, activeProposalView])
 
   return (
-    <SurfaceCard action={<Button aria-label="Close" icon="x" onClick={onClose} />} className="activity-detail" title="Execution detail">
+    <SurfaceCard action={<Button aria-label="상세 닫기" icon="x" onClick={onClose} />} className="activity-detail" title="실행 상세">
       <div className="detail-body">
         <div className="detail-title">
           <div className="activity-detail-badges">
             <StatusBadge tone={item.priority === 'urgent' ? 'critical' : item.priority === 'high' ? 'warning' : 'primary'}>
-              {item.priority ?? '-'}
+              {priorityLabel(item.priority)}
             </StatusBadge>
-            <StatusBadge tone={stateTone(item.status)}>{item.status}</StatusBadge>
+            <StatusBadge tone={stateTone(item.status)}>{runStatusLabel(item.status)}</StatusBadge>
             <StatusBadge tone={item.operator_review_status === 'approved' ? 'success' : item.operator_review_status === 'pending' ? 'notice' : 'warning'}>
               {workOrderStatusLabel(item.operator_review_status)}
             </StatusBadge>
           </div>
-          <h2>{facilityName(item.substation_id, item.manufacturer_id)} / run {runId.slice(0, 8)}...</h2>
-          <p>Run created: {formatDateTime(item.created_at)}</p>
+          <h2>{facilityName(item.substation_id, item.manufacturer_id)} / 실행 {runId.slice(0, 8)}...</h2>
+          <p>실행 시작: {formatDateTime(item.created_at)}</p>
         </div>
 
         <div className="activity-tabs activity-inner-tabs" role="tablist">
           {(
-            [['summary', 'Summary'], ['review', 'Review'], ['artifacts', 'Artifacts'], ['chat', 'Review Chat'], ['trace', 'Trace'], ['run', 'Run']] as const
+            [['summary', '요약'], ['review', '검토'], ['artifacts', '산출물'], ['chat', '검토 대화'], ['trace', '실행 추적'], ['run', '재실행']] as const
           ).map(([key, label]) => (
             <button
               aria-selected={tab === key}
@@ -288,22 +305,22 @@ export function ExecutionDetail({ item, onClose }: Props) {
               <>
                 <article className="activity-evidence-card">
                   <header>
-                    <h3>Run snapshot</h3>
-                    <span>Alert {run.data.alert_id}</span>
+                    <h3>실행 정보</h3>
+                    <span>알림 {run.data.alert_id}</span>
                   </header>
-                  <p><strong>Status:</strong> {run.data.status}</p>
-                  <p><strong>Input:</strong> {run.data.input_source}</p>
-                  <p><strong>Agent mode:</strong> {run.data.agent_mode ?? '-'}</p>
-                  {run.data.error && <p><strong>Error:</strong> {run.data.error}</p>}
+                  <p><strong>상태:</strong> {runStatusLabel(run.data.status)}</p>
+                  <p><strong>입력:</strong> {run.data.input_source === 'alert' ? '알림' : run.data.input_source}</p>
+                  <p><strong>에이전트 모드:</strong> {run.data.agent_mode ?? '-'}</p>
+                  {run.data.error && <p><strong>오류:</strong> {run.data.error}</p>}
                 </article>
                 <article className="activity-evidence-card">
-                  <h3>Result</h3>
-                  <p>{run.data.ops_output?.summary ?? result.data?.situation ?? 'No result payload yet.'}</p>
+                  <h3>분석 결과</h3>
+                  <p>{run.data.ops_output?.summary ?? result.data?.situation ?? '분석 결과를 준비 중입니다.'}</p>
                 </article>
                 <article className="activity-evidence-card">
-                  <h3>Run metadata</h3>
-                  <p><strong>Loop:</strong> {run.data.loop_summary?.iterations ?? '-'} / max {run.data.loop_summary?.max_iterations ?? '-'}</p>
-                  <p><strong>Review status:</strong> {review.data?.status ?? '-'}</p>
+                  <h3>실행 메타데이터</h3>
+                  <p><strong>반복:</strong> {run.data.loop_summary?.iterations ?? '-'} / 최대 {run.data.loop_summary?.max_iterations ?? '-'}</p>
+                  <p><strong>검토 상태:</strong> {review.data?.status ?? '-'}</p>
                 </article>
               </>
             )}
@@ -318,19 +335,19 @@ export function ExecutionDetail({ item, onClose }: Props) {
               loading={reviewHistory.isLoading}
               retry={() => void reviewHistory.refetch()}
             />
-            {!review.data && <p className="activity-empty-note">Review snapshot is not available yet.</p>}
+            {!review.data && <p className="activity-empty-note">검토 정보를 준비 중입니다.</p>}
             {review.data && (
               <>
                 <article className="activity-evidence-card">
-                  <h3>Review overview</h3>
-                  <p><strong>Result status:</strong> {review.data.snapshot?.result?.status}</p>
-                  <p><strong>Agent mode:</strong> {review.data.snapshot?.result?.agent_mode ?? '-'}</p>
-                  <p><strong>Review required:</strong> {review.data.snapshot?.model_verification ? review.data.snapshot.model_verification.status : 'no snapshot'}</p>
+                  <h3>검토 개요</h3>
+                  <p><strong>결과 상태:</strong> {review.data.snapshot?.result?.status}</p>
+                  <p><strong>에이전트 모드:</strong> {review.data.snapshot?.result?.agent_mode ?? '-'}</p>
+                  <p><strong>검토 필요:</strong> {review.data.snapshot?.model_verification ? review.data.snapshot.model_verification.status : '정보 없음'}</p>
                 </article>
                 <article className="activity-evidence-card">
-                  <h3>Review history</h3>
+                  <h3>검토 이력</h3>
                   <ul className="review-history">
-                    {reviewHistory.data?.items.length === 0 && <li>No review history.</li>}
+                    {reviewHistory.data?.items.length === 0 && <li>검토 이력이 없습니다.</li>}
                     {reviewHistory.data?.items.map((entry) => (
                       <li key={entry.review_id}>
                         <header>
@@ -345,11 +362,11 @@ export function ExecutionDetail({ item, onClose }: Props) {
                 </article>
               </>
             )}
-            <p className="review-scope-note">Review operations are recorded to the run review timeline.</p>
+            <p className="review-scope-note">검토 작업은 실행 검토 이력에 기록됩니다.</p>
             <div className="detail-actions activity-actions">
-              <Button onClick={() => setAction('keep_human_review')}>Keep Human Review</Button>
-              <Button onClick={() => setAction('reject')} tone="danger">Reject</Button>
-              <Button onClick={() => setAction('approve')} tone="primary">Approve</Button>
+              <Button onClick={() => setAction('keep_human_review')}>운영자 검토 유지</Button>
+              <Button onClick={() => setAction('reject')} tone="danger">반려</Button>
+              <Button onClick={() => setAction('approve')} tone="primary">승인</Button>
             </div>
           </section>
         )}
@@ -357,15 +374,15 @@ export function ExecutionDetail({ item, onClose }: Props) {
         {tab === 'artifacts' && (
           <section role="tabpanel">
             <div className="activity-evidence-card">
-              <h3>Artifacts</h3>
+              <h3>산출물</h3>
               <ApiState empty={false} error={artifacts.isError} loading={artifacts.isLoading} retry={() => void artifacts.refetch()} />
               <div className="table-scroll">
                 <table className="ops-table activity-table">
                   <thead>
                     <tr>
-                      <th>Artifact</th>
-                      <th>Kind</th>
-                      <th>Created</th>
+                      <th>산출물</th>
+                      <th>유형</th>
+                      <th>생성 시간</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -376,18 +393,18 @@ export function ExecutionDetail({ item, onClose }: Props) {
                         <td>{entry.kind}</td>
                         <td>{formatDateTime(entry.created_at)}</td>
                         <td>
-                          <Button onClick={() => setSelectedArtifactId(entry.artifact_id)} icon="document">Open</Button>
+                          <Button onClick={() => setSelectedArtifactId(entry.artifact_id)} icon="document">열기</Button>
                         </td>
                       </tr>
                     ))}
-                    {artifacts.data?.length === 0 && <tr><td colSpan={4}>No artifacts.</td></tr>}
+                    {artifacts.data?.length === 0 && <tr><td colSpan={4}>생성된 산출물이 없습니다.</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
             {artifact && (
               <article className="activity-evidence-card">
-                <h3>Artifact content</h3>
+                <h3>산출물 내용</h3>
                 <p><strong>{artifact.name}</strong> ({artifact.artifact_id})</p>
                 <ApiState
                   empty={artifactContent.isLoading === false && !artifactContent.data}
@@ -404,7 +421,7 @@ export function ExecutionDetail({ item, onClose }: Props) {
         {tab === 'chat' && (
           <section role="tabpanel">
             <div className="detail-actions">
-              <Button onClick={openChatThread}>Open Review Chat</Button>
+              <Button onClick={openChatThread}>검토 대화 열기</Button>
             </div>
             <ApiState
               empty={false}
@@ -426,24 +443,24 @@ export function ExecutionDetail({ item, onClose }: Props) {
                   <span>{message.content}</span>
                 </li>
               ))}
-              {messages.length === 0 && <li>No messages.</li>}
+              {messages.length === 0 && <li>대화 내용이 없습니다.</li>}
             </ul>
 
             {activeProposalView && (
               <article className="activity-evidence-card">
-                <h3>Proposal</h3>
-                <p><strong>Status:</strong> <StatusBadge tone={PROPOSAL_TONES[activeProposalView.status] ?? 'notice'}>{activeProposalView.status}</StatusBadge></p>
-                <p><strong>Decision:</strong> {activeProposalView.decision}</p>
-                <p><strong>Reason:</strong> {activeProposalView.reason}</p>
-                <p><strong>Target stage:</strong> {activeProposalView.target_stage ?? '-'}</p>
+                <h3>변경 제안</h3>
+                <p><strong>상태:</strong> <StatusBadge tone={PROPOSAL_TONES[activeProposalView.status] ?? 'notice'}>{activeProposalView.status}</StatusBadge></p>
+                <p><strong>결정:</strong> {activeProposalView.decision}</p>
+                <p><strong>사유:</strong> {activeProposalView.reason}</p>
+                <p><strong>대상 단계:</strong> {activeProposalView.target_stage ?? '-'}</p>
                 <div className="policy-actions">
                   <Button
                     disabled={activeProposalView.status !== 'awaiting_confirmation'}
                     onClick={confirmActiveProposal}
                   >
-                    Confirm
+                    승인
                   </Button>
-                  <Button tone="danger" onClick={cancelActiveProposal}>Cancel</Button>
+                  <Button tone="danger" onClick={cancelActiveProposal}>취소</Button>
                 </div>
               </article>
             )}
@@ -453,11 +470,11 @@ export function ExecutionDetail({ item, onClose }: Props) {
                 rows={3}
                 value={messageText}
                 onChange={(event) => setMessageText(event.target.value)}
-                placeholder="Send operator message in review chat"
+                placeholder="작업지시서 검토 의견을 입력하세요"
               />
               <div className="policy-actions">
                 <Button onClick={sendMessage} disabled={!threadId || postMessage.isPending || messageText.trim().length === 0} tone="primary">
-                  Send
+                  전송
                 </Button>
               </div>
             </form>
@@ -467,7 +484,7 @@ export function ExecutionDetail({ item, onClose }: Props) {
         {tab === 'trace' && (
           <section role="tabpanel">
             <div className="activity-evidence-card">
-              <h3>Execution trace</h3>
+              <h3>실행 추적</h3>
               <ApiState
                 empty={false}
                 error={stages.isError}
@@ -480,38 +497,38 @@ export function ExecutionDetail({ item, onClose }: Props) {
                   void cost.refetch()
                 }}
               />
-              {stages.data?.items.length === 0 && <p className="activity-empty-note">No stage data.</p>}
+              {stages.data?.items.length === 0 && <p className="activity-empty-note">단계 정보가 없습니다.</p>}
               {(stages.data?.items ?? []).map((entry: StageProjection) => (
                 <article className="activity-evidence-card" key={entry.stage_snapshot_id}>
                   <h3>{STAGE_LABELS[entry.stage_name] ?? entry.stage_name}</h3>
-                  <p><StatusBadge tone={stateTone(entry.execution_status)}>{entry.execution_status}</StatusBadge> attempt {entry.attempt}</p>
-                  <p><strong>Score:</strong> {entry.score ?? '-'} / threshold {entry.threshold ?? '-'}</p>
-                  <p><strong>Quality:</strong> {entry.quality_status ?? '-'}</p>
-                  <p><strong>Reasons:</strong> {entry.reasons.join(', ') || '-'}</p>
-                  <p><strong>Retries:</strong> {String(entry.retry_exhausted)} / force_review: {String(entry.force_review)}</p>
+                  <p><StatusBadge tone={stateTone(entry.execution_status)}>{runStatusLabel(entry.execution_status)}</StatusBadge> 시도 {entry.attempt}</p>
+                  <p><strong>점수:</strong> {entry.score ?? '-'} / 기준 {entry.threshold ?? '-'}</p>
+                  <p><strong>품질:</strong> {entry.quality_status ?? '-'}</p>
+                  <p><strong>근거:</strong> {entry.reasons.join(', ') || '-'}</p>
+                  <p><strong>재시도 소진:</strong> {String(entry.retry_exhausted)} / 강제 검토: {String(entry.force_review)}</p>
                 </article>
               ))}
               <article className="activity-evidence-card">
-                <h3>Lineage</h3>
+                <h3>실행 계보</h3>
                 {lineage.data ? (
                   <>
-                    <p><strong>Root run:</strong> {lineage.data.root_run_id}</p>
-                    <p><strong>Current run:</strong> {lineage.data.current_run_id}</p>
-                    <p><strong>Depth:</strong> {lineage.data.depth}</p>
-                    <p><strong>Children:</strong> {lineage.data.children.length}</p>
+                    <p><strong>최초 실행:</strong> {lineage.data.root_run_id}</p>
+                    <p><strong>현재 실행:</strong> {lineage.data.current_run_id}</p>
+                    <p><strong>깊이:</strong> {lineage.data.depth}</p>
+                    <p><strong>후속 실행:</strong> {lineage.data.children.length}</p>
                   </>
-                ) : <p className="activity-empty-note">Lineage not ready.</p>}
+                ) : <p className="activity-empty-note">실행 계보를 준비 중입니다.</p>}
               </article>
               <article className="activity-evidence-card">
-                <h3>Calls</h3>
+                <h3>호출 내역</h3>
                 {cost.data && (
-                  <p><strong>Tokens:</strong> {cost.data.total_tokens}</p>
+                  <p><strong>토큰:</strong> {cost.data.total_tokens}</p>
                 )}
-                <p><strong>Model calls:</strong> {modelCalls.data?.length ?? 0}</p>
-                <p><strong>Tool calls:</strong> {toolCalls.data?.length ?? 0}</p>
+                <p><strong>모델 호출:</strong> {modelCalls.data?.length ?? 0}</p>
+                <p><strong>도구 호출:</strong> {toolCalls.data?.length ?? 0}</p>
                 {(toolCalls.data ?? []).slice(0, 6).map((entry: ToolCallProjection) => (
                   <p key={entry.tool_call_id}>
-                    <strong>{entry.tool_name}</strong> in {entry.stage_name} ({entry.status})
+                    <strong>{entry.tool_name}</strong> / {entry.stage_name} ({entry.status})
                   </p>
                 ))}
               </article>
@@ -522,38 +539,38 @@ export function ExecutionDetail({ item, onClose }: Props) {
         {tab === 'run' && (
           <section role="tabpanel">
             <article className="activity-evidence-card">
-              <h3>Run controls</h3>
+              <h3>재실행 설정</h3>
               <div className="review-form">
                 <label>
-                  Requested by
+                  요청자
                   <input onChange={(event) => setRerunRequestedBy(event.target.value)} value={rerunRequestedBy} />
                 </label>
                 <label>
-                  Reason
+                  재실행 사유
                   <input onChange={(event) => setRerunReason(event.target.value)} value={rerunReason} />
                 </label>
                 <label>
-                  Force new run
+                  새 실행 강제 생성
                   <select onChange={(event) => setRerunForceNew(event.target.value === 'true')} value={rerunForceNew ? 'true' : 'false'}>
                     <option value="true">true</option>
                     <option value="false">false</option>
                   </select>
                 </label>
-                <Button onClick={createRerun} tone="primary">Create Rerun</Button>
+                <Button onClick={createRerun} tone="primary">재실행 생성</Button>
               </div>
-              {createRun.isError && <p className="form-error">Failed to create rerun.</p>}
+              {createRun.isError && <p className="form-error">재실행을 생성하지 못했습니다.</p>}
             </article>
 
             <article className="activity-evidence-card">
-              <h3>Execution history</h3>
-              <p><strong>Iteration count:</strong> {iterations.data?.length ?? '-'}</p>
-              <p><strong>Review snapshot status:</strong> {review.data?.status ?? '-'}</p>
-              <p><strong>Run completed:</strong> {item.status === 'completed' || item.status === 'failed' ? 'yes' : 'no'}</p>
+              <h3>실행 이력</h3>
+              <p><strong>반복 횟수:</strong> {iterations.data?.length ?? '-'}</p>
+              <p><strong>검토 상태:</strong> {review.data?.status ?? '-'}</p>
+              <p><strong>실행 종료:</strong> {item.status === 'completed' || item.status === 'failed' ? '예' : '아니요'}</p>
             </article>
 
             <article className="activity-evidence-card">
-              <h3>Replay lookup</h3>
-              <p>If replay feature is enabled, you can open a related replay run from this run.</p>
+              <h3>재생 실행 조회</h3>
+              <p>재생 기능이 활성화되어 있으면 이 실행과 연결된 재생 실행을 확인할 수 있습니다.</p>
               <ApiState
                 empty={false}
                 error={replayProbe.isError}
@@ -561,7 +578,7 @@ export function ExecutionDetail({ item, onClose }: Props) {
                 retry={() => void replayProbe.refetch()}
               />
               {replayProbe.isError && replayProbe.error instanceof ApiError && replayProbe.error.status === 404 && (
-                <p className="activity-empty-note">No replay snapshot by current run_id.</p>
+                <p className="activity-empty-note">현재 실행과 연결된 재생 정보가 없습니다.</p>
               )}
             </article>
           </section>

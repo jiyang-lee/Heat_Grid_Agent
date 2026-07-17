@@ -15,6 +15,7 @@ export interface ScenarioContextValue {
   readonly selectAlert: (alertId: string) => void
   readonly startAnalysis: (alertId: string) => void
   readonly completeAnalysis: () => void
+  readonly failAnalysis: () => void
   readonly dismissAnalysisToast: () => void
   readonly dismissIncidentAlert: (alertId: string) => void
   readonly dismissIncidentPopup: () => void
