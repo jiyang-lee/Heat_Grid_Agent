@@ -14,8 +14,12 @@ const initialState: ScenarioState = {
   selectedAlertId: DEFAULT_ALERT?.id ?? '',
   incidentState: 'monitoring',
   analysisState: 'idle',
+  analysisAlertId: null,
+  analyzedAlertIds: [],
   analysisToastVisible: false,
   incidentPopupVisible: false,
+  dismissedIncidentAlertIds: [],
+  resolvedAlertTimes: {},
   aiEntry: 'overview',
   workOrders: [],
   acceptedWorkOrderVersion: null,
@@ -39,6 +43,19 @@ function reportState(status: ScenarioReportStatus): ScenarioState['report'] {
   return { status, createdAt: null, issuedAt: null }
 }
 
+function storedIds(value: object, key: string): readonly string[] {
+  if (!(key in value)) return []
+  const candidate = (value as Record<string, unknown>)[key]
+  return Array.isArray(candidate) ? candidate.filter((item): item is string => typeof item === 'string') : []
+}
+
+function storedStringRecord(value: object, key: string): Readonly<Record<string, string>> {
+  if (!(key in value)) return {}
+  const candidate = (value as Record<string, unknown>)[key]
+  if (typeof candidate !== 'object' || candidate == null || Array.isArray(candidate)) return {}
+  return Object.fromEntries(Object.entries(candidate).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+}
+
 function loadSession(): ScenarioState {
   const raw = window.sessionStorage.getItem(SESSION_KEY)
   if (!raw) return initialState
@@ -55,6 +72,7 @@ function loadSession(): ScenarioState {
     const category = 'evaluationCategory' in value && (value.evaluationCategory === 'model' || value.evaluationCategory === 'external-data' || value.evaluationCategory === 'rag' || value.evaluationCategory === 'work-order') ? value.evaluationCategory : null
     const incidentState = 'incidentState' in value && value.incidentState === 'incident-active' ? 'incident-active' : 'monitoring'
     const storedReport = 'reportStatus' in value && (value.reportStatus === 'draft' || value.reportStatus === 'issued') ? value.reportStatus : 'idle'
+    const analyzedAlertIds = storedIds(value, 'analyzedAlertIds')
     const acceptedWorkOrderVersion = 'acceptedWorkOrderVersion' in value && (value.acceptedWorkOrderVersion === 1 || value.acceptedWorkOrderVersion === 2 || value.acceptedWorkOrderVersion === 3) && value.acceptedWorkOrderVersion <= workOrderCount ? value.acceptedWorkOrderVersion : null
     return {
       ...initialState,
@@ -63,7 +81,11 @@ function loadSession(): ScenarioState {
       scenarioId: mode === 'fault' ? ACTIVE_SCENARIO_ID : null,
       selectedAlertId,
       incidentState,
-      analysisState: workOrderCount > 0 ? 'complete' : 'idle',
+      analysisState: 'idle',
+      analysisAlertId: null,
+      analyzedAlertIds,
+      dismissedIncidentAlertIds: storedIds(value, 'dismissedIncidentAlertIds'),
+      resolvedAlertTimes: storedStringRecord(value, 'resolvedAlertTimes'),
       workOrders,
       acceptedWorkOrderVersion,
       evaluationRequired: workOrderCount >= 3,
@@ -83,6 +105,9 @@ function persist(state: ScenarioState): void {
     scenarioId: state.scenarioId,
     selectedAlertId: state.selectedAlertId,
     incidentState: state.incidentState,
+    analyzedAlertIds: state.analyzedAlertIds,
+    dismissedIncidentAlertIds: state.dismissedIncidentAlertIds,
+    resolvedAlertTimes: state.resolvedAlertTimes,
     workOrderCount: state.workOrders.length,
     acceptedWorkOrderVersion: state.acceptedWorkOrderVersion,
     evaluationCategory: state.improvementCandidate?.category ?? null,
@@ -107,7 +132,7 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const [state, setState] = useState<ScenarioState>(loadSession)
   const selectedAlert = alertFor(state.selectedAlertId)
   const sensor = useSensorStream(state.mode, state.entryStep === 'console', selectedAlert.substationId, state.incidentState)
-  const alertTimeline = useMemo(() => scenarioAlertsAt(sensor.state.simulatedAt), [sensor.state.simulatedAt])
+  const alertTimeline = useMemo(() => scenarioAlertsAt(sensor.state.simulatedAt, state.resolvedAlertTimes), [sensor.state.simulatedAt, state.resolvedAlertTimes])
   const { alerts, alertHistory } = useMemo(() => state.mode === 'fault' && state.incidentState === 'incident-active'
     ? { alerts: alertTimeline.active, alertHistory: alertTimeline.history }
     : { alerts: [], alertHistory: [] }, [alertTimeline, state.incidentState, state.mode])
@@ -149,10 +174,21 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     backToModeSelection()
   }, [backToModeSelection, sensor])
   const selectAlert = useCallback((selectedAlertId: string) => setState((current) => ({ ...current, selectedAlertId })), [])
-  const startAnalysis = useCallback(() => setState((current) => ({ ...current, analysisState: 'running' })), [])
-  const completeAnalysis = useCallback(() => setState((current) => ({ ...current, analysisState: 'complete', analysisToastVisible: true })), [])
+  const startAnalysis = useCallback((analysisAlertId: string) => setState((current) => ({ ...current, selectedAlertId: analysisAlertId, analysisAlertId, analysisState: 'running' })), [])
+  const completeAnalysis = useCallback(() => setState((current) => current.analysisAlertId == null ? current : ({
+    ...current,
+    analysisState: 'complete',
+    analyzedAlertIds: current.analyzedAlertIds.includes(current.analysisAlertId) ? current.analyzedAlertIds : [...current.analyzedAlertIds, current.analysisAlertId],
+    analysisToastVisible: true,
+  })), [])
   const dismissAnalysisToast = useCallback(() => setState((current) => ({ ...current, analysisToastVisible: false })), [])
+  const dismissIncidentAlert = useCallback((alertId: string) => setState((current) => ({ ...current, dismissedIncidentAlertIds: current.dismissedIncidentAlertIds.includes(alertId) ? current.dismissedIncidentAlertIds : [...current.dismissedIncidentAlertIds, alertId] })), [])
   const dismissIncidentPopup = useCallback(() => setState((current) => ({ ...current, incidentPopupVisible: false })), [])
+  const resolveAlert = useCallback((alertId: string) => setState((current) => ({
+    ...current,
+    resolvedAlertTimes: current.resolvedAlertTimes[alertId] ? current.resolvedAlertTimes : { ...current.resolvedAlertTimes, [alertId]: sensor.state.simulatedAt },
+    dismissedIncidentAlertIds: current.dismissedIncidentAlertIds.includes(alertId) ? current.dismissedIncidentAlertIds : [...current.dismissedIncidentAlertIds, alertId],
+  })), [sensor.state.simulatedAt])
   const setAiEntry = useCallback((aiEntry: ScenarioAiEntry) => setState((current) => ({ ...current, aiEntry })), [])
   const createWorkOrder = useCallback(() => setState((current) => current.workOrders.length > 0 ? current : ({ ...current, workOrders: [workOrderVersion(alertFor(current.selectedAlertId), 1, 'AI 초안 생성')], acceptedWorkOrderVersion: null, report: reportState('idle') })), [])
   const acceptWorkOrder = useCallback((version: 1 | 2 | 3) => setState((current) => current.workOrders.some((order) => order.version === version) ? ({ ...current, acceptedWorkOrderVersion: version, report: reportState('idle') }) : current), [])
@@ -184,8 +220,8 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => ({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, dismissAnalysisToast, dismissIncidentPopup, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
-  }), [acceptWorkOrder, alertHistory, alerts, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentPopup, exitConsole, issueReport, postChatMessage, restartScenario, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, startAnalysis, completeAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, acceptWorkOrder, createReportDraft, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, backToModeSelection, cancelProposal, completeAnalysis, confirmProposal, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, issueReport, postChatMessage, resolveAlert, restartScenario, selectAlert, selectMode, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }

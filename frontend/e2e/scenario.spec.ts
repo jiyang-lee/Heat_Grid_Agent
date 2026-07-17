@@ -20,10 +20,20 @@ async function waitForIncident(page: Page) {
   await expect(page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
 }
 
-async function dismissIncidentPopup(page: Page) {
-  const popup = page.getByRole('dialog', { name: '우선순위 경보' })
-  await expect(popup).toBeVisible()
-  await popup.getByRole('button', { name: '경보 팝업 닫기' }).click()
+async function dismissIncidentToasts(page: Page) {
+  const toastStack = page.locator('.scenario-incident-toasts')
+  await expect(toastStack.getByRole('status').first()).toHaveAttribute('aria-label', '우선순위 1 경보')
+  await expect(toastStack.getByRole('status')).toHaveCount(3, { timeout: 4_000 })
+  for (const rank of [1, 2, 3] as const) {
+    await page.getByRole('status', { name: `우선순위 ${rank} 경보` })
+      .getByRole('button', { name: `우선순위 ${rank} 경보 닫기` })
+      .click()
+  }
+  await expect(toastStack.getByRole('status')).toHaveCount(0)
+}
+
+async function openAlertDetail(page: Page, title: RegExp) {
+  await page.getByRole('row', { name: title }).getByRole('button', { name: '상세' }).click()
 }
 
 test('entry and dashboard keep the viewport fixed with no Replay navigation', async ({ page }) => {
@@ -33,7 +43,7 @@ test('entry and dashboard keep the viewport fixed with no Replay navigation', as
 
   await page.getByRole('button', { name: /정상 버전 보기/ }).click()
   await expect(page.locator('.metric-grid-five > *')).toHaveCount(5)
-  await expect(page.locator('.metric-grid-five').getByRole('article')).toHaveCount(4)
+  await expect(page.locator('.metric-grid-five').getByRole('article')).toHaveCount(5)
   await expect(page.getByRole('button', { name: 'Replay', exact: true })).toHaveCount(0)
   await expect(page.locator('.topbar-page-context')).toContainText('홈')
   await expect(page.locator('.topbar-page-context > span')).toHaveCount(0)
@@ -46,51 +56,71 @@ test('fault incident starts after five seconds and selects the matching sensor r
   await startFaultScenario(page)
   await expect(page.locator('.metric-grid-five > *')).toHaveCount(5)
   await waitForIncident(page)
-  await expect(page.getByRole('dialog', { name: '우선순위 경보' })).toBeVisible()
-  await expect(page.getByRole('dialog', { name: '우선순위 경보' })).toContainText('범지기마을')
+  await expect(page.getByRole('status', { name: '우선순위 1 경보' })).toBeVisible()
+  await expect(page.getByRole('status', { name: '우선순위 1 경보' })).toContainText('범지기마을')
   await expect(page.getByText('urgent', { exact: true }).first()).toBeVisible()
   await expect(page.locator('.sensor-tile.sf-return')).toHaveCount(0)
-  await dismissIncidentPopup(page)
+  await dismissIncidentToasts(page)
 
   await page.getByRole('button', { name: /열교환기 외부 누수 의심/ }).click()
   await expect(page.locator('.sensor-flow').getByText(/기계실 31/)).toBeVisible()
   await expectNoPageScroll(page)
 })
 
-test('alerts start as a list and analysis completion offers an AI action toast', async ({ page }) => {
+test('alerts start as a list and analysis completion offers an AI action shortcut', async ({ page }) => {
   await startFaultScenario(page)
   await waitForIncident(page)
-  await dismissIncidentPopup(page)
+  await dismissIncidentToasts(page)
   await page.getByRole('button', { name: '자세히 보기', exact: true }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toHaveCount(0)
-  await expect(page.getByRole('combobox', { name: '우선순위 필터' })).toBeVisible()
-  await page.getByRole('combobox', { name: '이상 센서 필터' }).selectOption('returnTemperature')
-  await expect(page.locator('.scenario-alert-rows > button')).toHaveCount(1)
-  await page.getByRole('combobox', { name: '이상 센서 필터' }).selectOption('all')
+  await expect(page.getByRole('combobox', { name: '우선순위' })).toBeVisible()
+  await page.getByRole('combobox', { name: '우선순위' }).selectOption('urgent')
+  await expect(page.locator('.alerts-table tbody tr')).toHaveCount(2)
+  await page.getByRole('combobox', { name: '우선순위' }).selectOption('all')
 
-  await page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
+  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
   await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
   await expect(page.getByRole('region', { name: '환수온도 이상 시계열' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '환수온도 이상 감지' })).toBeVisible()
   await page.getByRole('button', { name: '상세 정보 닫기' }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toHaveCount(0)
-  await page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
+  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
   await page.getByRole('button', { name: 'AI 조치 분석' }).click()
-  await expect(page.getByRole('status')).toContainText('AI 조치가 활성화되었습니다.', { timeout: 3_000 })
-  await page.getByRole('button', { name: 'AI 조치 페이지 이동' }).click()
+  await expect(page.getByRole('button', { name: 'AI 조치 바로가기' })).toBeVisible({ timeout: 3_000 })
+  await page.getByRole('button', { name: 'AI 조치 바로가기' }).click()
   await expect(page.locator('.topbar-page-context')).toContainText('AI 조치')
   await expect(page.getByRole('heading', { name: 'AI 권장 조치' })).toBeVisible()
   await expectNoPageScroll(page)
 })
 
-test('work order review reaches v3 and the scenario report can be issued', async ({ page }) => {
+test('refresh keeps the current page and clears resolved alerts', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-375', '새로고침 버튼은 모바일 레이아웃에서 숨김')
   await startFaultScenario(page)
   await waitForIncident(page)
-  await dismissIncidentPopup(page)
+  await page.getByRole('status', { name: '우선순위 1 경보' }).getByRole('button', { name: '알림 바로가기' }).click()
+  await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: '종결', exact: true }).click()
+  await expect(page.getByText('종결', { exact: true }).first()).toBeVisible()
+
+  await page.getByRole('button', { name: '새로고침', exact: true }).click()
+  await expect(page.locator('.topbar-page-context')).toContainText('알림')
+  await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
+  await expect(page.getByRole('combobox', { name: '표시 범위' })).toHaveValue('active')
+  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
+  await expect(page.getByText('종결', { exact: true })).toHaveCount(0)
+})
+
+test('work order review reaches v3 and the scenario report can be issued', async ({ page }) => {
+  test.setTimeout(60_000)
+  await startFaultScenario(page)
+  await waitForIncident(page)
+  await dismissIncidentToasts(page)
   await page.getByRole('button', { name: '자세히 보기', exact: true }).click()
-  await page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
+  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
   await page.getByRole('button', { name: 'AI 조치 분석' }).click()
-  await page.getByRole('button', { name: 'AI 조치 페이지 이동' }).click({ timeout: 3_000 })
+  await page.getByRole('button', { name: 'AI 조치 바로가기' }).click({ timeout: 3_000 })
 
   await page.getByRole('button', { name: '작업지시서 생성' }).click()
   await expect(page.getByRole('heading', { name: '작업지시서 v1', exact: true })).toBeVisible()

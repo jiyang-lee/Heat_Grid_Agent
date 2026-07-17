@@ -74,7 +74,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .sensor-tile.is-incident-focus .sf-status { color: var(--ops-critical); }
 @keyframes sensor-incident-pulse { 50% { transform: translateY(-1px); box-shadow: 0 0 0 6px var(--ops-critical-soft); } }
 
-.scenario-alert-page { grid-template-rows: auto minmax(0, 1fr); }
+.scenario-alert-page { grid-template-rows: minmax(0, 1fr); }
 .scenario-alert-workspace { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
 .scenario-alert-workspace.has-detail { grid-template-columns: minmax(380px, 1fr) minmax(410px, .95fr); gap: var(--space-3); }
 .scenario-alert-list, .scenario-alert-detail { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
@@ -101,7 +101,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-list-empty { display: grid; place-items: center; align-content: center; gap: var(--space-2); min-height: 0; padding: var(--space-6); color: var(--ops-text-muted); }
 .scenario-list-empty strong { color: var(--ops-text); font-size: 15px; }
 .scenario-list-empty span { font-size: 12px; }
-.scenario-detail-compact { display: grid; align-content: start; gap: var(--space-3); min-height: 0; padding: var(--space-4); }
+.scenario-detail-compact { display: grid; grid-template-rows: auto auto 200px auto minmax(50px, 1fr); align-content: start; gap: var(--space-3); height: 100%; min-height: 0; padding: var(--space-4); box-sizing: border-box; }
 .scenario-detail-close { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid color-mix(in srgb, var(--ops-critical) 35%, var(--ops-border)); border-radius: 6px; color: var(--ops-critical); background: var(--ops-critical-soft); cursor: pointer; }
 .scenario-detail-close:hover { border-color: var(--ops-critical); background: color-mix(in srgb, var(--ops-critical-soft) 72%, var(--ops-surface)); }
 .scenario-detail-close:focus-visible { outline: 3px solid color-mix(in srgb, var(--ops-primary) 30%, transparent); outline-offset: 2px; }
@@ -109,16 +109,18 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-detail-title { display: grid; gap: 5px; }
 .scenario-detail-title strong { font-size: 18px; word-break: keep-all; }
 .scenario-detail-title span { color: var(--ops-text-muted); font-size: 12px; }
-.scenario-sensor-facts { display: grid; grid-template-columns: repeat(3, 1fr); min-height: 60px; border: 1px solid var(--ops-border); border-radius: 8px; overflow: hidden; }
+.scenario-sensor-facts { display: grid; grid-template-columns: repeat(2, 1fr); min-height: 60px; border: 1px solid var(--ops-border); border-radius: 8px; overflow: hidden; }
 .scenario-sensor-facts > div { display: grid; gap: 3px; padding: var(--space-3); border-right: 1px solid var(--ops-border); }
-.scenario-sensor-facts > div:last-child { border-right: 0; }
+.scenario-sensor-facts > div:nth-child(2n) { border-right: 0; }
+.scenario-sensor-facts > div:nth-child(-n + 2) { border-bottom: 1px solid var(--ops-border); }
 .scenario-sensor-facts span { color: var(--ops-text-muted); font-size: 11px; }
 .scenario-sensor-facts strong { font-size: 14px; white-space: nowrap; }
-.scenario-detail-compact > section:not(.scenario-evidence-chart) { padding-top: var(--space-3); border-top: 1px solid var(--ops-border); }
+.scenario-detail-compact > section:not(.scenario-evidence-chart) { padding: var(--space-4) 0 var(--space-2); border-top: 1px solid var(--ops-border); }
 .scenario-detail-compact h3 { margin: 0 0 var(--space-2); font-size: 14px; }
 .scenario-detail-compact p, .scenario-detail-compact li { margin: 0; color: var(--ops-text-muted); font-size: 13px; line-height: 1.5; word-break: keep-all; }
 .scenario-detail-compact ul { display: grid; gap: 4px; margin: var(--space-2) 0 0; padding-left: 18px; }
-.scenario-detail-actions { display: flex; gap: var(--space-2); }
+.scenario-detail-actions { display: flex; align-self: end; justify-content: flex-end; gap: var(--space-2); margin-top: auto; }
+.scenario-detail-actions .ops-button { min-height: 50px; padding-inline: 20px; }
 .scenario-detail-back { display: none; font-size: 12px; }
 .scenario-action-toast { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 50; display: grid; gap: var(--space-3); width: min(390px, calc(100vw - 32px)); padding: var(--space-4); border: 1px solid var(--ops-border); border-left: 4px solid var(--ops-success); border-radius: 10px; color: var(--ops-text); background: var(--ops-surface); box-shadow: 0 16px 40px rgb(15 23 42 / 18%); }
 .scenario-action-toast > div:first-child { display: grid; gap: 6px; }
@@ -187,14 +189,16 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-report-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .scenario-report-empty { display: grid; place-items: center; align-content: center; gap: var(--space-3); min-height: 180px; padding: var(--space-4); color: var(--ops-text-muted); text-align: center; }
 
-.scenario-evidence-chart { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); }
-.scenario-evidence-chart.is-critical { border-color: color-mix(in srgb, var(--ops-critical) 70%, var(--ops-border)); background: linear-gradient(90deg, color-mix(in srgb, var(--ops-critical-soft) 72%, var(--ops-surface)) 0%, var(--ops-surface-muted) 58%); box-shadow: inset 4px 0 0 var(--ops-critical); }
+.scenario-evidence-chart { position: relative; isolation: isolate; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--space-2); height: 200px; min-height: 200px; max-height: 200px; padding: var(--space-3); overflow: hidden; border: 1px solid var(--ops-border); border-radius: 8px; box-sizing: border-box; background: var(--ops-surface-muted); }
+.scenario-evidence-chart.is-critical { border-color: color-mix(in srgb, var(--ops-critical) 70%, var(--ops-border)); background: linear-gradient(105deg, color-mix(in srgb, var(--ops-critical-soft) 86%, var(--ops-surface)) 0%, color-mix(in srgb, var(--ops-critical-soft) 42%, var(--ops-surface-muted)) 48%, var(--ops-surface-muted) 100%); box-shadow: inset 4px 0 0 var(--ops-critical), 0 0 0 1px color-mix(in srgb, var(--ops-critical) 18%, transparent), 0 0 18px color-mix(in srgb, var(--ops-critical) 18%, transparent); animation: evidence-card-alarm 1.5s ease-in-out infinite; }
+.scenario-evidence-chart.is-critical::after { position: absolute; z-index: 0; inset: 0; content: ''; pointer-events: none; background: radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--ops-critical) 28%, transparent), transparent 40%), linear-gradient(90deg, transparent 35%, color-mix(in srgb, var(--ops-critical) 10%, transparent) 72%, transparent 100%); animation: evidence-led-glow 1.5s ease-in-out infinite; }
+.scenario-evidence-chart > header, .scenario-evidence-chart > svg { position: relative; z-index: 1; }
 .scenario-evidence-chart > header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .scenario-evidence-chart h3 { margin: 0; color: var(--ops-text); font-size: 13px; }
 .scenario-evidence-chart header span { color: var(--ops-text-muted); font-size: 11px; }
 .scenario-evidence-chart.is-critical h3, .scenario-evidence-chart.is-critical > header > strong { color: var(--ops-critical); }
 .scenario-evidence-state { display: inline-flex; margin-bottom: 3px; color: var(--ops-critical) !important; font-size: 10px !important; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
-.scenario-evidence-chart svg { display: block; width: 100%; height: 76px; overflow: visible; }
+.scenario-evidence-chart svg { display: block; width: 100%; height: 100%; min-height: 0; overflow: visible; }
 .scenario-evidence-chart .scenario-evidence-axis { stroke: var(--ops-border); stroke-dasharray: 3 3; }
 .scenario-evidence-chart .scenario-evidence-breach-band { fill: color-mix(in srgb, var(--ops-critical) 26%, transparent); }
 .scenario-evidence-chart .scenario-evidence-critical-threshold { stroke: var(--ops-critical); stroke-width: 1.5; stroke-dasharray: 5 3; }
@@ -203,7 +207,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-evidence-chart circle { stroke: var(--ops-surface); stroke-width: 1.5; }
 .scenario-evidence-chart circle.latest { animation: evidence-point-pulse 1.8s ease-in-out infinite; }
 .scenario-evidence-chart circle.latest.is-critical { stroke: var(--ops-critical-soft); stroke-width: 3px; }
-.scenario-reasoning { display: grid; gap: 7px; margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.scenario-reasoning { display: grid; gap: 10px; margin: var(--space-3) 0 0; padding: 0; list-style: none; }
 .scenario-reasoning li { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: start; gap: var(--space-2); }
 .scenario-reasoning strong { display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 0 7px; border-radius: 5px; color: var(--ops-primary); background: var(--ops-primary-soft); font-size: 11px; white-space: nowrap; }
 .scenario-reasoning li:first-child strong, .scenario-reasoning li:last-child strong { color: var(--ops-critical); background: var(--ops-critical-soft); }
@@ -256,6 +260,8 @@ html, body, #root { height: 100%; overflow: hidden; }
 :root[data-theme='dark'] .map-live { background: #1d2938; }
 
 @keyframes evidence-point-pulse { 50% { r: 5; opacity: .72; } }
+@keyframes evidence-card-alarm { 50% { border-color: var(--ops-critical); box-shadow: inset 4px 0 0 var(--ops-critical), 0 0 0 1px color-mix(in srgb, var(--ops-critical) 38%, transparent), 0 0 26px color-mix(in srgb, var(--ops-critical) 32%, transparent); } }
+@keyframes evidence-led-glow { 50% { opacity: .45; } }
 
 @media (max-width: 1380px) {
   .ops-content-shell { width: calc(100% - 72px); }
@@ -349,7 +355,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-sensor-facts > div:last-child { border-right: 0; }
   .scenario-sensor-facts strong { font-size: 12px; }
   .scenario-evidence-chart { gap: 4px; padding: var(--space-2); }
-  .scenario-evidence-chart svg { height: 60px; }
+  .scenario-evidence-chart svg { height: 100%; }
   .scenario-reasoning { gap: 4px; margin-top: var(--space-2); }
   .scenario-reasoning li { grid-template-columns: 68px minmax(0, 1fr); gap: 6px; }
   .scenario-reasoning strong { min-height: 20px; padding-inline: 5px; font-size: 10px; }
@@ -373,4 +379,5 @@ html, body, #root { height: 100%; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .sensor-tile.is-incident-focus { animation: none; box-shadow: 0 0 0 3px var(--ops-critical); }
   .scenario-evidence-chart circle.latest { animation: none; }
+  .scenario-evidence-chart.is-critical, .scenario-evidence-chart.is-critical::after { animation: none; }
 }

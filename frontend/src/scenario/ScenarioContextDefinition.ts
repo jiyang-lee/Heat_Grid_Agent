@@ -13,10 +13,12 @@ export interface ScenarioContextValue {
   readonly restartScenario: () => void
   readonly exitConsole: () => void
   readonly selectAlert: (alertId: string) => void
-  readonly startAnalysis: () => void
+  readonly startAnalysis: (alertId: string) => void
   readonly completeAnalysis: () => void
   readonly dismissAnalysisToast: () => void
+  readonly dismissIncidentAlert: (alertId: string) => void
   readonly dismissIncidentPopup: () => void
+  readonly resolveAlert: (alertId: string) => void
   readonly setAiEntry: (entry: ScenarioAiEntry) => void
   readonly createWorkOrder: () => void
   readonly acceptWorkOrder: (version: 1 | 2 | 3) => void

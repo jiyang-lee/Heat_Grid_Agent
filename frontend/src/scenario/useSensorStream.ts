@@ -46,12 +46,15 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const [resetKey, setResetKey] = useState(0)
   const pausedRef = useRef(false)
   const speedRef = useRef(1)
+  const simulatedAtRef = useRef(state.simulatedAt)
   const manualRefreshRef = useRef<() => void>(() => {})
+  const restartAtScenarioStartRef = useRef(false)
 
   useEffect(() => {
     pausedRef.current = state.paused
     speedRef.current = state.speed
-  }, [state.paused, state.speed])
+    simulatedAtRef.current = state.simulatedAt
+  }, [state.paused, state.simulatedAt, state.speed])
 
   useEffect(() => {
     if (!enabled || mode == null) return undefined
@@ -109,7 +112,11 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     }
 
     const connect = async () => {
-      setState(seedState(activeMode, substationId, incidentState))
+      const replayStartAt = restartAtScenarioStartRef.current ? SCENARIO_START_AT : simulatedAtRef.current
+      restartAtScenarioStartRef.current = false
+      setState((current) => current.substationId === substationId
+        ? seedState(activeMode, substationId, incidentState)
+        : { ...current, status: 'connecting', substationId, connectionMessage: '선택 설비 센서 스트림 연결 중' })
       try {
         const datasets = await replayApi.listDatasets()
         if (cancelled) return
@@ -120,7 +127,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
           startFallback('Replay 데이터셋이 없어 검증된 시나리오 대체 데이터를 표시합니다.')
           return
         }
-        const created = await replayApi.createRun({ dataset_id: dataset.dataset_id, start_at: activeMode === 'fault' ? SCENARIO_START_AT : dataset.replay_start, tick_seconds: 3, requested_by: 'ops-scenario-ui' })
+        const created = await replayApi.createRun({ dataset_id: dataset.dataset_id, start_at: activeMode === 'fault' ? replayStartAt : dataset.replay_start, tick_seconds: 3, requested_by: 'ops-scenario-ui' })
         if (cancelled) return
         await replayApi.command(created.run_id, { command_type: 'start', expected_run_version: created.version, payload: {}, requested_by: 'ops-scenario-ui', idempotency_key: `${created.run_id}-start` })
         if (cancelled) return
@@ -168,7 +175,12 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     connectionMessage: current.paused ? (current.source === 'backend-replay' ? '실시간 센서 연동 수신 중' : '시나리오 대체 데이터 재생 중') : '센서 재생 일시정지',
   })), [])
   const setSpeed = useCallback((speed: number) => setState((current) => ({ ...current, speed })), [])
-  const reset = useCallback(() => setResetKey((current) => current + 1), [])
+  const reset = useCallback(() => {
+    restartAtScenarioStartRef.current = true
+    simulatedAtRef.current = SCENARIO_START_AT
+    setState(seedState(activeMode, substationId, 'monitoring'))
+    setResetKey((current) => current + 1)
+  }, [activeMode, substationId])
   const refresh = useCallback(() => manualRefreshRef.current(), [])
 
   return { state, togglePaused, setSpeed, reset, refresh }

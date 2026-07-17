@@ -60,7 +60,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
     return priorityOrder || left.leadTimeHours - right.leadTimeHours
   })
   const incidentAlertKey = incidentAlerts.map((alert) => alert.id).join('|')
-  const visibleIncidentAlerts = incidentAlerts.filter((alert) => visibleIncidentAlertIds.includes(alert.id))
+  const visibleIncidentAlerts = incidentAlerts.filter((alert) => visibleIncidentAlertIds.includes(alert.id) && !scenario.state.dismissedIncidentAlertIds.includes(alert.id))
 
   const shownAlerts = openAlerts.slice(0, 5)
   const selectedAlert = shownAlerts.find((alert: AlertSummary) => alert.alert_id === selectedAlertId) ?? null
@@ -86,6 +86,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
   }, [faultMode, incidentActive, incidentAlertKey])
 
   const dismissIncidentToast = (alertId: string) => {
+    scenario.dismissIncidentAlert(alertId)
     setVisibleIncidentAlertIds((current) => current.filter((id) => id !== alertId))
   }
 

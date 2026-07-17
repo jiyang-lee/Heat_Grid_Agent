@@ -1,48 +1,85 @@
 import { useMemo, useState } from 'react'
-import type { AlertSummary } from '../api/contracts'
-import { useAckAlert, useAlerts, useCreateAgentRun, useResolveAlert } from '../api/hooks'
+import type { AlertSummary, PriorityLevel } from '../api/contracts'
+import { useAlerts, useCreateAgentRun, useResolveAlert } from '../api/hooks'
 import { complexNameOf } from '../domain/model'
-import { alertDetail, sensorTrend } from './mockViewData'
-import { Button, ApiState, HomeMetric, Sparkline, StatusBadge, SurfaceCard, type Tone } from './ui'
-
-function alertTone(alert: AlertSummary): Tone {
-  return alert.priority_level === 'urgent' ? 'critical' : 'warning'
-}
+import { Icon } from './icons'
+import { ApiState, Button, StatusBadge, SurfaceCard, type Tone } from './ui'
 
 interface Props {
   readonly onRunCreated: (runId: string) => void
 }
 
+type AlertScope = 'active' | 'history'
+
+function alertTone(alert: AlertSummary): Tone {
+  return alert.priority_level === 'urgent' ? 'critical' : 'warning'
+}
+
+function dateTime(value: string | null): string {
+  return value ? new Date(value).toLocaleString('ko-KR') : '-'
+}
+
+function statusLabel(alert: AlertSummary): string {
+  if (alert.status === 'resolved') return '종결'
+  if (alert.status === 'acked') return '확인됨'
+  return alert.priority_level === 'urgent' ? '긴급' : '경고'
+}
+
 export function AlertsPage({ onRunCreated }: Props) {
   const [search, setSearch] = useState('')
+  const [priority, setPriority] = useState<PriorityLevel | 'all'>('all')
+  const [scope, setScope] = useState<AlertScope>('active')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [checked, setChecked] = useState<readonly string[]>([])
+  const [createdRunId, setCreatedRunId] = useState<string | null>(null)
   const alerts = useAlerts({ status: 'all' })
-  const ack = useAckAlert()
   const resolve = useResolveAlert()
   const createRun = useCreateAgentRun()
-  const rows = useMemo(() => (alerts.data ?? []).filter((alert) => `${complexNameOf(alert.substation_id, alert.manufacturer_id)} ${alert.manufacturer_id} ${alert.substation_id} ${alert.enqueue_reason}`.toLowerCase().includes(search.toLowerCase())), [alerts.data, search])
-  const selected = selectedId ? rows.find((alert) => alert.alert_id === selectedId) ?? null : null
-  const toggleChecked = (id: string) => setChecked((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
-  const acknowledge = () => { if (selected) ack.mutate({ alertId: selected.alert_id, ackedBy: 'ops-manager' }) }
-  const closeAlert = () => { if (selected && window.confirm('선택한 알림을 종결할까요?')) resolve.mutate({ alertId: selected.alert_id, ackedBy: 'ops-manager' }) }
+  const allRows = useMemo(() => alerts.data ?? [], [alerts.data])
+  const rows = useMemo(() => allRows.filter((alert) => {
+    if (scope === 'active' ? alert.status === 'resolved' : alert.status !== 'resolved') return false
+    if (priority !== 'all' && alert.priority_level !== priority) return false
+    const text = `${complexNameOf(alert.substation_id, alert.manufacturer_id)} ${alert.manufacturer_id} ${alert.substation_id} ${alert.enqueue_reason}`
+    return text.toLowerCase().includes(search.toLowerCase())
+  }), [allRows, priority, scope, search])
+  const selected = selectedId ? allRows.find((alert) => alert.alert_id === selectedId) ?? null : null
+
+  const resolveAlert = (alert: AlertSummary) => {
+    if (!window.confirm(`'${alert.enqueue_reason}' 알림을 종결할까요?`)) return
+    resolve.mutate({ alertId: alert.alert_id, ackedBy: 'ops-manager' }, { onSuccess: () => setScope('history') })
+  }
   const startAgentRun = () => {
     if (!selected) return
-    createRun.mutate({ alertId: selected.alert_id, requestedBy: 'ops-manager', reason: '운영 콘솔에서 작업지시서 생성을 요청했습니다.' }, { onSuccess: (run) => onRunCreated(run.run_id) })
+    createRun.mutate({ alertId: selected.alert_id, requestedBy: 'ops-manager', reason: '운영 콘솔에서 AI 조치 생성을 요청했습니다.' }, { onSuccess: (run) => setCreatedRunId(run.run_id) })
   }
-  const metrics = { urgent: rows.filter((alert) => alert.priority_level === 'urgent').length, acknowledged: rows.filter((alert) => alert.status === 'acked').length, resolved: rows.filter((alert) => alert.status === 'resolved').length }
+  const openAiAction = () => {
+    if (createdRunId == null) return
+    const runId = createdRunId
+    setCreatedRunId(null)
+    onRunCreated(runId)
+  }
 
   return <div className="page-stack alert-page">
-    <header className="page-title"><div><h1>알림</h1><p>우선순위 알림을 검토하고 조치 흐름을 관리합니다.</p></div></header>
-    <div className="metric-grid metric-grid-five">
-      <HomeMetric icon="alert" label="전체 알림" tone="primary" unit="건" value={String(rows.length)}>최근 24시간</HomeMetric>
-      <HomeMetric icon="shield" label="심각" tone="critical" unit="건" value={String(metrics.urgent)}>즉시 조치 필요</HomeMetric>
-      <HomeMetric icon="alert" label="경고" tone="warning" unit="건" value={String(Math.max(0, rows.length - metrics.urgent))}>조치 권장</HomeMetric>
-      <HomeMetric icon="clock" label="확인됨" tone="primary" unit="건" value={String(metrics.acknowledged)}>담당자 배정 완료</HomeMetric>
-      <HomeMetric icon="check" label="오늘 해결 완료" tone="success" unit="건" value={String(metrics.resolved)}>최근 24시간</HomeMetric>
+    <div className={`alerts-workspace ${selected ? 'has-detail' : ''}`.trim()}>
+      <SurfaceCard className="alerts-list-card" title="알림 이력">
+        <div className="alerts-filter-bar">
+          <label><span>표시 범위</span><select onChange={(event) => setScope(event.target.value === 'history' ? 'history' : 'active')} value={scope}><option value="active">활성 알림</option><option value="history">과거 알림</option></select></label>
+          <label><span>우선순위</span><select onChange={(event) => setPriority(event.target.value as PriorityLevel | 'all')} value={priority}><option value="all">전체</option><option value="urgent">긴급</option><option value="high">경고</option></select></label>
+          <label className="filter-search"><span>알림 검색</span><input onChange={(event) => setSearch(event.target.value)} placeholder="건물명, 설비명, 알림 내용 검색" value={search} /></label>
+          <strong>{rows.length}건</strong>
+        </div>
+        <ApiState empty={false} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
+        {!alerts.isLoading && !alerts.isError && rows.length === 0 ? <div className="alerts-empty"><StatusBadge tone={scope === 'active' ? 'success' : 'neutral'}>{scope === 'active' ? '정상' : '이력 없음'}</StatusBadge><strong>{scope === 'active' ? '활성 알림이 없습니다.' : '조건에 맞는 과거 알림이 없습니다.'}</strong></div> : rows.length > 0 && <div className="alerts-table-scroll"><table className="alerts-table"><thead><tr><th>상태</th><th>알림 내용</th><th>설비 / 위치</th><th>발생 시간</th><th>조치 시간</th><th aria-label="알림 작업" /></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.alert_id === alert.alert_id ? 'selected' : ''} key={alert.alert_id} onClick={() => { setSelectedId(alert.alert_id); setCreatedRunId(null) }}><td><span className={`alerts-severity-icon ${alert.priority_level}`}><Icon name={alert.priority_level === 'urgent' ? 'alert' : 'warning'} /></span><StatusBadge tone={alert.status === 'resolved' ? 'success' : alertTone(alert)}>{statusLabel(alert)}</StatusBadge></td><td><strong>{alert.enqueue_reason}</strong></td><td><strong>{complexNameOf(alert.substation_id, alert.manufacturer_id)}</strong><small>기계실 {alert.substation_id ?? '-'}</small></td><td>{dateTime(alert.created_at)}</td><td>{dateTime(alert.acked_at)}</td><td><button className="alerts-row-action" onClick={(event) => { event.stopPropagation(); setSelectedId(alert.alert_id); setCreatedRunId(null) }} type="button">상세</button></td></tr>)}</tbody></table></div>}
+      </SurfaceCard>
+      {selected && <SurfaceCard action={<button aria-label="상세 정보 닫기" className="scenario-detail-close" onClick={() => { setSelectedId(null); setCreatedRunId(null) }} type="button"><Icon name="x" /></button>} className="alerts-detail-card" title="상세 정보">
+        <div className="detail-body alerts-detail-body">
+          <div className="detail-title"><StatusBadge tone={selected.status === 'resolved' ? 'success' : alertTone(selected)}>{statusLabel(selected)}</StatusBadge><h2>{selected.enqueue_reason}</h2><p>{complexNameOf(selected.substation_id, selected.manufacturer_id)} · 기계실 {selected.substation_id ?? '-'}</p></div>
+          <section><h3>알림 판단 정보</h3><div className="alert-detail-facts"><div><span>우선순위</span><strong>{selected.priority_level}</strong></div><div><span>점수</span><strong>{selected.priority_score?.toFixed(1) ?? '-'}</strong></div><div><span>순위</span><strong>{selected.priority_rank ?? '-'}</strong></div><div><span>데이터 상태</span><strong>{selected.freshness_status ?? '-'}</strong></div><div><span>발생 시간</span><strong>{dateTime(selected.created_at)}</strong></div><div><span>기준 시각</span><strong>{dateTime(selected.as_of_time)}</strong></div></div></section>
+          <section><h3>연결 정보</h3><p>카드 ID: {selected.card_id}</p><p>평가 실행 ID: {selected.evaluation_run_id ?? '-'}</p></section>
+          {createRun.isError && <p className="form-error">AI 실행을 시작하지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</p>}
+          <div className="detail-actions">{createdRunId == null && selected.status !== 'resolved' && <Button disabled={createRun.isPending} icon="activity" onClick={startAgentRun} tone="primary">{createRun.isPending ? 'AI 분석 진행 중' : 'AI 조치 분석'}</Button>}{selected.status !== 'resolved' && <Button disabled={resolve.isPending} onClick={() => resolveAlert(selected)} tone="danger">종결</Button>}</div>
+        </div>
+      </SurfaceCard>}
     </div>
-    <div className={selected ? 'alert-layout' : 'alert-layout alert-layout-single'}><div className="alert-main"><SurfaceCard title="알림 목록"><div className="filter-bar"><label><span>기간</span><select defaultValue="week"><option value="week">최근 7일</option></select></label><label><span>심각도</span><select defaultValue="all"><option value="all">전체</option><option value="urgent">심각</option><option value="high">경고</option></select></label><label className="filter-search"><span>알림 검색</span><input onChange={(event) => setSearch(event.target.value)} placeholder="건물명, 알림 유형, 내용 검색" value={search} /></label></div><ApiState empty={rows.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />{rows.length > 0 && <div className="table-scroll"><table className="ops-table alert-table"><thead><tr><th><input aria-label="전체 알림 선택" checked={checked.length === rows.length} onChange={() => setChecked(checked.length === rows.length ? [] : rows.map((row) => row.alert_id))} type="checkbox" /></th><th>심각도</th><th>알림 유형</th><th>건물/기계실</th><th>발생 시간</th><th>상태</th><th>담당자</th></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.alert_id === alert.alert_id ? 'selected-row' : ''} key={alert.alert_id} onClick={() => setSelectedId(alert.alert_id)}><td onClick={(event) => event.stopPropagation()}><input aria-label={`${alert.alert_id} 선택`} checked={checked.includes(alert.alert_id)} onChange={() => toggleChecked(alert.alert_id)} type="checkbox" /></td><td><StatusBadge tone={alertTone(alert)}>{alert.priority_level === 'urgent' ? '심각' : '경고'}</StatusBadge></td><td>{alert.enqueue_reason}</td><td><strong>{complexNameOf(alert.substation_id, alert.manufacturer_id)}</strong><small>기계실 {alert.substation_id}</small></td><td>{new Date(alert.created_at).toLocaleString('ko-KR')}</td><td><StatusBadge tone={alert.status === 'resolved' ? 'success' : alert.status === 'acked' ? 'primary' : 'neutral'}>{alert.status === 'resolved' ? '종결' : alert.status === 'acked' ? '확인됨' : '미확인'}</StatusBadge></td><td>{alert.acked_by ?? '-'}</td></tr>)}</tbody></table></div>}<footer className="table-footer"><span>1 - {rows.length} / {rows.length}</span><div><Button icon="download">내보내기</Button><Button disabled={checked.length === 0}>선택 항목 처리</Button></div></footer></SurfaceCard></div>
-      {selected && <aside className="alert-detail-pane"><SurfaceCard action={<Button aria-label="상세 닫기" icon="x" onClick={() => setSelectedId(null)} />} title="상세 내용"><div className="detail-body"><div className="detail-title"><StatusBadge tone={alertTone(selected)}>{selected.priority_level === 'urgent' ? '심각' : '경고'}</StatusBadge><span>알림 ID {selected.alert_id}</span><h2>{selected.enqueue_reason}</h2><p>{complexNameOf(selected.substation_id, selected.manufacturer_id)} 기계실 {selected.substation_id} · {new Date(selected.created_at).toLocaleString('ko-KR')}</p></div><section><h3>AI 원인 요약</h3><p>{alertDetail.reason}</p></section><section><h3>센서 추이</h3><div className="sensor-summary"><div><span>차압</span><strong>0.12 bar</strong><i className="down">-0.18</i></div><div><span>보충수 유량</span><strong>1.84 m³/h</strong><i className="up">+1.32</i></div><div><span>공급온도</span><strong>76.1 °C</strong><i className="up">+1.6</i></div><div><span>환수온도</span><strong>52.1 °C</strong><i className="down">-0.4</i></div></div><div className="sensor-chart-head"><span>차압 추이 (최근 6시간)</span><button onClick={() => setSearch(complexNameOf(selected.substation_id, selected.manufacturer_id))} type="button">이 설비 알림만 보기</button></div><Sparkline tone="critical" values={sensorTrend} /></section><section><h3>최근 이벤트</h3><ol className="event-timeline">{alertDetail.events.map((event) => <li key={event.time}><i className={`tone-${event.tone}`} /><time>{event.time}</time><span>{event.text}</span><StatusBadge tone={event.tone}>{event.tone === 'critical' ? '심각' : event.tone === 'warning' ? '경고' : '정보'}</StatusBadge></li>)}</ol></section><section><h3>권장 조치</h3><p>{alertDetail.recommendation}</p><button className="text-link" onClick={startAgentRun} type="button">AI 분석과 상세 조치 가이드 생성</button></section>{createRun.isError && <p className="form-error">AI 실행을 시작하지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</p>}<div className="detail-actions"><Button disabled={ack.isPending || selected.status !== 'open'} onClick={acknowledge} tone="primary">확인</Button><Button disabled={createRun.isPending} icon="document" onClick={startAgentRun} tone="primary">{createRun.isPending ? 'AI 실행 시작 중' : '작업지시서 생성'}</Button><Button onClick={acknowledge}>담당자 지정</Button><Button disabled={resolve.isPending || selected.status === 'resolved'} onClick={closeAlert} tone="danger">종결</Button></div></div></SurfaceCard></aside>}
-    </div>
+    {createdRunId && <button className="scenario-ai-shortcut" onClick={openAiAction} type="button">AI 조치 바로가기 <Icon name="arrow" /></button>}
   </div>
 }

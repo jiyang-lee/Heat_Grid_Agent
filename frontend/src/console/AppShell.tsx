@@ -4,7 +4,7 @@ import { qk, useAlerts } from '../api/hooks'
 import { Icon, type IconName } from './icons'
 import type { EntryMode } from '../scenario/types'
 
-export type ConsolePage = 'dashboard' | 'alerts' | 'reports' | 'settings' | 'admin'
+export type ConsolePage = 'dashboard' | 'alerts' | 'reports' | 'settings'
 
 interface NavigationItem {
   readonly page: ConsolePage
@@ -26,7 +26,6 @@ const pageLabels: Record<ConsolePage, { readonly title: string; readonly summary
   alerts: { title: '알림', summary: '경보를 선택해 출동 기한과 판단 근거를 확인하세요.' },
   reports: { title: 'AI 조치', summary: '위험도와 리드타임을 기준으로 조치와 문서를 관리합니다.' },
   settings: { title: '설정', summary: '개인 운영 환경과 알림 수신, 업무 화면 기본 설정을 관리합니다.' },
-  admin: { title: '관리', summary: '운영 권한과 시스템 정책을 관리합니다.' },
 }
 
 function useClock(): Date {

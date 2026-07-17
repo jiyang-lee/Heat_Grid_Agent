@@ -46,7 +46,7 @@ export interface ScenarioAlert {
   readonly detectedAt: string
 }
 
-export type ScenarioAlertStatus = 'active' | 'resolved'
+export type ScenarioAlertStatus = 'active' | 'expired' | 'resolved'
 
 export interface ScenarioTimelineAlert extends ScenarioAlert {
   readonly status: ScenarioAlertStatus
@@ -116,8 +116,12 @@ export interface ScenarioState {
   readonly selectedAlertId: string
   readonly incidentState: ScenarioIncidentState
   readonly analysisState: ScenarioAnalysisState
+  readonly analysisAlertId: string | null
+  readonly analyzedAlertIds: readonly string[]
   readonly analysisToastVisible: boolean
   readonly incidentPopupVisible: boolean
+  readonly dismissedIncidentAlertIds: readonly string[]
+  readonly resolvedAlertTimes: Readonly<Record<string, string>>
   readonly aiEntry: ScenarioAiEntry
   readonly workOrders: readonly WorkOrderVersion[]
   readonly acceptedWorkOrderVersion: 1 | 2 | 3 | null

@@ -1,11 +1,9 @@
 import { useCallback, useState } from 'react'
-import { AdminPage } from './console/AdminPage'
 import { AlertsPage } from './console/AlertsPage'
 import { AiActivityPage } from './console/ai-activity/AiActivityPage'
 import { AppShell, type ConsolePage } from './console/AppShell'
 import { DashboardPage } from './console/DashboardPage'
 import { SettingsPage } from './console/SettingsPage'
-import { ShowcasePage } from './console/ShowcasePage'
 import { EntryGate } from './scenario/EntryGate'
 import { ScenarioAiPage } from './scenario/ScenarioAiPage'
 import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
@@ -14,10 +12,6 @@ import { useScenario } from './scenario/useScenario'
 import { useThemePreference } from './console/useThemePreference'
 import './console/operations.css'
 import './scenario/scenario.css'
-
-function isShowcase(): boolean {
-  return new URLSearchParams(window.location.search).get('showcase') === '1'
-}
 
 function ConsoleApp() {
   const scenario = useScenario()
@@ -42,13 +36,13 @@ function ConsoleApp() {
     setPage(next)
   }
   const consumePendingRun = useCallback(() => setPendingRunId(null), [])
+  const consumeInitialScenarioAlert = useCallback(() => setInitialScenarioAlertId(null), [])
   const exitConsole = () => {
     setPage('dashboard')
     setPendingRunId(null)
     scenario.exitConsole()
   }
   const restartScenario = () => {
-    setPage('dashboard')
     setInitialScenarioAlertId(null)
     setPendingRunId(null)
     scenario.restartScenario()
@@ -67,15 +61,13 @@ function ConsoleApp() {
     simulatedAt={faultMode ? scenario.sensor.state.simulatedAt : null}
   >
     {page === 'dashboard' && <DashboardPage onOpenAlerts={(alertId) => { if (faultMode && alertId != null) scenario.selectAlert(alertId); setInitialScenarioAlertId(alertId ?? null); setPage('alerts') }} theme={theme.resolvedTheme} />}
-    {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} onOpenAiAction={() => { scenario.setAiEntry('detail'); setPage('reports') }} /> : <AlertsPage onRunCreated={openRun} />)}
+    {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialScenarioAlert} onOpenAiAction={() => { scenario.setAiEntry('detail'); setPage('reports') }} /> : <AlertsPage onRunCreated={openRun} />)}
     {page === 'reports' && (faultMode ? <ScenarioAiPage /> : <AiActivityPage initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />)}
     {page === 'settings' && <SettingsPage onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
-    {page === 'admin' && <AdminPage />}
   </AppShell>
 }
 
 function App() {
-  if (isShowcase()) return <ShowcasePage />
   return <ScenarioProvider><ConsoleApp /></ScenarioProvider>
 }
 

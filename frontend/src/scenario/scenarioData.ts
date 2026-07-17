@@ -51,23 +51,23 @@ function roundedLeadTime(hours: number): number {
   return Math.round(hours * 10) / 10
 }
 
-function alertWithElapsedTime(alert: ScenarioAlert, simulatedAt: string): ScenarioTimelineAlert {
+function alertWithElapsedTime(alert: ScenarioAlert, simulatedAt: string, resolvedAt: string | null): ScenarioTimelineAlert {
   const elapsedHours = Math.max(0, (Date.parse(simulatedAt) - Date.parse(alert.detectedAt)) / 3_600_000)
   const leadTimeHours = roundedLeadTime(Math.max(0, alert.leadTimeHours - elapsedHours))
-  const resolvedAt = new Date(Date.parse(alert.detectedAt) + alert.leadTimeHours * 3_600_000).toISOString()
-  const status = leadTimeHours === 0 ? 'resolved' : 'active'
+  const expiredAt = new Date(Date.parse(alert.detectedAt) + alert.leadTimeHours * 3_600_000).toISOString()
+  const status = resolvedAt != null ? 'resolved' : leadTimeHours === 0 ? 'expired' : 'active'
   const evidence = alert.evidence.map((item, index) => index === 1 ? `예상 출동 리드타임 ${leadTimeHours}시간` : item)
-  return { ...alert, leadTimeHours, evidence, status, resolvedAt: status === 'resolved' ? resolvedAt : null }
+  return { ...alert, leadTimeHours, evidence, status, resolvedAt: status === 'active' ? null : resolvedAt ?? expiredAt }
 }
 
-export function scenarioAlertsAt(simulatedAt: string): { readonly active: readonly ScenarioTimelineAlert[]; readonly history: readonly ScenarioTimelineAlert[] } {
+export function scenarioAlertsAt(simulatedAt: string, resolvedAlertTimes: Readonly<Record<string, string>> = {}): { readonly active: readonly ScenarioTimelineAlert[]; readonly history: readonly ScenarioTimelineAlert[] } {
   const simulatedTime = Date.parse(simulatedAt)
   const timeline = SCENARIO_ALERTS
     .filter((alert) => Date.parse(alert.detectedAt) <= simulatedTime)
-    .map((alert) => alertWithElapsedTime(alert, simulatedAt))
+    .map((alert) => alertWithElapsedTime(alert, simulatedAt, resolvedAlertTimes[alert.id] ?? null))
   return {
     active: timeline.filter((alert) => alert.status === 'active'),
-    history: timeline.filter((alert) => alert.status === 'resolved'),
+    history: timeline.filter((alert) => alert.status !== 'active'),
   }
 }
 
