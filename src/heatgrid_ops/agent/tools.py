@@ -17,6 +17,8 @@ from heatgrid_ops.reports.daily import write_daily_report_json
 from schemas import JsonValue
 
 REPORTS_URI_PREFIX: Final = "output/ops_agent/reports"
+MAX_REFERENCE_CHUNKS: Final = 3
+MAX_REFERENCE_TEXT_CHARS: Final = 1_600
 ALL_AGENT_TOOL_NAMES: Final = (
     "get_ops_evidence",
     "get_external_context",
@@ -59,9 +61,67 @@ def make_external_context_tool(
     def get_external_context(card_id: str) -> str:
         if card_id != card_id_from_input(source_input):
             return to_json({"error": "card_id를 찾을 수 없습니다."})
-        return to_json(external_context or {"status": "unavailable"})
+        return to_json(
+            _compact_external_context(
+                external_context or {"status": "unavailable"}
+            )
+        )
 
     return get_external_context
+
+
+def _compact_external_context(
+    external_context: dict[str, JsonValue],
+) -> dict[str, JsonValue]:
+    compact = {
+        key: value
+        for key, value in external_context.items()
+        if key not in {"retrieval", "references"}
+    }
+    retrieval = external_context.get("retrieval")
+    if not isinstance(retrieval, dict):
+        return compact
+
+    compact_retrieval = {
+        key: retrieval[key]
+        for key in ("status", "source", "backend", "top_k")
+        if key in retrieval
+    }
+    chunks = retrieval.get("chunks")
+    if isinstance(chunks, list):
+        compact_retrieval["chunks"] = [
+            _compact_reference_chunk(chunk)
+            for chunk in chunks[:MAX_REFERENCE_CHUNKS]
+            if isinstance(chunk, dict)
+        ]
+    compact["retrieval"] = compact_retrieval
+    return compact
+
+
+def _compact_reference_chunk(chunk: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    compact = {
+        key: chunk[key]
+        for key in (
+            "chunk_id",
+            "document_title",
+            "section_title",
+            "source_file",
+            "page_start",
+            "page_end",
+            "download_url",
+            "fault_type",
+            "risk_level",
+            "score",
+        )
+        if key in chunk
+    }
+    text = chunk.get("text")
+    if isinstance(text, str):
+        compact["text"] = text[:MAX_REFERENCE_TEXT_CHARS]
+    provenance = chunk.get("provenance")
+    if isinstance(provenance, dict):
+        compact["provenance"] = provenance
+    return compact
 
 
 def make_anomaly_report_tool(

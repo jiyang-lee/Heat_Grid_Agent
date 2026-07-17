@@ -33,7 +33,6 @@ from agent_run_event_repository import (
     list_agent_run_events_after,
 )
 from agent_run_repository import (
-    AgentRunLineageLimitError,
     get_agent_run,
     record_agent_run_event,
     reserve_agent_run,
@@ -58,18 +57,8 @@ from schemas import (
     OpsAgentResultV4,
     JsonValue,
 )
+from report_pdf import render_incident_report_pdf
 from settings import Settings
-
-
-ROOT = Path(__file__).resolve().parents[4]
-REPORT_ROOT = (ROOT / "output" / "ops_agent" / "reports").resolve()
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from heatgrid_ops.agent.graph import AgentGraphInvoker
-    from heatgrid_ops.agent.services import AgentRuntime
-    from agent_runner import SimulateCard
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -118,45 +107,9 @@ def make_agent_run_router(
                     run_id=queued.run_id,
                     alert_id=queued.alert_id,
                     card_id=queued.card_id,
-                    approved_action_task_id=queued.approved_action_task_id,
                 ),
                 simulate_card,
                 runtime,
-            )
-        return queued
-
-        request = AgentRunRequest(
-            run_id=str(uuid4()),
-            alert_id=payload.alert_id,
-            card_id=str(alert["card_id"]),
-        )
-        try:
-            queued, created = await reserve_agent_run(
-                engine,
-                run_id=request.run_id,
-                alert_id=request.alert_id,
-                card_id=request.card_id,
-                force_new=payload.force_new,
-                requested_by=payload.requested_by,
-                reason=payload.reason,
-            )
-        except AgentRunLineageLimitError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        if created or (
-            queued.status in {"queued", "running"}
-            and not is_agent_run_scheduled(queued.run_id)
-        ):
-            schedule_reserved_agent_graph(
-                engine,
-                AgentRunRequest(
-                    run_id=queued.run_id,
-                    alert_id=queued.alert_id,
-                    card_id=queued.card_id,
-                ),
-                simulate_card,
-                _runtime(),
-                None if graph_provider is None else graph_provider(),
-                task_key=AGENT_GRAPH_TASK_KEY_V2,
             )
         return queued
 
@@ -233,6 +186,18 @@ def make_agent_run_router(
         if run is None:
             raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
         return await list_agent_loop_iterations(engine, run_id)
+
+    @router.get("/agent-runs/{run_id}/reports/incident.pdf")
+    async def incident_report_pdf(run_id: str) -> FileResponse:
+        run = await get_agent_run(engine, run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
+        result = build_ops_agent_result_v4(run)
+        if result is None:
+            raise HTTPException(status_code=409, detail="완료된 작업지시서가 필요합니다.")
+        output_path = REPORT_ROOT / run_id / f"incident_report_{result.substation_id or 'unknown'}.pdf"
+        await asyncio.to_thread(render_incident_report_pdf, output_path, run=run, result=result)
+        return FileResponse(output_path, filename=output_path.name, media_type="application/pdf")
 
     @router.get("/agent-runs/{run_id}/events")
     async def agent_run_events_response(

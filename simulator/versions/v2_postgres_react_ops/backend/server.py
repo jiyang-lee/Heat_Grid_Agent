@@ -39,6 +39,9 @@ from heatgrid_ops.priority.evaluation import (
 from agent_run_repository import ensure_agent_run_tables
 from agent_loop_repository import ensure_agent_loop_iteration_table
 from agent_run_routes import make_agent_run_router
+from agent_review_routes import make_agent_review_router
+from agent_quality_routes import make_agent_quality_router
+from review_chat_routes import make_review_chat_router
 from automation_routes import make_automation_router
 from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
@@ -145,6 +148,16 @@ async def health() -> dict[str, str]:
         "database": "connected" if await check_database(engine) else "unavailable",
         "openai": "configured" if settings.openai_api_key is not None else "missing_key",
         "rag": str(rag_health.get("active_backend") or rag_health.get("status")),
+    }
+
+
+@app.get("/api/agent-models")
+async def agent_models() -> dict[str, str]:
+    return {
+        "action_plan": settings.integrated_agent_model,
+        "work_order": settings.work_order_model,
+        "review_chat": settings.natural_chat_model,
+        "report": settings.report_model,
     }
 
 
@@ -264,6 +277,9 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
 
 
 app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
+app.include_router(make_agent_review_router(engine, settings, agent_runtime, _agent_graph))
+app.include_router(make_review_chat_router(engine, settings, agent_runtime, _agent_graph))
+app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 

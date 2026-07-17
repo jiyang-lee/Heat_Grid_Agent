@@ -77,6 +77,40 @@ def test_runtime_python_has_no_schema_ddl() -> None:
         assert "ALTER TABLE" not in source, path
 
 
+def test_normalized_runtime_writes_include_substation_uid() -> None:
+    evaluation_source = (
+        ROOT / "src" / "heatgrid_ops" / "priority" / "evaluation.py"
+    ).read_text(encoding="utf-8")
+    alert_queue_source = (ROOT / "scripts" / "ops_alert_queue.py").read_text(
+        encoding="utf-8"
+    )
+    alert_repository_source = (
+        ROOT
+        / "simulator"
+        / "versions"
+        / "v2_postgres_react_ops"
+        / "backend"
+        / "alert_repository.py"
+    ).read_text(encoding="utf-8")
+    agent_run_repository_source = (
+        ROOT
+        / "simulator"
+        / "versions"
+        / "v2_postgres_react_ops"
+        / "backend"
+        / "agent_run_repository.py"
+    ).read_text(encoding="utf-8")
+
+    assert "s.substation_uid" in evaluation_source
+    assert ":substation_uid" in evaluation_source
+    assert "result.substation_uid" in alert_queue_source
+    assert "q.substation_uid = c.substation_uid" in alert_queue_source
+    assert "card.substation_uid" in alert_repository_source
+    assert "ON CONFLICT (evaluation_run_id, substation_uid)" in alert_repository_source
+    assert "SELECT substation_uid FROM ops_alert_queue" in agent_run_repository_source
+    assert "SELECT root_run_id FROM agent_runs" in agent_run_repository_source
+
+
 def test_runtime_versions_are_pinned() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text()
     compose = (ROOT / "docker-compose.yml").read_text()

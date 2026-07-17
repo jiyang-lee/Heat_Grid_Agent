@@ -6,7 +6,8 @@ COPY src ./src
 COPY migrations ./migrations
 COPY models ./models
 COPY simulator ./simulator
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+COPY v0_ops_handoff_package/report_generator_hsj/report_generator ./v0_ops_handoff_package/report_generator_hsj/report_generator
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-nanum libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 # editable 설치가 필요하다: heatgrid_ops.db.migrations가 __file__ 기준(parents[3])으로
 # 마이그레이션 폴더를 찾으므로, site-packages 설치 시 /app/migrations를 못 찾아

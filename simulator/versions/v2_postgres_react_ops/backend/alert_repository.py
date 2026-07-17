@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
     alert_id uuid PRIMARY KEY,
     card_id uuid NOT NULL REFERENCES priority_cards(card_id) ON DELETE CASCADE,
     evaluation_run_id uuid,
+    substation_uid uuid NOT NULL REFERENCES substations(substation_uid),
     manufacturer_id text,
     substation_id integer,
     priority_rank integer,
@@ -39,13 +40,14 @@ USING priority_score::double precision
 
 ALERT_QUEUE_COMPATIBILITY_DDL: Final = (
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS evaluation_run_id uuid",
+    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_uid uuid",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS manufacturer_id text",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_id integer",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS priority_rank integer",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS freshness_status text",
     "ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_card_id_key",
     "CREATE UNIQUE INDEX IF NOT EXISTS ops_alert_queue_evaluation_substation_uidx "
-    "ON ops_alert_queue(evaluation_run_id, manufacturer_id, substation_id) "
+    "ON ops_alert_queue(evaluation_run_id, substation_uid) "
     "WHERE evaluation_run_id IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS ops_alert_queue_evaluation_idx "
     "ON ops_alert_queue(evaluation_run_id, status, priority_score DESC)",
@@ -78,6 +80,7 @@ candidates AS (
         )::uuid AS alert_id,
         result.source_card_id AS card_id,
         result.evaluation_run_id,
+        result.substation_uid,
         result.manufacturer_id,
         result.substation_id,
         result.priority_rank,
@@ -98,14 +101,14 @@ existing AS (
     FROM candidates c
     JOIN ops_alert_queue q
       ON q.evaluation_run_id = c.evaluation_run_id
-     AND q.manufacturer_id = c.manufacturer_id
-     AND q.substation_id = c.substation_id
+     AND q.substation_uid = c.substation_uid
 ),
 inserted AS (
     INSERT INTO ops_alert_queue (
         alert_id,
         card_id,
         evaluation_run_id,
+        substation_uid,
         manufacturer_id,
         substation_id,
         priority_rank,
@@ -190,6 +193,64 @@ async def enqueue_priority_alerts(
         if inserted["as_of_time"] is None
         else inserted["as_of_time"].isoformat(),
     }
+
+
+async def materialize_scenario_alert(
+    engine: AsyncEngine,
+    *,
+    scenario_alert_id: str,
+    substation_id: int,
+    priority_level: str,
+    reason: str,
+) -> dict[str, JsonValue] | None:
+    await ensure_alert_queue(engine)
+    query = text(
+        "WITH latest_evaluation AS ("
+        " SELECT evaluation_run_id FROM priority_evaluation_runs"
+        " WHERE status = 'completed'"
+        " ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
+        "), selected_card AS ("
+        " SELECT pc.card_id, s.substation_uid, s.manufacturer_id, s.substation_id, pd.priority_score"
+        " FROM priority_cards pc"
+        " JOIN priority_decisions pd ON pd.priority_decision_id = pc.priority_decision_id"
+        " JOIN windows w ON w.window_id = pd.window_id"
+        " JOIN substations s ON s.substation_uid = w.substation_uid"
+        " WHERE s.substation_id = :substation_id"
+        " ORDER BY w.window_end DESC, pc.created_at DESC LIMIT 1"
+        "), upserted AS ("
+        " INSERT INTO ops_alert_queue ("
+        "  alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,"
+        "  freshness_status, priority_level, priority_score, status, enqueue_reason"
+        " )"
+        " SELECT md5('scenario-alert|' || :scenario_alert_id)::uuid, card.card_id,"
+        "  evaluation.evaluation_run_id, card.substation_uid, card.manufacturer_id, card.substation_id,"
+        "  'fresh', :priority_level, card.priority_score, 'open', :reason"
+        " FROM selected_card card CROSS JOIN latest_evaluation evaluation"
+        " ON CONFLICT (evaluation_run_id, substation_uid)"
+        " WHERE evaluation_run_id IS NOT NULL DO UPDATE SET"
+        "  card_id = EXCLUDED.card_id, evaluation_run_id = EXCLUDED.evaluation_run_id,"
+        "  substation_uid = EXCLUDED.substation_uid, manufacturer_id = EXCLUDED.manufacturer_id,"
+        "  substation_id = EXCLUDED.substation_id,"
+        "  freshness_status = EXCLUDED.freshness_status, priority_level = EXCLUDED.priority_level,"
+        "  priority_score = EXCLUDED.priority_score, status = 'open',"
+        "  enqueue_reason = EXCLUDED.enqueue_reason, acked_at = NULL, acked_by = NULL"
+        " RETURNING alert_id"
+        ") SELECT alert_id FROM upserted"
+    )
+    async with engine.begin() as connection:
+        result = await connection.execute(
+            query,
+            {
+                "scenario_alert_id": scenario_alert_id,
+                "substation_id": substation_id,
+                "priority_level": priority_level,
+                "reason": reason,
+            },
+        )
+        row = result.mappings().one_or_none()
+    if row is None:
+        return None
+    return await get_alert(engine, str(row["alert_id"]))
 
 
 async def list_alerts(

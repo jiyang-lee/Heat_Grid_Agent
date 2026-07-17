@@ -59,10 +59,16 @@ def filter_ops_evidence(
 ) -> OpsInput:
     if card_id != str(source_input["card_id"]):
         return {"error": "card_id를 찾을 수 없습니다."}
+    sections = _compact_sections(_dict_value(source_input["sections"]))
     if requested_sections is None:
-        return source_input
+        compact: OpsInput = {
+            "card_id": card_id,
+            "sections": sections,
+            "unsupported_sections": [],
+        }
+        compact.update(_compact_legacy_evidence_aliases(sections))
+        return compact
 
-    sections = _dict_value(source_input["sections"])
     supported = [name for name in requested_sections if name in SUPPORTED_EVIDENCE_SECTIONS]
     unsupported: list[JsonValue] = [
         name for name in requested_sections if name not in SUPPORTED_EVIDENCE_SECTIONS
@@ -172,6 +178,64 @@ def _legacy_evidence_aliases(sections: dict[str, JsonValue]) -> OpsInput:
             "model_outputs": sections["model_outputs"],
         },
     }
+
+
+def _compact_legacy_evidence_aliases(sections: dict[str, JsonValue]) -> OpsInput:
+    priority = _dict_value(sections["priority"])
+    priority_card = _dict_value(priority["priority_card"])
+    priority_decision = _dict_value(priority["priority_decision"])
+    return {
+        "raw_context": {
+            "window": sections["window"],
+            "substation": sections["substation"],
+        },
+        "priority_context": {
+            "card": priority_card,
+            "priority": priority_decision,
+            "model_outputs": sections["model_outputs"],
+        },
+    }
+
+
+def _compact_sections(sections: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    compact = dict(sections)
+    compact["sensor_summaries"] = [
+        _selected_fields(
+            _dict_value(row),
+            (
+                "feature_name",
+                "feature_value",
+                "unit",
+                "meaning",
+                "model_id",
+                "flow_source",
+                "display_rank",
+            ),
+        )
+        for row in _list_value(sections.get("sensor_summaries"))
+    ]
+    compact["model_outputs"] = [
+        _selected_fields(
+            _dict_value(row),
+            (
+                "label_name",
+                "label_value",
+                "score_name",
+                "score_value",
+                "model_family",
+                "display_rank",
+            ),
+        )
+        for row in _list_value(sections.get("model_outputs"))
+    ]
+    return compact
+
+
+def _selected_fields(
+    row: dict[str, JsonValue],
+    field_names: Sequence[str],
+) -> dict[str, JsonValue]:
+    return {name: row[name] for name in field_names if name in row}
 
 
 def _json_rows(rows: Sequence[RowMapping]) -> list[JsonValue]:

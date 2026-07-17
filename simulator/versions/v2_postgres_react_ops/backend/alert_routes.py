@@ -14,6 +14,7 @@ from alert_repository import (
     get_alert,
     list_alerts,
     resolve_alert,
+    materialize_scenario_alert,
 )
 from heating_agent_routes import register_heating_agent_routes
 from schemas import (
@@ -22,6 +23,7 @@ from schemas import (
     AlertEnqueueResponse,
     AlertSummary,
     JsonValue,
+    ScenarioAlertCreateRequest,
 )
 from settings import Settings
 
@@ -47,6 +49,20 @@ def make_alert_router(
             expected_substations=settings.priority_expected_substations,
         )
         return AlertEnqueueResponse.model_validate(result)
+
+    if prefix == "/api":
+        @router.post("/scenario-alerts", response_model=AlertSummary)
+        async def scenario_alert_create(payload: ScenarioAlertCreateRequest) -> AlertSummary:
+            row = await materialize_scenario_alert(
+                engine,
+                scenario_alert_id=payload.scenario_alert_id,
+                substation_id=payload.substation_id,
+                priority_level=payload.priority_level,
+                reason=payload.reason,
+            )
+            if row is None:
+                raise HTTPException(status_code=404, detail="해당 기계실의 실제 priority card를 찾을 수 없습니다.")
+            return AlertSummary.model_validate(row)
 
     @router.get(
         "/alerts",

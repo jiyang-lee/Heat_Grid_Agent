@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     integrated_agent_model: str = "gpt-5.4-mini"
     independent_agent_model: str = "gpt-5.4-mini"
     rejudge_model: str = "gpt-5.4"
+    rag_quality_enabled: bool = False
     answer_quality_enabled: bool = False
     answer_quality_threshold: float = Field(default=75.0, ge=0.0, le=100.0)
     answer_quality_baseline_version: str = (

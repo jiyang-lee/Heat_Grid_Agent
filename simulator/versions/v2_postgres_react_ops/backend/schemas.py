@@ -151,6 +151,13 @@ class AgentRunCreateRequest(BaseModel):
     reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
+class ScenarioAlertCreateRequest(BaseModel):
+    scenario_alert_id: str = Field(min_length=1, max_length=120)
+    substation_id: int = Field(ge=1)
+    priority_level: Literal["urgent", "high"]
+    reason: str = Field(min_length=1, max_length=500)
+
+
 class AgentReportCreateRequest(BaseModel):
     requested_by: str = Field(min_length=1, max_length=120)
 
