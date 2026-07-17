@@ -31,6 +31,7 @@ from heatgrid_ops.agent.models import (
     TokenCall,
 )
 from heatgrid_ops.agent.ports import (
+    AnswerQualityModelPort,
     ChatModelPort,
     ExternalDataPort,
     ModelVerificationPort,
@@ -38,6 +39,8 @@ from heatgrid_ops.agent.ports import (
     ReportWriterPort,
 )
 from heatgrid_ops.agent.run_models import (
+    AnswerQualityEvaluation,
+    AnswerQualityRequest,
     ChatModelAssessmentResult,
     ExternalDataRequest,
     ExternalDataSnapshot,
@@ -60,6 +63,7 @@ class AgentRuntime:
     work_order_model: ChatModelPort | None = None
     rejudge_model: ChatModelPort | None = None
     diagnostic_model: DiagnosticModelPort | None = None
+    answer_quality_model: AnswerQualityModelPort | None = None
 
     async def external_context_for(
         self,
@@ -173,6 +177,33 @@ class AgentRuntime:
             )
         )
         return result.output
+
+    async def evaluate_answer_quality(
+        self,
+        *,
+        run_id: str,
+        source_input: JsonObject,
+        evidence_context: JsonObject,
+        answer: OpsAgentOutput,
+        usage: TokenUsage | None = None,
+    ) -> AnswerQualityEvaluation:
+        if self.answer_quality_model is None:
+            raise AgentDependencyError(
+                service="answer_quality",
+                detail="answer quality model is not configured",
+            )
+        result = await self.answer_quality_model.evaluate_answer_quality(
+            AnswerQualityRequest(
+                run_id=run_id,
+                source_input=source_input,
+                evidence_context=evidence_context,
+                answer=answer,
+                baseline_version=self.config.answer_quality_baseline_version,
+            )
+        )
+        if usage is not None:
+            usage.calls.extend(result.calls)
+        return result.evaluation
 
     async def assess_evidence(
         self,

@@ -22,6 +22,9 @@ from heatgrid_ops.agent.errors import AgentDependencyError, MissingApiKeyError
 from heatgrid_ops.agent.helpers import to_json, token_calls_from_messages
 from heatgrid_ops.agent.models import OpsAgentOutput, TokenCall
 from heatgrid_ops.agent.run_models import (
+    AnswerQualityEvaluation,
+    AnswerQualityRequest,
+    AnswerQualityResult,
     AgentStreamEvent,
     ChatModelAssessmentResult,
     ChatModelResult,
@@ -57,19 +60,71 @@ class OpenAIChatModelAdapter:
                 detail="insufficient_snapshot_bundle",
             )
         model = self._model().with_structured_output(OpsAgentOutput, include_raw=True)
+        messages = [
+            ("system", SYSTEM_PROMPT),
+            ("human", request.snapshot_bundle.model_dump_json()),
+        ]
+        if request.revision_feedback:
+            messages.append(
+                (
+                    "human",
+                    "Revise the draft using all of these requirements:\n- "
+                    + "\n- ".join(request.revision_feedback),
+                )
+            )
         try:
             result = await model.ainvoke(
-                [
-                    ("system", SYSTEM_PROMPT),
-                    ("human", request.snapshot_bundle.model_dump_json()),
-                ]
+                messages
             )
             output = OpsAgentOutput.model_validate(result.get("parsed"))
         except (OpenAIError, ValidationError, ValueError, TypeError) as exc:
             raise AgentDependencyError(service="llm", detail=str(exc)) from exc
         return ChatModelResult(
             output=output,
-            calls=token_calls_from_messages([result.get("raw")]),
+            calls=self._token_calls([result.get("raw")]),
+        )
+
+    async def evaluate_answer_quality(
+        self,
+        request: AnswerQualityRequest,
+    ) -> AnswerQualityResult:
+        model = self._model().with_structured_output(
+            AnswerQualityEvaluation,
+            include_raw=True,
+        )
+        payload = {
+            "baseline_version": request.baseline_version,
+            "source_input": request.source_input,
+            "evidence_context": request.evidence_context,
+            "answer": request.answer.model_dump(mode="json"),
+        }
+        try:
+            result = await model.ainvoke(
+                [
+                    (
+                        "system",
+                        "Evaluate an operations answer only against the supplied input and "
+                        "evidence. Score correctness, completeness, actionability, evidence "
+                        "grounding, and calibration from 1 to 5. Set citation_mismatch only "
+                        "when an explicit citation conflicts with its evidence. Penalize "
+                        "untraceable claims through evidence_grounding and "
+                        "unsupported_claim_risk. Set over_abstention when an answerable "
+                        "question has supporting evidence but the answer avoids supported "
+                        "content. Set retrieval_insufficient only when the supplied RAG "
+                        "chunks do not contain enough relevant evidence to answer the "
+                        "operational need, not merely because the draft used existing "
+                        "evidence poorly. Treat possible causes as hypotheses unless the evidence "
+                        "confirms them. Return concise failure_reasons.",
+                    ),
+                    ("human", to_json(payload)),
+                ]
+            )
+            evaluation = AnswerQualityEvaluation.model_validate(result.get("parsed"))
+        except (OpenAIError, ValidationError, ValueError, TypeError) as exc:
+            raise AgentDependencyError(service="answer_quality", detail=str(exc)) from exc
+        return AnswerQualityResult(
+            evaluation=evaluation,
+            calls=self._token_calls([result.get("raw")]),
         )
 
     async def _generate_with_policy_tools(
@@ -101,7 +156,7 @@ class OpenAIChatModelAdapter:
             raise AgentDependencyError(service="llm", detail=str(exc)) from exc
         return ChatModelResult(
             output=output,
-            calls=token_calls_from_messages(result.get("messages")),
+            calls=self._token_calls(result.get("messages")),
         )
 
     async def assess(
@@ -139,7 +194,7 @@ class OpenAIChatModelAdapter:
                 assessment=candidate.model_copy(
                     update={"decision_source": "llm_guarded"}
                 ),
-                calls=token_calls_from_messages([result.get("raw")]),
+                calls=self._token_calls([result.get("raw")]),
             )
         except (OpenAIError, ValidationError, ValueError, TypeError):
             return None
@@ -162,7 +217,7 @@ class OpenAIChatModelAdapter:
             raise AgentDependencyError(service="llm", detail=str(exc)) from exc
         return DiagnosticModelResult(
             output=output,
-            calls=token_calls_from_messages([raw]),
+            calls=self._token_calls([raw]),
         )
 
     async def stream(
@@ -201,6 +256,12 @@ class OpenAIChatModelAdapter:
         if self.api_key is None:
             raise MissingApiKeyError()
         return ChatOpenAI(model=self.model, api_key=SecretStr(self.api_key))
+
+    def _token_calls(self, messages: object) -> list[TokenCall]:
+        return [
+            call.model_copy(update={"model": self.model})
+            for call in token_calls_from_messages(messages)
+        ]
 
 
 def _stream_event(event) -> AgentStreamEvent | None:

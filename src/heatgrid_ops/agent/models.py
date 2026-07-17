@@ -20,6 +20,7 @@ class OpsAgentOutput(BaseModel):
 class TokenCall(BaseModel):
     model_config = ConfigDict(frozen=True)
 
+    model: str | None = None
     input_tokens: int = 0
     cached_input_tokens: int = 0
     output_tokens: int = 0

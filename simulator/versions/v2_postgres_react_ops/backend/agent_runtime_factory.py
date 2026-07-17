@@ -16,16 +16,20 @@ from agent_report_writer_adapter import (
     default_report_output_root,
 )
 from agent_review_adapter import PostgresAgentReviewAdapter
-from heatgrid_ops.agent.config import AgentRuntimeConfig
+from heatgrid_ops.agent.config import AgentRuntimeConfig, ModelPricing
 from heatgrid_ops.agent.contracts import SimulateCard
 from heatgrid_ops.agent.graph import AgentGraphContext
 from heatgrid_ops.agent.services import AgentRuntime
 from heatgrid_rag.search import RagSearcher
 from settings import (
+    GPT_5_4_CACHED_INPUT_USD_PER_1M,
+    GPT_5_4_INPUT_USD_PER_1M,
     GPT_5_4_MINI_CACHED_INPUT_USD_PER_1M,
     GPT_5_4_MINI_INPUT_USD_PER_1M,
     GPT_5_4_MINI_OUTPUT_USD_PER_1M,
     GPT_5_4_MINI_PRICING_SOURCE,
+    GPT_5_4_OUTPUT_USD_PER_1M,
+    GPT_5_4_PRICING_SOURCE,
     Settings,
 )
 
@@ -63,6 +67,7 @@ def create_agent_runtime(
         chat_model=integrated_model,
         work_order_model=work_order_model,
         rejudge_model=rejudge_model,
+        answer_quality_model=rejudge_model,
         model_verification=ActiveModelVerificationAdapter(
             model_data=input_model,
             tolerance=settings.model_score_tolerance,
@@ -98,6 +103,10 @@ def agent_runtime_config(settings: Settings) -> AgentRuntimeConfig:
     return AgentRuntimeConfig(
         openai_model=settings.integrated_agent_model,
         rag_top_k=settings.rag_top_k,
+        rag_expanded_top_k=settings.rag_expanded_top_k,
+        rag_max_top_k=settings.rag_max_top_k,
+        rag_jsonl_min_top_score=settings.rag_jsonl_min_top_score,
+        rag_jsonl_min_unique_matches=settings.rag_jsonl_min_unique_matches,
         agent_max_iterations=settings.agent_max_iterations,
         agent_evidence_threshold=settings.agent_evidence_threshold,
         model_score_tolerance=settings.model_score_tolerance,
@@ -105,4 +114,16 @@ def agent_runtime_config(settings: Settings) -> AgentRuntimeConfig:
         cached_input_usd_per_1m=GPT_5_4_MINI_CACHED_INPUT_USD_PER_1M,
         output_usd_per_1m=GPT_5_4_MINI_OUTPUT_USD_PER_1M,
         pricing_source=GPT_5_4_MINI_PRICING_SOURCE,
+        answer_quality_enabled=settings.answer_quality_enabled,
+        answer_quality_threshold=settings.answer_quality_threshold,
+        answer_quality_baseline_version=settings.answer_quality_baseline_version,
+        model_pricing_overrides=(
+            ModelPricing(
+                model=settings.rejudge_model,
+                input_usd_per_1m=GPT_5_4_INPUT_USD_PER_1M,
+                cached_input_usd_per_1m=GPT_5_4_CACHED_INPUT_USD_PER_1M,
+                output_usd_per_1m=GPT_5_4_OUTPUT_USD_PER_1M,
+                pricing_source=GPT_5_4_PRICING_SOURCE,
+            ),
+        ),
     )

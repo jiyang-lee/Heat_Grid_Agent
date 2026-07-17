@@ -70,6 +70,7 @@ class ExplicitV2AgentGraph:
                     source_input=source_input,
                     input_hash=canonical_json_hash(source_input),
                     target_stage=_target_stage(config),
+                    broaden=_broaden(config),
                 )
             )
             await _hydrate_parent_prefix(self.engine, self.context, state)
@@ -109,6 +110,19 @@ def build_agent_graph_v2(
     runtime: AgentRuntime | None = None,
 ) -> AgentGraphInvoker:
     del base, openai_model, model_score_tolerance
+    answer_quality_enabled = bool(
+        runtime is not None and runtime.config.answer_quality_enabled
+    )
+    answer_quality_threshold = (
+        runtime.config.answer_quality_threshold
+        if runtime is not None
+        else 75.0
+    )
+    answer_quality_baseline = (
+        runtime.config.answer_quality_baseline_version
+        if runtime is not None
+        else "answer-quality-policy.v2-100-rag-single-judge-draft"
+    )
     context = AgentV2GraphContext(
         snapshots=PostgresStageSnapshotAdapter(engine),
         adapters={}
@@ -117,9 +131,16 @@ def build_agent_graph_v2(
         component_versions={
             "graph": "agent_graph:v2",
             "adapter": "postgres.v008",
+            "answer_quality": answer_quality_baseline,
         },
-        feature_flags={"rag_quality": rag_quality_enabled},
-        thresholds={"evidence": evidence_threshold},
+        feature_flags={
+            "rag_quality": rag_quality_enabled,
+            "answer_quality": answer_quality_enabled,
+        },
+        thresholds={
+            "evidence": evidence_threshold,
+            "answer_quality": answer_quality_threshold,
+        },
     )
     graph = build_agent_v2_graph(context, checkpointer=checkpointer)
     return ExplicitV2AgentGraph(
@@ -136,6 +157,11 @@ def _target_stage(config: RunnableConfig) -> StageName | None:
     if not isinstance(value, str) or value not in STAGE_ORDER:
         return None
     return value
+
+
+def _broaden(config: RunnableConfig) -> bool:
+    configurable = config.get("configurable") or {}
+    return configurable.get("broaden") is True
 
 
 async def _hydrate_parent_prefix(

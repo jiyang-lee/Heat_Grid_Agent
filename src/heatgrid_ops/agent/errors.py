@@ -27,7 +27,14 @@ class AgentInputContractError(AgentCoreError):
 
 @dataclass(slots=True)
 class AgentDependencyError(AgentCoreError):
-    service: Literal["llm", "model", "persistence", "rag", "report"]
+    service: Literal[
+        "llm",
+        "model",
+        "persistence",
+        "rag",
+        "report",
+        "answer_quality",
+    ]
     detail: str
 
     def __str__(self) -> str:

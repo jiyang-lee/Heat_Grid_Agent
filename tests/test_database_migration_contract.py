@@ -16,11 +16,24 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(15))
+    assert [migration.version for migration in migrations] == list(range(16))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "014_replay_legacy_priority_index_cleanup.sql"
+    assert migrations[-1].path.name == "015_agent_run_support_table_recovery.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
+
+
+def test_agent_run_support_table_recovery_restores_final_contract() -> None:
+    sql = (
+        ROOT / "migrations" / "015_agent_run_support_table_recovery.sql"
+    ).read_text().lower()
+
+    assert "create table if not exists public.agent_run_events" in sql
+    assert "create table if not exists public.agent_run_artifacts" in sql
+    assert "create table if not exists public.agent_run_actions" in sql
+    assert "agent_run_events_v3_snapshot_idx" in sql
+    assert "agent_run_artifacts_output_lineage_uidx" in sql
+    assert "on delete restrict" in sql
 
 
 def test_migration_ledger_records_baseline_and_contract_metadata() -> None:

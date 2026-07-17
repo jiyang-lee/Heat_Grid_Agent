@@ -17,6 +17,7 @@ from agent_execution_repository import (
     release_agent_graph_task,
 )
 from agent_rerun_repository import mark_child_rescheduled
+from agent_rerun_policy import broaden_for_reason
 from agent_input_snapshot_repository import (
     AgentInputLineage,
     get_agent_input_lineage,
@@ -62,6 +63,12 @@ class PreparedTaskInput:
     input_hash: str | None
     origin: str
     status: str
+
+
+@dataclass(frozen=True, slots=True)
+class V2RunOptions:
+    target_stage: StageName | None
+    broaden: bool
 
 
 async def run_agent_graph(
@@ -121,13 +128,15 @@ async def run_reserved_agent_graph(
             return existing
         try:
             if task_key == AGENT_GRAPH_TASK_KEY_V2:
+                options = await _v2_run_options(engine, request.run_id)
                 execution = await execute_agent_graph_v2_with_capture(
                     context,
                     request,
                     AgentInputSnapshot(source_input=prepared_input.snapshot),
                     graph=graph,
                     resume=claim.resume_from_checkpoint,
-                    target_stage=await _target_stage(engine, request.run_id),
+                    target_stage=options.target_stage,
+                    broaden=options.broaden,
                 )
             else:
                 execution = await execute_agent_graph_with_capture(
@@ -285,16 +294,27 @@ def _request_snapshot(request: AgentRunRequest) -> JsonObject:
     }
 
 
-async def _target_stage(engine: AsyncEngine, run_id: str) -> StageName | None:
+async def _v2_run_options(engine: AsyncEngine, run_id: str) -> V2RunOptions:
     async with engine.connect() as connection:
         result = await connection.execute(
-            text("SELECT target_stage FROM agent_runs WHERE run_id = :run_id"),
+            text(
+                "SELECT runs.target_stage, reviews.reason_category "
+                "FROM agent_runs runs "
+                "LEFT JOIN agent_run_reviews reviews "
+                "ON reviews.review_id = runs.source_review_id "
+                "WHERE runs.run_id = :run_id"
+            ),
             {"run_id": run_id},
         )
-    value = result.scalar_one_or_none()
-    if not isinstance(value, str) or value not in STAGE_ORDER:
-        return None
-    return value
+    row = result.mappings().one_or_none()
+    if row is None:
+        return V2RunOptions(target_stage=None, broaden=False)
+    value = row["target_stage"]
+    target_stage = value if isinstance(value, str) and value in STAGE_ORDER else None
+    return V2RunOptions(
+        target_stage=target_stage,
+        broaden=broaden_for_reason(row["reason_category"]),
+    )
 
 
 async def _prepare_task_input(

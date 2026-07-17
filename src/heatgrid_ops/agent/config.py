@@ -16,6 +16,15 @@ SYSTEM_PROMPT: Final = (
 
 
 @dataclass(frozen=True, slots=True)
+class ModelPricing:
+    model: str
+    input_usd_per_1m: float
+    cached_input_usd_per_1m: float
+    output_usd_per_1m: float
+    pricing_source: str
+
+
+@dataclass(frozen=True, slots=True)
 class AgentRuntimeConfig:
     openai_model: str
     rag_top_k: int
@@ -26,3 +35,13 @@ class AgentRuntimeConfig:
     cached_input_usd_per_1m: float
     output_usd_per_1m: float
     pricing_source: str
+    rag_expanded_top_k: int = 10
+    rag_max_top_k: int = 20
+    rag_jsonl_min_top_score: float = 6.0
+    rag_jsonl_min_unique_matches: int = 2
+    answer_quality_enabled: bool = False
+    answer_quality_threshold: float = 75.0
+    answer_quality_baseline_version: str = (
+        "answer-quality-policy.v2-100-rag-single-judge-draft"
+    )
+    model_pricing_overrides: tuple[ModelPricing, ...] = ()

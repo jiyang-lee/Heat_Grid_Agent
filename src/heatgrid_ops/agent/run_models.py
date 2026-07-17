@@ -161,6 +161,39 @@ class ChatModelAssessmentResult(BaseModel):
     calls: list[TokenCall] = Field(default_factory=list)
 
 
+class AnswerQualityEvaluation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    correctness: int = Field(ge=1, le=5)
+    completeness: int = Field(ge=1, le=5)
+    actionability: int = Field(ge=1, le=5)
+    evidence_grounding: int = Field(ge=1, le=5)
+    calibration: int = Field(ge=1, le=5)
+    citation_mismatch: bool = False
+    over_abstention: bool = False
+    retrieval_insufficient: bool = False
+    unsupported_claim_risk: Literal["NONE", "LOW", "MEDIUM", "HIGH"] = "NONE"
+    failure_reasons: list[str] = Field(default_factory=list)
+    judge_confidence: Literal["HIGH", "MEDIUM", "LOW"] = "MEDIUM"
+
+
+class AnswerQualityRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    run_id: str
+    source_input: JsonObject
+    evidence_context: JsonObject
+    answer: OpsAgentOutput
+    baseline_version: str
+
+
+class AnswerQualityResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    evaluation: AnswerQualityEvaluation
+    calls: list[TokenCall] = Field(default_factory=list)
+
+
 class AgentStreamEvent(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
