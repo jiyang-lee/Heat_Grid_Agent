@@ -67,6 +67,9 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
       queryClient.refetchQueries({ queryKey: ['alerts'] }),
       queryClient.refetchQueries({ queryKey: qk.health }),
       queryClient.refetchQueries({ queryKey: ['review-tasks'] }),
+      queryClient.refetchQueries({ queryKey: ['agent-runs'] }),
+      queryClient.refetchQueries({ queryKey: ['work-orders'] }),
+      queryClient.refetchQueries({ queryKey: ['agent-reports'] }),
     ])
   }
 

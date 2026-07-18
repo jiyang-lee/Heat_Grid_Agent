@@ -1,8 +1,4 @@
-/**
- * 작업지시서 상세 — 완료 run의 OpsAgentResultV4를 작업지시서로 표시한다.
- * 담당자/연락처/현장 첨부는 백엔드 계약에 없으므로 '미지정'으로 정직하게 표시하고,
- * 체크리스트 완료 여부는 저장 API가 없어 개수만 보여준다(가짜 완료 수 금지).
- */
+/** 완료 run의 실제 OpsAgentResultV4를 공문서형 작업지시서로 표시한다. */
 
 import { useState } from 'react'
 import type { OperatorReviewDecision, WorkOrderListItem } from '../../api/contracts'
@@ -20,7 +16,7 @@ import {
 } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
 
-type DetailTab = 'info' | 'checklist' | 'field' | 'history'
+type DetailTab = 'document' | 'history'
 
 const DECISION_LABELS: Record<string, string> = {
   approve: '승인', reject: '반려', correct: '교정', keep_human_review: '수정 요청',
@@ -31,6 +27,19 @@ function decisionTone(decision: string): Tone {
   if (decision === 'reject') return 'critical'
   if (decision === 'correct') return 'warning'
   return 'primary'
+}
+
+function splitNumberedSteps(detail: string): string[] {
+  const parts = detail.split(/(?=\d+\)\s*)/).map((part) => part.trim()).filter(Boolean)
+  return parts.length > 1 ? parts.map((part) => part.replace(/^\d+\)\s*/, '')) : [detail.trim()]
+}
+
+function splitCautions(value: string): string[] {
+  return value.split(/\s*-\s+/).map((part) => part.trim()).filter(Boolean)
+}
+
+function workOrderTitle(value: string | null): string {
+  return value?.split(' · ')[0]?.trim() || '설비 이상 작업지시서'
 }
 
 interface Props {
@@ -45,12 +54,14 @@ export function WorkOrderDetail({ item, onClose, onOpenReport }: Props) {
   const result = useAgentRunResult(runId)
   const artifacts = useArtifacts(runId)
   const reviews = useOperatorReviews(runId)
-  const [tab, setTab] = useState<DetailTab>('info')
+  const [tab, setTab] = useState<DetailTab>('document')
   const [action, setAction] = useState<OperatorReviewDecision | null>(null)
 
   const resultNotReady = result.error instanceof ApiError && result.error.status === 409
   const reportArtifact = artifacts.data?.find((artifact) => artifact.kind === 'anomaly_report' || artifact.kind === 'daily_report') ?? null
   const actions = result.data?.actions ?? []
+  const title = workOrderTitle(item.alert_reason)
+  const cautionItems = splitCautions(run.data?.ops_output?.caution ?? result.data?.cautions.join(' ') ?? '')
 
   return (
     <SurfaceCard
@@ -66,7 +77,7 @@ export function WorkOrderDetail({ item, onClose, onOpenReport }: Props) {
               <StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge>
             </span>
           </div>
-          <h2>{result.data?.headline ?? item.alert_reason ?? '작업지시서'}</h2>
+          <h2>{title}</h2>
           <p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p>
           <span>지시서 ID {runId.slice(0, 8)}… · 생성 {formatDateTime(item.created_at)}</span>
           {reportArtifact && (
@@ -77,65 +88,52 @@ export function WorkOrderDetail({ item, onClose, onOpenReport }: Props) {
         </div>
 
         <div className="activity-tabs activity-inner-tabs" role="tablist">
-          {([['info', '작업 정보'], ['checklist', '체크리스트'], ['field', '현장 기록'], ['history', '이력']] as const).map(([key, label]) => (
+          {([['document', '작업지시서'], ['history', '검토 이력']] as const).map(([key, label]) => (
             <button aria-selected={tab === key} className={tab === key ? 'active' : ''} key={key} onClick={() => setTab(key)} role="tab" type="button">{label}</button>
           ))}
         </div>
 
-        {tab === 'info' && (
+        {tab === 'document' && (
           <section role="tabpanel">
             <ApiState empty={false} error={result.isError && !resultNotReady} loading={result.isLoading || run.isLoading} retry={() => void result.refetch()} />
             {resultNotReady && <p className="activity-empty-note">실행이 아직 완료되지 않아 작업지시서가 준비되지 않았습니다.</p>}
             {result.data && (
-              <>
-                <article className="activity-evidence-card">
-                  <h3>작업 목적</h3>
-                  <p>{run.data?.ops_output?.summary ?? result.data.situation}</p>
-                </article>
-                <div className="work-order-meta activity-order-meta">
-                  <span>우선순위 <strong>{priorityLabel(item.priority)}</strong></span>
-                  <span>생성 시간 <strong>{formatDateTime(item.created_at)}</strong></span>
-                  <span>담당자 <strong>미지정</strong></span>
-                  <span>연락처 <strong>미지정</strong></span>
-                </div>
-                <article className="activity-evidence-card">
-                  <h3>작업 내용</h3>
-                  <ol className="activity-action-list">
-                    {actions.map((entry) => (
-                      <li key={entry.priority}><strong>{entry.title}</strong><span>{entry.detail}</span></li>
-                    ))}
+              <article className="work-order-document">
+                <header>
+                  <div><small>AI 작업지시서</small><h3>{title}</h3></div>
+                  <StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge>
+                </header>
+                <dl>
+                  <div><dt>지시서 번호</dt><dd>{runId.slice(0, 8).toUpperCase()}</dd></div>
+                  <div><dt>대상 설비</dt><dd>{facilityName(item.substation_id, item.manufacturer_id)}</dd></div>
+                  <div><dt>생성 시간</dt><dd>{formatDateTime(item.created_at)}</dd></div>
+                  <div><dt>생성 모델</dt><dd>{run.data?.token_usage?.cost_estimate?.model ?? '확인 중'}</dd></div>
+                </dl>
+                <section>
+                  <h4>1. 작업 목적</h4>
+                  <p>{title} 대응을 위한 현장 점검과 안전 조치를 수행합니다.</p>
+                </section>
+                <section>
+                  <h4>2. 작업 절차</h4>
+                  <ol className="activity-action-list work-order-steps">
+                    {actions.flatMap((entry) => splitNumberedSteps(entry.detail).map((step, index) => (
+                      <li key={`${entry.priority}-${index}`}>
+                        <strong>{index === 0 ? entry.title : `${entry.title} ${index + 1}`}</strong>
+                        <span>{step}</span>
+                      </li>
+                    )))}
                     {actions.length === 0 && <li><span>등록된 작업 항목이 없습니다.</span></li>}
                   </ol>
-                </article>
-                <article className="activity-evidence-card caution">
-                  <h3>안전 확인</h3>
-                  <p>{run.data?.ops_output?.caution ?? result.data.cautions.join(' ') ?? '데이터 없음'}</p>
-                </article>
-                <p className="activity-empty-note">첨부 파일: 등록된 파일 없음 (현장 첨부 계약 미지원)</p>
-              </>
+                </section>
+                <section className="caution">
+                  <h4>3. 안전 확인</h4>
+                  <ul className="work-order-cautions">
+                    {cautionItems.map((caution) => <li key={caution}>{caution}</li>)}
+                    {cautionItems.length === 0 && <li>확인할 안전 주의사항이 없습니다.</li>}
+                  </ul>
+                </section>
+              </article>
             )}
-          </section>
-        )}
-
-        {tab === 'checklist' && (
-          <section role="tabpanel">
-            {actions.length === 0 && <p className="activity-empty-note">체크리스트로 만들 작업 항목이 없습니다.</p>}
-            {actions.length > 0 && (
-              <>
-                <p className="activity-empty-note">체크리스트 {actions.length}개 항목 — 완료 여부 저장 기능 미연동(0/{actions.length})</p>
-                <ul className="activity-checklist">
-                  {actions.map((entry) => (
-                    <li key={entry.priority}><input aria-label={`${entry.title} (저장 미지원)`} disabled type="checkbox" /><span>{entry.title}</span></li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </section>
-        )}
-
-        {tab === 'field' && (
-          <section role="tabpanel">
-            <p className="activity-empty-note">현장 기록 저장 API가 아직 없어 표시할 기록이 없습니다.</p>
           </section>
         )}
 
@@ -160,8 +158,7 @@ export function WorkOrderDetail({ item, onClose, onOpenReport }: Props) {
           </section>
         )}
 
-        <p className="review-scope-note">아래 결정은 이 실행의 산출물 전체(작업지시서·보고서)에 적용됩니다.</p>
-        <div className="detail-actions activity-actions">
+        <div className="detail-actions activity-actions activity-actions-sticky">
           <Button onClick={() => setAction('keep_human_review')}>수정 요청</Button>
           <Button onClick={() => setAction('approve')} tone="primary">승인</Button>
           <Button onClick={() => setAction('reject')} tone="danger">반려</Button>

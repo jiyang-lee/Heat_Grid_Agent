@@ -99,7 +99,9 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await aiShortcut.click()
   await expect(page.locator('.topbar-page-context')).toContainText('AI 조치')
   await expect(page.getByRole('heading', { name: '작업지시서 가이드' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '작업지시서 생성' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '작업지시서 보기' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: '실행 추적' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: '재실행' })).toHaveCount(0)
   await expectNoPageScroll(page)
 })
 
@@ -124,7 +126,7 @@ test('refresh keeps the current page and clears resolved alerts', async ({ page 
   await expect(page.getByText('종결', { exact: true })).toHaveCount(0)
 })
 
-test('AI action guide creates a real LLM work order', async ({ page }) => {
+test('AI action guide opens the real work order and refresh resets its UI state', async ({ page }) => {
   test.setTimeout(120_000)
   await startFaultScenario(page)
   await waitForIncident(page)
@@ -135,7 +137,13 @@ test('AI action guide creates a real LLM work order', async ({ page }) => {
   await page.getByRole('button', { name: 'AI 조치 바로가기' }).click({ timeout: 45_000 })
 
   await expect(page.getByRole('heading', { name: '작업지시서 가이드' })).toBeVisible()
-  await page.getByRole('button', { name: '작업지시서 생성' }).click()
-  await expect(page.getByText('LLM이 작업지시서를 생성하고 있습니다.')).toBeVisible()
-  await expect(page.getByText('작업지시서 생성이 완료되었습니다. 상단 작업지시서 탭에서 확인할 수 있습니다.')).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: '작업지시서 보기' }).click()
+  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '승인', exact: true })).toBeVisible()
+  await expect(page.getByText('AI 작업지시서', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: '새로고침', exact: true }).click()
+  await expect(page.locator('.topbar-page-context')).toContainText('AI 조치')
+  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: '조치 계획' })).toHaveAttribute('aria-selected', 'true')
 })

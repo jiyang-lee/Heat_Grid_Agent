@@ -20,6 +20,7 @@ function ConsoleApp() {
   // 알림에서 새 실행을 만든 직후에만 쓰는 1회성 딥링크.
   // localStorage 과거 run으로 상세를 자동 복원하지 않는다(기본 진입은 목록 전용).
   const [pendingRunId, setPendingRunId] = useState<string | null>(null)
+  const [refreshRevision, setRefreshRevision] = useState(0)
   const openRun = (runId: string) => {
     window.localStorage.setItem('heatgrid:last-agent-run', runId) // 최근 실행 기록용(자동 복원에는 미사용)
     setPendingRunId(runId)
@@ -41,6 +42,7 @@ function ConsoleApp() {
   const restartScenario = () => {
     setInitialScenarioAlertId(null)
     setPendingRunId(null)
+    setRefreshRevision((revision) => revision + 1)
     scenario.restartScenario()
   }
 
@@ -58,7 +60,7 @@ function ConsoleApp() {
   >
     {page === 'dashboard' && <DashboardPage onOpenAlerts={(alertId) => { if (faultMode && alertId != null) scenario.selectAlert(alertId); setInitialScenarioAlertId(alertId ?? null); setPage('alerts') }} theme={theme.resolvedTheme} />}
     {page === 'alerts' && (faultMode ? <ScenarioAlertsPage initialAlertId={initialScenarioAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialScenarioAlert} onOpenAiAction={openRun} /> : <AlertsPage onRunCreated={openRun} />)}
-    {page === 'reports' && <AiActivityPage initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
+    {page === 'reports' && <AiActivityPage initialRunId={pendingRunId} key={refreshRevision} onConsumeInitialRun={consumePendingRun} />}
     {page === 'settings' && <SettingsPage onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
   </AppShell>
 }

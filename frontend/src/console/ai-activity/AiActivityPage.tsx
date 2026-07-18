@@ -147,13 +147,13 @@ export function AiActivityPage({ initialRunId, onConsumeInitialRun }: Props) {
     if (tab === 'execution' && selected.execution && !runs.isLoading && !selectedExecution) {
       setSelected((current) => ({ ...current, execution: null }))
     }
-    if (tab === 'orders' && selected.orders && !orders.isLoading && !selectedOrder) {
+    if (tab === 'orders' && selected.orders && orders.data && !orders.isLoading && !selectedOrder) {
       setSelected((current) => ({ ...current, orders: null }))
     }
-    if (tab === 'reports' && selected.reports && !reports.isLoading && !selectedReport) {
+    if (tab === 'reports' && selected.reports && reports.data && !reports.isLoading && !selectedReport) {
       setSelected((current) => ({ ...current, reports: null }))
     }
-  }, [tab, selected, selectedExecution, selectedOrder, selectedReport, runs.isLoading, orders.isLoading, reports.isLoading])
+  }, [tab, selected, selectedExecution, selectedOrder, selectedReport, runs.isLoading, orders.isLoading, reports.isLoading, orders.data, reports.data])
 
   // 건물/기계실 옵션 — 현재 탭 실데이터의 substation_id를 단지명으로 매핑(하드코딩 금지).
   const facilities: FacilityOption[] = useMemo(() => {
@@ -188,6 +188,11 @@ export function AiActivityPage({ initialRunId, onConsumeInitialRun }: Props) {
   const openReportFromOrder = (artifactId: string) => {
     setTab('reports')
     setSelected((current) => ({ ...current, reports: artifactId }))
+  }
+
+  const openWorkOrderFromExecution = (runId: string) => {
+    setTab('orders')
+    setSelected((current) => ({ ...current, execution: null, orders: runId }))
   }
 
   const isEmpty =
@@ -253,7 +258,11 @@ export function AiActivityPage({ initialRunId, onConsumeInitialRun }: Props) {
 
         {tab === 'execution' && selectedExecution && (
           <aside className="activity-detail-pane">
-            <ExecutionDetail item={selectedExecution} onClose={() => setSelected((current) => ({ ...current, execution: null }))} />
+            <ExecutionDetail
+              item={selectedExecution}
+              onClose={() => setSelected((current) => ({ ...current, execution: null }))}
+              onOpenWorkOrder={openWorkOrderFromExecution}
+            />
           </aside>
         )}
         {tab === 'orders' && selectedOrder && (
