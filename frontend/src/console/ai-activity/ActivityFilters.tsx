@@ -28,8 +28,6 @@ interface Props {
   readonly search: string
   readonly onSearchChange: (value: string) => void
   readonly totalCount: number | null
-  readonly onRefresh: () => void
-  readonly pageSize: number
 }
 
 export function ActivityFilters({
@@ -44,8 +42,6 @@ export function ActivityFilters({
   search,
   onSearchChange,
   totalCount,
-  onRefresh,
-  pageSize,
 }: Props) {
   return (
     <div className="activity-filter-bar">
@@ -81,15 +77,13 @@ export function ActivityFilters({
           <Icon name="search" />
           <input
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="건물명, 알림 내용, 실행 ID, 보고서명"
+            placeholder="건물명, 알림 내용, 보고서명"
             value={search}
           />
         </div>
       </label>
       <div className="activity-filter-side">
         <span className="activity-total">총 {totalCount ?? '-'}건</span>
-        <button aria-label="목록 새로고침" className="sf-icon-button" onClick={onRefresh} type="button"><Icon name="refresh" /></button>
-        <span className="activity-page-size">{pageSize} / 페이지</span>
       </div>
     </div>
   )

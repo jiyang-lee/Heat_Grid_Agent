@@ -19,6 +19,7 @@ export type FreshnessStatus = 'fresh' | 'stale' | 'missing'
 /** GET /api/alerts, GET /api/alerts/{alert_id} 응답 항목 */
 export interface AlertSummary {
   alert_id: string
+  episode_id: string | null
   card_id: string
   evaluation_run_id: string | null
   as_of_time: string | null
@@ -33,6 +34,8 @@ export interface AlertSummary {
   created_at: string
   acked_at: string | null
   acked_by: string | null
+  read_at: string | null
+  read_by: string | null
 }
 
 export interface ScenarioAlertCreateRequest {
@@ -798,6 +801,89 @@ export interface ReviewChatMessageRequest {
   readonly content: string
   readonly created_by: string
   readonly idempotency_key: string
+  readonly document_context?: {
+    readonly document_version_id?: string
+    readonly document_type?: 'work_order' | 'incident_report'
+    readonly expected_version: number
+  }
+  readonly incident_id?: string
+  readonly citation_ids?: readonly string[]
+}
+
+export interface CurrentUser {
+  readonly user_id: string
+  readonly display_name: string
+  readonly capabilities: readonly 'admin'[]
+  readonly auth_mode: 'fixed'
+}
+
+export interface ShiftSchedule {
+  readonly shift_id: string
+  readonly label: string
+  readonly start_time: string
+  readonly end_time: string
+}
+
+export interface OperationsPolicy {
+  readonly version: number
+  readonly timezone: 'Asia/Seoul'
+  readonly freshness_threshold_minutes: number
+  readonly anomaly_confirmations: number
+  readonly recovery_confirmations: number
+  readonly shifts: readonly [ShiftSchedule, ShiftSchedule]
+  readonly updated_at: string
+  readonly updated_by: string
+}
+
+export interface OperationsPolicyUpdate {
+  readonly expected_version: number
+  readonly timezone: 'Asia/Seoul'
+  readonly freshness_threshold_minutes: number
+  readonly anomaly_confirmations: number
+  readonly recovery_confirmations: number
+  readonly shifts: readonly [ShiftSchedule, ShiftSchedule]
+}
+
+export type OperationsReportStatus = 'pending' | 'generating' | 'official' | 'failed' | 'overdue'
+
+export interface CurrentShiftMemo {
+  readonly period_start: string
+  readonly period_end: string
+  readonly timezone: 'Asia/Seoul'
+  readonly memo: string
+  readonly updated_by: string | null
+  readonly updated_at: string | null
+}
+
+export interface OperationsReportVersion {
+  readonly report_version_id: string
+  readonly version: number
+  readonly source_report_version_id: string | null
+  readonly official: boolean
+  readonly content: Record<string, unknown>
+  readonly content_hash: string
+  readonly data_quality_caveats: readonly string[]
+  readonly generated_by: string
+  readonly generated_at: string
+  readonly correction_reason: string | null
+}
+
+export interface OperationsReportPeriod {
+  readonly report_period_id: string
+  readonly report_type: 'shift' | 'daily'
+  readonly period_start: string
+  readonly period_end: string
+  readonly timezone: 'Asia/Seoul'
+  readonly status: OperationsReportStatus
+  readonly operation_key: string
+  readonly error: string | null
+  readonly created_at: string
+  readonly updated_at: string
+  readonly versions: readonly OperationsReportVersion[]
+}
+
+export interface OperationsReportPage {
+  readonly items: readonly OperationsReportPeriod[]
 }
 
 export interface ReviewChatMessageResponse {
@@ -831,6 +917,7 @@ export interface ReviewChatProposalResponse {
   readonly disposition: string | null
   readonly correction: Record<string, string> | null
   readonly target_stage: string | null
+  readonly revision?: Readonly<Record<string, string>> | null
   readonly expires_at: string
 }
 

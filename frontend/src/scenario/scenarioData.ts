@@ -2,8 +2,8 @@ import type { PriorityEvaluationResult } from '../api/contracts'
 import type { EvaluationCategory, ScenarioAlert, ScenarioTimelineAlert, SensorPoint, WorkOrderSection, WorkOrderVersion } from './types'
 
 export const ACTIVE_SCENARIO_ID = 'return-temperature-2020-01-13'
-export const SCENARIO_START_AT = '2020-01-13T14:50:00+09:00'
-export const SCENARIO_INCIDENT_AT = '2020-01-13T15:10:00+09:00'
+export const SCENARIO_START_AT = '2020-01-13T12:00:00+09:00'
+export const SCENARIO_INCIDENT_AT = '2020-01-13T12:20:00+09:00'
 
 export const SCENARIO_ALERTS: readonly ScenarioAlert[] = [
   {
@@ -160,13 +160,22 @@ function workOrderSections(alert: ScenarioAlert, version: 1 | 2 | 3, changeSumma
 
 export function workOrderVersion(alert: ScenarioAlert, version: 1 | 2 | 3, changeSummary: string): WorkOrderVersion {
   const sections = workOrderSections(alert, version, changeSummary)
+  const title = `${alert.facility} ${alert.affectedMetric === 'returnTemperature' ? '환수온도' : alert.affectedMetric === 'flow' ? '유량' : '공급온도'} 이상 작업지시서 v${version}`
   return {
     version,
     createdAt: new Date().toISOString(),
-    title: `${alert.facility} ${alert.affectedMetric === 'returnTemperature' ? '환수온도' : alert.affectedMetric === 'flow' ? '유량' : '공급온도'} 이상 작업지시서 v${version}`,
+    title,
     changeSummary,
     instructions: sections.flatMap((section) => section.items),
     sections,
+    content: [
+      title,
+      '',
+      ...sections.flatMap((section) => [section.title, ...section.items.map((item, index) => `${index + 1}. ${item}`), '']),
+    ].join('\n').trim(),
+    sourceRunId: null,
+    revisionInstruction: version === 1 ? null : changeSummary,
+    baseVersion: version === 1 ? null : (version - 1) as 1 | 2,
   }
 }
 

@@ -6,12 +6,13 @@ import { ScenarioReportWorkspace } from './ScenarioReportWorkspace'
 import { ScenarioWorkOrderWorkspace } from './ScenarioWorkOrderWorkspace'
 import { useScenario } from './useScenario'
 
-const tabs = ['조치 계획', '작업지시서', '보고서'] as const
+const tabs = ['계획서', '작업지시서', '보고서'] as const
 type Tab = (typeof tabs)[number]
 
 export function ScenarioAiPage() {
-  const { alerts, state, createReportDraft, createWorkOrder, issueReport, postChatMessage, confirmProposal, cancelProposal, submitEvaluation, selectAlert, setAiEntry, acceptWorkOrder } = useScenario()
-  const [tab, setTab] = useState<Tab>('조치 계획')
+  const scenario = useScenario()
+  const { alerts, state, createReportDraft, createWorkOrder, selectAlert, setAiEntry, acceptWorkOrder } = scenario
+  const [tab, setTab] = useState<Tab>('계획서')
   const latestOrder = state.workOrders.at(-1)
   const acceptedOrder = state.workOrders.find((order) => order.version === state.acceptedWorkOrderVersion)
   const alert = alerts.find((item) => item.id === state.selectedAlertId) ?? alerts[0]
@@ -33,8 +34,8 @@ export function ScenarioAiPage() {
     <header className="scenario-ai-heading"><button className="text-link" onClick={() => setAiEntry('overview')} type="button">조치 계획 목록</button><StatusBadge tone={alert.priority === 'urgent' ? 'critical' : 'warning'}>{alert.priority} · {alert.leadTimeHours}시간 이내</StatusBadge></header>
     <div className="activity-tabs" role="tablist">{tabs.map((item) => <button aria-selected={tab === item} className={tab === item ? 'active' : ''} key={item} onClick={() => setTab(item)} role="tab" type="button">{item}</button>)}</div>
 
-    {tab === '조치 계획' && <ScenarioActionPlan alert={alert} onCreateOrder={generateOrder} order={latestOrder} reportStatus={state.report.status} />}
-    {tab === '작업지시서' && <ScenarioWorkOrderWorkspace alert={alert} onAccept={acceptWorkOrder} onCancelProposal={cancelProposal} onConfirmProposal={confirmProposal} onPostMessage={postChatMessage} onSubmitEvaluation={submitEvaluation} state={state} />}
-    {tab === '보고서' && <ScenarioReportWorkspace alert={alert} onCreateDraft={createReportDraft} onIssue={issueReport} order={acceptedOrder} report={state.report} />}
+    {tab === '계획서' && <ScenarioActionPlan alert={alert} onCreateOrder={generateOrder} order={latestOrder} reportStatus={state.report.status} />}
+    {tab === '작업지시서' && <ScenarioWorkOrderWorkspace alert={alert} runId={state.workOrders.at(-1)?.sourceRunId ?? null} onAccept={acceptWorkOrder} onAppendMessages={scenario.appendWorkOrderMessages} onAppendRevision={scenario.appendWorkOrderRevision} onCreateReport={() => { createReportDraft(); setTab('보고서') }} onSelectVersion={scenario.selectWorkOrderVersion} onUpdateContent={scenario.updateWorkOrderContent} state={state} />}
+    {tab === '보고서' && <ScenarioReportWorkspace alert={alert} runId={null} messages={state.reportMessages} onComplete={scenario.completeReport} onCreateDraft={createReportDraft} onPostMessage={scenario.postReportMessage} onSave={scenario.saveReportDraft} order={acceptedOrder} report={state.report} />}
   </div>
 }

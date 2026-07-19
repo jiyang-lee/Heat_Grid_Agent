@@ -79,31 +79,28 @@ export const STAGE_LABELS: Record<StageName, string> = {
 
 /* ===== 실행 활동 상태 ===== */
 
-export type ExecutionStatusLabel = '대기' | '진행 중' | '검토 대기' | '완료' | '실패'
+export type ExecutionStatusLabel = '대기' | '승인' | '문서 완료' | '오류'
 
 export function executionStatus(item: Pick<AgentRunListItem, 'status' | 'operator_review_status'>): ExecutionStatusLabel {
-  if (item.status === 'queued') return '대기'
-  if (item.status === 'running') return '진행 중'
-  if (item.status === 'failed') return '실패'
-  return item.operator_review_status === 'pending' ? '검토 대기' : '완료'
+  if (item.status === 'failed') return '오류'
+  if (item.operator_review_status === 'approved') return '승인'
+  if (item.status === 'completed') return '문서 완료'
+  return '대기'
 }
 
 export function executionStatusTone(label: ExecutionStatusLabel): Tone {
-  if (label === '실패') return 'critical'
-  if (label === '검토 대기') return 'notice'
-  if (label === '완료') return 'success'
-  if (label === '진행 중') return 'primary'
+  if (label === '오류') return 'critical'
+  if (label === '승인') return 'success'
+  if (label === '문서 완료') return 'primary'
   return 'neutral'
 }
 
 /** 실행 활동 처리 상태 필터 옵션 → 서버 쿼리 값 매핑 */
 export const EXECUTION_STATUS_FILTERS = [
   { value: 'all', label: '전체' },
-  { value: 'queued', label: '대기' },
-  { value: 'running', label: '진행 중' },
-  { value: 'review_pending', label: '검토 대기' },
-  { value: 'completed', label: '완료' },
-  { value: 'failed', label: '실패' },
+  { value: 'waiting', label: '대기' },
+  { value: 'approved', label: '승인' },
+  { value: 'document_complete', label: '문서 완료' },
 ] as const
 
 export type ExecutionStatusFilter = (typeof EXECUTION_STATUS_FILTERS)[number]['value']

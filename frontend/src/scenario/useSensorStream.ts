@@ -112,7 +112,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     }
 
     const connect = async () => {
-      const replayStartAt = restartAtScenarioStartRef.current ? SCENARIO_START_AT : simulatedAtRef.current
+      const replayStartAt = activeMode === 'fault' || restartAtScenarioStartRef.current ? SCENARIO_START_AT : simulatedAtRef.current
       restartAtScenarioStartRef.current = false
       setState((current) => current.substationId === substationId
         ? seedState(activeMode, substationId, incidentState)

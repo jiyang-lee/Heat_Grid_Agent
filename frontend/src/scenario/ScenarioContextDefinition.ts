@@ -1,5 +1,6 @@
 import { createContext } from 'react'
 import type { EntryMode, EvaluationCategory, ScenarioAiEntry, ScenarioState, ScenarioTimelineAlert } from './types'
+import type { OpsAgentResultV4 } from '../api/contracts'
 import type { useSensorStream } from './useSensorStream'
 
 export interface ScenarioContextValue {
@@ -13,6 +14,7 @@ export interface ScenarioContextValue {
   readonly restartScenario: () => void
   readonly exitConsole: () => void
   readonly selectAlert: (alertId: string) => void
+  readonly selectSubstation: (substationId: number) => void
   readonly startAnalysis: (alertId: string) => void
   readonly completeAnalysis: () => void
   readonly failAnalysis: () => void
@@ -21,13 +23,16 @@ export interface ScenarioContextValue {
   readonly dismissIncidentPopup: () => void
   readonly resolveAlert: (alertId: string) => void
   readonly setAiEntry: (entry: ScenarioAiEntry) => void
-  readonly createWorkOrder: () => void
+  readonly createWorkOrder: (runId?: string, result?: OpsAgentResultV4) => void
+  readonly appendWorkOrderRevision: (runId: string, result: OpsAgentResultV4, instruction: string) => void
+  readonly appendWorkOrderMessages: (messages: readonly import('./types').ScenarioChatMessage[]) => void
+  readonly selectWorkOrderVersion: (version: 1 | 2 | 3) => void
+  readonly updateWorkOrderContent: (version: 1 | 2 | 3, content: string) => void
   readonly acceptWorkOrder: (version: 1 | 2 | 3) => void
   readonly createReportDraft: () => void
-  readonly issueReport: () => void
-  readonly postChatMessage: (content: string) => void
-  readonly confirmProposal: () => void
-  readonly cancelProposal: () => void
+  readonly saveReportDraft: (content: string) => void
+  readonly completeReport: () => void
+  readonly postReportMessage: (content: string) => void
   readonly submitEvaluation: (category: EvaluationCategory) => void
 }
 

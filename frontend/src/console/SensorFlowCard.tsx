@@ -3,6 +3,7 @@ import { useScenario } from '../scenario/useScenario'
 import type { SensorPoint } from '../scenario/types'
 import { Icon } from './icons'
 import { SurfaceCard } from './ui'
+import { operationsDateTime } from './operationsTime'
 
 type SensorKey = 'supply' | 'returnTemperature' | 'flow'
 
@@ -108,8 +109,24 @@ function SensorChart({ title, unit, domain, lines, bands, data }: ChartProps) {
   )
 }
 
-export default function SensorFlowCard() {
+interface Props {
+  readonly substationId: number | null
+}
+
+export default function SensorFlowCard({ substationId }: Props) {
   const { sensor } = useScenario()
+  if (substationId == null) {
+    return (
+      <SurfaceCard className="sensor-flow sensor-flow-empty" title="GRAPH">
+        <div className="sf-empty-state">
+          <span className="sf-empty-icon"><Icon name="map" /></span>
+          <strong>기계실 미선택</strong>
+          <p>지도 또는 주요 알림을 선택하세요.</p>
+        </div>
+      </SurfaceCard>
+    )
+  }
+
   const data = sensor.state.points
   const latest = data.at(-1)
   if (!latest) return null
@@ -118,13 +135,14 @@ export default function SensorFlowCard() {
     <SurfaceCard
       action={
         <div className="sf-right">
-          <span className="sf-title-meta">기계실 {sensor.state.substationId} · 최근 2시간 · 10분 간격</span>
+          <span className="sf-title-meta">기계실 {substationId} · 최근 2시간 · {sensor.state.source === 'backend-replay' ? '검증된 수신 데이터' : '연결 대체 데이터'}</span>
           <button className="sf-pause-button" onClick={sensor.togglePaused} type="button"><Icon name={sensor.state.paused ? 'arrow' : 'more'} />{sensor.state.paused ? '재개' : '일시정지'}</button>
         </div>
       }
       className="sensor-flow"
       title="GRAPH"
     >
+      <div className="sf-data-status"><strong>{sensor.state.connectionMessage}</strong><span>마지막 수신 {operationsDateTime(sensor.state.receivedAt)}</span></div>
       <div className="sf-charts">
         <SensorChart bands={[{ min: 75, max: 85, color: 'var(--ops-critical-soft)' }, { min: 40, max: 50, color: 'var(--ops-primary-soft)' }]} data={data} domain={[30, 90]} lines={[{ key: 'supply', label: '공급온도', color: 'var(--ops-critical)' }, { key: 'returnTemperature', label: '환수온도', color: 'var(--ops-sensor-return)' }]} title="공급·환수 온도" unit="°C" />
         <SensorChart bands={[{ min: 100, max: 130, color: 'var(--ops-primary-soft)' }]} data={data} domain={[80, 160]} lines={[{ key: 'flow', label: '유량', color: 'var(--ops-sensor-flow)' }]} title="유량" unit="m³/h" />

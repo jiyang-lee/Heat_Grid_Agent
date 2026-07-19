@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { qk, useAlerts } from '../api/hooks'
+import { operationsClock } from './operationsTime'
 import { Icon, type IconName } from './icons'
-import type { EntryMode } from '../scenario/types'
 
-export type ConsolePage = 'dashboard' | 'alerts' | 'reports' | 'settings'
+export type ConsolePage = 'dashboard' | 'alerts' | 'ai-action' | 'operations-reports' | 'settings' | 'admin'
 
 interface NavigationItem {
   readonly page: ConsolePage
@@ -15,17 +15,18 @@ interface NavigationItem {
 const navigation: readonly NavigationItem[] = [
   { page: 'dashboard', label: '홈', icon: 'home' },
   { page: 'alerts', label: '알림', icon: 'bell' },
-  { page: 'reports', label: 'AI 조치', icon: 'activity' },
+  { page: 'ai-action', label: 'AI 조치', icon: 'activity' },
+  { page: 'operations-reports', label: '운영 보고서', icon: 'document' },
   { page: 'settings', label: '설정', icon: 'settings' },
 ]
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const
-
-const pageLabels: Record<ConsolePage, { readonly title: string; readonly summary?: string }> = {
-  dashboard: { title: '홈', summary: '현재 시스템 요약과 주요 현황을 한눈에 확인하세요.' },
-  alerts: { title: '알림', summary: '경보를 선택해 출동 기한과 판단 근거를 확인하세요.' },
-  reports: { title: 'AI 조치' },
-  settings: { title: '설정', summary: '개인 운영 환경과 알림 수신, 업무 화면 기본 설정을 관리합니다.' },
+const pageLabels: Record<ConsolePage, { readonly title: string }> = {
+  dashboard: { title: '홈' },
+  alerts: { title: '알림' },
+  'ai-action': { title: 'AI 조치' },
+  'operations-reports': { title: '운영 보고서' },
+  settings: { title: '설정' },
+  admin: { title: '관리자' },
 }
 
 function useClock(): Date {
@@ -40,24 +41,19 @@ function useClock(): Date {
 interface Props {
   readonly page: ConsolePage
   readonly onPageChange: (page: ConsolePage) => void
-  readonly mode: EntryMode
   readonly simulatedAt: string | null
   readonly alertCount?: number
-  readonly onExit: () => void
   readonly onRefresh?: () => void
   readonly children: ReactNode
 }
 
-export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, onExit, onRefresh, children }: Props) {
-  const [collapsed, setCollapsed] = useState(true)
+export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefresh, children }: Props) {
+  const [collapsed, setCollapsed] = useState(false)
   const now = useClock()
   const queryClient = useQueryClient()
   const alerts = useAlerts({ status: 'open' })
-  const displayNow = simulatedAt ? new Date(simulatedAt) : now
+  const display = operationsClock(simulatedAt ?? now)
   const openCount = alertCount ?? alerts.data?.length ?? 0
-  const time = `${String(displayNow.getHours()).padStart(2, '0')}:${String(displayNow.getMinutes()).padStart(2, '0')}`
-  const date = `${displayNow.getFullYear()}년 ${displayNow.getMonth() + 1}월 ${displayNow.getDate()}일 ${WEEKDAYS[displayNow.getDay()]}요일`
-  const toggleCollapsed = () => setCollapsed((value) => !value)
   const pageLabel = pageLabels[page]
 
   const refreshAll = () => {
@@ -66,71 +62,32 @@ export function AppShell({ page, onPageChange, mode, simulatedAt, alertCount, on
       queryClient.refetchQueries({ queryKey: qk.prioritySnapshot }),
       queryClient.refetchQueries({ queryKey: ['alerts'] }),
       queryClient.refetchQueries({ queryKey: qk.health }),
-      queryClient.refetchQueries({ queryKey: ['review-tasks'] }),
       queryClient.refetchQueries({ queryKey: ['agent-runs'] }),
       queryClient.refetchQueries({ queryKey: ['work-orders'] }),
-      queryClient.refetchQueries({ queryKey: ['agent-reports'] }),
     ])
   }
 
-  return (
-    <div className={`ops-app-shell ${collapsed ? 'collapsed' : ''}`.trim()}>
-      <aside className="ops-sidebar">
-        <div className="ops-brand">
-          <Icon className="brand-drop" fill="currentColor" name="droplet" strokeWidth={0} />
-          <div className="brand-text">
-            <strong>HeatGrid</strong>
-            <small>AIoT 운영 콘솔</small>
-          </div>
-        </div>
-        <nav aria-label="메인 탐색" className="ops-navigation">
-          {navigation.map((item) => (
-            <button
-              aria-label={item.label}
-              aria-current={page === item.page ? 'page' : undefined}
-              className={page === item.page ? 'active' : ''}
-              key={item.page}
-              onClick={() => onPageChange(item.page)}
-              type="button"
-            >
-              <Icon name={item.icon} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <button className="profile-button sidebar-profile" type="button">
-            <span><Icon name="users" /></span>
-            <strong>운영자</strong>
-            <Icon className="profile-chevron" name="chevron" />
-          </button>
-          <button aria-label={collapsed ? '메뉴 펼치기' : '메뉴 접기'} className="sidebar-collapse" onClick={toggleCollapsed} type="button">
-            <Icon name="chevron" />
-          </button>
-        </div>
-      </aside>
-      <div className="ops-content-shell">
-        <header className="ops-topbar">
-          <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong>{page !== 'dashboard' && pageLabel.summary && <span>{pageLabel.summary}</span>}</div></div>
-          <div className="topbar-tools">
-            <span className={`topbar-mode mode-${mode}`}><i />{mode === 'fault' ? '고장 시나리오' : '정상 운영'}</span>
-            <div className="topbar-clock">
-              <strong>{time}</strong>
-              <span>{date}</span>
-            </div>
-            <button aria-label={`열린 알림 ${openCount}개`} className="notification-button" onClick={() => onPageChange('alerts')} type="button">
-              <Icon name="bell" />
-              {openCount > 0 && <b>{openCount}</b>}
-            </button>
-            <button className="refresh-button" onClick={refreshAll} onPointerUp={(event) => event.currentTarget.blur()} type="button">
-              <Icon name="refresh" />
-              새로고침
-            </button>
-            <button className="version-exit-button" onClick={onExit} type="button"><Icon name="x" />시나리오 종료</button>
-          </div>
-        </header>
-        <main className="ops-main">{children}</main>
+  return <div className={`ops-app-shell ${collapsed ? 'collapsed' : ''}`.trim()}>
+    <aside className="ops-sidebar">
+      <div className="ops-brand"><Icon className="brand-drop" fill="currentColor" name="droplet" strokeWidth={0} /><div className="brand-text"><strong>HeatGrid</strong><small>AIoT 운영 콘솔</small></div></div>
+      <nav aria-label="주요 화면" className="ops-navigation">
+        {navigation.map((item) => <button aria-current={page === item.page ? 'page' : undefined} aria-label={item.label} className={page === item.page ? 'active' : ''} key={item.page} onClick={() => onPageChange(item.page)} title={item.label} type="button"><Icon name={item.icon} /><span>{item.label}</span></button>)}
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="profile-button sidebar-profile"><span><Icon name="users" /></span><strong>운영자</strong></div>
+        <button aria-label={collapsed ? '메뉴 펼치기' : '메뉴 접기'} className="sidebar-collapse" onClick={() => setCollapsed((value) => !value)} type="button"><Icon name="chevron" /></button>
       </div>
+    </aside>
+    <div className="ops-content-shell">
+      <header className="ops-topbar">
+        <div className="topbar-page-area"><div className="topbar-page-context"><strong>{pageLabel.title}</strong></div></div>
+        <div className="topbar-tools">
+          <div className="topbar-clock"><strong>{display.time}</strong><span>{display.date}</span></div>
+          <button aria-label={`열린 알림 ${openCount}건`} className="notification-button" onClick={() => onPageChange('alerts')} type="button"><Icon name="bell" />{openCount > 0 && <b>{openCount}</b>}</button>
+          <button className="refresh-button" onClick={refreshAll} type="button"><Icon name="refresh" />새로고침</button>
+        </div>
+      </header>
+      <main className="ops-main">{children}</main>
     </div>
-  )
+  </div>
 }

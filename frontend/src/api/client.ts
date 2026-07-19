@@ -77,6 +77,13 @@ import type {
   CostBreakdownProjection,
   ModelCallProjection,
   ToolCallProjection,
+  CurrentUser,
+  OperationsPolicy,
+  OperationsPolicyUpdate,
+  CurrentShiftMemo,
+  OperationsReportPage,
+  OperationsReportPeriod,
+  OperationsReportVersion,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -157,6 +164,11 @@ export const alertsApi = {
   get: (alertId: string) => apiFetch<AlertSummary>(`/alerts/${alertId}`),
   ack: (alertId: string, body: AlertAckRequest) =>
     apiFetch<AlertAckResponse>(`/alerts/${alertId}/ack`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  read: (alertId: string, body: AlertAckRequest) =>
+    apiFetch<AlertAckResponse>(`/alerts/${alertId}/read`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -249,6 +261,10 @@ export const scenarioAlertsApi = {
     }),
 }
 
+export const demoAiHistoryApi = {
+  reset: () => apiFetch<{ readonly reset_at: string }>('/demo/ai-history/reset', { method: 'POST' }),
+}
+
 export const reviewChatApi = {
   open: (runId: string, body: ReviewChatOpenRequest) =>
     apiFetch<ReviewChatThreadResponse>(`/agent-runs/${runId}/review-chat/threads`, {
@@ -289,6 +305,32 @@ export const replayApi = {
   snapshot: (runId: string) => apiFetch<ReplayRunSnapshot>(`/replay-runs/${runId}/snapshot`),
   command: (runId: string, body: ReplayRunCommandRequest) =>
     apiFetch<ReplayRunCommandResponse>(`/replay-runs/${runId}/commands`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const operationsApi = {
+  currentUser: () => apiFetch<CurrentUser>('/me'),
+  policy: () => apiFetch<OperationsPolicy>('/operations-policy'),
+  updatePolicy: (body: OperationsPolicyUpdate) => apiFetch<OperationsPolicy>('/operations-policy', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }),
+}
+
+export const operationsReportsApi = {
+  currentShift: () => apiFetch<CurrentShiftMemo>('/operations-reports/current-shift'),
+  saveMemo: (memo: string) => apiFetch<CurrentShiftMemo>('/operations-reports/current-shift/memo', {
+    method: 'PUT',
+    body: JSON.stringify({ memo }),
+  }),
+  list: (reportType?: 'shift' | 'daily') => apiFetch<OperationsReportPage>(
+    `/operations-reports${toQueryString({ report_type: reportType })}`,
+  ),
+  get: (reportPeriodId: string) => apiFetch<OperationsReportPeriod>(`/operations-reports/${reportPeriodId}`),
+  correct: (reportPeriodId: string, body: { readonly expected_latest_version: number; readonly content: Record<string, unknown>; readonly reason: string }) =>
+    apiFetch<OperationsReportVersion>(`/operations-reports/${reportPeriodId}/corrections`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

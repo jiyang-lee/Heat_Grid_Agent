@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react'
 import { agentRunEventsPath, agentRunsApi, ApiError, subscribeSse } from '../api/client'
 
 export const ANALYSIS_PHASES = [
-  '예측 모델 판정중',
+  '기존 예측 결과 확인중',
   '외부데이터 확인중',
   '전문 문서 확인중',
-  '예측 모델 검토중',
-  '작업지시서 작성 준비중',
+  '계획서 정리중',
 ] as const
 
 type AnalysisStatus = 'idle' | 'running' | 'completed' | 'failed'
@@ -29,8 +28,8 @@ function phaseFor(event: unknown): number | null {
 
   if (event.type === 'run_completed' || (event.type === 'status_changed' && payload?.status === 'completed')) return ANALYSIS_PHASES.length
   if (event.type === 'run_failed' || (event.type === 'status_changed' && payload?.status === 'failed')) return -1
-  if (next === 'generate_operational_answer' || next === 'write_anomaly_report' || ['final_output', 'output_retry', 'review_requested', 'report_written'].includes(event.type)) return 4
-  if (next === 'verify_active_models' || ['model_verification_started', 'model_verification', 'model_reverified', 'loop_decision'].includes(event.type)) return 3
+  if (next === 'generate_operational_answer' || next === 'write_anomaly_report' || ['final_output', 'output_retry', 'review_requested', 'report_written'].includes(event.type)) return 3
+  if (next === 'verify_active_models' || ['model_verification_started', 'model_verification', 'model_reverified', 'loop_decision'].includes(event.type)) return 0
   if (tool === 'get_internal_references' || event.type === 'evidence_expanded') return 2
   if (next === 'get_external_context' || tool === 'get_external_context') return 1
   return 0

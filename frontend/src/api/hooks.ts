@@ -99,6 +99,15 @@ export function useAckAlert() {
   })
 }
 
+export function useReadAlert() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { alertId: string; readBy?: string }) =>
+      alertsApi.read(v.alertId, { acked_by: v.readBy ?? 'operator' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
+  })
+}
+
 export function useResolveAlert() {
   const qc = useQueryClient()
   return useMutation({

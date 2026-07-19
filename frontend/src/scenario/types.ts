@@ -57,7 +57,7 @@ export type ScenarioAnalysisState = 'idle' | 'running' | 'complete'
 
 export type ScenarioIncidentState = 'monitoring' | 'incident-active'
 
-export type ScenarioReportStatus = 'idle' | 'draft' | 'issued'
+export type ScenarioReportStatus = 'idle' | 'draft' | 'completed'
 
 export type ScenarioAiEntry = 'overview' | 'detail'
 
@@ -87,6 +87,10 @@ export interface WorkOrderVersion {
   readonly changeSummary: string
   readonly instructions: readonly string[]
   readonly sections: readonly WorkOrderSection[]
+  readonly content: string
+  readonly sourceRunId: string | null
+  readonly revisionInstruction: string | null
+  readonly baseVersion: 1 | 2 | 3 | null
 }
 
 export interface WorkOrderSection {
@@ -97,7 +101,16 @@ export interface WorkOrderSection {
 export interface ScenarioReport {
   readonly status: ScenarioReportStatus
   readonly createdAt: string | null
-  readonly issuedAt: string | null
+  readonly savedAt: string | null
+  readonly completedAt: string | null
+  readonly content: string
+}
+
+export interface ScenarioReportMessage {
+  readonly id: string
+  readonly role: 'operator' | 'assistant'
+  readonly content: string
+  readonly createdAt: string
 }
 
 export type EvaluationCategory = 'model' | 'external-data' | 'rag' | 'work-order'
@@ -114,6 +127,7 @@ export interface ScenarioState {
   readonly mode: EntryMode | null
   readonly scenarioId: string | null
   readonly selectedAlertId: string
+  readonly selectedSubstationId: number
   readonly incidentState: ScenarioIncidentState
   readonly analysisState: ScenarioAnalysisState
   readonly analysisAlertId: string | null
@@ -122,12 +136,17 @@ export interface ScenarioState {
   readonly incidentPopupVisible: boolean
   readonly dismissedIncidentAlertIds: readonly string[]
   readonly resolvedAlertTimes: Readonly<Record<string, string>>
+  readonly alertSensorSnapshots: Readonly<Record<string, readonly SensorPoint[]>>
   readonly aiEntry: ScenarioAiEntry
+  readonly documentAlertId: string | null
   readonly workOrders: readonly WorkOrderVersion[]
+  readonly selectedWorkOrderVersion: 1 | 2 | 3 | null
   readonly acceptedWorkOrderVersion: 1 | 2 | 3 | null
+  readonly workOrderRerunCount: number
   readonly messages: readonly ScenarioChatMessage[]
   readonly proposal: ChatProposal | null
   readonly evaluationRequired: boolean
   readonly improvementCandidate: ImprovementCandidate | null
   readonly report: ScenarioReport
+  readonly reportMessages: readonly ScenarioReportMessage[]
 }

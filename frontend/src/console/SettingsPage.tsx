@@ -121,9 +121,10 @@ const loginHistory = [
 interface Props {
   readonly themePreference: ThemePreference
   readonly onThemePreferenceChange: (preference: ThemePreference) => void
+  readonly onOpenAdmin: () => void
 }
 
-export function SettingsPage({ themePreference, onThemePreferenceChange }: Props) {
+export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenAdmin }: Props) {
   const [tab, setTab] = useState<Tab>('내 프로필')
   const [profile, setProfile] = useState<ProfileForm>(defaultProfile)
   const [display, setDisplay] = useState<DisplayForm>(defaultDisplay)
@@ -161,6 +162,10 @@ export function SettingsPage({ themePreference, onThemePreferenceChange }: Props
   const downloadActivity = () => setToast('활동 기록을 다운로드합니다.')
 
   return <div className="page-stack settings-page">
+    <SurfaceCard className="settings-admin-entry">
+      <div><strong>관리자 운영 도구</strong><span>훈련 재생, 교대 시간, anomaly 생성·해소 정책을 관리합니다.</span></div>
+      <Button icon="shield" onClick={onOpenAdmin}>관리자 화면 열기</Button>
+    </SurfaceCard>
     <div className="settings-tabbar">
       <div className="activity-tabs" role="tablist">
         {tabs.map((item) => (

@@ -9,6 +9,7 @@ import { buildComplexFootprints, buildComplexMarkers, SEJONG_CENTER } from './fo
 
 interface Props {
   onSelectComplex: (id: number) => void
+  onClearSelection: () => void
   theme: 'dark' | 'light'
   results: readonly PriorityEvaluationResult[]
   loading: boolean
@@ -101,8 +102,8 @@ function addComplexLayers(
           'high', '#ff8f00',
           'medium', '#ffd740',
           'low', '#00c853',
-          'stale', '#64748b',
-          /* missing */ '#334155',
+          'stale', '#ffd740',
+          /* missing */ '#ffd740',
         ],
         'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
@@ -124,8 +125,8 @@ function addComplexLayers(
           'high', '#f59e0b',
           'medium', '#facc15',
           'low', '#16a34a',
-          'stale', '#64748b',
-          '#64748b',
+          'stale', '#facc15',
+          '#facc15',
         ],
         'circle-radius': 6,
         'circle-stroke-color': '#ffffff',
@@ -136,13 +137,15 @@ function addComplexLayers(
 
 }
 
-export default function MapView({ onSelectComplex, theme, results, loading, error }: Props) {
+export default function MapView({ onSelectComplex, onClearSelection, theme, results, loading, error }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const [mapUnavailable, setMapUnavailable] = useState(() => !hasWebglContext())
   // 최신 콜백을 ref로 유지(맵 초기화는 1회라 클로저 고정 방지)
   const onSelectRef = useRef(onSelectComplex)
   onSelectRef.current = onSelectComplex
+  const onClearSelectionRef = useRef(onClearSelection)
+  onClearSelectionRef.current = onClearSelection
   const resultsRef = useRef(results)
   resultsRef.current = results
   const themeRef = useRef(theme) // 실제 테마 변경 감지용
@@ -175,13 +178,19 @@ export default function MapView({ onSelectComplex, theme, results, loading, erro
     map.on('load', () => addComplexLayers(map, resultsRef.current))
 
     const selectFeature = (e: maplibregl.MapLayerMouseEvent) => {
+      e.preventDefault()
       const f = e.features?.[0]
       const rawId = f?.properties?.id
       const id = typeof rawId === 'number' ? rawId : Number(rawId)
       if (Number.isInteger(id)) onSelectRef.current(id)
     }
+    const clearSelection = (e: maplibregl.MapMouseEvent) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: [FOOTPRINT_LAYER, MARKER_LAYER] })
+      if (features.length === 0) onClearSelectionRef.current()
+    }
     map.on('click', FOOTPRINT_LAYER, selectFeature)
     map.on('click', MARKER_LAYER, selectFeature)
+    map.on('click', clearSelection)
     map.on('mouseenter', FOOTPRINT_LAYER, () => {
       map.getCanvas().style.cursor = 'pointer'
     })
@@ -222,9 +231,9 @@ export default function MapView({ onSelectComplex, theme, results, loading, erro
 
   if (mapUnavailable) {
     const statusById = new Map(results.map((result) => [result.substation_id, priorityDisplayStatus(result)]))
-    return <div className="map-runtime map-runtime-fallback" role="img" aria-label="세종 지역난방 단지 위치 지도">
+    return <div className="map-runtime map-runtime-fallback" role="img" aria-label="세종 지역난방 단지 위치 지도" onClick={onClearSelection}>
       <span className="map-fallback-title">세종 1생활권</span>
-      {complexes.map((complex) => <button aria-label={`${complex.name} 선택`} className={`map-fallback-marker status-${statusById.get(complex.id) ?? 'missing'}`} key={complex.id} onClick={() => onSelectComplex(complex.id)} style={fallbackPosition(complex.lat, complex.lng)} type="button"><span>{complex.id}</span></button>)}
+      {complexes.map((complex) => <button aria-label={`${complex.name} 선택`} className={`map-fallback-marker status-${statusById.get(complex.id) ?? 'missing'}`} key={complex.id} onClick={(event) => { event.stopPropagation(); onSelectComplex(complex.id) }} style={fallbackPosition(complex.lat, complex.lng)} type="button"><span>{complex.id}</span></button>)}
       <span className="map-fallback-note">브라우저 지도 가속을 사용할 수 없어 위치 요약 지도를 표시합니다.</span>
       {loading && <div className="map-state">최신 Priority 평가를 불러오는 중입니다.</div>}
       {error && <div className="map-state error">운영 상태 연결 지연 · 단지 위치는 계속 표시됩니다.</div>}
