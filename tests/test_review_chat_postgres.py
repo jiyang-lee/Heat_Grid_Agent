@@ -18,6 +18,7 @@ RUN_ID = "00000000-0000-0000-0000-000000002101"
 ALERT_ID = "00000000-0000-0000-0000-000000002201"
 CARD_ID = "00000000-0000-0000-0000-000000002301"
 DECISION_ID = "00000000-0000-0000-0000-000000002401"
+EPISODE_ID = "00000000-0000-0000-0000-000000002501"
 
 pytestmark = pytest.mark.skipif(
     DATABASE_URL is None,
@@ -60,6 +61,21 @@ async def test_proposal_does_not_write_a_review_until_confirmation() -> None:
                 idempotency_key=f"open-{suffix}",
             ),
         )
+        cited = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content="이 사건 근거를 요약해줘",
+                created_by="chat-test",
+                idempotency_key=f"incident-citation-{suffix}",
+                incident_id=EPISODE_ID,
+                citation_ids=(f"episode:{EPISODE_ID}",),
+            ),
+        )
+        assert cited.operator_message.structured_payload["incident_id"] == EPISODE_ID
+        assert cited.operator_message.structured_payload["citation_ids"] == [
+            f"episode:{EPISODE_ID}"
+        ]
         async with engine.connect() as connection:
             proposals_before = await connection.scalar(
                 text(
@@ -155,6 +171,26 @@ async def _seed_chat_run(engine: AsyncEngine) -> None:
                 "ON CONFLICT (alert_id) DO NOTHING"
             ),
             {"alert_id": ALERT_ID, "card_id": CARD_ID},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO anomaly_episodes ("
+                "episode_id, stream_key, manufacturer_id, substation_id, "
+                "lifecycle_status, severity, alert_id, opened_at"
+                ") SELECT :episode_id, 'review-chat-test', windows.manufacturer_id, "
+                "windows.substation_id, 'open', 'high', :alert_id, now() "
+                "FROM priority_cards JOIN priority_decisions USING (priority_decision_id) "
+                "JOIN windows USING (window_id) WHERE card_id = :card_id "
+                "ON CONFLICT (episode_id) DO NOTHING"
+            ),
+            {"episode_id": EPISODE_ID, "alert_id": ALERT_ID, "card_id": CARD_ID},
+        )
+        await connection.execute(
+            text(
+                "UPDATE ops_alert_queue SET episode_id = :episode_id "
+                "WHERE alert_id = :alert_id"
+            ),
+            {"episode_id": EPISODE_ID, "alert_id": ALERT_ID},
         )
         await connection.execute(
             text(

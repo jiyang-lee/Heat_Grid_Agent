@@ -69,6 +69,7 @@ class PreparedTaskInput:
 class V2RunOptions:
     target_stage: StageName | None
     broaden: bool
+    revision_feedback: tuple[str, ...]
 
 
 async def run_agent_graph(
@@ -137,6 +138,7 @@ async def run_reserved_agent_graph(
                     resume=claim.resume_from_checkpoint,
                     target_stage=options.target_stage,
                     broaden=options.broaden,
+                    revision_feedback=options.revision_feedback,
                 )
             else:
                 execution = await execute_agent_graph_with_capture(
@@ -298,7 +300,7 @@ async def _v2_run_options(engine: AsyncEngine, run_id: str) -> V2RunOptions:
     async with engine.connect() as connection:
         result = await connection.execute(
             text(
-                "SELECT runs.target_stage, reviews.reason_category "
+                "SELECT runs.target_stage, reviews.reason_category, CAST(reviews.correction AS text) AS correction "
                 "FROM agent_runs runs "
                 "LEFT JOIN agent_run_reviews reviews "
                 "ON reviews.review_id = runs.source_review_id "
@@ -308,12 +310,16 @@ async def _v2_run_options(engine: AsyncEngine, run_id: str) -> V2RunOptions:
         )
     row = result.mappings().one_or_none()
     if row is None:
-        return V2RunOptions(target_stage=None, broaden=False)
+        return V2RunOptions(target_stage=None, broaden=False, revision_feedback=())
     value = row["target_stage"]
     target_stage = value if isinstance(value, str) and value in STAGE_ORDER else None
+    import orjson
+    correction = orjson.loads(row["correction"]) if isinstance(row["correction"], str) else {}
+    feedback = tuple(value for key, value in correction.items() if key in {"instruction", "current_body", "target_area"} and isinstance(value, str)) if isinstance(correction, dict) else ()
     return V2RunOptions(
         target_stage=target_stage,
         broaden=broaden_for_reason(row["reason_category"]),
+        revision_feedback=feedback,
     )
 
 

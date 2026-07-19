@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal
 
 import uvicorn
@@ -53,8 +54,17 @@ from repository import (
     make_engine,
 )
 from priority_evaluation_routes import make_priority_evaluation_router
+from operations_policy_repository import (
+    PostgresOperationsPolicyRepository,
+    verify_operations_policy,
+)
+from operations_policy_routes import make_operations_policy_router
+from operations_report_repository import PostgresOperationsReportRepository
+from operations_report_routes import make_operations_report_router
+from operations_report_scheduler import OperationsReportScheduler
 from replay_routes import make_replay_router
 from retrain_routes import make_retrain_router
+from demo_ai_history_routes import make_demo_ai_history_router
 from retrain_repository import ensure_retrain_tables
 from review_repository import ensure_review_tables
 from schemas import (
@@ -71,6 +81,8 @@ settings = Settings()
 engine = make_engine(settings.database_url)
 rag_searcher = RagSearcher()
 agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
+operations_report_repository = PostgresOperationsReportRepository(engine)
+operations_report_scheduler = OperationsReportScheduler(operations_report_repository)
 
 
 @dataclass(slots=True)
@@ -105,6 +117,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await ensure_agent_loop_iteration_table(engine)
     await ensure_review_tables(engine)
     await ensure_retrain_tables(engine)
+    await verify_operations_policy(engine)
+    await operations_report_repository.ensure_runtime_tables()
+    await operations_report_scheduler.run_due_reports(now=datetime.now(UTC))
     yield
 
 
@@ -112,6 +127,15 @@ app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))
+app.include_router(
+    make_operations_policy_router(PostgresOperationsPolicyRepository(engine))
+)
+app.include_router(
+    make_operations_report_router(
+        operations_report_repository,
+        operations_report_scheduler,
+    )
+)
 app.include_router(
     make_replay_router(
         engine,
@@ -282,6 +306,7 @@ app.include_router(make_review_chat_router(engine, settings, agent_runtime, _age
 app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
+app.include_router(make_demo_ai_history_router(engine, enabled=settings.demo_ai_history_reset_enabled))
 
 
 if __name__ == "__main__":

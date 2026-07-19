@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import AsyncMock
 
+import pytest
 from heatgrid_ops.db.migrations import (
+    APPLICATION_TABLES_V011,
     CHECKPOINT_PACKAGE_VERSION,
     POSTGRESQL_MAJOR,
+    _verify_application_catalog,
     load_migrations,
     migration_manifest_hash,
 )
@@ -13,14 +17,111 @@ from heatgrid_ops.db.migrations import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
+    result = AsyncMock()
+    result.fetchall.return_value = [
+        {"tablename": table} for table in sorted(tables)
+    ]
+    connection = AsyncMock()
+    connection.execute.return_value = result
+    return connection
+
+
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(16))
+    assert [migration.version for migration in migrations] == list(range(17))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "015_agent_run_support_table_recovery.sql"
+    assert migrations[-1].path.name == "016_production_operations_console.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
+
+
+def test_production_operations_console_migration_is_repeat_safe_and_append_only() -> None:
+    # Given: the forward-only operations console migration.
+    sql = (
+        ROOT / "migrations" / "016_production_operations_console.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    # When: its schema contract is inspected.
+    required_repeat_safe_tables = (
+        "anomaly_episode_consumptions",
+        "anomaly_episode_events",
+        "anomaly_episodes",
+        "preventive_projections",
+        "operations_policy",
+        "operations_shift_handover_memos",
+        "operations_shift_schedule",
+        "incident_document_versions",
+        "incident_document_reviews",
+        "operations_report_periods",
+        "operations_report_versions",
+        "operations_report_corrections",
+        "operation_idempotency_keys",
+    )
+
+    # Then: all additions are repeat-safe and preserve the append-only lineages.
+    for table in required_repeat_safe_tables:
+        assert f"create table if not exists public.{table}" in sql
+    assert "alter table public.ops_alert_queue add column if not exists read_at" in sql
+    assert "alter table public.ops_alert_queue add column if not exists read_by" in sql
+    assert "anomaly_episodes_one_active_per_asset_uidx" in sql
+    assert "operations_report_versions_one_official_uidx" in sql
+    assert "unique (report_period_id, version)" in sql
+    assert "parent_document_version_id" in sql
+    assert "prevent_append_only_mutation" in sql
+    assert "drop table" not in sql
+    assert "alter table public.ops_alert_queue drop" not in sql
+
+
+def test_production_operations_console_migration_seeds_canonical_policy() -> None:
+    # Given: the operations policy seed in migration 016.
+    sql = (
+        ROOT / "migrations" / "016_production_operations_console.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    # When and Then: the approved KST, shift, freshness, and lifecycle defaults exist.
+    assert "'asia/seoul'" in sql
+    assert "'08:00'::time" in sql
+    assert "'20:00'::time" in sql
+    assert "freshness_threshold_minutes" in sql
+    assert "30" in sql
+    assert "anomaly_confirmations" in sql
+    assert "recovery_confirmations" in sql
+    assert "on conflict" in sql
+
+
+@pytest.mark.anyio
+async def test_runtime_catalog_accepts_production_operations_tables_at_v016() -> None:
+    # Given: the database contains the v011 catalog plus migration 016's tables.
+    operations_tables = {
+        "anomaly_episode_consumptions",
+        "anomaly_episode_events",
+        "anomaly_episodes",
+        "preventive_projections",
+        "operations_policy",
+        "operations_shift_handover_memos",
+        "operations_shift_schedule",
+        "incident_document_versions",
+        "incident_document_reviews",
+        "operations_report_periods",
+        "operations_report_versions",
+        "operations_report_corrections",
+        "operation_idempotency_keys",
+    }
+    connection = _catalog_connection(APPLICATION_TABLES_V011 | operations_tables)
+
+    # When and Then: the runtime contract accepts the final v016 catalog.
+    await _verify_application_catalog(connection, 16)
+
+
+@pytest.mark.anyio
+async def test_runtime_catalog_preserves_v011_contract_before_v016() -> None:
+    # Given: migration 015 still has the established v011 table catalog.
+    connection = _catalog_connection(APPLICATION_TABLES_V011)
+
+    # When and Then: runtime verification does not require v016 tables early.
+    await _verify_application_catalog(connection, 15)
 
 
 def test_agent_run_support_table_recovery_restores_final_contract() -> None:

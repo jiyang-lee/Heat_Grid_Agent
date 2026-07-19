@@ -9,6 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from heatgrid_ops.priority.evaluation import ensure_latest_priority_evaluation
 
+try:
+    from .alert_episode_repository import (
+        consume_latest_evaluation,
+        ensure_alert_episode_tables,
+        mark_alert_read,
+    )
+except ImportError:
+    from alert_episode_repository import (
+        consume_latest_evaluation,
+        ensure_alert_episode_tables,
+        mark_alert_read,
+    )
+
 JsonPrimitive = str | int | float | bool | None
 JsonValue = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -137,6 +150,7 @@ async def ensure_alert_queue(engine: AsyncEngine) -> None:
             await connection.execute(text(statement))
         await connection.execute(text(ALERT_QUEUE_STATUS_MIGRATION))
         await connection.execute(text(ALERT_QUEUE_STATUS_CHECK))
+    await ensure_alert_episode_tables(engine)
 
 
 async def enqueue_priority_alerts(
@@ -153,37 +167,28 @@ async def enqueue_priority_alerts(
         expected_substations=expected_substations,
     )
     await ensure_alert_queue(engine)
-    async with engine.begin() as connection:
-        await connection.execute(
+    delta = await consume_latest_evaluation(engine)
+    async with engine.connect() as connection:
+        latest = await connection.execute(
             text(
-                "UPDATE ops_alert_queue SET status = 'resolved', acked_at = now(), "
-                "acked_by = 'snapshot-rollover' "
-                "WHERE status = 'open' AND evaluation_run_id IS DISTINCT FROM ("
-                "SELECT evaluation_run_id FROM priority_evaluation_runs "
-                "WHERE status = 'completed' "
+                "SELECT evaluation_run_id, as_of_time FROM priority_evaluation_runs "
+                "WHERE stream_key = 'default' AND status = 'completed' "
                 "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
-                ")"
             )
         )
-        result = await connection.execute(text(ENQUEUE_ALERTS_SQL))
-        inserted = result.mappings().one()
+        inserted = latest.mappings().one()
         open_result = await connection.execute(
             text(
                 "SELECT count(*) FROM ops_alert_queue WHERE status = 'open' "
-                "AND evaluation_run_id = :evaluation_run_id"
-            ),
-            {"evaluation_run_id": inserted["evaluation_run_id"]},
+                "AND episode_id IS NOT NULL"
+            )
         )
         total_result = await connection.execute(
-            text(
-                "SELECT count(*) FROM ops_alert_queue "
-                "WHERE evaluation_run_id = :evaluation_run_id"
-            ),
-            {"evaluation_run_id": inserted["evaluation_run_id"]},
+            text("SELECT count(*) FROM ops_alert_queue WHERE episode_id IS NOT NULL")
         )
     return {
-        "queued_count": int(inserted["queued_count"]),
-        "existing_count": int(inserted["existing_count"]),
+        "queued_count": int(delta["opened"]),
+        "existing_count": int(delta["skipped"]),
         "open_count": int(open_result.scalar_one()),
         "total_count": int(total_result.scalar_one()),
         "evaluation_run_id": None
@@ -267,19 +272,13 @@ async def list_alerts(
     if priority_level is not None:
         filters.append("q.priority_level = :priority_level")
         params["priority_level"] = priority_level
-    filters.append(
-        "q.evaluation_run_id = ("
-        "SELECT evaluation_run_id FROM priority_evaluation_runs "
-        "WHERE status = 'completed' "
-        "ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
-        ")"
-    )
+    filters.append("q.episode_id IS NOT NULL")
     where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
     query = text(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "
         "q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
         "q.priority_level, q.priority_score, q.status, q.enqueue_reason, "
-        "q.created_at, q.acked_at, q.acked_by "
+        "q.created_at, q.acked_at, q.acked_by, q.episode_id, q.read_at, q.read_by "
         "FROM ops_alert_queue q "
         "LEFT JOIN priority_evaluation_runs evaluation "
         "ON evaluation.evaluation_run_id = q.evaluation_run_id "
@@ -296,19 +295,8 @@ async def ack_alert(
     alert_id: str,
     acked_by: str,
 ) -> dict[str, JsonValue] | None:
-    await ensure_alert_queue(engine)
-    query = text(
-        "UPDATE ops_alert_queue "
-        "SET status = 'acked', acked_at = now(), acked_by = :acked_by "
-        "WHERE alert_id = :alert_id RETURNING alert_id"
-    )
-    async with engine.begin() as connection:
-        result = await connection.execute(
-            query,
-            {"alert_id": alert_id, "acked_by": acked_by},
-        )
-        row = result.mappings().one_or_none()
-    return None if row is None else await get_alert(engine, alert_id)
+    await mark_alert_read(engine, alert_id=alert_id, read_by=acked_by)
+    return await get_alert(engine, alert_id)
 
 
 async def resolve_alert(
@@ -316,19 +304,8 @@ async def resolve_alert(
     alert_id: str,
     acked_by: str,
 ) -> dict[str, JsonValue] | None:
-    await ensure_alert_queue(engine)
-    query = text(
-        "UPDATE ops_alert_queue "
-        "SET status = 'resolved', acked_at = now(), acked_by = :acked_by "
-        "WHERE alert_id = :alert_id RETURNING alert_id"
-    )
-    async with engine.begin() as connection:
-        result = await connection.execute(
-            query,
-            {"alert_id": alert_id, "acked_by": acked_by},
-        )
-        row = result.mappings().one_or_none()
-    return None if row is None else await get_alert(engine, alert_id)
+    del engine, alert_id, acked_by
+    raise RuntimeError("manual alert resolution is disabled")
 
 
 async def get_alert(
@@ -340,7 +317,7 @@ async def get_alert(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "
         "q.manufacturer_id, q.substation_id, q.priority_rank, q.freshness_status, "
         "q.priority_level, q.priority_score, q.status, q.enqueue_reason, "
-        "q.created_at, q.acked_at, q.acked_by "
+        "q.created_at, q.acked_at, q.acked_by, q.episode_id, q.read_at, q.read_by "
         "FROM ops_alert_queue q "
         "LEFT JOIN priority_evaluation_runs evaluation "
         "ON evaluation.evaluation_run_id = q.evaluation_run_id "
@@ -374,6 +351,9 @@ def _alert_from_row(row: RowMapping) -> dict[str, JsonValue]:
         "created_at": row["created_at"].isoformat(),
         "acked_at": None if acked_at is None else acked_at.isoformat(),
         "acked_by": row["acked_by"],
+        "episode_id": None if row["episode_id"] is None else str(row["episode_id"]),
+        "read_at": None if row["read_at"] is None else row["read_at"].isoformat(),
+        "read_by": row["read_by"],
     }
 
 

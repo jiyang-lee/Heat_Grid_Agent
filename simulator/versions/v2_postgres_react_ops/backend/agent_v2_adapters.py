@@ -51,14 +51,17 @@ def _ml(runtime: AgentRuntime) -> StageAdapter:
                 card_id=state.request.card_id,
                 source_input=state.request.source_input,
                 attempt=state.attempts.get("ml_validation", 1),
+                mode="active_revalidation" if state.request.target_stage == "ml_validation" else "stored_snapshot",
             )
         )
         result = snapshot.result
         quality = ml_quality_result(status=result.status, agreement=result.agreement)
+        snapshot_reused = result.verification_source == "stored_snapshot"
+        execution_status = "reused" if snapshot_reused else quality.execution_status
         value = {
             **result.model_dump(mode="json"),
             "artifact_uri": snapshot.artifact_uri,
-            "execution_status": quality.execution_status,
+            "execution_status": execution_status,
             "quality_status": quality.quality_status,
             "score": quality.score,
         }
@@ -66,7 +69,9 @@ def _ml(runtime: AgentRuntime) -> StageAdapter:
         return StageSnapshotEnvelope(
             stage_name="ml_validation",
             data=updated.model_dump(mode="json"),
-            control=StageControlEnvelope(force_review=quality.quality_status != "passed"),
+            control=StageControlEnvelope(
+                force_review=not snapshot_reused and quality.quality_status != "passed"
+            ),
         )
 
     return execute

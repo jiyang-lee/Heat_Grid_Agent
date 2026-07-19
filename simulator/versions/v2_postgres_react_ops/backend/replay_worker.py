@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import count
 from typing import Any, Protocol
 
 import orjson
+from anyio import sleep
+from anyio.to_thread import run_sync
 
 try:
-    from .replay_dataset import CsvReplayDataset, ReplayDatasetError, SensorTick, WindowBatch
+    from .replay_dataset import ReplayDatasetError, SensorTick, WindowBatch
 except ImportError:
-    from replay_dataset import CsvReplayDataset, ReplayDatasetError, SensorTick, WindowBatch
+    from replay_dataset import ReplayDatasetError, SensorTick, WindowBatch
 
 
 class ReplayWorkerError(RuntimeError):
@@ -21,7 +23,7 @@ class ReplayWorkerError(RuntimeError):
 
 
 class ReplayStore(Protocol):
-    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int: ...
+    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int | None: ...
 
     async def begin_window(
         self,
@@ -52,20 +54,38 @@ class InferenceRuntime(Protocol):
     def infer_batch(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]: ...
 
 
-@dataclass(slots=True)
+class ReplayManifestView(Protocol):
+    @property
+    def expected_substations(self) -> int: ...
+
+    @property
+    def source_interval(self) -> timedelta: ...
+
+    @property
+    def window_ticks(self) -> int: ...
+
+
+class ReplayDataset(Protocol):
+    @property
+    def manifest(self) -> ReplayManifestView: ...
+
+    def window_batch(self, window_end: datetime) -> WindowBatch: ...
+
+
+@dataclass(frozen=True, slots=True)
 class ReplayWorker:
     run_id: str
-    dataset: CsvReplayDataset
+    dataset: ReplayDataset
     runtime: InferenceRuntime
     store: ReplayStore
-    _seen_sequences: set[int] = field(default_factory=set)
 
     async def advance_tick(self, tick: SensorTick) -> dict[str, Any] | None:
         if len(tick.readings) != self.dataset.manifest.expected_substations:
             raise ReplayWorkerError("a replay tick must contain 31 substations")
         event_id = await self.store.persist_tick(run_id=self.run_id, tick=tick)
-        self._seen_sequences.add(tick.sequence)
-        if (tick.sequence + 1) % self.dataset.manifest.window_ticks != 0:
+        if event_id is None:
+            return None
+        if tick.sequence < self.dataset.manifest.window_ticks - 1:
             return {"event_id": event_id, "type": "replay.sensor_tick.v1"}
         window_end = tick.simulated_at + self.dataset.manifest.source_interval
         try:
@@ -83,10 +103,10 @@ class ReplayWorker:
             input_hash=input_hash,
         )
         if not started:
-            return {"event_id": event_id, "type": "replay.sensor_tick.v1"}
+            return None
         started_at = time.perf_counter()
         try:
-            results = await asyncio.to_thread(self.runtime.infer_batch, inputs)
+            results = await run_sync(self.runtime.infer_batch, inputs)
             if len(results) != len(inputs):
                 raise ReplayWorkerError(
                     f"inference returned {len(results)} records for {len(inputs)} substations"
@@ -99,7 +119,7 @@ class ReplayWorker:
                 results=results,
                 inference_duration_ms=round((time.perf_counter() - started_at) * 1000),
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BROAD_EXCEPT_OK
             await self.store.fail_window(
                 run_id=self.run_id,
                 window_end=window_end,
@@ -117,17 +137,21 @@ class ReplayWorker:
         return events
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class MemoryReplayStore:
     ticks: list[SensorTick] = field(default_factory=list)
     scored: dict[tuple[str, datetime], dict[str, Any]] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
-    _event_id: int = 0
+    _event_ids: count[int] = field(default_factory=count)
+    _tick_event_ids: dict[tuple[str, int], int] = field(default_factory=dict)
 
-    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int:
-        if not any(item.sequence == tick.sequence for item in self.ticks):
-            self.ticks.append(tick)
-        return self._append_event(
+    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int | None:
+        key = (run_id, tick.sequence)
+        existing_event_id = self._tick_event_ids.get(key)
+        if existing_event_id is not None:
+            return None
+        self.ticks.append(tick)
+        event_id = self._append_event(
             {
                 "run_id": run_id,
                 "event_type": "replay.sensor_tick.v1",
@@ -135,6 +159,8 @@ class MemoryReplayStore:
                 "simulated_at": tick.simulated_at.isoformat(),
             }
         )
+        self._tick_event_ids[key] = event_id
+        return event_id
 
     async def begin_window(
         self,
@@ -179,9 +205,9 @@ class MemoryReplayStore:
         self.scored[(run_id, window_end)] = {"status": "failed", "error": error}
 
     def _append_event(self, payload: dict[str, Any]) -> int:
-        self._event_id += 1
-        self.events.append({"event_id": self._event_id, **payload})
-        return self._event_id
+        event_id = next(self._event_ids) + 1
+        self.events.append({"event_id": event_id, **payload})
+        return event_id
 
 
 def _inference_input(record: dict[str, Any]) -> dict[str, Any]:
@@ -196,7 +222,7 @@ def _inference_input(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _hash(value: object) -> str:
+def _hash(value: list[dict[str, Any]]) -> str:
     return hashlib.sha256(orjson.dumps(value, option=orjson.OPT_SORT_KEYS)).hexdigest()
 
 
@@ -208,6 +234,6 @@ async def run_worker_loop(
     while True:
         worker = await claim_next()
         if worker is None:
-            await asyncio.sleep(heartbeat_seconds)
+            await sleep(heartbeat_seconds)
             continue
-        await asyncio.sleep(0)
+        await sleep(0)

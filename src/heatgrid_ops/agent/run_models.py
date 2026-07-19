@@ -210,6 +210,7 @@ class ModelVerificationRequest(BaseModel):
     card_id: str
     source_input: JsonObject
     attempt: int = Field(ge=1)
+    mode: Literal["stored_snapshot", "active_revalidation"] = "stored_snapshot"
 
 
 class ModelVerificationSnapshot(BaseModel):

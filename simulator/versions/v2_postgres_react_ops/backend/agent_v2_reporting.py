@@ -176,6 +176,7 @@ def _report(runtime: AgentRuntime) -> StageAdapter:
                 stage_attempt=state.attempts.get("report_draft", 1),
                 execution_profile="report_snapshot_only",
                 snapshot_bundle=bundle,
+                revision_feedback=list(state.request.revision_feedback) or None,
             )
         except AgentDependencyError:
             generation_available = False

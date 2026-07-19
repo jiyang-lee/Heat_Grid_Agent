@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     )
     replay_enabled: bool = False
     replay_import_enabled: bool = False
+    demo_ai_history_reset_enabled: bool = False
     replay_storage_root: str = "/var/lib/heatgrid/replay"
     rag_top_k: int = 5
     rag_expanded_top_k: int = Field(default=10, ge=1, le=20)

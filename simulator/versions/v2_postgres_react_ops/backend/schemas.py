@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue as PydanticJsonValue
+from pydantic import BaseModel, Field, JsonValue as PydanticJsonValue
 
 JsonValue: TypeAlias = PydanticJsonValue
 JsonObject: TypeAlias = dict[str, Any]
@@ -521,6 +521,7 @@ class CardSummary(BaseModel):
 
 class AlertSummary(BaseModel):
     alert_id: str
+    episode_id: str | None = None
     card_id: str
     evaluation_run_id: str | None = None
     as_of_time: str | None = None
@@ -535,6 +536,8 @@ class AlertSummary(BaseModel):
     created_at: str
     acked_at: str | None
     acked_by: str | None
+    read_at: str | None = None
+    read_by: str | None = None
 
 
 class AlertEnqueueResponse(BaseModel):

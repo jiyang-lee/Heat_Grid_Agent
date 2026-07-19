@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from heatgrid_ops.priority.evaluation import INSERT_RESULT_SQL, build_evaluation_results
 
 try:
+    from .alert_episode_repository import consume_evaluation_connection
     from .replay_dataset import ImportedReplayPackage, ReplayManifest, SensorTick, WindowBatch
 except ImportError:
+    from alert_episode_repository import consume_evaluation_connection
     from replay_dataset import ImportedReplayPackage, ReplayManifest, SensorTick, WindowBatch
 
 
@@ -26,7 +28,7 @@ class PostgresReplayStore:
         self.engine = engine
         self.lease_owner = lease_owner
 
-    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int:
+    async def persist_tick(self, *, run_id: str, tick: SensorTick) -> int | None:
         readings = [
             {
                 "manufacturer_id": item["manufacturer_id"],
@@ -57,14 +59,7 @@ class PostgresReplayStore:
                 },
             )
             if inserted.scalar_one_or_none() is None:
-                event = await connection.execute(
-                    text(
-                        "SELECT event_id FROM replay_stream_events WHERE run_id = :run_id "
-                        "AND operation_key = :operation_key"
-                    ),
-                    {"run_id": run_id, "operation_key": f"tick:{run_id}:{tick.sequence}"},
-                )
-                return int(event.scalar_one())
+                return None
             for item in readings:
                 substation = await connection.execute(
                     text(
@@ -308,17 +303,29 @@ class PostgresReplayStore:
                 ),
                 {"run_id": run_id, "window_end": batch.window_end, "evaluation_run_id": evaluation_run_id},
             )
-            alert_delta = await self._replace_stream_alerts(
-                connection,
-                run_id=run_id,
-                evaluation_run_id=str(evaluation_run_id),
-                rows=evaluation_rows,
-            )
+            alert_delta = await consume_evaluation_connection(connection, str(evaluation_run_id))
         return {"event_id": int(event.scalar_one()), "evaluation_run_id": str(evaluation_run_id), "window_start": batch.window_start.isoformat(), "window_end": batch.window_end.isoformat(), "result_count": len(results), "alert_delta": alert_delta}
 
     async def fail_window(self, *, run_id: str, window_end: datetime, error: str) -> None:
         async with self.engine.begin() as connection:
-            await connection.execute(text("UPDATE replay_window_evaluations SET status = 'failed' WHERE run_id = :run_id AND window_end = :window_end"), {"run_id": run_id, "window_end": window_end})
+            result = await connection.execute(
+                text(
+                    "UPDATE replay_window_evaluations SET status = 'failed' "
+                    "WHERE run_id = :run_id AND window_end = :window_end "
+                    "RETURNING evaluation_run_id"
+                ),
+                {"run_id": run_id, "window_end": window_end},
+            )
+            evaluation_run_id = result.scalar_one_or_none()
+            if evaluation_run_id is not None:
+                await connection.execute(
+                    text(
+                        "UPDATE priority_evaluation_runs SET status = 'failed', "
+                        "is_active = false, error = :error, completed_at = now() "
+                        "WHERE evaluation_run_id = :evaluation_run_id"
+                    ),
+                    {"evaluation_run_id": evaluation_run_id, "error": error},
+                )
 
     async def _persist_synthetic_contract(self, connection: Any, *, run_id: str, record: dict[str, Any], inference: dict[str, Any], window_id: str, decision_id: str, card_id: str) -> None:
         await connection.execute(
@@ -354,31 +361,6 @@ class PostgresReplayStore:
             ),
             {"card_id": card_id, "decision_id": decision_id, "primary_state": _primary_state(inference), "why_reason": "Priority was inferred from a synthetic replay window.", "recommended_action": "Operator review is required before action.", "raw_card": _json({"synthetic": True, "replay_run_id": run_id, "manufacturer_id": record["manufacturer_id"], "substation_id": record["substation_id"], "priority_score": inference.get("priority_score")})},
         )
-
-    async def _replace_stream_alerts(self, connection: Any, *, run_id: str, evaluation_run_id: str, rows: list[dict[str, Any]]) -> dict[str, int]:
-        resolved = await connection.execute(
-            text(
-                "UPDATE ops_alert_queue SET status = 'resolved', acked_at = now(), acked_by = 'replay-stream-rollover' "
-                "WHERE stream_key = :stream_key AND status = 'open' AND evaluation_run_id <> :evaluation_run_id"
-            ),
-            {"stream_key": f"replay:{run_id}", "evaluation_run_id": evaluation_run_id},
-        )
-        opened = 0
-        for row in rows:
-            if str(row.get("priority_level") or "").lower() not in {"urgent", "high"}:
-                continue
-            alert_id = str(uuid5(NAMESPACE_URL, f"heatgrid-replay-alert|{evaluation_run_id}|{row['substation_uid']}"))
-            result = await connection.execute(
-                text(
-                    "INSERT INTO ops_alert_queue (alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id, priority_rank, freshness_status, priority_level, priority_score, enqueue_reason, stream_key, synthetic, replay_run_id) VALUES "
-                    "(:alert_id, :card_id, :evaluation_run_id, :substation_uid, :manufacturer_id, :substation_id, :priority_rank, :freshness_status, :priority_level, :priority_score, 'synthetic replay priority', :stream_key, true, :run_id) "
-                    "ON CONFLICT DO NOTHING RETURNING alert_id"
-                ),
-                {"alert_id": alert_id, "card_id": row["source_card_id"], "evaluation_run_id": evaluation_run_id, "substation_uid": row["substation_uid"], "manufacturer_id": row["manufacturer_id"], "substation_id": row["substation_id"], "priority_rank": row["priority_rank"], "freshness_status": row["freshness_status"], "priority_level": str(row["priority_level"]).lower(), "priority_score": row["priority_score"], "stream_key": f"replay:{run_id}", "run_id": run_id},
-            )
-            opened += int(result.scalar_one_or_none() is not None)
-        return {"opened": opened, "resolved": int(resolved.rowcount or 0)}
-
 
 async def register_imported_dataset(
     engine: AsyncEngine, package: ImportedReplayPackage, *, package_uri: str, imported_by: str

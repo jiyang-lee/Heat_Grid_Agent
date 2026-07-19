@@ -88,3 +88,4 @@ class ModelVerificationResult(BaseModel):
     manufacturer_id: str | None = None
     substation_id: int | None = None
     reasons: list[str] = Field(default_factory=list)
+    verification_source: Literal["stored_snapshot", "active_revalidation"] = "active_revalidation"

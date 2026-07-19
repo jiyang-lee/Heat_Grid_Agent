@@ -1,30 +1,75 @@
 from __future__ import annotations
 
+import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-BACKEND = Path(__file__).resolve().parents[1] / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
-sys.path.insert(0, str(BACKEND))
-
-from replay_dataset import SensorTick, WindowBatch  # noqa: E402
-from replay_worker import MemoryReplayStore, ReplayWorker  # noqa: E402
+from simulator.versions.v2_postgres_react_ops.backend.replay_dataset import (
+    SensorTick,
+    WindowBatch,
+)
+from simulator.versions.v2_postgres_react_ops.backend.replay_worker import (
+    MemoryReplayStore,
+    ReplayWorker,
+)
 
 
 UTC = timezone.utc
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_PATH = (
+    REPOSITORY_ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
+)
+
+
+@pytest.mark.parametrize(
+    ("mode", "probe"),
+    [
+        pytest.param(
+            "package",
+            "from simulator.versions.v2_postgres_react_ops.backend."
+            "replay_worker_main import ReplayWorkerProcess; "
+            "print(ReplayWorkerProcess.__name__)",
+            id="package",
+        ),
+        pytest.param(
+            "direct-backend-path",
+            f"import sys; sys.path.insert(0, {str(BACKEND_PATH)!r}); "
+            "from replay_worker_main import ReplayWorkerProcess; "
+            "print(ReplayWorkerProcess.__name__)",
+            id="direct-backend-path",
+        ),
+    ],
+)
+def test_replay_worker_main_supports_import_mode(mode: str, probe: str) -> None:
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", probe],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert (result.returncode, result.stdout.strip()) == (0, "ReplayWorkerProcess"), (
+        f"{mode} import failed: {result.stderr}"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class FakeManifest:
+    expected_substations: int = 31
+    window_ticks: int = 36
+    source_interval: timedelta = timedelta(minutes=10)
 
 
 class FakeDataset:
     def __init__(self) -> None:
-        self.manifest = SimpleNamespace(
-            expected_substations=31,
-            window_ticks=36,
-            source_interval=timedelta(minutes=10),
-        )
+        self.manifest = FakeManifest()
 
     def window_batch(self, window_end: datetime) -> WindowBatch:
         start = window_end - timedelta(hours=6)
@@ -51,9 +96,9 @@ class FakeRuntime:
     def __init__(self) -> None:
         self.calls = 0
 
-    def infer_batch(self, inputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def infer_batch(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         self.calls += 1
-        return [{"priority_score": 0.5, "priority_level": "high"} for _ in inputs]
+        return [{"priority_score": 0.5, "priority_level": "high"} for _ in rows]
 
 
 def _tick(sequence: int) -> SensorTick:
@@ -75,7 +120,28 @@ def _tick(sequence: int) -> SensorTick:
 
 
 @pytest.mark.anyio
-async def test_replay_infers_exactly_once_per_36_ticks() -> None:
+async def test_replay_persists_every_tick_during_warmup() -> None:
+    # Given
+    runtime = FakeRuntime()
+    store = MemoryReplayStore()
+    worker = ReplayWorker(
+        run_id="run-1",
+        dataset=FakeDataset(),
+        runtime=runtime,
+        store=store,
+    )
+
+    # When
+    events = await worker.replay([_tick(sequence) for sequence in range(3)])
+
+    # Then
+    assert [tick.sequence for tick in store.ticks] == [0, 1, 2]
+    assert [event["type"] for event in events] == ["replay.sensor_tick.v1"] * 3
+    assert runtime.calls == 0
+
+
+@pytest.mark.anyio
+async def test_replay_infers_once_for_every_warmed_tick() -> None:
     runtime = FakeRuntime()
     store = MemoryReplayStore()
     worker = ReplayWorker(
@@ -87,9 +153,9 @@ async def test_replay_infers_exactly_once_per_36_ticks() -> None:
 
     events = await worker.replay([_tick(sequence) for sequence in range(72)])
 
-    assert runtime.calls == 2
-    assert len(store.scored) == 2
-    assert [event["type"] for event in events].count("replay.window_scored.v1") == 2
+    assert runtime.calls == 37
+    assert len(store.scored) == 37
+    assert [event["type"] for event in events].count("replay.window_scored.v1") == 37
     assert {event["window_end"] for event in store.events if event["event_type"] == "replay.window_scored.v1"}
 
 

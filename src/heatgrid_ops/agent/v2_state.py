@@ -21,6 +21,7 @@ class V2RequestState(V2FrozenModel):
     input_hash: str
     target_stage: StageName | None = None
     broaden: bool = False
+    revision_feedback: tuple[str, ...] = ()
 
 
 class V2RoutingState(V2FrozenModel):

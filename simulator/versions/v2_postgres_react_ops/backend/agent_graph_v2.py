@@ -71,6 +71,7 @@ class ExplicitV2AgentGraph:
                     input_hash=canonical_json_hash(source_input),
                     target_stage=_target_stage(config),
                     broaden=_broaden(config),
+                    revision_feedback=_revision_feedback(config),
                 )
             )
             await _hydrate_parent_prefix(self.engine, self.context, state)
@@ -164,6 +165,12 @@ def _broaden(config: RunnableConfig) -> bool:
     return configurable.get("broaden") is True
 
 
+def _revision_feedback(config: RunnableConfig) -> tuple[str, ...]:
+    configurable = config.get("configurable") or {}
+    value = configurable.get("revision_feedback")
+    return tuple(item for item in value if isinstance(item, str)) if isinstance(value, list) else ()
+
+
 async def _hydrate_parent_prefix(
     engine: AsyncEngine,
     context: AgentV2GraphContext,
@@ -197,7 +204,7 @@ async def _hydrate_parent_prefix(
                     upstream.append(source.output_hash)
                 continue
             source = parent.get(stage_name)
-            if source is None or source.execution_status != "passed":
+            if source is None or source.execution_status not in {"passed", "reused"}:
                 return
             if source.state_schema_version != state.state_schema_version:
                 return

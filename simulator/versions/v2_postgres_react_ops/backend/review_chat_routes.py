@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
 from agent_operator_review_repository import IdempotencyConflictError
 from agent_rerun_repository import TargetedChildRun, mark_rerun_scheduled
+from incident_document_repository import PostgresIncidentDocumentRepository
+from incident_document_routes import make_incident_document_router
 
 if TYPE_CHECKING:
     from settings import Settings
@@ -52,6 +54,13 @@ def make_review_chat_router(
         settings = Settings()
     active_settings = settings
     active_runtime = runtime
+    router.include_router(
+        make_incident_document_router(
+            PostgresIncidentDocumentRepository(engine),
+            settings=active_settings,
+            prefix="",
+        )
+    )
 
     def _runtime() -> "AgentRuntime":
         nonlocal active_runtime

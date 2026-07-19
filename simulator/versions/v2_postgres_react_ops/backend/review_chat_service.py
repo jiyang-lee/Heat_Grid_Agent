@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+import re
 from typing import Literal, cast
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from review_chat_api_models import (
     ReviewChatCancelRequest,
     ReviewChatConfirmationResponse,
     ReviewChatConfirmRequest,
+    ReviewChatDocumentContext,
     ReviewChatMessagePage,
     ReviewChatMessageRequest,
     ReviewChatMessageResponse,
@@ -149,6 +151,8 @@ async def submit_review_chat_message(
         thread = await _locked_thread(connection, thread_id)
         context = await _context_for_run(connection, str(thread["run_id"]))
         await _refresh_context(connection, thread, context)
+        _validate_message_citations(context, request.incident_id, request.citation_ids)
+        document_context = await _canonical_document_context(connection, context, request)
         existing = await _message_by_idempotency(connection, thread_id, request.idempotency_key)
         if existing is not None:
             expected_hash = _hash(
@@ -156,7 +160,7 @@ async def submit_review_chat_message(
                     "role": "operator",
                     "kind": "action_request" if _looks_like_action(request.content) else "question",
                     "content": request.content,
-                    "payload": {},
+                    "payload": _message_payload(request, document_context),
                     "context_hash": context.context_hash,
                 }
             )
@@ -169,8 +173,8 @@ async def submit_review_chat_message(
             role="operator",
             message_kind="action_request" if _looks_like_action(request.content) else "question",
             content=request.content,
-            structured_payload={},
-            citations=(),
+            structured_payload=_message_payload(request, document_context),
+            citations=_message_citations(context, request, document_context),
             context_hash=context.context_hash,
             created_by=request.created_by,
             idempotency_key=request.idempotency_key,
@@ -182,7 +186,7 @@ async def submit_review_chat_message(
             {"message_id": operator.message_id, "sequence": operator.sequence},
             f"review-chat-message:{thread_id}:{request.idempotency_key}",
         )
-        parsed = parse_review_chat_intent(request.content)
+        parsed = parse_review_chat_intent(request.content, document_context)
         proposal: ReviewChatProposalResponse | None = None
         if parsed.kind == "proposal":
             proposal = await _create_proposal(connection, thread_id, operator, context, parsed)
@@ -241,7 +245,7 @@ async def _natural_language_reply(
     fallback: str,
 ) -> str:
     if api_key is None:
-        return fallback
+        return _plain_chat_text(fallback)
     prompt = orjson.dumps(
         {
             "question": question,
@@ -256,14 +260,15 @@ async def _natural_language_reply(
                 input=(
                     "Answer in Korean using only the supplied operational context. "
                     "Do not approve, reject, or execute an action; explain the evidence and "
-                    "tell the operator when confirmation is required.\n\n"
+                    "tell the operator when confirmation is required. Use plain text only. "
+                    "Do not use Markdown, asterisks, underscores, backticks, or headings.\n\n"
                     + prompt
                 ),
             )
     except OpenAIError:
-        return fallback
-    reply = response.output_text.strip()
-    return reply or fallback
+        return _plain_chat_text(fallback)
+    reply = _plain_chat_text(response.output_text)
+    return reply or _plain_chat_text(fallback)
 
 
 async def confirm_review_chat_proposal(
@@ -426,7 +431,10 @@ async def list_review_chat_events(
     )
 
 
-def parse_review_chat_intent(content: str) -> ParsedAction:
+def parse_review_chat_intent(
+    content: str,
+    document_context: dict[str, str] | None = None,
+) -> ParsedAction:
     normalized = " ".join(content.casefold().split())
     injection = any(token in normalized for token in ("ignore previous", "system prompt", "도구 호출", "api key"))
     decisions = [
@@ -434,13 +442,15 @@ def parse_review_chat_intent(content: str) -> ParsedAction:
         for decision, tokens in {
             "approve": ("승인", "approve"),
             "reject": ("거절", "reject"),
-            "correct": ("교정", "수정", "고쳐", "correct"),
+            "correct": ("교정", "수정", "고쳐", "보강", "추가", "반영", "재작성", "다시 작성", "변경", "삭제", "correct"),
             "keep_human_review": ("보류", "더 볼", "계속 검토"),
         }.items()
         if any(token in normalized for token in tokens)
     ]
     if injection or len(decisions) > 1:
         return ParsedAction("clarify", None, "", None, "none", None, None, 0.0)
+    if not decisions and _is_work_order_change_request(normalized, document_context):
+        decisions.append("correct")
     if not decisions:
         return ParsedAction("explain", None, "", None, "none", None, None, 1.0)
     decision = cast(
@@ -448,20 +458,34 @@ def parse_review_chat_intent(content: str) -> ParsedAction:
         decisions[0],
     )
     category = _reason_category(normalized)
+    if decision == "correct" and category is None and document_context is not None and document_context.get("document_type") == "work_order":
+        category = "report_draft_issue"
     reason = _reason_from_content(content, decision)
+    if decision == "reject" and category == "report_draft_issue":
+        return ParsedAction("clarify", None, "", None, "none", None, None, 0.0)
     if decision == "reject" and (not reason or category is None):
         return ParsedAction("clarify", None, "", None, "none", None, None, 0.0)
     next_action: Literal[
         "none", "targeted_rerun", "manual_investigation", "close_without_rerun"
     ] = "none"
-    if decision == "reject" and category in TARGET_STAGE_BY_REASON:
+    if decision in {"reject", "correct"} and category in TARGET_STAGE_BY_REASON:
         next_action = "targeted_rerun"
     disposition = "inspection_recommended" if decision == "correct" else None
-    correction = (
-        {"disposition": disposition}
-        if decision == "correct" and disposition is not None
-        else None
-    )
+    correction = None
+    if decision == "correct":
+        correction = {"disposition": disposition or "inspection_recommended", "instruction": content}
+        if document_context is not None:
+            current_body = document_context.get("current_body", "")
+            correction.update({
+                "incident_id": document_context.get("incident_id", ""),
+                "document_version_id": document_context.get("document_version_id", ""),
+                "document_type": document_context.get("document_type", "work_order"),
+                "base_version": document_context.get("base_version", "1"),
+                "content_hash": document_context.get("content_hash", _hash(current_body)),
+                "base_content_hash": document_context.get("base_content_hash", _hash(current_body)),
+                "current_body": current_body,
+                "target_area": "risk_evidence" if any(token in normalized for token in ("위험", "근거")) else "document_body",
+            })
     return ParsedAction("proposal", decision, reason or "operator review", category, next_action, disposition, correction, 0.9)
 
 
@@ -490,12 +514,15 @@ async def _context_for_run(connection: AsyncConnection, run_id: str) -> ReviewCh
     )
     citations = tuple(
         {
+            "citation_id": f"stage:{item['stage_snapshot_id']}",
             "stage_snapshot_id": str(item["stage_snapshot_id"]),
             "stage_name": str(item["stage_name"]),
             "snapshot_hash": str(item["output_hash"]),
         }
         for item in stages.mappings().all()
     )
+    incident_citations = await _incident_citations_for_run(connection, run_id)
+    citations = citations + incident_citations
     output = _json_object(row["ops_output"])
     review_version = int(reviews.scalar_one())
     context_hash = _hash(
@@ -515,6 +542,210 @@ async def _context_for_run(connection: AsyncConnection, run_id: str) -> ReviewCh
         citations=citations,
         review_snapshot_hash=None if row["review_snapshot_hash"] is None else str(row["review_snapshot_hash"]),
     )
+
+
+async def _incident_citations_for_run(
+    connection: AsyncConnection,
+    run_id: str,
+) -> tuple[dict[str, str], ...]:
+    schema_ready = await connection.scalar(
+        text(
+            "SELECT to_regclass('public.anomaly_episodes') IS NOT NULL "
+            "AND EXISTS ("
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'ops_alert_queue' "
+            "AND column_name = 'episode_id'"
+            ")"
+        )
+    )
+    if schema_ready is not True:
+        return ()
+    result = await connection.execute(
+        text(
+            "SELECT e.episode_id::text AS episode_id, q.alert_id::text AS alert_id "
+            "FROM agent_runs r JOIN ops_alert_queue q ON q.alert_id = r.alert_id "
+            "JOIN anomaly_episodes e ON e.episode_id = q.episode_id "
+            "WHERE r.run_id = :run_id"
+        ),
+        {"run_id": run_id},
+    )
+    row = result.mappings().one_or_none()
+    if row is None:
+        return ()
+    episode_id = str(row["episode_id"])
+    alert_id = str(row["alert_id"])
+    document_result = await connection.execute(
+        text(
+            "SELECT document_version_id::text AS document_version_id, document_type, "
+            "version, content_hash FROM incident_document_versions "
+            "WHERE episode_id = :episode_id ORDER BY document_type, version"
+        ),
+        {"episode_id": episode_id},
+    )
+    documents = tuple(
+        {
+            "citation_id": f"document:{item['document_version_id']}",
+            "document_version_id": str(item["document_version_id"]),
+            "document_type": str(item["document_type"]),
+            "version": str(item["version"]),
+            "snapshot_hash": str(item["content_hash"]),
+            "content_hash": str(item["content_hash"]),
+        }
+        for item in document_result.mappings().all()
+    )
+    return (
+        {
+            "citation_id": f"episode:{episode_id}",
+            "episode_id": episode_id,
+            "alert_id": alert_id,
+            "snapshot_hash": _hash({"episode_id": episode_id, "alert_id": alert_id}),
+        },
+        {
+            "citation_id": f"alert:{alert_id}",
+            "alert_id": alert_id,
+            "snapshot_hash": _hash({"alert_id": alert_id}),
+        },
+    ) + documents
+
+
+def _validate_message_citations(
+    context: ReviewChatContext,
+    incident_id: str | None,
+    citation_ids: tuple[str, ...],
+) -> None:
+    if incident_id is None and not citation_ids:
+        return
+    allowed = {
+        item["citation_id"]
+        for item in context.citations
+        if "citation_id" in item
+    }
+    if incident_id is not None and f"episode:{incident_id}" not in allowed:
+        raise ReviewChatConflictError("incident context does not belong to this thread")
+    for citation_id in citation_ids:
+        if citation_id not in allowed:
+            raise ReviewChatConflictError(f"unsupported citation id: {citation_id}")
+
+
+async def _canonical_document_context(
+    connection: AsyncConnection,
+    context: ReviewChatContext,
+    request: ReviewChatMessageRequest,
+) -> dict[str, str] | None:
+    document_context = request.document_context
+    if document_context is None:
+        return None
+    row = await _document_context_row(connection, context, request.incident_id, document_context)
+    document_version_id = str(row["document_version_id"])
+    if f"document:{document_version_id}" not in _allowed_citation_ids(context):
+        raise ReviewChatConflictError("document context does not belong to this thread")
+    version = int(row["version"])
+    if version != document_context.expected_version:
+        raise ReviewChatConflictError("document version is stale")
+    latest = await connection.scalar(
+        text(
+            "SELECT COALESCE(max(version), 0) FROM incident_document_versions "
+            "WHERE episode_id = :episode_id AND document_type = :document_type"
+        ),
+        {"episode_id": row["episode_id"], "document_type": row["document_type"]},
+    )
+    if int(latest or 0) != version:
+        raise ReviewChatConflictError("document version is stale")
+    content = _json_object(row["content"])
+    body = content.get("body")
+    if not isinstance(body, str):
+        raise ReviewChatConflictError("document content is malformed")
+    content_hash = str(row["content_hash"])
+    return {
+        "incident_id": str(row["episode_id"]),
+        "document_version_id": document_version_id,
+        "document_type": str(row["document_type"]),
+        "base_version": str(version),
+        "expected_version": str(document_context.expected_version),
+        "base_content_hash": content_hash,
+        "content_hash": content_hash,
+        "current_body": body,
+    }
+
+
+async def _document_context_row(
+    connection: AsyncConnection,
+    context: ReviewChatContext,
+    incident_id: str | None,
+    document_context: ReviewChatDocumentContext,
+) -> RowMapping:
+    if document_context.document_version_id is not None:
+        result = await connection.execute(
+            text(
+                "SELECT document_version_id::text AS document_version_id, episode_id::text AS episode_id, "
+                "document_type, version, CAST(content AS text) AS content, content_hash "
+                "FROM incident_document_versions WHERE document_version_id = :document_version_id"
+            ),
+            {"document_version_id": document_context.document_version_id},
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            raise ReviewChatNotFoundError()
+        return row
+    episode_id = _document_episode_id(context, incident_id)
+    result = await connection.execute(
+        text(
+            "SELECT document_version_id::text AS document_version_id, episode_id::text AS episode_id, "
+            "document_type, version, CAST(content AS text) AS content, content_hash "
+            "FROM incident_document_versions "
+            "WHERE episode_id = :episode_id AND document_type = :document_type "
+            "ORDER BY version DESC LIMIT 1"
+        ),
+        {"episode_id": episode_id, "document_type": document_context.document_type},
+    )
+    row = result.mappings().one_or_none()
+    if row is None:
+        raise ReviewChatNotFoundError()
+    return row
+
+
+def _document_episode_id(context: ReviewChatContext, incident_id: str | None) -> str:
+    if incident_id is not None:
+        return incident_id
+    episode_ids = {
+        item["episode_id"]
+        for item in context.citations
+        if item.get("citation_id", "").startswith("episode:") and "episode_id" in item
+    }
+    if len(episode_ids) != 1:
+        raise ReviewChatConflictError("incident context is required for document lookup")
+    return next(iter(episode_ids))
+
+
+def _allowed_citation_ids(context: ReviewChatContext) -> set[str]:
+    return {item["citation_id"] for item in context.citations if "citation_id" in item}
+
+
+def _message_citations(
+    context: ReviewChatContext,
+    request: ReviewChatMessageRequest,
+    document_context: dict[str, str] | None,
+) -> tuple[dict[str, str], ...]:
+    wanted = set(request.citation_ids)
+    if request.incident_id is not None:
+        wanted.add(f"episode:{request.incident_id}")
+    if document_context is not None:
+        wanted.add(f"document:{document_context['document_version_id']}")
+    return tuple(item for item in context.citations if item.get("citation_id") in wanted)
+
+
+def _message_payload(
+    request: ReviewChatMessageRequest,
+    document_context: dict[str, str] | None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {}
+    if document_context is not None:
+        payload["document_context"] = document_context
+    if request.incident_id is not None:
+        payload["incident_id"] = request.incident_id
+    if request.citation_ids:
+        payload["citation_ids"] = request.citation_ids
+    return payload
 
 
 async def _refresh_context(
@@ -620,6 +851,7 @@ async def _create_proposal(
         disposition=parsed.disposition,
         correction=parsed.correction,
         target_stage=TARGET_STAGE_BY_REASON.get(parsed.reason_category or ""),
+        revision=parsed.correction,
         expires_at=expires_at,
     )
 
@@ -836,8 +1068,21 @@ def _looks_like_action(content: str) -> bool:
     return parse_review_chat_intent(content).kind != "explain"
 
 
+def _is_work_order_change_request(
+    normalized: str,
+    document_context: dict[str, str] | None,
+) -> bool:
+    if not normalized or document_context is None or document_context.get("document_type") != "work_order":
+        return False
+    if normalized.endswith("?"):
+        return False
+    question_markers = ("왜", "어떻게", "무엇", "무슨", "알려", "설명", "보여", "확인해줘")
+    return not any(marker in normalized for marker in question_markers)
+
+
 def _reason_category(normalized: str) -> str | None:
     mapping = (
+        (("위험", "근거", "보강", "재작성", "다시 작성"), "report_draft_issue"),
         (("rag", "검색", "문서"), "rag_retrieval_issue"),
         (("날씨", "기상"), "weather_context_issue"),
         (("모델", "예측", "ml"), "ml_prediction_issue"),
@@ -871,7 +1116,12 @@ def _clarification_message(parsed: ParsedAction, context: ReviewChatContext) -> 
 def _proposal_message(parsed: ParsedAction) -> str:
     assert parsed.decision is not None
     action = "재실행" if parsed.next_action == "targeted_rerun" else "검토 이력 저장"
-    return f"{parsed.decision} 제안을 만들었습니다. 확정 전에는 DB 검토 결과나 후속 실행이 변경되지 않습니다. 확정하면 {action}합니다."
+    return f"수정 제안을 만들었습니다. 확정 전에는 검토 결과나 후속 실행이 변경되지 않습니다. 확정하면 {action}합니다."
+
+
+def _plain_chat_text(content: str) -> str:
+    without_emphasis = re.sub(r"\*\*|__|`", "", content)
+    return re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", without_emphasis).strip()
 
 
 def _json_object(value: object) -> dict[str, object]:

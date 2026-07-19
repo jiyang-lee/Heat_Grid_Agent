@@ -85,6 +85,29 @@ APPLICATION_TABLES_V011: Final = frozenset(
         "windows",
     }
 )
+APPLICATION_TABLES_V016: Final = APPLICATION_TABLES_V011 | frozenset(
+    {
+        "anomaly_episode_consumptions",
+        "anomaly_episode_events",
+        "anomaly_episodes",
+        "incident_document_reviews",
+        "incident_document_versions",
+        "operation_idempotency_keys",
+        "operations_policy",
+        "operations_report_corrections",
+        "operations_report_periods",
+        "operations_report_versions",
+        "operations_shift_handover_memos",
+        "operations_shift_schedule",
+        "preventive_projections",
+    }
+)
+APPEND_ONLY_TABLES_V016: Final = (
+    "incident_document_versions",
+    "incident_document_reviews",
+    "operations_report_versions",
+    "operations_report_corrections",
+)
 
 class MigrationContractError(RuntimeError):
     pass
@@ -326,6 +349,20 @@ async def grant_application_role(
     await connection.execute(
         sql.SQL("GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {}").format(role)
     )
+    for table_name in APPEND_ONLY_TABLES_V016:
+        if await _table_exists(connection, table_name):
+            await connection.execute(
+                sql.SQL("REVOKE UPDATE ON TABLE {} FROM {}").format(
+                    sql.Identifier("public", table_name),
+                    role,
+                )
+            )
+    if await _table_exists(connection, "operations_shift_schedule"):
+        await connection.execute(
+            sql.SQL(
+                "GRANT DELETE ON TABLE public.operations_shift_schedule TO {}"
+            ).format(role)
+        )
     await connection.execute(
         sql.SQL("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {}").format(role)
     )
@@ -607,10 +644,11 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    if actual != APPLICATION_TABLES_V011:
+    expected = APPLICATION_TABLES_V016 if version >= 16 else APPLICATION_TABLES_V011
+    if actual != expected:
         raise MigrationContractError(
             "application tables mismatch: "
-            f"expected={sorted(APPLICATION_TABLES_V011)}, actual={sorted(actual)}"
+            f"expected={sorted(expected)}, actual={sorted(actual)}"
         )
 
 

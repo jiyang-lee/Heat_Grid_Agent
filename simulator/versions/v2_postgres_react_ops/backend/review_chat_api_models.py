@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class FrozenReviewChatModel(BaseModel):
@@ -55,10 +55,25 @@ class ReviewChatThreadResponse(FrozenReviewChatModel):
     created_at: datetime
 
 
+class ReviewChatDocumentContext(FrozenReviewChatModel):
+    document_version_id: str | None = Field(default=None, min_length=1, max_length=80)
+    document_type: Literal["work_order", "incident_report"] | None = None
+    expected_version: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def require_document_reference(self) -> "ReviewChatDocumentContext":
+        if self.document_version_id is None and self.document_type is None:
+            raise ValueError("document_version_id or document_type is required")
+        return self
+
+
 class ReviewChatMessageRequest(FrozenReviewChatModel):
     content: str = Field(min_length=1, max_length=8000)
     created_by: str = Field(min_length=1, max_length=120)
     idempotency_key: str = Field(min_length=1, max_length=200)
+    document_context: ReviewChatDocumentContext | None = None
+    incident_id: str | None = Field(default=None, min_length=1, max_length=80)
+    citation_ids: tuple[str, ...] = Field(default=())
 
 
 class ReviewChatMessageResponse(FrozenReviewChatModel):
@@ -92,6 +107,7 @@ class ReviewChatProposalResponse(FrozenReviewChatModel):
     disposition: str | None
     correction: dict[str, str] | None
     target_stage: str | None
+    revision: dict[str, str] | None = None
     expires_at: datetime
 
 

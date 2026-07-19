@@ -3,6 +3,7 @@ services:
     environment:
       HEATGRID_REPLAY_ENABLED: "true"
       HEATGRID_REPLAY_IMPORT_ENABLED: "true"
+      HEATGRID_DEMO_AI_HISTORY_RESET_ENABLED: "true"
       HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
     volumes:
       - ${USERPROFILE}/Downloads:/var/lib/heatgrid/incoming:ro

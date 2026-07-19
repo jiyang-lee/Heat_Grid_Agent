@@ -10,13 +10,25 @@ from heatgrid_ops.priority.evaluation import (
     get_priority_evaluation,
     latest_alert_results,
 )
-from schemas import (
-    PriorityEvaluationCreateRequest,
-    PriorityEvaluationResult,
-    PriorityEvaluationSnapshot,
-    PrioritySubstationSnapshot,
-)
-from settings import Settings
+
+try:
+    from .alert_episode_repository import consume_evaluation
+    from .schemas import (
+        PriorityEvaluationCreateRequest,
+        PriorityEvaluationResult,
+        PriorityEvaluationSnapshot,
+        PrioritySubstationSnapshot,
+    )
+    from .settings import Settings
+except ImportError:
+    from alert_episode_repository import consume_evaluation
+    from schemas import (
+        PriorityEvaluationCreateRequest,
+        PriorityEvaluationResult,
+        PriorityEvaluationSnapshot,
+        PrioritySubstationSnapshot,
+    )
+    from settings import Settings
 
 
 def make_priority_evaluation_router(
@@ -42,6 +54,10 @@ def make_priority_evaluation_router(
             )
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        await consume_evaluation(
+            engine,
+            str(snapshot["evaluation"]["evaluation_run_id"]),
+        )
         return PriorityEvaluationSnapshot.model_validate(snapshot)
 
     @router.get("/latest", response_model=PriorityEvaluationSnapshot)
