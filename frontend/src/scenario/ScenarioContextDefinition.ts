@@ -2,6 +2,7 @@ import { createContext } from 'react'
 import type { EntryMode, EvaluationCategory, ScenarioAiEntry, ScenarioState, ScenarioTimelineAlert } from './types'
 import type { OpsAgentResultV4 } from '../api/contracts'
 import type { useSensorStream } from './useSensorStream'
+import type { WorkOrderRevisionTarget } from './workOrderRevision'
 
 export interface ScenarioContextValue {
   readonly state: ScenarioState
@@ -12,6 +13,7 @@ export interface ScenarioContextValue {
   readonly backToModeSelection: () => void
   readonly startFaultScenario: () => void
   readonly restartScenario: () => void
+  readonly clearAiHistory: () => void
   readonly exitConsole: () => void
   readonly selectAlert: (alertId: string) => void
   readonly selectSubstation: (substationId: number) => void
@@ -23,8 +25,9 @@ export interface ScenarioContextValue {
   readonly dismissIncidentPopup: () => void
   readonly resolveAlert: (alertId: string) => void
   readonly setAiEntry: (entry: ScenarioAiEntry) => void
-  readonly createWorkOrder: (runId?: string, result?: OpsAgentResultV4) => void
-  readonly appendWorkOrderRevision: (runId: string, result: OpsAgentResultV4, instruction: string) => void
+  readonly createWorkOrder: (runId?: string, result?: OpsAgentResultV4, alertId?: string) => void
+  readonly selectDocumentGroup: (groupId: string) => void
+  readonly appendWorkOrderRevision: (runId: string, result: OpsAgentResultV4, instruction: string, target: WorkOrderRevisionTarget, baseVersion: 1 | 2 | 3, documentContent?: string) => void
   readonly appendWorkOrderMessages: (messages: readonly import('./types').ScenarioChatMessage[]) => void
   readonly selectWorkOrderVersion: (version: 1 | 2 | 3) => void
   readonly updateWorkOrderContent: (version: 1 | 2 | 3, content: string) => void

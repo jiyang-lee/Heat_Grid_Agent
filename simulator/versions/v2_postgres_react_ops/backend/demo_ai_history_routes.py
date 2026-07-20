@@ -15,11 +15,38 @@ def make_demo_ai_history_router(engine: AsyncEngine, *, enabled: bool) -> APIRou
         if not enabled:
             raise HTTPException(status_code=404, detail="demo reset is disabled")
         async with engine.begin() as connection:
-            await connection.execute(text("SELECT pg_advisory_xact_lock(82420260718)"))
-            runs = await connection.execute(text("SELECT count(*) FROM agent_runs"))
-            chats = await connection.execute(text("SELECT count(*) FROM review_chat_messages"))
-            artifacts = await connection.execute(text("SELECT count(*) FROM agent_run_artifacts"))
-            await connection.execute(text("TRUNCATE TABLE agent_runs CASCADE"))
+            await connection.execute(
+                text("SELECT pg_catalog.pg_advisory_xact_lock(82420260718)")
+            )
+            await connection.execute(
+                text("LOCK TABLE public.agent_runs IN ACCESS EXCLUSIVE MODE")
+            )
+            active_runs = await connection.execute(
+                text(
+                    "SELECT count(*) FROM public.agent_runs "
+                    "WHERE status IN ('queued', 'running')"
+                )
+            )
+            if int(active_runs.scalar_one()) > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "AI 분석이 진행 중입니다. 분석이 완료된 뒤 "
+                        "누적 기록을 초기화해 주세요."
+                    ),
+                )
+            runs = await connection.execute(
+                text("SELECT count(*) FROM public.agent_runs")
+            )
+            chats = await connection.execute(
+                text("SELECT count(*) FROM public.review_chat_messages")
+            )
+            artifacts = await connection.execute(
+                text("SELECT count(*) FROM public.agent_run_artifacts")
+            )
+            await connection.execute(
+                text("SELECT heatgrid_admin.reset_demo_ai_history()")
+            )
         return {
             "reset_at": datetime.now(UTC).isoformat(),
             "deleted_runs": int(runs.scalar_one()),

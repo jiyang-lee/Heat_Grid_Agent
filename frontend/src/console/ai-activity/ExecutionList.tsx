@@ -26,7 +26,7 @@ function rowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, select: () => voi
 export function ExecutionList({ items, selectedId, onSelect }: Props) {
   return (
     <div className="table-scroll">
-      <table className="ops-table activity-table">
+      <table className="ops-table activity-table execution-activity-table">
         <thead>
           <tr><th>대상</th><th>연결 알림</th><th>시작 시간</th><th>상태</th></tr>
         </thead>

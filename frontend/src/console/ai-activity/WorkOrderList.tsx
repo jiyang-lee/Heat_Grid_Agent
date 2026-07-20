@@ -29,7 +29,7 @@ function rowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, select: () => voi
 export function WorkOrderList({ items, selectedId, onSelect }: Props) {
   return (
     <div className="table-scroll">
-      <table className="ops-table activity-table">
+      <table className="ops-table activity-table work-order-activity-table">
         <thead>
           <tr><th>우선순위</th><th>이상 징후</th><th>대상 설비</th><th>생성 시간</th><th>상태</th></tr>
         </thead>

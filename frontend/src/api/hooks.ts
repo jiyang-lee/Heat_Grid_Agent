@@ -1,12 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from './client'
 import {
   agentReportsApi,
   agentRunEvaluationsApi,
   agentRunsApi,
   alertsApi,
   automationPolicyApi,
+  demoAiHistoryApi,
   evidenceCandidatesApi,
   healthApi,
+  incidentDocumentsApi,
   modelCandidatesApi,
   operationsMetricsApi,
   operatorReviewsApi,
@@ -41,6 +44,7 @@ import type {
   ModelCallProjection,
   ToolCallProjection,
   RunLineageResponse,
+  IncidentDocumentApproveRequest,
 } from './contracts'
 
 export const qk = {
@@ -75,7 +79,47 @@ export const qk = {
   runCostBreakdown: (runId: string) => ['agent-run-cost-breakdown', runId] as const,
   reviewChatThread: (runId: string) => ['review-chat-thread', runId] as const,
   reviewChatMessages: (threadId: string) => ['review-chat-messages', threadId] as const,
+  reviewChatPendingProposal: (threadId: string) => ['review-chat-pending-proposal', threadId] as const,
+  incidentDocuments: (incidentId: string) => ['incident-documents', incidentId] as const,
   replaySnapshot: (runId: string) => ['replay-run-snapshot', runId] as const,
+}
+
+const AI_HISTORY_QUERY_ROOTS = [
+  'agent-runs',
+  'agent-run',
+  'agent-run-stages',
+  'agent-run-artifacts',
+  'agent-run-artifact-content',
+  'agent-run-review-snapshot',
+  'agent-run-result',
+  'agent-run-iterations',
+  'agent-run-evaluation',
+  'agent-run-lineage',
+  'agent-run-model-calls',
+  'agent-run-tool-calls',
+  'agent-run-cost-breakdown',
+  'work-orders',
+  'agent-reports',
+  'operator-reviews',
+  'review-chat-thread',
+  'review-chat-messages',
+  'review-chat-pending-proposal',
+  'incident-documents',
+  'replay-run-snapshot',
+  'agent-operations-metrics',
+] as const
+
+export function useResetDemoAiHistory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => demoAiHistoryApi.reset(),
+    onSuccess: async () => {
+      await Promise.all(AI_HISTORY_QUERY_ROOTS.map(async (root) => {
+        qc.removeQueries({ queryKey: [root], type: 'inactive' })
+        await qc.resetQueries({ queryKey: [root], type: 'active' })
+      }))
+    },
+  })
 }
 
 export function useAlerts(query?: AlertListQuery) {
@@ -151,6 +195,17 @@ export function useWorkOrders(query?: ActivityProjectionQuery) {
     queryKey: qk.workOrders(query),
     queryFn: () => workOrdersApi.list(query),
     refetchInterval: 15000,
+  })
+}
+
+export function useWorkOrderRunMetadata(runIds: readonly string[]) {
+  return useQueries({
+    queries: runIds.map((runId) => ({
+      queryKey: qk.run(runId),
+      queryFn: () => agentRunsApi.get(runId),
+      retry: false,
+      staleTime: 60_000,
+    })),
   })
 }
 
@@ -440,30 +495,83 @@ export function useReviewChatThreadOpen() {
 export function useReviewChatMessages(threadId: string | null) {
   return useQuery({
     queryKey: qk.reviewChatMessages(threadId ?? ''),
-    queryFn: () => reviewChatApi.messages(threadId as string),
+    queryFn: () => reviewChatApi.allMessages(threadId as string),
     enabled: threadId != null,
     refetchInterval: 2500,
   })
 }
 
+export function useReviewChatPendingProposal(threadId: string | null) {
+  return useQuery({
+    queryKey: qk.reviewChatPendingProposal(threadId ?? ''),
+    queryFn: async () => {
+      try {
+        const page = await reviewChatApi.pendingProposals(threadId as string)
+        return { supported: true, proposal: page.items.at(-1) ?? null }
+      } catch (error: unknown) {
+        if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
+          return { supported: false, proposal: null }
+        }
+        throw error
+      }
+    },
+    enabled: threadId != null,
+    refetchInterval: 2500,
+  })
+}
+
+export function useIncidentDocuments(incidentId: string | null) {
+  return useQuery({
+    queryKey: qk.incidentDocuments(incidentId ?? ''),
+    queryFn: () => incidentDocumentsApi.list(incidentId as string),
+    enabled: incidentId != null,
+  })
+}
+
+export function useApproveIncidentWorkOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; body: IncidentDocumentApproveRequest }) =>
+      incidentDocumentsApi.approveWorkOrder(value.incidentId, value.body),
+    onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
+  })
+}
+
 export function usePostReviewChatMessage() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (value: { threadId: string; body: ReviewChatMessageRequest }) =>
       reviewChatApi.postMessage(value.threadId, value.body),
+    onSuccess: (_response, value) => {
+      qc.invalidateQueries({ queryKey: qk.reviewChatMessages(value.threadId) })
+      qc.invalidateQueries({ queryKey: qk.reviewChatPendingProposal(value.threadId) })
+    },
   })
 }
 
 export function useConfirmReviewChatProposal() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (value: { proposalId: string; body: ReviewChatConfirmRequest }) =>
       reviewChatApi.confirmProposal(value.proposalId, value.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['review-chat-messages'] })
+      qc.invalidateQueries({ queryKey: ['review-chat-pending-proposal'] })
+      qc.invalidateQueries({ queryKey: qk.runs })
+      qc.invalidateQueries({ queryKey: ['work-orders'] })
+    },
   })
 }
 
 export function useCancelReviewChatProposal() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (value: { proposalId: string; body: ReviewChatCancelRequest }) =>
       reviewChatApi.cancelProposal(value.proposalId, value.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['review-chat-messages'] })
+      qc.invalidateQueries({ queryKey: ['review-chat-pending-proposal'] })
+    },
   })
 }
 

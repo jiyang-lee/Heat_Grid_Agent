@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { qk, useAlerts } from '../api/hooks'
 import { operationsClock } from './operationsTime'
@@ -58,7 +58,9 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
   const openCount = alertCount ?? alerts.data?.length ?? 0
   const pageLabel = pageLabels[page]
 
-  const refreshAll = async () => {
+  const refreshAll = async (event: MouseEvent<HTMLButtonElement>) => {
+    if (refreshing) return
+    const button = event.currentTarget
     setRefreshing(true)
     try {
       await onRefresh?.()
@@ -71,6 +73,7 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
       ])
     } finally {
       setRefreshing(false)
+      button.blur()
     }
   }
 
@@ -96,7 +99,7 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
         <div className="topbar-tools">
           <div className="topbar-clock"><strong>{display.time}</strong><span>{display.date}</span></div>
           <button aria-label={`열린 알림 ${openCount}건`} className="notification-button" onClick={() => onPageChange('alerts')} type="button"><Icon name="bell" />{openCount > 0 && <b>{openCount}</b>}</button>
-          <button aria-busy={refreshing} className="refresh-button" disabled={refreshing} onClick={() => void refreshAll()} type="button"><Icon name="refresh" />{refreshing ? '새로고침 중' : '새로고침'}</button>
+          <button aria-busy={refreshing} aria-label="새로고침" className={`refresh-button ${refreshing ? 'is-refreshing' : ''}`.trim()} disabled={refreshing} onClick={(event) => void refreshAll(event)} type="button"><Icon name="refresh" />{refreshing ? '갱신 중' : '새로고침'}</button>
         </div>
       </header>
       <main className="ops-main">{children}</main>

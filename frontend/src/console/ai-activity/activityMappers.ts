@@ -4,8 +4,9 @@
  * - raw 백엔드 상태(run status / operator review status / stage name)를
  *   사용자 표시 문구·톤으로 변환하는 mapper를 한 곳에서 관리한다.
  * - 내부 9단계 stage(STAGE_ORDER)를 사용자 6단계로 투영한다.
- * - 의미가 불확실한 상태를 임의로 '승인 완료'로 올려붙이지 않는다
- *   (corrected는 '수정 요청'으로 표시하되 raw를 tooltip으로 보존).
+ * - 의미가 불확실한 상태를 임의로 '승인 완료'로 올려붙이지 않는다.
+ * - corrected(교정 기록)와 keep_human_review(사람 검토 필요)를 서로 다른
+ *   사용자 상태로 표시한다.
  */
 
 import type {
@@ -108,24 +109,28 @@ export type ExecutionStatusFilter = (typeof EXECUTION_STATUS_FILTERS)[number]['v
 /* ===== 작업지시서/보고서 상태 ===== */
 
 /**
- * 검토 상태 4값(docs/report/04) → 사용자 3상태 projection.
- * corrected(교정 저장)는 승인과 동등하지 않으므로 '수정 요청'으로 표시하고 raw를 보존한다.
+ * 검토 상태 4값(docs/report/04)을 의미를 잃지 않고 그대로 사용자 상태로 투영한다.
+ * corrected는 이미 교정 검토가 저장된 상태이고, keep_human_review가 실제로
+ * 추가 사람 검토가 필요한 상태다.
  */
-export function workOrderStatusLabel(status: OperatorReviewStatus): '승인 대기' | '수정 요청' | '승인 완료' {
+export function workOrderStatusLabel(status: OperatorReviewStatus): '승인 대기' | '교정 기록됨' | '사람 검토 필요' | '승인 완료' {
   if (status === 'approved') return '승인 완료'
   if (status === 'pending') return '승인 대기'
-  return '수정 요청'
+  if (status === 'corrected') return '교정 기록됨'
+  return '사람 검토 필요'
 }
 
-export function reportStatusLabel(status: OperatorReviewStatus): '검토 대기' | '수정 요청' | '승인 완료' {
+export function reportStatusLabel(status: OperatorReviewStatus): '검토 대기' | '교정 기록됨' | '사람 검토 필요' | '승인 완료' {
   if (status === 'approved') return '승인 완료'
   if (status === 'pending') return '검토 대기'
-  return '수정 요청'
+  if (status === 'corrected') return '교정 기록됨'
+  return '사람 검토 필요'
 }
 
 export function reviewStatusTone(status: OperatorReviewStatus): Tone {
   if (status === 'approved') return 'success'
   if (status === 'pending') return 'notice'
+  if (status === 'corrected') return 'primary'
   return 'warning'
 }
 
@@ -140,7 +145,8 @@ export const RAW_REVIEW_STATUS_LABELS: Record<OperatorReviewStatus, string> = {
 export const REVIEW_STATUS_FILTERS = [
   { value: 'all', label: '전체' },
   { value: 'pending', label: '대기' },
-  { value: 'keep_human_review', label: '수정 요청' },
+  { value: 'corrected', label: '교정 기록됨' },
+  { value: 'keep_human_review', label: '사람 검토 필요' },
   { value: 'approved', label: '승인 완료' },
 ] as const
 

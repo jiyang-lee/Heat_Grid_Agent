@@ -18,7 +18,11 @@ function reportStatusLabel(status: OperationsReportPeriod['status']): string {
   return { pending: '생성 대기', generating: '생성 중', official: '공식본', failed: '생성 실패', overdue: '생성 지연' }[status]
 }
 
-export function OperationsReportsPage() {
+interface Props {
+  readonly refreshRevision: number
+}
+
+export function OperationsReportsPage({ refreshRevision }: Props) {
   const [memo, setMemo] = useState<CurrentShiftMemo | null>(null)
   const [memoText, setMemoText] = useState('')
   const [reports, setReports] = useState<readonly OperationsReportPeriod[]>([])
@@ -34,13 +38,13 @@ export function OperationsReportsPage() {
       setMemo(current)
       setMemoText(current.memo)
       setReports(page.items)
-      setSelectedId((value) => value ?? page.items[0]?.report_period_id ?? null)
+      setSelectedId((value) => page.items.some((item) => item.report_period_id === value) ? value : page.items[0]?.report_period_id ?? null)
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : '운영 보고서를 불러오지 못했습니다.')
     }
   }
 
-  useEffect(() => { void load() }, [])
+  useEffect(() => { void load() }, [refreshRevision])
   const selected = useMemo(() => reports.find((item) => item.report_period_id === selectedId) ?? null, [reports, selectedId])
   const latest = selected?.versions.at(-1) ?? null
 

@@ -53,6 +53,10 @@ class ReviewChatThreadResponse(FrozenReviewChatModel):
     context_hash: str
     base_review_version: int
     created_at: datetime
+    incident_id: str | None = None
+    document_version_id: str | None = None
+    document_version: int | None = None
+    document_content: str | None = None
 
 
 class ReviewChatDocumentContext(FrozenReviewChatModel):
@@ -108,7 +112,15 @@ class ReviewChatProposalResponse(FrozenReviewChatModel):
     correction: dict[str, str] | None
     target_stage: str | None
     revision: dict[str, str] | None = None
+    draft_content: str | None = None
+    change_summary: str | None = None
+    base_document_version_id: str | None = None
+    base_document_version: int | None = None
     expires_at: datetime
+
+
+class ReviewChatProposalPage(FrozenReviewChatModel):
+    items: tuple[ReviewChatProposalResponse, ...]
 
 
 class ReviewChatSubmissionResponse(FrozenReviewChatModel):
@@ -130,6 +142,12 @@ class ReviewChatConfirmationResponse(FrozenReviewChatModel):
     review_id: str | None = None
     child_run_id: str | None = None
     target_stage: str | None = None
+    rerun_status: str | None = None
+    blocked_reason: str | None = None
+    incident_id: str | None = None
+    document_version_id: str | None = None
+    document_version: int | None = None
+    document_content: str | None = None
 
 
 class ReviewChatCancelRequest(FrozenReviewChatModel):

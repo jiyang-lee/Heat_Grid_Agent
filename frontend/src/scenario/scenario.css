@@ -141,20 +141,23 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-plan-evidence li:last-child { border-bottom: 0; }
 .scenario-plan-evidence span { color: var(--ops-text-muted); }
 .scenario-order-layout { grid-template-columns: minmax(160px, .24fr) minmax(360px, 1.08fr) minmax(320px, .68fr); align-items: stretch; height: 100%; min-height: 0; }
+.scenario-report-list-layout { display: grid; grid-template-columns: minmax(180px, .25fr) minmax(0, 1.75fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
+.scenario-report-list-layout > .ops-surface, .scenario-report-list-layout > .scenario-document-workspace { min-width: 0; min-height: 0; }
 .scenario-document-workspace { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(340px, .72fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
 .scenario-document-workspace > .ops-surface { min-width: 0; min-height: 0; }
-.scenario-document-workspace > .scenario-order-document, .scenario-order-document { grid-template-rows: auto auto minmax(0, 1fr); }
+.scenario-document-workspace > .scenario-order-document, .scenario-order-document { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; }
 .scenario-document-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3); border-bottom: 1px solid var(--ops-border); }
 .scenario-version-switch { display: inline-flex; min-width: 0; overflow: hidden; border: 1px solid var(--ops-border); border-radius: 7px; }
 .scenario-version-switch button { min-width: 72px; min-height: 36px; padding: 0 var(--space-3); border: 0; border-right: 1px solid var(--ops-border); color: var(--ops-text-muted); background: var(--ops-surface); font-weight: 700; cursor: pointer; }
 .scenario-version-switch button:last-child { border-right: 0; }
 .scenario-version-switch button.active { color: var(--ops-primary); background: var(--ops-primary-soft); }
+.scenario-version-switch button:focus-visible, .scenario-version-entry > button:focus-visible { position: relative; z-index: 1; outline: 3px solid color-mix(in srgb, var(--ops-primary) 34%, transparent); outline-offset: -3px; }
 .scenario-document-commands, .scenario-order-accept > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); min-width: 0; }
 .scenario-order-layout > .ops-surface { min-height: 0; }
 .scenario-version-panel { align-self: start; max-height: 100%; }
 .scenario-chat-card { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
 .scenario-order-body, .scenario-chat { min-height: 0; overflow: auto; }
-.scenario-order-body { scrollbar-gutter: stable; }
+.scenario-order-body { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .scenario-order-body > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 2px solid var(--ops-text); }
 .scenario-order-body > header span { color: var(--ops-text-muted); font-size: 12px; }
 .scenario-order-body > header h2 { margin: 4px 0 0; font-size: 20px; }
@@ -167,25 +170,21 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-order-body section h3 { margin: 0 0 var(--space-2); font-size: 14px; }
 .scenario-order-body section ol { font-size: 13px; }
 .scenario-document-status { color: var(--ops-text-muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
-.scenario-version-list { display: grid; align-content: start; max-height: min(56dvh, 520px); overflow: auto; }
+.scenario-version-list { display: grid; align-content: start; max-height: min(56dvh, 520px); overflow-x: hidden; overflow-y: auto; }
 .scenario-version-entry { border-bottom: 1px solid var(--ops-border); }
-.scenario-version-entry > button { display: flex; align-items: center; width: 100%; gap: var(--space-2); padding: var(--space-3); border: 0; color: var(--ops-text); background: transparent; text-align: left; cursor: pointer; }
+.scenario-version-entry > button { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; width: 100%; min-width: 0; overflow: hidden; gap: 3px var(--space-2); padding: var(--space-3); border: 0; color: var(--ops-text); background: transparent; text-align: left; cursor: pointer; }
 .scenario-version-entry > button.active { background: var(--ops-primary-soft); }
-.scenario-version-entry > button > span { display: grid; flex: 0 0 auto; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: var(--ops-primary); background: var(--ops-surface-muted); font-size: 12px; font-weight: 900; }
+.scenario-version-entry > button > span:first-child { display: grid; grid-row: 1 / span 2; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: var(--ops-primary); background: var(--ops-surface-muted); font-size: 12px; font-weight: 900; }
 .scenario-version-entry > button > div { display: grid; flex: 1; min-width: 0; gap: 2px; }
 .scenario-version-entry strong, .scenario-version-entry small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scenario-version-entry small { color: var(--ops-text-muted); font-size: 11px; }
-.scenario-version-entry .status-badge { min-height: 20px; padding: 2px 5px; font-size: 10px; }
-.scenario-version-thread { display: grid; gap: 5px; margin: 0; padding: 0 var(--space-3) var(--space-3) 42px; list-style: none; }
-.scenario-version-thread li { display: grid; gap: 2px; padding: 6px 7px; border-left: 2px solid var(--ops-border); border-radius: 0 5px 5px 0; background: var(--ops-surface-muted); }
-.scenario-version-thread li.operator { border-color: var(--ops-primary); background: var(--ops-primary-soft); }
-.scenario-version-thread li.system { border-color: var(--ops-success); }
-.scenario-version-thread b { color: var(--ops-text-muted); font-size: 10px; }
-.scenario-version-thread span { display: -webkit-box; overflow: hidden; color: var(--ops-text); font-size: 11px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.scenario-version-entry .status-badge { grid-column: 2; justify-self: start; min-height: 20px; max-width: 100%; overflow: hidden; padding: 2px 5px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.scenario-list-empty { margin: 0; padding: var(--space-4); color: var(--ops-text-muted); font-size: 13px; line-height: 1.6; text-align: center; }
 .scenario-order-body dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
 .scenario-order-body dl div { padding: var(--space-2); }
 .scenario-lead-time { white-space: nowrap; }
 .scenario-chat-messages > p { word-break: keep-all; }
+.scenario-chat-messages article span { white-space: pre-wrap; }
 .settings-page { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
 .settings-layout { min-height: 0; overflow: auto; padding-bottom: var(--space-3); }
 .settings-tabbar { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); }
@@ -273,7 +272,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-ai-overview-card dt { color: var(--ops-text-muted); font-size: 11px; }
 .scenario-ai-overview-card dd { margin: 3px 0 0; color: var(--ops-text); font-size: 12px; font-weight: 700; }
 .scenario-ai-overview-card .ui-button { justify-content: center; }
-.scenario-order-accept { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--ops-border); }
+.scenario-order-accept { position: sticky; z-index: 2; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-3); border-top: 1px solid var(--ops-border); background: color-mix(in srgb, var(--ops-surface) 96%, transparent); box-shadow: 0 -8px 20px color-mix(in srgb, var(--ops-text) 6%, transparent); backdrop-filter: blur(8px); }
 .scenario-order-accept > span { color: var(--ops-text-muted); font-size: 12px; line-height: 1.45; }
 
 :root[data-theme='dark'] { color-scheme: dark; --ops-canvas: #0e1726; --ops-surface: #142033; --ops-surface-muted: #1b2a40; --ops-text: #e7edf7; --ops-text-muted: #a8b8cc; --ops-border: #30425c; --ops-primary: #67a9ff; --ops-primary-soft: #172f50; --ops-success: #42d294; --ops-warning: #ffb15d; --ops-critical: #ff7c77; --ops-critical-soft: #48252b; --ops-warning-soft: #49361f; --surface-shadow: 0 1px 2px rgb(0 0 0 / 28%); }
@@ -317,10 +316,16 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-document-commands { justify-content: flex-start; }
 }
 
+@media (min-width: 961px) and (max-width: 1380px) {
+  .scenario-order-layout { grid-template-columns: minmax(180px, .3fr) minmax(0, 1.7fr); overflow: auto; align-content: start; }
+  .scenario-order-layout > .scenario-chat-card { grid-column: 1 / -1; min-height: 480px; }
+}
+
 @media (max-width: 960px) {
   .ops-sidebar { width: 220px; }
   .ops-content-shell { width: calc(100% - 220px); margin-left: 220px; }
-  .scenario-alert-workspace.has-detail, .scenario-order-layout, .scenario-document-workspace { grid-template-columns: 1fr; }
+  .scenario-alert-workspace.has-detail, .scenario-order-layout, .scenario-report-list-layout, .scenario-document-workspace { grid-template-columns: 1fr; }
+  .scenario-order-layout, .scenario-report-list-layout { align-content: start; height: 100%; overflow: auto; }
   .scenario-document-workspace { height: auto; overflow: auto; }
   .scenario-document-workspace > .ops-surface { max-height: none; }
   .version-exit-button { width: 32px; padding: 0; font-size: 0; }
@@ -413,6 +418,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-reasoning strong { min-height: 22px; padding-inline: 6px; font-size: 11px; }
   .scenario-alert-detail { overflow: auto; }
   .scenario-action-toast { right: var(--space-2); bottom: calc(56px + var(--space-2)); }
+  .scenario-analysis-progress { bottom: calc(56px + var(--space-2)); }
   .scenario-action-toast > div:last-child { display: grid; grid-template-columns: 1fr; }
   .scenario-ai-page { overflow: hidden; }
   .scenario-action-grid, .scenario-report-layout, .scenario-order-layout { overflow: auto; }

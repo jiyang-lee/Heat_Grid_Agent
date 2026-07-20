@@ -30,9 +30,9 @@ def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(17))
+    assert [migration.version for migration in migrations] == list(range(19))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "016_production_operations_console.sql"
+    assert migrations[-1].path.name == "018_demo_ai_history_reset_scope.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 
@@ -89,6 +89,49 @@ def test_production_operations_console_migration_seeds_canonical_policy() -> Non
     assert "anomaly_confirmations" in sql
     assert "recovery_confirmations" in sql
     assert "on conflict" in sql
+
+
+def test_demo_ai_history_reset_uses_a_restricted_security_definer() -> None:
+    sql = (
+        ROOT / "migrations" / "017_demo_ai_history_reset.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    assert "create schema if not exists heatgrid_admin authorization current_user" in sql
+    assert "security definer" in sql
+    assert "set search_path = pg_catalog, pg_temp" in sql
+    assert "truncate table public.agent_runs cascade" in sql
+    assert "revoke all on schema heatgrid_admin from public" in sql
+    assert "revoke create on schema heatgrid_admin from heatgrid_app" in sql
+    assert "revoke all on function heatgrid_admin.reset_demo_ai_history() from public" in sql
+    assert "grant execute on function heatgrid_admin.reset_demo_ai_history() to heatgrid_app" in sql
+    assert "grant truncate" not in sql
+
+
+def test_demo_ai_history_reset_scope_clears_ai_outputs_and_preserves_operations() -> None:
+    sql = (
+        ROOT / "migrations" / "018_demo_ai_history_reset_scope.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    assert "create or replace function heatgrid_admin.reset_demo_ai_history()" in sql
+    assert "security definer" in sql
+    assert "set search_path = pg_catalog, pg_temp" in sql
+    assert "public.agent_runs," in sql
+    assert "public.incident_document_versions," in sql
+    assert "public.operation_idempotency_keys" in sql
+    assert "cascade" in sql
+    assert "revoke all on function heatgrid_admin.reset_demo_ai_history() from public" in sql
+    assert "grant execute on function heatgrid_admin.reset_demo_ai_history() to heatgrid_app" in sql
+
+    preserved_operational_roots = (
+        "anomaly_episodes",
+        "ops_alert_queue",
+        "priority_cards",
+        "operations_report_periods",
+        "operations_report_versions",
+        "operations_report_corrections",
+    )
+    for table in preserved_operational_roots:
+        assert f"public.{table}" not in sql
 
 
 @pytest.mark.anyio
