@@ -4,7 +4,6 @@ import { StatusBadge } from '../ui'
 import {
   RAW_REVIEW_STATUS_LABELS,
   facilityName,
-  formatDateTime,
   reportStatusLabel,
   reportTitle,
   reviewStatusTone,
@@ -28,7 +27,7 @@ export function ReportList({ items, selectedId, onSelect }: Props) {
     <div className="table-scroll">
       <table className="ops-table activity-table report-activity-table">
         <thead>
-          <tr><th>상태</th><th>보고서명</th><th>대상 설비</th><th>생성 시간</th></tr>
+          <tr><th>상태</th><th>보고서명</th><th>대상 설비</th></tr>
         </thead>
         <tbody>
           {items.map((item) => {
@@ -51,13 +50,11 @@ export function ReportList({ items, selectedId, onSelect }: Props) {
                 </td>
                 <td>
                   <strong>{reportTitle(item.kind, item.name)} · {facilityName(item.substation_id, item.manufacturer_id)}</strong>
-                  <small>{new Date(item.created_at).toLocaleDateString('ko-KR')}</small>
                 </td>
                 <td>
                   <strong>{facilityName(item.substation_id, item.manufacturer_id)}</strong>
                   <small>기계실 {item.substation_id ?? '-'}</small>
                 </td>
-                <td>{formatDateTime(item.created_at)}</td>
               </tr>
             )
           })}

@@ -281,16 +281,13 @@
 .activity-table tbody tr:focus-visible { outline: 3px solid rgb(22 119 234 / 24%); outline-offset: -3px; }
 .activity-workspace.split .activity-table { table-layout: fixed; }
 .activity-workspace.split .activity-table td { overflow: hidden; }
-.activity-workspace.split .execution-activity-table th:nth-child(3), .activity-workspace.split .execution-activity-table td:nth-child(3),
-.activity-workspace.split .work-order-activity-table th:nth-child(4), .activity-workspace.split .work-order-activity-table td:nth-child(4),
-.activity-workspace.split .report-activity-table th:nth-child(4), .activity-workspace.split .report-activity-table td:nth-child(4) { display: none; }
 .activity-workspace.split .execution-activity-table th:nth-child(1) { width: 31%; }
 .activity-workspace.split .execution-activity-table th:nth-child(2) { width: 45%; }
-.activity-workspace.split .execution-activity-table th:nth-child(4) { width: 24%; }
+.activity-workspace.split .execution-activity-table th:nth-child(3) { width: 24%; }
 .activity-workspace.split .work-order-activity-table th:nth-child(1) { width: 18%; }
 .activity-workspace.split .work-order-activity-table th:nth-child(2) { width: 34%; }
 .activity-workspace.split .work-order-activity-table th:nth-child(3) { width: 29%; }
-.activity-workspace.split .work-order-activity-table th:nth-child(5) { width: 19%; }
+.activity-workspace.split .work-order-activity-table th:nth-child(4) { width: 19%; }
 .activity-workspace.split .report-activity-table th:nth-child(1) { width: 20%; }
 .activity-workspace.split .report-activity-table th:nth-child(2) { width: 48%; }
 .activity-workspace.split .report-activity-table th:nth-child(3) { width: 32%; }
@@ -437,9 +434,6 @@
   .work-order-detail-body .report-single-body { min-height: 0; max-height: none; }
   .activity-detail-footer { display: grid; grid-template-columns: 1fr; }
   .activity-detail-footer .ops-button { width: 100%; }
-  .execution-activity-table th:nth-child(3), .execution-activity-table td:nth-child(3),
-  .work-order-activity-table th:nth-child(4), .work-order-activity-table td:nth-child(4),
-  .report-activity-table th:nth-child(4), .report-activity-table td:nth-child(4) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; } }

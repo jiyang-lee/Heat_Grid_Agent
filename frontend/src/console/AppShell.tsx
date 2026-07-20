@@ -5,7 +5,7 @@ import { operationsClock } from './operationsTime'
 import { Icon, type IconName } from './icons'
 import heatgridMark from '../assets/brand/heatgrid-mark.webp'
 
-export type ConsolePage = 'dashboard' | 'alerts' | 'ai-action' | 'operations-reports' | 'settings' | 'admin'
+export type ConsolePage = 'dashboard' | 'alerts' | 'ai-action' | 'settings' | 'admin'
 
 interface NavigationItem {
   readonly page: ConsolePage
@@ -17,7 +17,6 @@ const navigation: readonly NavigationItem[] = [
   { page: 'dashboard', label: '홈', icon: 'home' },
   { page: 'alerts', label: '알림', icon: 'bell' },
   { page: 'ai-action', label: 'AI 조치', icon: 'activity' },
-  { page: 'operations-reports', label: '운영 보고서', icon: 'document' },
   { page: 'settings', label: '설정', icon: 'settings' },
 ]
 
@@ -25,7 +24,6 @@ const pageLabels: Record<ConsolePage, { readonly title: string }> = {
   dashboard: { title: '홈' },
   alerts: { title: '알림' },
   'ai-action': { title: 'AI 조치' },
-  'operations-reports': { title: '운영 보고서' },
   settings: { title: '설정' },
   admin: { title: '관리자' },
 }
@@ -64,12 +62,17 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
     setRefreshing(true)
     try {
       await onRefresh?.()
+      // 새로고침(F5)은 만들어진 AI 산출물 캐시를 모두 비운다.
+      for (const root of ['agent-runs', 'agent-run', 'agent-run-result', 'work-orders', 'agent-reports', 'incident-documents', 'review-chat-thread', 'review-chat-messages', 'review-chat-pending-proposal', 'operator-reviews']) {
+        queryClient.removeQueries({ queryKey: [root] })
+      }
       await Promise.allSettled([
         queryClient.refetchQueries({ queryKey: qk.prioritySnapshot }),
         queryClient.refetchQueries({ queryKey: ['alerts'] }),
         queryClient.refetchQueries({ queryKey: qk.health }),
         queryClient.refetchQueries({ queryKey: ['agent-runs'] }),
         queryClient.refetchQueries({ queryKey: ['work-orders'] }),
+        queryClient.refetchQueries({ queryKey: ['agent-reports'] }),
       ])
     } finally {
       setRefreshing(false)

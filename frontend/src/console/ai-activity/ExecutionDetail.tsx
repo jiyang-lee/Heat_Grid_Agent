@@ -2,7 +2,7 @@ import type { AgentRunListItem, OpsAgentResultV4 } from '../../api/contracts'
 import { ApiError } from '../../api/client'
 import { useAgentRun, useAgentRunResult, useAgentRunReviewSnapshot } from '../../api/hooks'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
-import { executionStatus, executionStatusTone, facilityName, formatDateTime, priorityLabel } from './activityMappers'
+import { executionStatus, executionStatusTone, facilityName, priorityLabel } from './activityMappers'
 
 interface Props {
   readonly item: AgentRunListItem
@@ -36,7 +36,7 @@ export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
         <StatusBadge tone={executionStatusTone(status)}>{status}</StatusBadge>
         <h2>{conciseTitle(item)}</h2>
         <p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p>
-        <span>{priorityLabel(item.priority)} · 시작 {formatDateTime(item.created_at)}</span>
+        <span>{priorityLabel(item.priority)}</span>
       </div>
 
       <ApiState empty={false} error={run.isError || review.isError || (result.isError && !resultNotReady)} loading={run.isLoading || review.isLoading || result.isLoading} retry={() => { void run.refetch(); void review.refetch(); void result.refetch() }} />

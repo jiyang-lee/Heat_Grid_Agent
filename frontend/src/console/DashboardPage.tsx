@@ -39,11 +39,13 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
 
   const faultMode = scenario.state.mode === 'fault'
   const incidentActive = faultMode && scenario.state.incidentState === 'incident-active'
-  const apiRows = priority.data?.results ?? []
-  const rows = faultMode ? (incidentActive ? scenarioPriorityRows(scenario.alerts) : []) : apiRows
+  // 정상 모드에서는 모든 설비를 정상(low)으로 표시한다(데모 기준). 고장 모드만 실제 우선순위를 반영한다.
+  const rows = faultMode ? (incidentActive ? scenarioPriorityRows(scenario.alerts) : []) : []
   const resultBySubstationId = new Map(rows.map((row) => [row.substation_id, row]))
-  const defaultBucket: DashboardPriorityBucket = faultMode ? 'low' : 'medium'
-  const dashboardBuckets = complexes.map((complex) => dashboardPriorityBucket(resultBySubstationId.get(complex.id), defaultBucket))
+  const defaultBucket: DashboardPriorityBucket = 'low'
+  const dashboardBuckets = faultMode
+    ? complexes.map((complex) => dashboardPriorityBucket(resultBySubstationId.get(complex.id), defaultBucket))
+    : complexes.map(() => 'low' as DashboardPriorityBucket)
   const urgent = dashboardBuckets.filter((bucket) => bucket === 'urgent').length
   const high = dashboardBuckets.filter((bucket) => bucket === 'high').length
   const medium = dashboardBuckets.filter((bucket) => bucket === 'medium').length
@@ -106,7 +108,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         title="MAP"
       >
         <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
-          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} missingStatus={faultMode ? 'low' : 'missing'} onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
+          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} missingStatus="low" onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
           <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
         </div>
         </SurfaceCard>

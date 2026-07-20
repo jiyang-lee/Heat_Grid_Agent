@@ -5,7 +5,6 @@ import { AiActivityPage } from './console/ai-activity/AiActivityPage'
 import { AppShell, type ConsolePage } from './console/AppShell'
 import { DashboardPage } from './console/DashboardPage'
 import { OperationsProvider } from './console/OperationsContext'
-import { OperationsReportsPage } from './console/OperationsReportsPage'
 import { SettingsPage } from './console/SettingsPage'
 import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
 import { ScenarioProvider } from './scenario/ScenarioContext'
@@ -41,25 +40,22 @@ function ConsoleApp() {
     setInitialAlertId(alertId ?? null)
     setPage('alerts')
   }
+  // 새로고침은 F5와 같다: 정상·고장 어느 모드든 서버 AI 기록과 클라이언트 캐시,
+  // 만들어진 모든 산출물을 지우고 해당 모드의 첫 시점으로 되돌린다.
   const refreshConsole = useCallback(async () => {
-    if (!replay) {
-      setRefreshRevision((revision) => revision + 1)
-      scenario.sensor.refresh()
-      return
-    }
     await demoAiHistoryApi.reset()
     scenario.restartScenario()
     setInitialAlertId(null)
     setPendingRunId(null)
+    setRefreshRevision((revision) => revision + 1)
     setPage('dashboard')
-  }, [replay, scenario])
+  }, [scenario])
 
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
     <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
       {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
       {page === 'alerts' && (replay ? <ScenarioAlertsPage initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} /> : <AlertsPage onRunCreated={openRun} />)}
       {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
-      {page === 'operations-reports' && <OperationsReportsPage refreshRevision={refreshRevision} />}
       {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
       {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
     </AppShell>

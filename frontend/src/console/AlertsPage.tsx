@@ -31,10 +31,12 @@ export function AlertsPage({ onRunCreated }: Props) {
   const [priority, setPriority] = useState<PriorityLevel | 'all'>('all')
   const [scope, setScope] = useState<AlertScope>('active')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const faultMode = scenario.state.mode === 'fault'
   const alerts = useAlerts({ status: 'all' })
   const readAlert = useReadAlert()
   const createRun = useCreateAgentRun()
-  const allRows = useMemo(() => alerts.data ?? [], [alerts.data])
+  // 정상 모드는 모든 설비가 정상이므로 알림 목록도 비운다(고장 모드에서만 실제 알림을 표시).
+  const allRows = useMemo(() => faultMode ? (alerts.data ?? []) : [], [alerts.data, faultMode])
   const rows = useMemo(() => allRows.filter((alert) => {
     if (scope === 'active' ? alert.status === 'resolved' : alert.status !== 'resolved') return false
     if (priority !== 'all' && alert.priority_level !== priority) return false
@@ -66,8 +68,8 @@ export function AlertsPage({ onRunCreated }: Props) {
           <label className="filter-search"><span>알림 검색</span><input onChange={(event) => setSearch(event.target.value)} placeholder="건물명, 설비명, 알림 내용 검색" value={search} /></label>
           <strong>{rows.length}건</strong>
         </div>
-        <ApiState empty={false} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />
-        {!alerts.isLoading && !alerts.isError && rows.length === 0 ? <div className="alerts-empty"><StatusBadge tone={scope === 'active' ? 'success' : 'neutral'}>{scope === 'active' ? '정상' : '이력 없음'}</StatusBadge><strong>{scope === 'active' ? '활성 알림이 없습니다.' : '조건에 맞는 과거 알림이 없습니다.'}</strong></div> : rows.length > 0 && <div className="alerts-table-scroll"><table className="alerts-table"><thead><tr><th>상태</th><th>알림 내용</th><th>설비 / 위치</th><th>발생 시간</th><th>자동 해소 시각</th><th aria-label="알림 작업" /></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.alert_id === alert.alert_id ? 'selected' : ''} key={alert.alert_id} onClick={() => openDetail(alert)}><td><span className={`alerts-severity-icon ${alert.priority_level}`}><Icon name={alert.priority_level === 'urgent' ? 'alert' : 'warning'} /></span><StatusBadge tone={alert.status === 'resolved' ? 'success' : alertTone(alert)}>{statusLabel(alert)}</StatusBadge></td><td><strong>{alert.enqueue_reason}</strong>{alert.read_at == null && <small>읽지 않음</small>}</td><td><strong>{complexNameOf(alert.substation_id, alert.manufacturer_id)}</strong><small>기계실 {alert.substation_id ?? '-'}</small></td><td>{operationsDateTime(alert.created_at)}</td><td>{operationsDateTime(alert.acked_at)}</td><td><button className="alerts-row-action" onClick={(event) => { event.stopPropagation(); openDetail(alert) }} type="button">상세</button></td></tr>)}</tbody></table></div>}
+        <ApiState empty={false} error={faultMode && alerts.isError} loading={faultMode && alerts.isLoading} retry={() => void alerts.refetch()} />
+        {(!faultMode || (!alerts.isLoading && !alerts.isError)) && rows.length === 0 ? <div className="alerts-empty"><StatusBadge tone={scope === 'active' ? 'success' : 'neutral'}>{scope === 'active' ? '정상' : '이력 없음'}</StatusBadge><strong>{scope === 'active' ? '활성 알림이 없습니다.' : '조건에 맞는 과거 알림이 없습니다.'}</strong></div> : rows.length > 0 && <div className="alerts-table-scroll"><table className="alerts-table"><thead><tr><th>상태</th><th>알림 내용</th><th>설비 / 위치</th><th>발생 시간</th><th>자동 해소 시각</th><th aria-label="알림 작업" /></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.alert_id === alert.alert_id ? 'selected' : ''} key={alert.alert_id} onClick={() => openDetail(alert)}><td><span className={`alerts-severity-icon ${alert.priority_level}`}><Icon name={alert.priority_level === 'urgent' ? 'alert' : 'warning'} /></span><StatusBadge tone={alert.status === 'resolved' ? 'success' : alertTone(alert)}>{statusLabel(alert)}</StatusBadge></td><td><strong>{alert.enqueue_reason}</strong>{alert.read_at == null && <small>읽지 않음</small>}</td><td><strong>{complexNameOf(alert.substation_id, alert.manufacturer_id)}</strong><small>기계실 {alert.substation_id ?? '-'}</small></td><td>{operationsDateTime(alert.created_at)}</td><td>{operationsDateTime(alert.acked_at)}</td><td><button className="alerts-row-action" onClick={(event) => { event.stopPropagation(); openDetail(alert) }} type="button">상세</button></td></tr>)}</tbody></table></div>}
       </SurfaceCard>
       {selected && <SurfaceCard action={<button aria-label="상세 정보 닫기" className="scenario-detail-close" onClick={() => setSelectedId(null)} type="button"><Icon name="x" /></button>} className="alerts-detail-card" title="상세 정보">
         <div className="detail-body alerts-detail-body">

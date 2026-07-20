@@ -5,7 +5,6 @@ import {
   executionStatus,
   executionStatusTone,
   facilityName,
-  formatDateTime,
   priorityLabel,
   priorityTone,
 } from './activityMappers'
@@ -28,7 +27,7 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
     <div className="table-scroll">
       <table className="ops-table activity-table execution-activity-table">
         <thead>
-          <tr><th>대상</th><th>연결 알림</th><th>시작 시간</th><th>상태</th></tr>
+          <tr><th>대상</th><th>연결 알림</th><th>상태</th></tr>
         </thead>
         <tbody>
           {items.map((item) => {
@@ -51,7 +50,6 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
                   <StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge>
                   <span className="activity-alert-reason" title={item.alert_reason ?? undefined}>{item.alert_reason ?? '-'}</span>
                 </td>
-                <td>{formatDateTime(item.created_at)}</td>
                 <td><StatusBadge tone={executionStatusTone(status)}>{status}</StatusBadge></td>
               </tr>
             )

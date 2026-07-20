@@ -423,6 +423,11 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const startFaultScenario = useCallback(() => update({ ...initialState, mode: 'fault', entryStep: 'console', scenarioId: ACTIVE_SCENARIO_ID }), [update])
   const restartScenario = useCallback(() => {
     if (state.mode == null) return
+    // 새로고침(F5)은 고장 첫 시점으로 되돌린다. 만들었던 문서와 관련 클라이언트 캐시(작업지시서 개정본,
+    // 검토 초안, 마지막 실행 기록)도 모두 삭제해 이전 상태가 되살아나지 않도록 한다.
+    window.sessionStorage.removeItem(SESSION_KEY)
+    window.localStorage.removeItem('heatgrid:last-agent-run')
+    clearStoredAiDocumentDrafts()
     sensor.reset()
     update({ ...initialState, mode: state.mode, entryStep: 'console', scenarioId: state.mode === 'fault' ? ACTIVE_SCENARIO_ID : null })
   }, [sensor, state.mode, update])
