@@ -122,6 +122,24 @@ export interface ImprovementCandidate {
   readonly createdAt: string
 }
 
+export interface ScenarioDocumentGroup {
+  readonly id: string
+  readonly rootRunId: string
+  readonly alertId: string
+  readonly substationId: number
+  readonly createdAt: string
+  readonly workOrders: readonly WorkOrderVersion[]
+  readonly selectedWorkOrderVersion: 1 | 2 | 3 | null
+  readonly acceptedWorkOrderVersion: 1 | 2 | 3 | null
+  readonly workOrderRerunCount: number
+  readonly messages: readonly ScenarioChatMessage[]
+  readonly proposal: ChatProposal | null
+  readonly evaluationRequired: boolean
+  readonly improvementCandidate: ImprovementCandidate | null
+  readonly report: ScenarioReport
+  readonly reportMessages: readonly ScenarioReportMessage[]
+}
+
 export interface ScenarioState {
   readonly entryStep: EntryStep
   readonly mode: EntryMode | null
@@ -138,6 +156,8 @@ export interface ScenarioState {
   readonly resolvedAlertTimes: Readonly<Record<string, string>>
   readonly alertSensorSnapshots: Readonly<Record<string, readonly SensorPoint[]>>
   readonly aiEntry: ScenarioAiEntry
+  readonly documentGroups: readonly ScenarioDocumentGroup[]
+  readonly activeDocumentGroupId: string | null
   readonly documentAlertId: string | null
   readonly workOrders: readonly WorkOrderVersion[]
   readonly selectedWorkOrderVersion: 1 | 2 | 3 | null

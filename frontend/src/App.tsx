@@ -20,6 +20,7 @@ function ConsoleApp() {
   const [page, setPage] = useState<ConsolePage>('dashboard')
   const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
   const [pendingRunId, setPendingRunId] = useState<string | null>(null)
+  const [refreshRevision, setRefreshRevision] = useState(0)
   const mode = scenario.state.mode ?? 'normal'
   const replay = mode === 'fault'
 
@@ -39,15 +40,19 @@ function ConsoleApp() {
     setInitialAlertId(alertId ?? null)
     setPage('alerts')
   }
+  const refresh = () => {
+    setRefreshRevision((revision) => revision + 1)
+    scenario.sensor.refresh()
+  }
 
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
-    <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : undefined} onPageChange={navigate} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
+    <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : undefined} onPageChange={navigate} onRefresh={refresh} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
       {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
       {page === 'alerts' && (replay ? <ScenarioAlertsPage initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} /> : <AlertsPage onRunCreated={openRun} />)}
       {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
-      {page === 'operations-reports' && <OperationsReportsPage />}
+      {page === 'operations-reports' && <OperationsReportsPage refreshRevision={refreshRevision} />}
       {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
-      {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} />}
+      {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
     </AppShell>
   </OperationsProvider>
 }

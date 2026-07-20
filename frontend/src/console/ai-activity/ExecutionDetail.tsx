@@ -14,6 +14,12 @@ function displayText(value: string): string {
   return value.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '해당 설비')
 }
 
+function conciseTitle(item: AgentRunListItem): string {
+  const source = item.alert_reason?.trim() || '설비 이상 조치 계획서'
+  const firstSummary = source.split(/\s*[·|]\s*/)[0]?.trim() || source
+  return displayText(firstSummary.length > 90 ? `${firstSummary.slice(0, 89)}…` : firstSummary)
+}
+
 export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
   const run = useAgentRun(item.run_id)
   const result = useAgentRunResult(item.status === 'completed' ? item.run_id : null)
@@ -22,12 +28,13 @@ export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
   const snapshot = review.data?.snapshot ?? null
   const status = executionStatus(item)
   const actions = result.data?.actions ?? []
+  const canOpenWorkOrder = item.status === 'completed' && result.data != null
 
-  return <SurfaceCard action={<Button aria-label="상세 닫기" icon="x" onClick={onClose} />} className="activity-detail activity-plan-detail" title="계획서 상세">
+  return <SurfaceCard action={<div className="activity-detail-header-actions"><Button disabled={!canOpenWorkOrder} icon="document" onClick={() => { if (result.data != null) onOpenWorkOrder(item.run_id, result.data) }} tone="primary">작업지시서 생성</Button><Button aria-label="상세 닫기" icon="x" onClick={onClose} /></div>} className="activity-detail activity-plan-detail" title="계획서 상세">
     <div className="detail-body">
       <div className="detail-title">
         <StatusBadge tone={executionStatusTone(status)}>{status}</StatusBadge>
-        <h2>{displayText(result.data?.headline ?? item.alert_reason ?? '설비 이상 조치 계획서')}</h2>
+        <h2>{conciseTitle(item)}</h2>
         <p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p>
         <span>{priorityLabel(item.priority)} · 시작 {formatDateTime(item.created_at)}</span>
       </div>
@@ -44,7 +51,6 @@ export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
         </div>
       </section>
 
-      <div className="detail-actions activity-guide-actions"><Button disabled={item.status !== 'completed' || result.data == null} icon="document" onClick={() => { if (result.data != null) onOpenWorkOrder(item.run_id, result.data) }} tone="primary">작업지시서 생성</Button></div>
     </div>
   </SurfaceCard>
 }

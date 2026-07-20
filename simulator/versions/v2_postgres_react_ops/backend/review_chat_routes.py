@@ -10,7 +10,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from agent_execution_repository import AGENT_GRAPH_TASK_KEY_V2
-from agent_operator_review_repository import IdempotencyConflictError
+from agent_operator_review_repository import (
+    IdempotencyConflictError,
+    StaleReviewVersionError,
+)
 from agent_rerun_repository import TargetedChildRun, mark_rerun_scheduled
 from incident_document_repository import PostgresIncidentDocumentRepository
 from incident_document_routes import make_incident_document_router
@@ -26,6 +29,7 @@ from review_chat_api_models import (
     ReviewChatMessagePage,
     ReviewChatMessageRequest,
     ReviewChatOpenRequest,
+    ReviewChatProposalPage,
     ReviewChatSubmissionResponse,
     ReviewChatThreadResponse,
 )
@@ -36,6 +40,7 @@ from review_chat_service import (
     confirm_review_chat_proposal,
     list_review_chat_events,
     list_review_chat_messages,
+    list_pending_review_chat_proposals,
     open_review_chat,
     submit_review_chat_message,
 )
@@ -103,6 +108,7 @@ def make_review_chat_router(
     async def messages(
         thread_id: UUID,
         after_sequence: int = Query(default=0, ge=0),
+        before_sequence: int | None = Query(default=None, ge=1),
         limit: int = Query(default=100, ge=1, le=100),
     ) -> ReviewChatMessagePage:
         return await _map_errors(
@@ -110,8 +116,18 @@ def make_review_chat_router(
                 engine,
                 str(thread_id),
                 after_sequence=after_sequence,
+                before_sequence=before_sequence,
                 limit=limit,
             )
+        )
+
+    @router.get(
+        "/review-chat/threads/{thread_id}/proposals/pending",
+        response_model=ReviewChatProposalPage,
+    )
+    async def pending_proposals(thread_id: UUID) -> ReviewChatProposalPage:
+        return await _map_errors(
+            list_pending_review_chat_proposals(engine, str(thread_id))
         )
 
     @router.post(
@@ -176,10 +192,19 @@ def make_review_chat_router(
         if child is not None:
             try:
                 schedule_child(child)
-            except (LookupError, RuntimeError, TypeError, ValueError):
-                await mark_rerun_scheduled(engine, child, scheduled=False)
+            except Exception:  # The review is already committed; scheduling is retryable.
+                try:
+                    await mark_rerun_scheduled(engine, child, scheduled=False)
+                except Exception:
+                    pass
+                result = result.model_copy(update={"rerun_status": "schedule_failed"})
             else:
-                await mark_rerun_scheduled(engine, child, scheduled=True)
+                try:
+                    await mark_rerun_scheduled(engine, child, scheduled=True)
+                except Exception:
+                    result = result.model_copy(update={"rerun_status": "schedule_failed"})
+                else:
+                    result = result.model_copy(update={"rerun_status": "scheduled"})
         return result
 
     @router.post(
@@ -200,5 +225,9 @@ async def _map_errors(awaitable):
         return await awaitable
     except ReviewChatNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (IdempotencyConflictError, ReviewChatConflictError) as exc:
+    except (
+        IdempotencyConflictError,
+        ReviewChatConflictError,
+        StaleReviewVersionError,
+    ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -21,9 +21,9 @@ import { useOperatorReviews, useSubmitOperatorReview } from '../../api/hooks'
 import { Button } from '../ui'
 
 const DECISION_TITLES: Record<OperatorReviewDecision, string> = {
-  approve: '승인',
-  reject: '반려',
-  correct: '교정',
+  approve: '실행 검토 승인',
+  reject: '실행 검토 반려',
+  correct: '실행 교정 기록',
   keep_human_review: '사람 검토 유지',
 }
 
@@ -122,7 +122,10 @@ export function ReviewActionModal({ runId, decision, currentOutput, onClose }: P
           <h2>{DECISION_TITLES[decision]}</h2>
           <Button aria-label="검토 창 닫기" icon="x" onClick={onClose} />
         </header>
-        <p className="review-scope-note">이 결정은 실행 {runId.slice(0, 8)}…의 산출물 전체(작업지시서·보고서)에 적용됩니다.</p>
+        <p className="review-scope-note">
+          이 창은 실행 {runId.slice(0, 8)}…의 산출물 전체에 대한 검토 기록을 남깁니다.
+          작업지시서 본문을 새 버전으로 고치려면 문서 옆 AI 수정 대화를 이용하세요.
+        </p>
         <label>검토자<input onChange={(event) => setReviewer(event.target.value)} value={reviewer} /></label>
         <label>조치 구분(필수)
           <select onChange={(event) => setDisposition(event.target.value as OperatorReviewDisposition)} value={disposition}>
@@ -141,9 +144,10 @@ export function ReviewActionModal({ runId, decision, currentOutput, onClose }: P
         </label>
         {decision === 'correct' && (
           <>
-            <label>교정 요약<textarea onChange={(event) => setCorrectedSummary(event.target.value)} rows={2} value={correctedSummary} /></label>
-            <label>교정 조치 계획<textarea onChange={(event) => setCorrectedPlan(event.target.value)} rows={3} value={correctedPlan} /></label>
-            <label>교정 주의 사항<textarea onChange={(event) => setCorrectedCaution(event.target.value)} rows={2} value={correctedCaution} /></label>
+            <p className="review-scope-note">아래 값은 실행 검토 이력에 저장되며 현재 보고 있는 작업지시서 본문을 직접 변경하지 않습니다.</p>
+            <label>검토 교정 요약<textarea onChange={(event) => setCorrectedSummary(event.target.value)} rows={2} value={correctedSummary} /></label>
+            <label>검토 교정 조치 계획<textarea onChange={(event) => setCorrectedPlan(event.target.value)} rows={3} value={correctedPlan} /></label>
+            <label>검토 교정 주의 사항<textarea onChange={(event) => setCorrectedCaution(event.target.value)} rows={2} value={correctedCaution} /></label>
           </>
         )}
         {conflict && <p className="form-error">다른 검토가 먼저 저장되어 버전이 충돌했습니다. 최신 이력을 반영했으니 내용 확인 후 다시 제출하세요.</p>}

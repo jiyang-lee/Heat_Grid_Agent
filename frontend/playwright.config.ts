@@ -14,7 +14,7 @@ export default defineConfig({
     { name: 'mobile-375', use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true } },
   ],
   webServer: {
-    command: 'pnpm dev --host 127.0.0.1 --port 5173',
+    command: 'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: true,
     timeout: 60_000,

@@ -140,6 +140,94 @@ async def test_proposal_does_not_write_a_review_until_confirmation() -> None:
         await engine.dispose()
 
 
+@pytest.mark.anyio
+async def test_followup_message_reuses_the_previous_operator_scope() -> None:
+    from review_chat_api_models import (
+        ReviewChatCancelRequest,
+        ReviewChatMessageRequest,
+        ReviewChatOpenRequest,
+    )
+    from review_chat_service import (
+        cancel_review_chat_proposal,
+        list_review_chat_messages,
+        open_review_chat,
+        submit_review_chat_message,
+    )
+
+    engine = create_async_engine(str(DATABASE_URL))
+    suffix = str(uuid4())
+    try:
+        await _seed_chat_run(engine)
+        thread = await open_review_chat(
+            engine,
+            RUN_ID,
+            ReviewChatOpenRequest(created_by="chat-test", idempotency_key=f"followup-open-{suffix}"),
+        )
+        earlier_question = "현재 최종 결과가 뭐야?"
+        explained = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content=earlier_question,
+                created_by="chat-test",
+                idempotency_key=f"followup-question-{suffix}",
+            ),
+        )
+        assert explained.proposal is None
+        first = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content=f"안전 확인 2번째 항목만 보호구 기준으로 수정해줘 {suffix}",
+                created_by="chat-test",
+                idempotency_key=f"followup-first-{suffix}",
+            ),
+        )
+        assert first.proposal is not None
+        await cancel_review_chat_proposal(
+            engine,
+            first.proposal.proposal_id,
+            ReviewChatCancelRequest(cancelled_by="chat-test", idempotency_key=f"followup-cancel-{suffix}"),
+        )
+
+        followup_content = "그 항목을 조금 더 짧게 정리해줘"
+        followup = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content=followup_content,
+                created_by="chat-test",
+                idempotency_key=f"followup-second-{suffix}",
+            ),
+        )
+
+        assert followup.proposal is not None
+        assert followup.proposal.reason == followup_content
+        assert followup.proposal.correction is not None
+        assert "안전 확인 2번째 항목" in followup.proposal.correction["instruction"]
+        assert followup_content in followup.proposal.correction["instruction"]
+        recalled = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content="방금 뭐라고 수정해 달라고 했어?",
+                created_by="chat-test",
+                idempotency_key=f"followup-recall-{suffix}",
+            ),
+        )
+        assert recalled.proposal is None
+        assert earlier_question in recalled.assistant_message.content
+        assert "안전 확인 2번째 항목" in recalled.assistant_message.content
+        assert followup_content in recalled.assistant_message.content
+        messages = await list_review_chat_messages(engine, thread.thread_id, after_sequence=0, limit=100)
+        assert any(
+            message.role == "operator" and message.content == followup_content
+            for message in messages.items
+        )
+    finally:
+        await engine.dispose()
+
+
 async def _seed_chat_run(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(

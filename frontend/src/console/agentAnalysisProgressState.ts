@@ -38,7 +38,15 @@ function phaseFor(event: unknown): number | null {
 export function agentAnalysisErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 404) return 'AI 조치 실행 정보를 찾지 못했습니다. 백엔드 연결 상태를 확인해 주세요.'
-    return `AI 조치 실행을 처리하지 못했습니다. (오류 ${error.status})`
+    if (error.status === 409) return '같은 알림의 분석 상태가 변경되었습니다. 최신 실행 목록을 확인한 뒤 다시 시도해 주세요.'
+    if (error.status === 422) return 'AI 조치 요청값을 처리할 수 없습니다. 알림을 다시 선택해 주세요.'
+    if (error.status >= 500) return `AI 조치 서버에서 실행을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요. (서버 오류 ${error.status})`
+    return `AI 조치 실행 요청에 실패했습니다. (오류 ${error.status})`
+  }
+  if (error instanceof Error) {
+    if (/lineage_depth|재실행.*한도/i.test(error.message)) return '기존 AI 분석의 재실행 한도에 도달했습니다. 새 분석으로 다시 시작해 주세요.'
+    if (/input_snapshot|입력.*복원/i.test(error.message)) return '기존 분석 입력을 복원할 수 없어 재실행하지 못했습니다. 알림에서 새 분석을 시작해 주세요.'
+    if (/AI 조치 분석 실행이 실패했습니다/.test(error.message)) return error.message
   }
   return 'AI 조치 실행을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'
 }

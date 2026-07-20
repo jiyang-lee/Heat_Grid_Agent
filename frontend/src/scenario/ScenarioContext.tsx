@@ -7,14 +7,17 @@ import type {
   ScenarioAiEntry,
   ScenarioAlert,
   ScenarioChatMessage,
+  ScenarioDocumentGroup,
   ScenarioReportMessage,
   ScenarioReportStatus,
   ScenarioState,
   SensorPoint,
+  WorkOrderSection,
   WorkOrderVersion,
 } from './types'
 import { useSensorStream } from './useSensorStream'
 import type { OpsAgentResultV4 } from '../api/contracts'
+import { clearStoredAiDocumentDrafts, mergeScenarioWorkOrder, type WorkOrderRevisionTarget } from './workOrderRevision'
 
 export const SESSION_KEY = 'heatgrid:scenario-session'
 
@@ -44,6 +47,8 @@ const initialState: ScenarioState = {
   resolvedAlertTimes: {},
   alertSensorSnapshots: {},
   aiEntry: 'overview',
+  documentGroups: [],
+  activeDocumentGroupId: null,
   documentAlertId: null,
   workOrders: [],
   selectedWorkOrderVersion: null,
@@ -123,10 +128,23 @@ function storedWorkOrders(value: Record<string, unknown>, alert: ScenarioAlert):
     return value.workOrders.flatMap((candidate) => {
       if (typeof candidate !== 'object' || candidate == null || !('version' in candidate) || !isVersion(candidate.version)) return []
       const base = workOrderVersion(alert, candidate.version, typeof candidate.changeSummary === 'string' ? candidate.changeSummary : '세션에서 복원된 수정본')
+      const storedSections: readonly unknown[] = Array.isArray(candidate.sections) ? candidate.sections : []
+      const sections: readonly WorkOrderSection[] = storedSections.length > 0 ? storedSections.flatMap((section) => {
+        if (typeof section !== 'object' || section == null || !('title' in section) || typeof section.title !== 'string' || !('items' in section) || !Array.isArray(section.items)) return []
+        const items: readonly unknown[] = section.items
+        return [{ title: section.title, items: items.filter((item): item is string => typeof item === 'string') }]
+      }) : base.sections
       return [{
         ...base,
         createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : base.createdAt,
+        title: typeof candidate.title === 'string' ? candidate.title : base.title,
+        changeSummary: typeof candidate.changeSummary === 'string' ? candidate.changeSummary : base.changeSummary,
+        instructions: sections.flatMap((section) => section.items),
+        sections,
         content: typeof candidate.content === 'string' ? candidate.content : base.content,
+        sourceRunId: typeof candidate.sourceRunId === 'string' ? candidate.sourceRunId : null,
+        revisionInstruction: typeof candidate.revisionInstruction === 'string' ? candidate.revisionInstruction : null,
+        baseVersion: isVersion(candidate.baseVersion) ? candidate.baseVersion : null,
       }]
     }).sort((a, b) => a.version - b.version)
   }
@@ -144,6 +162,137 @@ function storedMessages(value: Record<string, unknown>, key: 'messages' | 'repor
     'content' in message && typeof message.content === 'string' &&
     'createdAt' in message && typeof message.createdAt === 'string'
   ))
+}
+
+function storedReport(value: Record<string, unknown>): ScenarioState['report'] {
+  const candidate = typeof value.report === 'object' && value.report != null && !Array.isArray(value.report)
+    ? value.report as Record<string, unknown>
+    : null
+  const status = candidate?.status === 'draft' || candidate?.status === 'completed' ? candidate.status : 'idle'
+  if (status === 'idle') return emptyReport()
+  return {
+    status,
+    createdAt: typeof candidate?.createdAt === 'string' ? candidate.createdAt : new Date().toISOString(),
+    savedAt: typeof candidate?.savedAt === 'string' ? candidate.savedAt : null,
+    completedAt: typeof candidate?.completedAt === 'string' ? candidate.completedAt : null,
+    content: typeof candidate?.content === 'string' ? candidate.content : '',
+  }
+}
+
+function storedImprovementCandidate(value: Record<string, unknown>): ScenarioState['improvementCandidate'] {
+  const candidate = typeof value.improvementCandidate === 'object' && value.improvementCandidate != null && !Array.isArray(value.improvementCandidate)
+    ? value.improvementCandidate as Record<string, unknown>
+    : null
+  const categoryValue = candidate?.category ?? value.evaluationCategory
+  const category = categoryValue === 'model' || categoryValue === 'external-data' || categoryValue === 'rag' || categoryValue === 'work-order'
+    ? categoryValue
+    : null
+  if (category == null) return null
+  return {
+    category,
+    label: typeof candidate?.label === 'string' ? candidate.label : IMPROVEMENT_LABELS[category],
+    status: 'approval-pending',
+    createdAt: typeof candidate?.createdAt === 'string' ? candidate.createdAt : new Date().toISOString(),
+  }
+}
+
+function storedDocumentGroups(value: Record<string, unknown>): readonly ScenarioDocumentGroup[] {
+  if (!Array.isArray(value.documentGroups)) return []
+  return value.documentGroups.flatMap((candidate): readonly ScenarioDocumentGroup[] => {
+    if (typeof candidate !== 'object' || candidate == null || Array.isArray(candidate)) return []
+    const record = candidate as Record<string, unknown>
+    const alertId = typeof record.alertId === 'string' ? record.alertId : null
+    if (alertId == null) return []
+    const alert = alertFor(alertId)
+    const workOrders = storedWorkOrders(record, alert)
+    const root = workOrders[0]
+    if (root == null) return []
+    const rootRunId = typeof record.rootRunId === 'string' ? record.rootRunId : root.sourceRunId
+    if (rootRunId == null) return []
+    const id = typeof record.id === 'string' ? record.id : rootRunId
+    const selectedWorkOrderVersion = isVersion(record.selectedWorkOrderVersion) && workOrders.some((order) => order.version === record.selectedWorkOrderVersion)
+      ? record.selectedWorkOrderVersion
+      : workOrders.at(-1)?.version ?? null
+    const acceptedWorkOrderVersion = isVersion(record.acceptedWorkOrderVersion) && workOrders.some((order) => order.version === record.acceptedWorkOrderVersion)
+      ? record.acceptedWorkOrderVersion
+      : null
+    const workOrderRerunCount = typeof record.workOrderRerunCount === 'number'
+      ? Math.min(2, Math.max(0, Math.floor(record.workOrderRerunCount)))
+      : Math.max(0, workOrders.length - 1)
+    return [{
+      id,
+      rootRunId,
+      alertId,
+      substationId: typeof record.substationId === 'number' ? record.substationId : alert.substationId,
+      createdAt: typeof record.createdAt === 'string' ? record.createdAt : root.createdAt,
+      workOrders,
+      selectedWorkOrderVersion,
+      acceptedWorkOrderVersion,
+      workOrderRerunCount,
+      messages: storedMessages(record, 'messages').filter((message): message is ScenarioChatMessage => 'workOrderVersion' in message),
+      proposal: null,
+      evaluationRequired: typeof record.evaluationRequired === 'boolean' ? record.evaluationRequired : workOrderRerunCount >= 2,
+      improvementCandidate: storedImprovementCandidate(record),
+      report: storedReport(record),
+      reportMessages: storedMessages(record, 'reportMessages').filter((message): message is ScenarioReportMessage => !('workOrderVersion' in message)),
+    }]
+  })
+}
+
+function documentGroupFromState(state: ScenarioState): ScenarioDocumentGroup | null {
+  const root = state.workOrders[0]
+  const alertId = state.documentAlertId
+  if (root == null || alertId == null) return null
+  const fallbackId = root.sourceRunId ?? `scenario-${alertId}-${root.createdAt}`
+  const id = state.activeDocumentGroupId ?? fallbackId
+  return {
+    id,
+    rootRunId: root.sourceRunId ?? id,
+    alertId,
+    substationId: alertFor(alertId).substationId,
+    createdAt: root.createdAt,
+    workOrders: state.workOrders,
+    selectedWorkOrderVersion: state.selectedWorkOrderVersion,
+    acceptedWorkOrderVersion: state.acceptedWorkOrderVersion,
+    workOrderRerunCount: state.workOrderRerunCount,
+    messages: state.messages,
+    proposal: state.proposal,
+    evaluationRequired: state.evaluationRequired,
+    improvementCandidate: state.improvementCandidate,
+    report: state.report,
+    reportMessages: state.reportMessages,
+  }
+}
+
+function syncActiveDocumentGroup(state: ScenarioState): ScenarioState {
+  const group = documentGroupFromState(state)
+  if (group == null) return state
+  const index = state.documentGroups.findIndex((candidate) => candidate.id === group.id)
+  const documentGroups = index < 0
+    ? [...state.documentGroups, group]
+    : state.documentGroups.map((candidate, candidateIndex) => candidateIndex === index ? group : candidate)
+  return { ...state, activeDocumentGroupId: group.id, documentGroups }
+}
+
+function activateDocumentGroup(state: ScenarioState, group: ScenarioDocumentGroup): ScenarioState {
+  const alert = alertFor(group.alertId)
+  return {
+    ...state,
+    selectedAlertId: group.alertId,
+    selectedSubstationId: group.substationId || alert.substationId,
+    documentAlertId: group.alertId,
+    activeDocumentGroupId: group.id,
+    workOrders: group.workOrders,
+    selectedWorkOrderVersion: group.selectedWorkOrderVersion,
+    acceptedWorkOrderVersion: group.acceptedWorkOrderVersion,
+    workOrderRerunCount: group.workOrderRerunCount,
+    messages: group.messages,
+    proposal: group.proposal,
+    evaluationRequired: group.evaluationRequired,
+    improvementCandidate: group.improvementCandidate,
+    report: group.report,
+    reportMessages: group.reportMessages,
+  }
 }
 
 function storedSnapshots(value: Record<string, unknown>): Readonly<Record<string, readonly SensorPoint[]>> {
@@ -168,18 +317,9 @@ function loadSession(): ScenarioState {
     const workOrders = storedWorkOrders(value, documentAlert)
     const selectedVersion = isVersion(value.selectedWorkOrderVersion) && workOrders.some((order) => order.version === value.selectedWorkOrderVersion) ? value.selectedWorkOrderVersion : workOrders.at(-1)?.version ?? null
     const acceptedVersion = isVersion(value.acceptedWorkOrderVersion) && workOrders.some((order) => order.version === value.acceptedWorkOrderVersion) ? value.acceptedWorkOrderVersion : null
-    const category = value.evaluationCategory === 'model' || value.evaluationCategory === 'external-data' || value.evaluationCategory === 'rag' || value.evaluationCategory === 'work-order' ? value.evaluationCategory : null
-    const reportValue = typeof value.report === 'object' && value.report != null && !Array.isArray(value.report) ? value.report as Record<string, unknown> : null
-    const reportStatus = reportValue?.status === 'draft' || reportValue?.status === 'completed' ? reportValue.status : 'idle'
-    const report: ScenarioState['report'] = reportStatus === 'idle' ? emptyReport() : {
-      status: reportStatus,
-      createdAt: typeof reportValue?.createdAt === 'string' ? reportValue.createdAt : new Date().toISOString(),
-      savedAt: typeof reportValue?.savedAt === 'string' ? reportValue.savedAt : null,
-      completedAt: typeof reportValue?.completedAt === 'string' ? reportValue.completedAt : null,
-      content: typeof reportValue?.content === 'string' ? reportValue.content : '',
-    }
     const rerunCount = typeof value.workOrderRerunCount === 'number' ? Math.min(2, Math.max(0, Math.floor(value.workOrderRerunCount))) : Math.max(0, workOrders.length - 1)
-    return {
+    const documentGroups = storedDocumentGroups(value)
+    const loaded: ScenarioState = {
       ...initialState,
       mode,
       entryStep: 'console',
@@ -191,6 +331,8 @@ function loadSession(): ScenarioState {
       dismissedIncidentAlertIds: storedIds(value, 'dismissedIncidentAlertIds'),
       resolvedAlertTimes: storedStringRecord(value, 'resolvedAlertTimes'),
       alertSensorSnapshots: storedSnapshots(value),
+      documentGroups,
+      activeDocumentGroupId: typeof value.activeDocumentGroupId === 'string' ? value.activeDocumentGroupId : null,
       documentAlertId,
       workOrders,
       selectedWorkOrderVersion: selectedVersion,
@@ -198,10 +340,13 @@ function loadSession(): ScenarioState {
       workOrderRerunCount: rerunCount,
       messages: storedMessages(value, 'messages').filter((message): message is ScenarioChatMessage => 'workOrderVersion' in message),
       evaluationRequired: rerunCount >= 2,
-      improvementCandidate: category ? { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } : null,
-      report,
+      improvementCandidate: storedImprovementCandidate(value),
+      report: storedReport(value),
       reportMessages: storedMessages(value, 'reportMessages').filter((message): message is ScenarioReportMessage => !('workOrderVersion' in message)),
     }
+    if (documentGroups.length === 0) return syncActiveDocumentGroup(loaded)
+    const activeGroup = documentGroups.find((group) => group.id === loaded.activeDocumentGroupId) ?? documentGroups.at(-1)
+    return activeGroup == null ? loaded : activateDocumentGroup(loaded, activeGroup)
   } catch (error: unknown) {
     if (error instanceof SyntaxError) return initialState
     throw error
@@ -209,26 +354,29 @@ function loadSession(): ScenarioState {
 }
 
 function persist(state: ScenarioState): void {
+  const snapshot = syncActiveDocumentGroup(state)
   window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-    mode: state.mode,
-    entryStep: state.entryStep,
-    scenarioId: state.scenarioId,
-    selectedAlertId: state.selectedAlertId,
-    selectedSubstationId: state.selectedSubstationId,
-    incidentState: state.incidentState,
-    analyzedAlertIds: state.analyzedAlertIds,
-    dismissedIncidentAlertIds: state.dismissedIncidentAlertIds,
-    resolvedAlertTimes: state.resolvedAlertTimes,
-    alertSensorSnapshots: state.alertSensorSnapshots,
-    documentAlertId: state.documentAlertId,
-    workOrders: state.workOrders,
-    selectedWorkOrderVersion: state.selectedWorkOrderVersion,
-    acceptedWorkOrderVersion: state.acceptedWorkOrderVersion,
-    workOrderRerunCount: state.workOrderRerunCount,
-    messages: state.messages,
-    evaluationCategory: state.improvementCandidate?.category ?? null,
-    report: state.report,
-    reportMessages: state.reportMessages,
+    mode: snapshot.mode,
+    entryStep: snapshot.entryStep,
+    scenarioId: snapshot.scenarioId,
+    selectedAlertId: snapshot.selectedAlertId,
+    selectedSubstationId: snapshot.selectedSubstationId,
+    incidentState: snapshot.incidentState,
+    analyzedAlertIds: snapshot.analyzedAlertIds,
+    dismissedIncidentAlertIds: snapshot.dismissedIncidentAlertIds,
+    resolvedAlertTimes: snapshot.resolvedAlertTimes,
+    alertSensorSnapshots: snapshot.alertSensorSnapshots,
+    documentGroups: snapshot.documentGroups,
+    activeDocumentGroupId: snapshot.activeDocumentGroupId,
+    documentAlertId: snapshot.documentAlertId,
+    workOrders: snapshot.workOrders,
+    selectedWorkOrderVersion: snapshot.selectedWorkOrderVersion,
+    acceptedWorkOrderVersion: snapshot.acceptedWorkOrderVersion,
+    workOrderRerunCount: snapshot.workOrderRerunCount,
+    messages: snapshot.messages,
+    evaluationCategory: snapshot.improvementCandidate?.category ?? null,
+    report: snapshot.report,
+    reportMessages: snapshot.reportMessages,
   }))
 }
 
@@ -275,6 +423,32 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     sensor.reset()
     update({ ...initialState, mode: state.mode, entryStep: 'console', scenarioId: state.mode === 'fault' ? ACTIVE_SCENARIO_ID : null })
   }, [sensor, state.mode, update])
+  const clearAiHistory = useCallback(() => {
+    window.sessionStorage.removeItem(SESSION_KEY)
+    window.localStorage.removeItem('heatgrid:last-agent-run')
+    clearStoredAiDocumentDrafts()
+    setState((current) => ({
+      ...current,
+      analysisState: 'idle',
+      analysisAlertId: null,
+      analyzedAlertIds: [],
+      analysisToastVisible: false,
+      aiEntry: 'overview',
+      documentGroups: [],
+      activeDocumentGroupId: null,
+      documentAlertId: null,
+      workOrders: [],
+      selectedWorkOrderVersion: null,
+      acceptedWorkOrderVersion: null,
+      workOrderRerunCount: 0,
+      messages: [],
+      proposal: null,
+      evaluationRequired: false,
+      improvementCandidate: null,
+      report: emptyReport(),
+      reportMessages: [],
+    }))
+  }, [])
   const exitConsole = useCallback(() => { sensor.reset(); update({ ...initialState }) }, [sensor, update])
   const selectAlert = useCallback((selectedAlertId: string) => setState((current) => ({ ...current, selectedAlertId, selectedSubstationId: alertFor(selectedAlertId).substationId })), [])
   const selectSubstation = useCallback((selectedSubstationId: number) => setState((current) => ({ ...current, selectedSubstationId })), [])
@@ -292,33 +466,60 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   })), [sensor.state.points, sensor.state.simulatedAt])
   const setAiEntry = useCallback((aiEntry: ScenarioAiEntry) => setState((current) => ({ ...current, aiEntry })), [])
 
-  const createWorkOrder = useCallback((runId?: string, result?: OpsAgentResultV4) => setState((current) => {
-    if (current.documentAlertId === current.selectedAlertId && current.workOrders.length > 0) return current
+  const createWorkOrder = useCallback((runId?: string, result?: OpsAgentResultV4, alertId?: string) => setState((current) => {
     if (runId == null || result == null) return current
-    const order = workOrderFromResult(alertFor(current.selectedAlertId), 1, runId, result, null, null)
-    return { ...current, documentAlertId: current.selectedAlertId, workOrders: [order], selectedWorkOrderVersion: 1, acceptedWorkOrderVersion: null, workOrderRerunCount: 0, messages: [], proposal: null, evaluationRequired: false, improvementCandidate: null, report: emptyReport(), reportMessages: [] }
+    const snapshot = syncActiveDocumentGroup(current)
+    const existing = snapshot.documentGroups.find((group) => group.rootRunId === runId)
+    if (existing != null) return activateDocumentGroup(snapshot, existing)
+    const targetAlertId = alertId ?? current.selectedAlertId
+    const targetAlert = alertFor(targetAlertId)
+    const order = workOrderFromResult(targetAlert, 1, runId, result, null, null)
+    return syncActiveDocumentGroup({ ...snapshot, selectedAlertId: targetAlertId, selectedSubstationId: targetAlert.substationId, activeDocumentGroupId: runId, documentAlertId: targetAlertId, workOrders: [order], selectedWorkOrderVersion: 1, acceptedWorkOrderVersion: null, workOrderRerunCount: 0, messages: [], proposal: null, evaluationRequired: false, improvementCandidate: null, report: emptyReport(), reportMessages: [] })
   }), [])
-  const appendWorkOrderRevision = useCallback((runId: string, result: OpsAgentResultV4, instruction: string) => setState((current) => {
-    const base = current.workOrders.at(-1)
-    if (base == null || base.version >= 3) return current
-    const version = (base.version + 1) as 2 | 3
-    const order = workOrderFromResult(alertFor(current.documentAlertId ?? current.selectedAlertId), version, runId, result, instruction, base.version)
-    return { ...current, workOrders: [...current.workOrders, order], selectedWorkOrderVersion: version, acceptedWorkOrderVersion: null, workOrderRerunCount: current.workOrderRerunCount + 1, proposal: null, report: emptyReport(), reportMessages: [] }
+  const selectDocumentGroup = useCallback((groupId: string) => setState((current) => {
+    const snapshot = syncActiveDocumentGroup(current)
+    const group = snapshot.documentGroups.find((candidate) => candidate.id === groupId)
+    return group == null ? current : activateDocumentGroup(snapshot, group)
   }), [])
-  const appendWorkOrderMessages = useCallback((messages: readonly ScenarioChatMessage[]) => setState((current) => ({ ...current, messages: [...current.messages, ...messages] })), [])
-  const selectWorkOrderVersion = useCallback((selectedWorkOrderVersion: 1 | 2 | 3) => setState((current) => current.workOrders.some((order) => order.version === selectedWorkOrderVersion) ? { ...current, selectedWorkOrderVersion } : current), [])
-  const updateWorkOrderContent = useCallback((version: 1 | 2 | 3, content: string) => setState((current) => ({ ...current, workOrders: current.workOrders.map((order) => order.version === version ? { ...order, content } : order) })), [])
+  const appendWorkOrderRevision = useCallback((runId: string, result: OpsAgentResultV4, instruction: string, target: WorkOrderRevisionTarget, baseVersion: 1 | 2 | 3, documentContent?: string) => setState((current) => {
+    const latest = current.workOrders.at(-1)
+    const base = current.workOrders.find((order) => order.version === baseVersion)
+    if (base == null || latest == null || latest.version >= 3) return current
+    const version = (latest.version + 1) as 2 | 3
+    const generatedOrder = target.section === 'document'
+      ? workOrderFromResult(alertFor(current.documentAlertId ?? current.selectedAlertId), version, runId, result, instruction, base.version)
+      : mergeScenarioWorkOrder(base, result, target, version, instruction, runId)
+    const order = documentContent?.trim() ? { ...generatedOrder, content: documentContent.trim() } : generatedOrder
+    return syncActiveDocumentGroup({ ...current, workOrders: [...current.workOrders, order], selectedWorkOrderVersion: version, workOrderRerunCount: current.workOrderRerunCount + 1, proposal: null })
+  }), [])
+  const appendWorkOrderMessages = useCallback((messages: readonly ScenarioChatMessage[]) => setState((current) => {
+    if (current.activeDocumentGroupId == null || current.workOrders.length === 0) return current
+    const existingIds = new Set(current.messages.map((message) => message.id))
+    const additions = messages.filter((message) => !existingIds.has(message.id))
+    return additions.length === 0 ? current : syncActiveDocumentGroup({ ...current, messages: [...current.messages, ...additions] })
+  }), [])
+  const selectWorkOrderVersion = useCallback((selectedWorkOrderVersion: 1 | 2 | 3) => setState((current) => current.workOrders.some((order) => order.version === selectedWorkOrderVersion) ? syncActiveDocumentGroup({ ...current, selectedWorkOrderVersion }) : current), [])
+  const updateWorkOrderContent = useCallback((version: 1 | 2 | 3, content: string) => setState((current) => {
+    const editedAcceptedVersion = current.acceptedWorkOrderVersion === version
+    return syncActiveDocumentGroup({
+      ...current,
+      workOrders: current.workOrders.map((order) => order.version === version ? { ...order, content, changeSummary: '운영자 직접 편집' } : order),
+      acceptedWorkOrderVersion: editedAcceptedVersion ? null : current.acceptedWorkOrderVersion,
+      report: editedAcceptedVersion ? emptyReport() : current.report,
+      reportMessages: editedAcceptedVersion ? [] : current.reportMessages,
+    })
+  }), [])
   const acceptWorkOrder = useCallback((version: 1 | 2 | 3) => setState((current) => {
     if (!current.workOrders.some((order) => order.version === version)) return current
-    return { ...current, selectedWorkOrderVersion: version, acceptedWorkOrderVersion: version, report: current.acceptedWorkOrderVersion === version ? current.report : emptyReport(), reportMessages: current.acceptedWorkOrderVersion === version ? current.reportMessages : [] }
+    return syncActiveDocumentGroup({ ...current, selectedWorkOrderVersion: version, acceptedWorkOrderVersion: version, report: current.acceptedWorkOrderVersion === version ? current.report : emptyReport(), reportMessages: current.acceptedWorkOrderVersion === version ? current.reportMessages : [] })
   }), [])
   const createReportDraft = useCallback(() => setState((current) => {
     const order = current.workOrders.find((candidate) => candidate.version === current.acceptedWorkOrderVersion)
     if (!order || current.report.status !== 'idle') return current
-    return { ...current, report: reportState('draft', reportContent(alertFor(current.documentAlertId ?? current.selectedAlertId), order)) }
+    return syncActiveDocumentGroup({ ...current, report: reportState('draft', reportContent(alertFor(current.documentAlertId ?? current.selectedAlertId), order)) })
   }), [])
-  const saveReportDraft = useCallback((content: string) => setState((current) => current.report.status !== 'draft' ? current : ({ ...current, report: { ...current.report, content, savedAt: new Date().toISOString() } })), [])
-  const completeReport = useCallback(() => setState((current) => current.report.status !== 'draft' ? current : ({ ...current, report: { ...current.report, status: 'completed', savedAt: current.report.savedAt ?? new Date().toISOString(), completedAt: new Date().toISOString() } })), [])
+  const saveReportDraft = useCallback((content: string) => setState((current) => current.report.status !== 'draft' ? current : syncActiveDocumentGroup({ ...current, report: { ...current.report, content, savedAt: new Date().toISOString() } })), [])
+  const completeReport = useCallback(() => setState((current) => current.report.status !== 'draft' ? current : syncActiveDocumentGroup({ ...current, report: { ...current.report, status: 'completed', savedAt: current.report.savedAt ?? new Date().toISOString(), completedAt: new Date().toISOString() } })), [])
   const postReportMessage = useCallback((content: string) => {
     const trimmed = content.trim()
     if (!trimmed) return
@@ -327,14 +528,14 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
       { id: `report-operator-${Date.now()}`, role: 'operator', content: trimmed, createdAt },
       { id: `report-assistant-${Date.now()}`, role: 'assistant', content: '보고서 검토 의견으로 정리했습니다. 본문은 변경하지 않았으니 운영자가 필요한 문구만 직접 반영해 주세요.', createdAt },
     ]
-    setState((current) => ({ ...current, reportMessages: [...current.reportMessages, ...messages] }))
+    setState((current) => syncActiveDocumentGroup({ ...current, reportMessages: [...current.reportMessages, ...messages] }))
   }, [])
 
-  const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => ({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
+  const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => syncActiveDocumentGroup({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, appendWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
-  }), [acceptWorkOrder, alertHistory, alerts, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, clearAiHistory, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, selectDocumentGroup, appendWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, clearAiHistory, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectDocumentGroup, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }

@@ -62,7 +62,7 @@ import type {
   ReviewChatCancelRequest,
   ReviewChatOpenRequest,
   ReviewChatConfirmationResponse,
-  ReviewChatProposalResponse,
+  ReviewChatPendingProposalPage,
   ReviewChatSubmissionResponse,
   ReviewChatThreadResponse,
   ReplayDataset,
@@ -81,6 +81,9 @@ import type {
   OperationsPolicy,
   OperationsPolicyUpdate,
   CurrentShiftMemo,
+  IncidentDocumentApproveRequest,
+  IncidentDocumentPage,
+  IncidentDocumentResponse,
   OperationsReportPage,
   OperationsReportPeriod,
   OperationsReportVersion,
@@ -271,8 +274,31 @@ export const reviewChatApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  messages: (threadId: string) =>
-    apiFetch<ReviewChatMessagePage>(`/review-chat/threads/${threadId}/messages`),
+  messages: (threadId: string, query?: { readonly after_sequence?: number; readonly before_sequence?: number; readonly limit?: number }) =>
+    apiFetch<ReviewChatMessagePage>(`/review-chat/threads/${threadId}/messages${toQueryString(query as Record<string, number | undefined> | undefined)}`),
+  allMessages: async (threadId: string) => {
+    const limit = 100
+    const items: ReviewChatMessagePage['items'][number][] = []
+    let beforeSequence: number | undefined
+    let pendingProposal: ReviewChatMessagePage['pending_proposal'] = undefined
+    for (let pageIndex = 0; pageIndex < 20; pageIndex += 1) {
+      const page = await reviewChatApi.messages(threadId, beforeSequence == null
+        ? { after_sequence: 0, limit }
+        : { before_sequence: beforeSequence, limit })
+      items.unshift(...page.items)
+      if (page.pending_proposal !== undefined) pendingProposal = page.pending_proposal
+      const firstSequence = page.items[0]?.sequence
+      const nextSequence = page.next_before_sequence ?? firstSequence
+      const hasMore = page.has_more ?? page.items.length === limit
+      if (!hasMore || nextSequence == null || nextSequence <= 1 || (beforeSequence != null && nextSequence >= beforeSequence)) break
+      beforeSequence = nextSequence
+    }
+    const uniqueItems = [...new Map(items.map((item) => [item.message_id, item])).values()]
+      .sort((left, right) => left.sequence - right.sequence || left.created_at.localeCompare(right.created_at))
+    return { items: uniqueItems, pending_proposal: pendingProposal } satisfies ReviewChatMessagePage
+  },
+  pendingProposals: (threadId: string) =>
+    apiFetch<ReviewChatPendingProposalPage>(`/review-chat/threads/${threadId}/proposals/pending`),
   postMessage: (threadId: string, body: ReviewChatMessageRequest) =>
     apiFetch<ReviewChatSubmissionResponse>(`/review-chat/threads/${threadId}/messages`, {
       method: 'POST',
@@ -284,7 +310,17 @@ export const reviewChatApi = {
       body: JSON.stringify(body),
     }),
   cancelProposal: (proposalId: string, body: ReviewChatCancelRequest) =>
-    apiFetch<ReviewChatProposalResponse>(`/review-chat/proposals/${proposalId}/cancel`, {
+    apiFetch<ReviewChatConfirmationResponse>(`/review-chat/proposals/${proposalId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+export const incidentDocumentsApi = {
+  list: (incidentId: string) =>
+    apiFetch<IncidentDocumentPage>(`/incidents/${incidentId}/documents`),
+  approveWorkOrder: (incidentId: string, body: IncidentDocumentApproveRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/approve`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

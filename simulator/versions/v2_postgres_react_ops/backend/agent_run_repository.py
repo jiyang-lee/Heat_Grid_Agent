@@ -78,11 +78,6 @@ ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check
 CHECK (status IN ('queued', 'running', 'completed', 'failed'))
 """
 
-class AgentRunLineageLimitError(RuntimeError):
-    def __str__(self) -> str:
-        return "agent run lineage depth limit reached"
-
-
 AGENT_RUN_SELECT: Final = (
     "SELECT run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
     "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
@@ -145,7 +140,7 @@ async def reserve_agent_run(
             text(
                 f"{AGENT_RUN_SELECT}"
                 "WHERE alert_id = :alert_id AND status <> 'failed' "
-                "ORDER BY updated_at DESC LIMIT 1"
+                "ORDER BY created_at DESC, lineage_depth DESC, updated_at DESC LIMIT 1"
             ),
             {"alert_id": alert_id},
         )
@@ -165,16 +160,30 @@ async def reserve_agent_run(
                 ),
             )
             return _run_from_row(existing_row), False
+        parent_run_id = None if existing_row is None else str(existing_row["run_id"])
+        lineage_rollover = False
+        if force_new and parent_run_id is not None:
+            lineage_depth = await connection.scalar(
+                text("SELECT lineage_depth FROM agent_runs WHERE run_id = :run_id"),
+                {"run_id": parent_run_id},
+            )
+            if lineage_depth is not None and int(lineage_depth) >= 2:
+                parent_run_id = None
+                lineage_rollover = True
         run_row = await _insert_queued_agent_run(
             connection,
             run_id=run_id,
             alert_id=alert_id,
             card_id=card_id,
-            parent_run_id=None
-            if existing_row is None
-            else str(existing_row["run_id"]),
+            parent_run_id=parent_run_id,
             trigger_type=trigger_type
-            or ("manual_rerun" if force_new else "alert"),
+            or (
+                "manual_rerun_rollover"
+                if lineage_rollover
+                else "manual_rerun"
+                if force_new
+                else "alert"
+            ),
             requested_by=requested_by,
             trigger_reason=reason,
             approved_action_task_id=approved_action_task_id,

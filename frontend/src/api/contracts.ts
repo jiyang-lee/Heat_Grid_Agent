@@ -795,6 +795,10 @@ export interface ReviewChatThreadResponse {
   readonly context_hash: string
   readonly base_review_version: number
   readonly created_at: string
+  readonly incident_id?: string | null
+  readonly document_version_id?: string | null
+  readonly document_version?: number | null
+  readonly document_content?: Readonly<Record<string, unknown>> | string | null
 }
 
 export interface ReviewChatMessageRequest {
@@ -805,6 +809,10 @@ export interface ReviewChatMessageRequest {
     readonly document_version_id?: string
     readonly document_type?: 'work_order' | 'incident_report'
     readonly expected_version: number
+    /** Forward-compatible client snapshot fields. Older servers may ignore/reject these. */
+    readonly current_body?: string
+    readonly title?: string
+    readonly content_hash?: string
   }
   readonly incident_id?: string
   readonly citation_ids?: readonly string[]
@@ -901,6 +909,28 @@ export interface ReviewChatMessageResponse {
 
 export interface ReviewChatMessagePage {
   readonly items: readonly ReviewChatMessageResponse[]
+  /** Optional additions used by newer servers; the client also supports cursor paging. */
+  readonly pending_proposal?: ReviewChatProposalResponse | null
+  readonly next_after_sequence?: number | null
+  readonly next_before_sequence?: number | null
+  readonly has_more?: boolean
+}
+
+export interface ReviewChatRevisionPreview {
+  readonly title?: string
+  readonly body?: string
+  readonly actions?: string | readonly string[]
+  readonly evidence?: string | readonly string[]
+  readonly safety_notes?: string | readonly string[]
+  readonly target_area?: string
+  readonly change_summary?: string
+  readonly base_version?: string | number
+  readonly before?: string
+  readonly after?: string
+  readonly before_content?: string
+  readonly after_content?: string
+  readonly proposed_content?: string
+  readonly [key: string]: unknown
 }
 
 export interface ReviewChatProposalResponse {
@@ -915,10 +945,21 @@ export interface ReviewChatProposalResponse {
   readonly reason: string
   readonly reason_category: string | null
   readonly disposition: string | null
-  readonly correction: Record<string, string> | null
+  readonly correction: Readonly<Record<string, unknown>> | null
   readonly target_stage: string | null
-  readonly revision?: Readonly<Record<string, string>> | null
+  readonly revision?: ReviewChatRevisionPreview | null
   readonly expires_at: string
+  readonly draft_content?: string | null
+  readonly base_document_version_id?: string | null
+  readonly base_document_version?: number | null
+  /** Optional execution/preflight metadata exposed by the extended contract. */
+  readonly execution_status?: string | null
+  readonly block_reason?: string | null
+  readonly change_summary?: string | null
+}
+
+export interface ReviewChatPendingProposalPage {
+  readonly items: readonly ReviewChatProposalResponse[]
 }
 
 export interface ReviewChatSubmissionResponse {
@@ -940,6 +981,51 @@ export interface ReviewChatConfirmationResponse {
   readonly review_id: string | null
   readonly child_run_id: string | null
   readonly target_stage: string | null
+  readonly execution_status?: string | null
+  readonly block_reason?: string | null
+  readonly document_version?: number | null
+  readonly document?: Readonly<Record<string, unknown>> | null
+  readonly rerun_status?: string | null
+  readonly blocked_reason?: string | null
+  readonly document_version_id?: string | null
+  readonly document_content?: Readonly<Record<string, unknown>> | string | null
+  readonly incident_id?: string | null
+}
+
+export interface IncidentDocumentContent {
+  readonly title: string
+  readonly body: string
+  readonly actions: readonly string[]
+  readonly evidence: readonly { readonly citation_id: string; readonly label: string }[]
+  readonly safety_notes: string
+}
+
+export interface IncidentDocumentResponse {
+  readonly document_version_id: string
+  readonly episode_id: string
+  readonly document_type: 'work_order' | 'incident_report'
+  readonly version: number
+  readonly parent_document_version_id: string | null
+  readonly status: 'draft' | 'ai_reviewed' | 'approved' | 'failed'
+  readonly review_state: 'none' | 'pending_ai_review' | 'operator_noted' | 'approved' | 'failed'
+  readonly retryable: boolean
+  readonly content: IncidentDocumentContent
+  readonly content_hash: string
+  readonly created_by: string
+  readonly created_at: string
+  readonly approved_by: string | null
+  readonly approved_at: string | null
+}
+
+export interface IncidentDocumentPage {
+  readonly items: readonly IncidentDocumentResponse[]
+}
+
+export interface IncidentDocumentApproveRequest {
+  readonly expected_version: number
+  readonly approved_by: string
+  readonly idempotency_key: string
+  readonly note: string
 }
 
 export interface ReviewChatCancelRequest {

@@ -6,6 +6,7 @@ import { Button, StatusBadge, SurfaceCard } from './ui'
 
 interface Props {
   readonly onModeChanged: () => void
+  readonly refreshRevision: number
 }
 
 function errorMessage(error: unknown): string {
@@ -14,7 +15,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '요청을 처리하지 못했습니다.'
 }
 
-export function AdminPage({ onModeChanged }: Props) {
+export function AdminPage({ onModeChanged, refreshRevision }: Props) {
   const scenario = useScenario()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [policy, setPolicy] = useState<OperationsPolicy | null>(null)
@@ -39,7 +40,7 @@ export function AdminPage({ onModeChanged }: Props) {
     }
   }
 
-  useEffect(() => { void load() }, [])
+  useEffect(() => { void load() }, [refreshRevision])
 
   const updateShift = (index: number, patch: Partial<ShiftSchedule>) => {
     setPolicy((current) => {
