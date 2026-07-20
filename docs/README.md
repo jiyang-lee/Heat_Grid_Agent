@@ -25,6 +25,7 @@
 | 17 | `14_AGENT_RECURSIVE_AUTOMATION.md` | 에이전트 반복 판단, 모델 재검증, 검수, 재학습, 승격 전체 구조 |
 | 18 | `15_PRIORITY_EVALUATION_SNAPSHOT.md` | 31개 Substation 동시 평가 스냅샷, 순위, API, 지도 연결 구조 |
 | 19 | `HeatGrid_LangGraph_구조도.excalidraw.json` | 현재 LangGraph 실행·재귀·검수 흐름의 Excalidraw 원본 |
+| 20 | `16_SIMULATION_VERSIONS.md` | 시뮬레이션 버전 비교 (v1 미병합 vs v2 현재), 버전 혼동 정리 |
 
 ## 목적별 바로가기
 
@@ -82,6 +83,13 @@ package/PACKAGE_MANIFEST.md
 HeatGrid_LangGraph_구조도.excalidraw.json
 contracts/ops_agent_result_v4.md
 ../simulator/versions/v2_postgres_react_ops/README.md
+```
+
+### 시뮬레이션 버전이 헷갈릴 때
+
+```text
+16_SIMULATION_VERSIONS.md
+../simulator/VERSIONING.md
 ```
 ## 핵심 파일 요약
 
