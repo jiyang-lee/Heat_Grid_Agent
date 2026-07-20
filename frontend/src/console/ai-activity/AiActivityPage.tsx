@@ -53,7 +53,8 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
   const [selected, setSelected] = useState<Record<ActivityTab, string | null>>({ execution: null, orders: null, reports: null })
   const [focusedRunId, setFocusedRunId] = useState<string | null>(null)
   const [focusedIncidentAlertId, setFocusedIncidentAlertId] = useState<string | null>(null)
-  const [incidentEntry, setIncidentEntry] = useState(false)
+  const faultScenario = entryMode === 'fault'
+  const incidentEntry = faultScenario
   const [openedWorkOrderId, setOpenedWorkOrderId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -61,11 +62,9 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
     setTab('execution')
     setSelected((current) => ({ ...current, execution: null }))
     setFocusedRunId(initialRunId)
-    const isIncident = entryMode === 'fault' && incidentAlertId != null
-    setIncidentEntry(isIncident)
-    setFocusedIncidentAlertId(isIncident ? incidentAlertId : null)
+    setFocusedIncidentAlertId(faultScenario ? incidentAlertId : null)
     onConsumeInitialRun()
-  }, [entryMode, incidentAlertId, initialRunId, onConsumeInitialRun])
+  }, [faultScenario, incidentAlertId, initialRunId, onConsumeInitialRun])
 
   const active = filters[tab]
   useEffect(() => {
@@ -139,7 +138,8 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
     return [...ids.entries()].map(([substationId, name]) => ({ substationId, name })).sort((a, b) => a.substationId - b.substationId)
   }, [active.facilityId, allExecutionItems, orderItems, reportItems])
 
-  const incidentAlert = focusedIncidentAlertId == null ? null : SCENARIO_ALERTS.find((alert) => alert.id === focusedIncidentAlertId) ?? null
+  const scenarioAlertId = focusedIncidentAlertId ?? scenario.state.documentAlertId ?? scenario.state.selectedAlertId
+  const incidentAlert = faultScenario ? SCENARIO_ALERTS.find((alert) => alert.id === scenarioAlertId) ?? null : null
   const statusOptions = tab === 'execution' ? EXECUTION_STATUS_FILTERS : REVIEW_STATUS_FILTERS
   const incidentWorkspace = incidentEntry && incidentAlert != null && (tab === 'orders' || tab === 'reports')
   const selectedDetail = (tab === 'execution' && selectedExecution != null) || (!incidentEntry && tab === 'orders' && selectedOrder != null) || (!incidentEntry && tab === 'reports' && selectedReport != null)

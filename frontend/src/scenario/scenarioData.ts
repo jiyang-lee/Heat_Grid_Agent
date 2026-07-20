@@ -2,8 +2,8 @@ import type { PriorityEvaluationResult } from '../api/contracts'
 import type { EvaluationCategory, ScenarioAlert, ScenarioTimelineAlert, SensorPoint, WorkOrderSection, WorkOrderVersion } from './types'
 
 export const ACTIVE_SCENARIO_ID = 'return-temperature-2020-01-13'
-export const SCENARIO_START_AT = '2020-01-13T12:00:00+09:00'
-export const SCENARIO_INCIDENT_AT = '2020-01-13T12:20:00+09:00'
+export const SCENARIO_START_AT = '2020-01-13T14:50:00+09:00'
+export const SCENARIO_INCIDENT_AT = '2020-01-13T15:10:00+09:00'
 
 export const SCENARIO_ALERTS: readonly ScenarioAlert[] = [
   {
@@ -74,7 +74,7 @@ export function scenarioAlertsAt(simulatedAt: string, resolvedAlertTimes: Readon
 const normalSeed = [
   [76.1, 41.5, 116], [76.8, 42.2, 122], [75.9, 41.6, 117], [75.2, 43.1, 112],
   [76.6, 41.7, 120], [76.1, 41.5, 118], [76.5, 42.6, 121], [75.8, 41.4, 117],
-  [75.7, 42.0, 113], [76.6, 42.5, 118], [75.0, 41.6, 116], [75.5, 40.8, 119],
+  [75.7, 42.0, 113], [76.6, 42.5, 118], [75.0, 41.6, 116], [75.5, 40.8, 119], [76.3, 41.9, 120],
 ] as const
 
 const faultProfiles: Readonly<Record<number, readonly (readonly [number, number, number])[]>> = {
@@ -83,8 +83,8 @@ const faultProfiles: Readonly<Record<number, readonly (readonly [number, number,
   29: [[84.6, 42.0, 118], [86.1, 41.8, 117], [82.9, 42.2, 120], [85.2, 41.6, 119]],
 }
 
-export function initialSensorPoints(mode: 'normal' | 'fault', substationId: number): readonly SensorPoint[] {
-  const end = new Date(mode === 'fault' ? SCENARIO_START_AT : '2020-01-13T12:30:00+09:00')
+export function initialSensorPoints(mode: 'normal' | 'fault', substationId: number, endAt?: string): readonly SensorPoint[] {
+  const end = new Date(endAt ?? (mode === 'fault' ? SCENARIO_START_AT : new Date().toISOString()))
   const offset = substationId % 3
   return normalSeed.map(([supply, returnTemperature, flow], index) => ({
     at: new Date(end.getTime() - (normalSeed.length - 1 - index) * 600_000).toISOString(),
@@ -98,8 +98,8 @@ export function initialSensorPoints(mode: 'normal' | 'fault', substationId: numb
 
 export function fallbackSensorPoint(mode: 'normal' | 'fault', substationId: number, incidentActive: boolean, sequence: number, previousAt: string): SensorPoint {
   const normalCycle = normalSeed[sequence % normalSeed.length] ?? normalSeed[0]
-  const profile = faultProfiles[substationId] ?? faultProfiles[28]
-  const selected = mode === 'fault' && incidentActive
+  const profile = faultProfiles[substationId]
+  const selected = mode === 'fault' && incidentActive && profile
     ? profile[sequence % profile.length] ?? profile[0]
     : normalCycle
   return {
@@ -107,7 +107,7 @@ export function fallbackSensorPoint(mode: 'normal' | 'fault', substationId: numb
     supply: selected[0],
     returnTemperature: selected[1],
     flow: selected[2],
-    quality: mode === 'fault' && incidentActive ? 'scenario-validated' : 'validated',
+    quality: mode === 'fault' && incidentActive && profile ? 'scenario-validated' : 'validated',
     sequence,
   }
 }

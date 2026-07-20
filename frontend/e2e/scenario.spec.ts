@@ -16,6 +16,16 @@ async function expectNoPageScroll(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight && document.body.scrollHeight <= window.innerHeight)).toBe(true)
 }
 
+function axisLabelsFromTopbar(timeText: string | null): readonly string[] {
+  const [hourText = '0', minuteText = '0'] = timeText?.split(':') ?? []
+  const roundedCurrent = Number(hourText) * 60 + Math.floor(Number(minuteText) / 10) * 10
+  return [-120, -90, -60, -10, 0, 60].map((offset) => {
+    const minutesInDay = 24 * 60
+    const total = (roundedCurrent + offset + minutesInDay) % minutesInDay
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+  })
+}
+
 async function waitForIncident(page: Page) {
   await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
@@ -55,6 +65,53 @@ test('entry and dashboard keep the viewport fixed with no Replay navigation', as
   await expectNoPageScroll(page)
 })
 
+test('normal mode renders sensor charts as empty two-hour axes', async ({ page }) => {
+  await page.addInitScript(`
+    const fixedNow = new Date('2026-07-20T14:43:00+09:00').valueOf()
+    const RealDate = Date
+    class FixedDate extends RealDate {
+      constructor(...args) {
+        if (args.length === 0) super(fixedNow)
+        else super(...args)
+      }
+      static now() {
+        return fixedNow
+      }
+    }
+    globalThis.Date = FixedDate
+  `)
+  await openEntry(page)
+  await page.locator('.map-fallback-marker').first().evaluate((element: HTMLButtonElement) => element.click())
+
+  const charts = page.locator('.sf-history-chart')
+  await expect(charts).toHaveCount(2)
+  await expect(charts.locator('polyline')).toHaveCount(0)
+  await expect(charts.locator('.sf-chart-point')).toHaveCount(0)
+  await expect(charts.locator('.sf-current-line')).toHaveCount(0)
+  await expect(charts.locator('.sf-x-label')).toHaveCount(12)
+  const topbarTime = await page.locator('.topbar-clock strong').textContent()
+  const firstChartLabels = await charts.first().locator('.sf-x-label').allTextContents()
+  expect(topbarTime).toBe('14:43')
+  expect(firstChartLabels).toEqual(['12:40', '13:10', '13:40', '14:30', '14:40', '15:40'])
+  expect(firstChartLabels).toEqual(axisLabelsFromTopbar(topbarTime))
+})
+
+test('sidebar brand mark remains visible after a theme change', async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('heatgrid:theme-preference', 'light'))
+  await page.goto('/?devtools=0')
+
+  const brandMark = page.locator('.brand-mark img')
+  await expect(brandMark).toBeVisible()
+  await expect(brandMark).toHaveAttribute('src', /heatgrid-mark/)
+
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await page.getByRole('tab', { name: '화면 및 알림' }).click()
+  await page.getByLabel('다크 모드').check()
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(brandMark).toBeVisible()
+})
+
 test('normal AI action entry opens the plan list without a selected detail', async ({ page }) => {
   await openEntry(page)
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
@@ -72,18 +129,112 @@ test('normal AI action entry opens the plan list without a selected detail', asy
   await expect(page.getByRole('heading', { name: '계획서 상세' })).toBeVisible()
 })
 
+test('security settings keep the action footer visible while the long body scrolls internally', async ({ page }) => {
+  await openEntry(page)
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await page.getByRole('tab', { name: '로그인 및 보안' }).click()
+
+  const view = page.locator('.settings-profile-view')
+  const body = page.locator('.settings-sec-card .sec-body')
+  const footer = page.locator('.settings-sec-card .profile-footer')
+  await expect.poll(async () => {
+    const [viewBox, footerBox] = await Promise.all([view.boundingBox(), footer.boundingBox()])
+    return viewBox != null && footerBox != null && footerBox.y >= viewBox.y && footerBox.y + footerBox.height <= viewBox.y + viewBox.height
+  }).toBe(true)
+  await expect.poll(() => body.evaluate((element) => getComputedStyle(element).overflowY === 'auto' && element.scrollHeight > element.clientHeight)).toBe(true)
+  await expect.poll(() => body.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+  const currentDevices = body.locator('.sec-section').first()
+  await expect(currentDevices.getByText('Windows Chrome', { exact: true })).toBeVisible()
+  await expect(currentDevices.getByText('현재 사용 중', { exact: true })).toBeVisible()
+})
+
+test('all settings tabs use the profile card frame with a visible action footer', async ({ page }) => {
+  await openEntry(page)
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+
+  for (const [tabName, bodySelector] of [
+    ['내 프로필', '.settings-profile-card .profile-body'],
+    ['화면 및 알림', '.settings-sn-card .settings-sn-content'],
+    ['로그인 및 보안', '.settings-sec-card .sec-body'],
+  ] as const) {
+    await page.getByRole('tab', { name: tabName }).click()
+    const view = page.locator('.settings-profile-view')
+    const tabbar = page.locator('.settings-tabbar')
+    const card = view.locator('> .ops-surface')
+    const body = page.locator(bodySelector)
+    const footer = card.locator('.profile-footer')
+    await expect(body).toBeVisible()
+    await expect.poll(async () => {
+      const [viewBox, tabbarBox, cardBox, footerBox] = await Promise.all([view.boundingBox(), tabbar.boundingBox(), card.boundingBox(), footer.boundingBox()])
+      return viewBox != null && tabbarBox != null && cardBox != null && footerBox != null
+        && tabbarBox.height >= 20
+        && tabbarBox.height <= 50
+        && Math.abs(cardBox.height - viewBox.height) < 1
+        && footerBox.y >= viewBox.y
+        && footerBox.y + footerBox.height <= viewBox.y + viewBox.height
+    }).toBe(true)
+  }
+})
+
+test('switching settings tabs always opens the new tab at its top', async ({ page }) => {
+  await openEntry(page)
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+
+  const profileBody = page.locator('.settings-profile-card .profile-body')
+  await profileBody.evaluate((element) => { element.scrollTop = element.scrollHeight })
+  await expect.poll(() => profileBody.evaluate((element) => element.scrollTop > 0)).toBe(true)
+
+  await page.getByRole('tab', { name: '화면 및 알림' }).click()
+  const screenBody = page.locator('.settings-sn-card .settings-sn-content')
+  await expect.poll(() => screenBody.evaluate((element) => element.scrollTop)).toBe(0)
+
+  await screenBody.evaluate((element) => { element.scrollTop = element.scrollHeight })
+  await expect.poll(() => screenBody.evaluate((element) => element.scrollTop > 0)).toBe(true)
+  await page.getByRole('tab', { name: '로그인 및 보안' }).click()
+  await expect.poll(() => page.locator('.settings-sec-card .sec-body').evaluate((element) => element.scrollTop)).toBe(0)
+})
+
 test('fault incident starts after five seconds and selects the matching sensor room', async ({ page }) => {
   await startFaultScenario(page)
   await expect(page.locator('.metric-grid-five > *')).toHaveCount(5)
   await waitForIncident(page)
+  const metrics = page.locator('.metric-grid-five .home-metric')
+  await expect(metrics.filter({ hasText: '긴급' })).toContainText('2')
+  await expect(metrics.filter({ hasText: '주의' })).toContainText('1')
+  await expect(metrics.filter({ hasText: '관찰' })).toContainText('0')
+  await expect(metrics.filter({ hasText: '정상' })).toContainText('28')
+  await expect(page.locator('.map-fallback-marker.status-low')).toHaveCount(28)
   await expect(page.getByRole('status', { name: '우선순위 1 경보' })).toBeVisible()
   await expect(page.getByRole('status', { name: '우선순위 1 경보' })).toContainText('범지기마을')
   await expect(page.getByText('urgent', { exact: true }).first()).toBeVisible()
   await expect(page.locator('.sensor-tile.sf-return')).toHaveCount(0)
   await dismissIncidentToasts(page)
+  const toMinutes = (value: string | null) => {
+    const [hours = '0', minutes = '0'] = value?.split(':') ?? []
+    return Number(hours) * 60 + Number(minutes)
+  }
+  await expect.poll(async () => toMinutes(await page.locator('.topbar-clock strong').textContent())).toBeGreaterThanOrEqual(15 * 60 + 20)
+  const timeBeforeAlertSelection = await page.locator('.topbar-clock strong').textContent()
 
   await page.getByRole('button', { name: /열교환기 외부 누수 의심/ }).click()
+  await page.waitForTimeout(100)
+  const timeAfterAlertSelection = await page.locator('.topbar-clock strong').textContent()
+  expect(timeAfterAlertSelection).toBe(timeBeforeAlertSelection)
   await expect(page.locator('.sensor-flow').getByText(/기계실 31/)).toBeVisible()
+  await expect(page.locator('.sf-data-status')).toHaveCount(0)
+  await expect(page.locator('.sf-history-chart polyline')).toHaveCount(3)
+  await expect(page.locator('.sf-history-chart .sf-chart-point')).toHaveCount(39)
+  await expect(page.locator('.sf-chart-legend')).toHaveCount(2)
+  await page.locator('.map-fallback-marker').evaluateAll((markers) => {
+    const marker = markers.find((element) => element.textContent?.trim() === '1') as HTMLButtonElement | undefined
+    marker?.click()
+  })
+  await page.waitForTimeout(100)
+  const timeAfterRoomSelection = await page.locator('.topbar-clock strong').textContent()
+  expect(timeAfterRoomSelection).toBe(timeAfterAlertSelection)
+  await expect(page.locator('.sensor-flow').getByText(/기계실 1/)).toBeVisible()
+  await expect(page.locator('.sf-current-value')).toContainText(['76.1', '41.5', '116.0'])
+  await expect.poll(() => page.locator('.sf-current-value').allTextContents()).not.toContain('34.1')
   await expectNoPageScroll(page)
 })
 
@@ -128,29 +279,53 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expectNoPageScroll(page)
 })
 
-test('refresh keeps the current page and clears resolved alerts', async ({ page }, testInfo) => {
+test('refresh resets the fault scenario and returns to the initial dashboard', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-375', '새로고침 버튼은 모바일 레이아웃에서 숨김')
   await startFaultScenario(page)
   await waitForIncident(page)
   await page.getByRole('status', { name: '우선순위 1 경보' }).getByRole('button', { name: '알림 상세 열기' }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
 
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: '종결', exact: true }).click()
-  await expect(page.getByText('종결', { exact: true }).first()).toBeVisible()
-  const frozenChart = page.locator('.scenario-evidence-line')
-  const frozenPoints = await frozenChart.getAttribute('points')
-  await page.waitForTimeout(5_500)
-  await expect(frozenChart).toHaveAttribute('points', frozenPoints ?? '')
-
   const refreshButton = page.getByRole('button', { name: '새로고침', exact: true })
   await refreshButton.click()
   await expect(refreshButton).not.toBeFocused()
-  await expect(page.locator('.topbar-page-context')).toContainText('알림')
-  await expect(page.locator('.topbar-clock strong')).toHaveText('12:00')
-  await expect(page.getByRole('combobox', { name: '표시 범위' })).toHaveValue('active')
-  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
-  await expect(page.getByText('종결', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.topbar-page-context')).toContainText('홈')
+  await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
+  await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
+  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toHaveCount(0)
+})
+
+test('fault-mode work-order tab keeps the scenario document workspace after navigation', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify({
+      mode: 'fault',
+      entryStep: 'console',
+      scenarioId: 'return-temperature-2020-01-13',
+      selectedAlertId: 'scenario-alert-pump-28',
+      selectedSubstationId: 28,
+      incidentState: 'incident-active',
+      analyzedAlertIds: ['scenario-alert-pump-28'],
+      dismissedIncidentAlertIds: [],
+      resolvedAlertTimes: {},
+      alertSensorSnapshots: {},
+      documentAlertId: 'scenario-alert-pump-28',
+      workOrders: [{ version: 1, createdAt: '2020-01-13T15:10:00+09:00', changeSummary: 'AI 초안 생성', content: '초기 작업지시서' }],
+      selectedWorkOrderVersion: 1,
+      acceptedWorkOrderVersion: null,
+      workOrderRerunCount: 0,
+      messages: [],
+      evaluationCategory: null,
+      report: { status: 'idle', createdAt: null, savedAt: null, completedAt: null, content: '' },
+      reportMessages: [],
+    }))
+  })
+  await page.goto('/?devtools=0')
+  await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
+  await page.getByRole('tab', { name: '작업지시서' }).click()
+
+  await expect(page.locator('.scenario-order-layout')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'AI 수정 챗봇' })).toBeVisible()
 })
 
 test('incident document flow supports edits, two AI reruns, adoption, report completion and PDF names', async ({ page }, testInfo) => {

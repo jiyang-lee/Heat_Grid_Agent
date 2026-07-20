@@ -124,7 +124,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         title="MAP"
       >
         <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
-          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
+          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} missingStatus={faultMode ? 'low' : 'missing'} onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
           <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
         </div>
         </SurfaceCard>
@@ -133,10 +133,10 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         {!faultMode && <ApiState empty={openAlerts.length === 0} error={alerts.isError} loading={alerts.isLoading} retry={() => void alerts.refetch()} />}
         {faultMode && !incidentActive && <div className="home-alert-empty"><Icon name="shield" /><div><strong>현재 주요 알림 없음</strong><span>모든 설비를 정상 모니터링 중입니다.</span></div></div>}
         {faultMode && incidentActive ? scenario.alerts.map((alert) => (
-          <button aria-pressed={selectedGraphSubstationId === alert.substationId} className={`home-alert-row ${selectedGraphSubstationId === alert.substationId ? 'selected' : ''}`.trim()} key={alert.id} onClick={() => { setSelectedGraphSubstationId(alert.substationId); scenario.selectAlert(alert.id); operations.selectAsset(alert.substationId) }} type="button">
+          <button aria-pressed={selectedGraphSubstationId === alert.substationId} className={`home-alert-row ${selectedGraphSubstationId === alert.substationId ? 'selected' : ''}`.trim()} key={alert.id} onClick={() => { setSelectedGraphSubstationId(alert.substationId); scenario.selectAlert(alert.id); scenario.selectSubstation(alert.substationId); operations.selectAsset(alert.substationId) }} type="button">
             <span className={`alert-symbol tone-${alert.priority === 'urgent' ? 'critical' : 'warning'}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span>
             <div><strong>{complexById.get(alert.substationId)?.name ?? `기계실 ${alert.substationId}`}</strong><small>기계실 {alert.substationId} · {alert.title}</small></div>
-            <div className="home-alert-side"><StatusBadge tone={alert.priority === 'urgent' ? 'critical' : 'warning'}>{alert.priority}</StatusBadge><span className="ack-deadline">anomaly 사건</span></div>
+            <div className="home-alert-side"><StatusBadge tone={alert.priority === 'urgent' ? 'critical' : 'warning'}>{alert.priority}</StatusBadge></div>
           </button>
         )) : !faultMode && (() => {
           return shownAlerts.map((alert: AlertSummary) => {
@@ -164,7 +164,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         return <aside aria-label={`우선순위 ${rank} 경보`} className="scenario-incident-toast" key={alert.id} role="status">
           <header><div><StatusBadge tone={tone}>우선순위 {rank} · {alert.priority}</StatusBadge><strong>{alert.title}</strong></div><button aria-label={`우선순위 ${rank} 경보 닫기`} onClick={() => dismissIncidentToast(alert.id)} type="button"><Icon name="x" /></button></header>
           <div className="scenario-incident-location"><span>{complex?.village ?? '세종시'} · {complex?.name ?? `기계실 ${alert.substationId}`}</span><strong>{alert.facility}</strong></div>
-          <footer><span>백엔드 anomaly 사건 감지</span><div><button onClick={() => dismissIncidentToast(alert.id)} type="button">나중에 보기</button><button onClick={() => { scenario.selectAlert(alert.id); operations.selectAsset(alert.substationId); dismissIncidentToast(alert.id); onOpenAlerts(alert.id) }} type="button">알림 상세 열기 <Icon name="arrow" /></button></div></footer>
+          <footer><div><button onClick={() => dismissIncidentToast(alert.id)} type="button">나중에 보기</button><button onClick={() => { scenario.selectAlert(alert.id); operations.selectAsset(alert.substationId); dismissIncidentToast(alert.id); onOpenAlerts(alert.id) }} type="button">알림 상세 열기 <Icon name="arrow" /></button></div></footer>
         </aside>
       })}
     </div>}

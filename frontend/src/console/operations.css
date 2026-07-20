@@ -20,7 +20,8 @@
 .ops-app-shell { display: flex; min-height: 100vh; background: var(--ops-canvas); color: var(--ops-text); }
 .ops-sidebar { position: fixed; z-index: 20; display: flex; flex-direction: column; width: 326px; min-height: 100vh; background: var(--ops-surface); border-right: 1px solid var(--ops-border); }
 .ops-brand { display: flex; align-items: center; gap: var(--space-3); height: 72px; padding: 0 var(--space-5); font-size: 24px; white-space: nowrap; }
-.brand-drop { flex: 0 0 auto; width: 30px; height: 30px; color: var(--ops-primary); }
+.brand-mark { display: grid; flex: 0 0 auto; width: 44px; height: 44px; overflow: hidden; border-radius: 10px; }
+.brand-mark img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
 .brand-text strong { display: block; color: var(--ops-primary); font-size: 27px; font-weight: 800; letter-spacing: -0.02em; }
 .brand-text small { display: block; margin-top: 2px; color: var(--ops-text-muted); font-size: 15px; }
 .ops-navigation { display: grid; gap: 19px; padding: var(--space-5) var(--space-3); }
@@ -146,7 +147,7 @@
 .home-alert-side .status-badge { min-height: 22px; padding: 1px 8px; border: 1px solid currentColor; border-radius: 6px; }
 .home-alert-side .ack-deadline { min-width: 68px; color: var(--ops-text-muted); font-size: 15px; text-align: right; white-space: nowrap; }
 
-.sensor-flow { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.sensor-flow { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
 .home-grid > .sensor-flow { min-width: 0; }
 .home-grid > .sensor-flow .sf-charts { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); min-height: 0; }
 .sensor-flow .surface-heading h2 { display: grid; gap: 2px; }
@@ -215,7 +216,7 @@
 
 @media (max-width: 1180px) { .sf-charts { grid-template-columns: 1fr; } }
 @media (max-width: 1060px) { .home-grid { grid-template-columns: 1fr; }.home-left { grid-template-rows: auto; }.sensor-tiles { grid-template-columns: 1fr; }.sf-right { width: 100%; margin-left: 0; }.sf-source-note { align-items: flex-start; flex-wrap: wrap; }.sf-source-note span + span { margin-left: 0; }.topbar-clock span { display: none; } }
-@media (max-width: 1060px) { .sf-y-unit-desktop { display: none; }.sf-y-unit-compact { display: block; } }
+@media (max-width: 1060px) { .sf-y-unit-desktop { display: none; }.sf-y-unit-compact { display: block; }.sf-y-label, .sf-x-label { font-size: 30px; } }
 @media (max-width: 720px) { .sensor-tile footer { flex-direction: column; }.sf-head, .sf-right { align-items: flex-start; flex-direction: column; }.sf-divider { display: none; }.sf-sub { white-space: normal; }.sf-received { padding-left: 0; border-left: 0; }.sf-received, .sf-source-note code { display: none; }.refresh-button, .topbar-clock { display: none; } }
 
 /* ===== v3-02 운영자 검토·정책 후보 UI ===== */
@@ -573,13 +574,13 @@
 .scenario-order-body dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); margin: var(--space-4) 0; }
 .scenario-order-body dl div { padding: var(--space-3); border-radius: 8px; background: var(--ops-surface-muted); }
 .scenario-order-body dt { color: var(--ops-text-muted); font-size: 11px; }
-.scenario-order-body dd { margin: 4px 0 0; font-weight: 700; }
+.scenario-order-body dd { margin: 4px 0 0; font-weight: 700; word-break: keep-all; }
 .scenario-order-body ol { display: grid; gap: var(--space-2); margin: 0; padding-left: var(--space-5); line-height: 1.6; }
 .scenario-chat { display: grid; }
 .scenario-chat-source { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--ops-border); background: var(--ops-surface-muted); }
-.scenario-chat-source span { color: var(--ops-text-muted); font-size: 12px; line-height: 1.5; }
+.scenario-chat-source span { color: var(--ops-text-muted); font-size: 12px; line-height: 1.5; word-break: keep-all; }
 .scenario-chat-messages { display: grid; gap: var(--space-2); min-height: 180px; max-height: 330px; overflow-y: auto; padding: var(--space-4); }
-.scenario-chat-messages > p { color: var(--ops-text-muted); font-size: 13px; line-height: 1.6; }
+.scenario-chat-messages > p { color: var(--ops-text-muted); font-size: 13px; line-height: 1.6; word-break: keep-all; }
 .scenario-chat-messages article { display: grid; max-width: 88%; gap: 3px; padding: var(--space-3); border-radius: 10px; background: var(--ops-surface-muted); }
 .scenario-chat-messages article.operator { justify-self: end; color: var(--ops-text); background: var(--ops-primary-soft); }
 .scenario-chat-messages article.system { border: 1px solid color-mix(in srgb, var(--ops-success) 30%, var(--ops-border)); background: color-mix(in srgb, var(--ops-success) 7%, var(--ops-surface)); }
@@ -587,7 +588,7 @@
 .scenario-chat-messages article span { font-size: 13px; line-height: 1.55; word-break: keep-all; }
 .scenario-chat-input { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--ops-border); }
 .scenario-chat-input label { grid-column: 1 / -1; color: var(--ops-text-muted); font-size: 12px; font-weight: 700; }
-.scenario-chat-input textarea { min-height: 78px; padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 7px; outline-color: var(--ops-primary); color: var(--ops-text); background: var(--ops-surface); font: inherit; line-height: 1.5; resize: vertical; }
+.scenario-chat-input textarea { min-height: 78px; padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 7px; outline-color: var(--ops-primary); color: var(--ops-text); background: var(--ops-surface); font: inherit; line-height: 1.5; resize: vertical; word-break: keep-all; }
 .scenario-chat-input button { align-self: end; }
 .scenario-proposal, .scenario-evaluation { margin: var(--space-3); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--ops-warning) 34%, var(--ops-border)); border-radius: 10px; background: color-mix(in srgb, var(--ops-warning) 6%, var(--ops-surface)); }
 .scenario-proposal header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
@@ -676,9 +677,9 @@
 
 /* 내 프로필 탭 — 좌측 프로필 카드 + 우측 폼(기본 정보/개인 환경) + 하단 액션 바 */
 .settings-profile-view { min-height: 0; overflow: auto; }
-/* 내 프로필 카드 높이를 화면 및 알림 카드와 동일하게 맞춤(본문이 늘어나고 하단 버튼은 바닥에 고정). */
-.settings-profile-card { display: flex; flex-direction: column; min-height: 670px; }
-.settings-profile-card .profile-body { flex: 1; }
+/* 세 탭은 같은 카드 프레임을 쓰고, 긴 본문만 내부에서 스크롤한다. */
+.settings-profile-card, .settings-sn-card, .settings-sec-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.settings-profile-card .profile-body, .settings-sn-content, .settings-sec-card .sec-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .profile-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: var(--space-4) 1cm; padding: var(--space-4); }
 .profile-side { display: grid; align-content: start; justify-items: center; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--ops-border); border-radius: 12px; background: var(--ops-surface-muted); text-align: center; }
 .profile-avatar-lg { display: grid; place-items: center; width: 92px; height: 92px; margin-bottom: var(--space-1); border: 1px solid var(--ops-border); border-radius: 99px; color: var(--ops-text-muted); background: var(--ops-surface); }
@@ -750,13 +751,13 @@
 }
 
 /* 로그인 및 보안 탭 — 보안 설정 박스 + 로그인 기기/기록 테이블 + 보안 작업 경고 + 하단 액션 */
-.sec-body { display: grid; gap: var(--space-4); padding: var(--space-4); }
+.sec-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); padding: var(--space-4); }
 .sec-body h3 { margin: 0; color: var(--ops-text); font-size: 17px; }
-.sec-card { display: grid; padding: 0 var(--space-4); border: 1px solid var(--ops-border); border-radius: 10px; }
+.sec-card { display: grid; min-width: 0; box-sizing: border-box; padding: 0 var(--space-4); border: 1px solid var(--ops-border); border-radius: 10px; }
 .sec-card > h3 { padding: var(--space-3) 0; }
 .sec-card .sn-row { padding: var(--space-3) 0; border-top: 1px solid var(--ops-border); }
-.sec-section { display: grid; gap: var(--space-3); }
-.sec-table { width: 100%; border-collapse: collapse; }
+.sec-section { display: grid; min-width: 0; gap: var(--space-3); }
+.sec-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .sec-table th { padding: var(--space-2) var(--space-3); color: var(--ops-text-muted); font-size: 13px; font-weight: 600; text-align: left; border-bottom: 1px solid var(--ops-border); }
 .sec-table td { padding: var(--space-3); color: var(--ops-text); font-size: 14px; border-top: 1px solid var(--ops-border); }
 .sec-table tbody tr:first-child td { border-top: 0; }
@@ -770,7 +771,25 @@
 .sec-alert-info strong svg { width: 17px; height: 17px; }
 .sec-alert-info span { color: var(--ops-text-muted); font-size: 13px; }
 .sec-alert-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-@media (max-width: 760px) { .sec-alert { flex-direction: column; align-items: stretch; } }
+@media (max-width: 960px) {
+  .sec-alert { flex-direction: column; align-items: stretch; }
+  .sec-table th:nth-child(2), .sec-table td:nth-child(2) { display: none; }
+  .sec-history-table th:nth-child(4), .sec-history-table td:nth-child(4) { display: none; }
+  .sec-table th, .sec-table td { padding-inline: var(--space-2); overflow-wrap: anywhere; }
+}
+@media (max-width: 760px) {
+  .mode-cards { grid-template-columns: 1fr; }
+  .mode-card { grid-template-columns: 28px minmax(0, 1fr); justify-items: start; align-items: center; padding: var(--space-3); }
+  .mode-card > svg { width: 24px; height: 24px; }
+  .sec-card .sn-row select { width: 165px; }
+  .sec-table th:first-child, .sec-table td:first-child { width: 44%; white-space: nowrap; }
+  .sec-table th:nth-child(3), .sec-table td:nth-child(3) { width: 25%; }
+  .sec-table th:nth-child(4), .sec-table td:nth-child(4) { width: 31%; }
+  .sec-table td { overflow-wrap: normal; }
+  .sec-current-table td:nth-child(3) { white-space: nowrap; }
+  .sec-device { white-space: nowrap; font-size: 13.67px; }
+  .sec-table .status-badge { padding-inline: 6px; }
+}
 
 /* ===== 설정 페이지 글자 크기 스케일 (기준 대비 +0.5pt ≈ +0.67px) =====
    설정 화면 전반의 글자 크기를 한곳에서 조정한다. 더 키우려면 아래 값들만 바꾸면 된다.
@@ -817,8 +836,10 @@
 .access-side time { color: var(--ops-text-muted); font-size: 14px; }
 
 .settings-admin-entry { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--ops-border); border-radius: var(--radius-lg); background: var(--ops-surface); }
+.settings-admin-entry > div { display: grid; gap: var(--space-1); }
 .settings-admin-entry h3, .settings-admin-entry p { margin: 0; }
-.settings-admin-entry p { margin-top: var(--space-1); color: var(--ops-text-muted); }
+.settings-admin-entry p { margin-top: var(--space-1); color: var(--ops-text-muted); word-break: keep-all; }
+.sec-alert-info span { word-break: keep-all; }
 .admin-summary-grid, .admin-policy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
 .admin-summary { padding: var(--space-4); border: 1px solid var(--ops-border); border-radius: var(--radius-md); background: var(--ops-surface); }
 .admin-summary span, .admin-policy-grid label, .report-detail-grid dt { color: var(--ops-text-muted); font-size: 13px; }
@@ -845,8 +866,7 @@
 .report-correction { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 .report-correction > div { display: flex; gap: var(--space-2); }
 .admin-policy-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); grid-column: 1 / -1; }
-.sf-data-status { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); color: var(--ops-text-muted); font-size: 12px; }
-.scenario-incident-toast footer > div { display: flex; gap: var(--space-2); }
+.scenario-incident-toast footer > div { display: flex; gap: var(--space-2); margin-left: auto; }
 
 @media (max-width: 960px) {
   .admin-summary-grid, .admin-policy-grid, .reports-record-layout { grid-template-columns: 1fr; }

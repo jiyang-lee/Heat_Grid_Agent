@@ -49,7 +49,7 @@ Base unit: 4px. Use `--space-1` through `--space-8` (4–32px). Desktop uses a 2
 ## 5. Components
 
 ### AppShell
-- Structure: sidebar, topbar, page main.
+- Structure: sidebar, topbar, page main. Sidebar branding uses the supplied transparent heating-network mark across both application themes.
 - States: selected nav, compact navigation, mobile drawer.
 - Accessibility: `nav` landmark, active view uses `aria-current`.
 

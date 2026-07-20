@@ -51,7 +51,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .home-alert-side { min-width: 64px; }
 .home-alert-side .status-badge { font-size: 11px; }
 .home-alert-side .ack-deadline { min-width: auto; font-size: 11px; }
-.sensor-flow { display: grid; grid-template-rows: auto 48px minmax(0, 1fr); }
+.sensor-flow { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .sensor-flow .surface-heading h2 { font-size: 22px; }
 .sensor-flow > :not(.surface-heading) { min-height: 0; }
 .sensor-flow > .sensor-tiles, .sensor-flow > .sf-charts { min-height: 0; }
@@ -186,7 +186,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-order-body dl div { padding: var(--space-2); }
 .scenario-lead-time { white-space: nowrap; }
 .scenario-chat-messages > p { word-break: keep-all; }
-.settings-page { align-content: start; grid-template-rows: auto minmax(0, 1fr); }
+.settings-page { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
 .settings-layout { min-height: 0; overflow: auto; padding-bottom: var(--space-3); }
 .settings-tabbar { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); }
 .settings-tabbar .activity-tabs { flex: 1; }
@@ -335,7 +335,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   .ops-app-shell.collapsed .ops-content-shell { width: 100%; margin-left: 0; }
   .ops-app-shell.collapsed .ops-sidebar { width: 100%; }
   .ops-brand, .sidebar-bottom { display: none; }
-  .ops-navigation { grid-template-columns: repeat(4, 1fr); gap: 0; height: 56px; padding: 4px var(--space-2); }
+  .ops-navigation { grid-template-columns: repeat(5, 1fr); gap: 0; height: 56px; padding: 4px var(--space-2); }
   .ops-navigation button { justify-content: center; min-height: 48px; padding: 0; border-radius: 7px; }
   .ops-navigation button span { display: none; }
   .ops-navigation button svg { width: 20px; height: 20px; }
