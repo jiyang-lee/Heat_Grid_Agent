@@ -1,4 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useConfirmDialog } from '../console/ConfirmDialog'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { downloadDocumentPdf, safeFilePart } from './documentPdf'
 import { ScenarioReportRail } from './ScenarioReportRail'
@@ -29,11 +30,12 @@ export function ScenarioReportWorkspace({ activeGroupId, alert, groups, messages
   const [draft, setDraft] = useState(report.content)
   const [message, setMessage] = useState('')
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   useEffect(() => setDraft(report.content), [report.content])
 
   const reportRail = <SurfaceCard className="scenario-version-rail-card" title="보고서 목록"><ScenarioReportRail activeGroupId={activeGroupId} groups={groups} onSelect={onSelectDocumentGroup} /></SurfaceCard>
-  if (!order) return <div className="scenario-report-list-layout">{reportRail}<SurfaceCard title="보고서 상세"><div className="scenario-report-empty"><StatusBadge tone="neutral">작업지시서 채택 대기</StatusBadge><p>작업지시서 v1-v3 중 하나를 최종 채택한 뒤 보고서를 생성할 수 있습니다.</p><Button icon="arrow" onClick={onOpenWorkOrders}>작업지시서에서 버전 채택하기</Button></div></SurfaceCard></div>
-  if (report.status === 'idle') return <div className="scenario-report-list-layout">{reportRail}<SurfaceCard title="보고서 상세"><div className="scenario-report-empty"><StatusBadge tone="neutral">보고서 미생성</StatusBadge><p>최종 채택한 작업지시서 v{order.version}을 기준으로 공문서형 보고서 초안을 생성합니다.</p><Button icon="document" onClick={onCreateDraft} tone="primary">보고서 생성</Button></div></SurfaceCard></div>
+  if (!order) return <>{confirmDialog}<div className="scenario-report-list-layout">{reportRail}<SurfaceCard title="보고서 상세"><div className="scenario-report-empty"><StatusBadge tone="neutral">작업지시서 채택 대기</StatusBadge><p>작업지시서 v1-v3 중 하나를 최종 채택한 뒤 보고서를 생성할 수 있습니다.</p><Button icon="arrow" onClick={onOpenWorkOrders}>작업지시서에서 버전 채택하기</Button></div></SurfaceCard></div></>
+  if (report.status === 'idle') return <>{confirmDialog}<div className="scenario-report-list-layout">{reportRail}<SurfaceCard title="보고서 상세"><div className="scenario-report-empty"><StatusBadge tone="neutral">보고서 미생성</StatusBadge><p>최종 채택한 작업지시서 v{order.version}을 기준으로 공문서형 보고서 초안을 생성합니다.</p><Button icon="document" onClick={onCreateDraft} tone="primary">보고서 생성</Button></div></SurfaceCard></div></>
 
   const title = `${alert.title} ${alert.facility} 조치 결과 보고서`
   const sendMessage = () => {
@@ -47,8 +49,8 @@ export function ScenarioReportWorkspace({ activeGroupId, alert, groups, messages
     event.preventDefault()
     void sendMessage()
   }
-  const complete = () => {
-    if (!window.confirm('현재 보고서 본문을 완료 처리할까요?\n완료 후에는 PDF 저장만 가능합니다.')) return
+  const complete = async () => {
+    if (!await confirm('현재 보고서 본문을 완료 처리할까요?\n완료 후에는 PDF 저장만 가능합니다.')) return
     onSave(draft)
     onComplete()
   }
@@ -67,7 +69,9 @@ export function ScenarioReportWorkspace({ activeGroupId, alert, groups, messages
     }
   }
 
-  return <div className="scenario-report-list-layout">
+  return <>
+  {confirmDialog}
+  <div className="scenario-report-list-layout">
     {reportRail}
     <div className="scenario-document-workspace scenario-report-workspace">
     <SurfaceCard action={<StatusBadge tone={report.status === 'completed' ? 'success' : 'notice'}>{report.status === 'completed' ? '완료' : '초안'}</StatusBadge>} className="scenario-report-card" title="보고서 상세">
@@ -77,7 +81,7 @@ export function ScenarioReportWorkspace({ activeGroupId, alert, groups, messages
         {report.status === 'draft' ? <textarea aria-label="보고서 본문 편집" className="scenario-document-editor scenario-report-editor" onChange={(event) => setDraft(event.target.value)} value={draft} /> : <pre className="scenario-document-content scenario-report-content">{report.content}</pre>}
         {downloadState === 'error' && <p className="scenario-document-error" role="alert">PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
         <footer className="scenario-report-actions">
-          {report.status === 'draft' && <><Button icon="document" onClick={() => onSave(draft)}>임시 저장</Button><Button icon="check" onClick={complete} tone="primary">완료</Button></>}
+          {report.status === 'draft' && <><Button icon="document" onClick={() => onSave(draft)}>임시 저장</Button><Button icon="check" onClick={() => void complete()} tone="primary">완료</Button></>}
           <Button disabled={report.status !== 'completed' || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 저장'}</Button>
           {report.savedAt && <span>마지막 저장 {new Date(report.savedAt).toLocaleString('ko-KR')}</span>}
         </footer>
@@ -93,4 +97,5 @@ export function ScenarioReportWorkspace({ activeGroupId, alert, groups, messages
     </SurfaceCard>
     </div>
   </div>
+  </>
 }

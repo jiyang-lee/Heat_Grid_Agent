@@ -393,7 +393,7 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   }, [state])
 
   useEffect(() => {
-    const ended = alertHistory.filter((alert) => (alert.status === 'resolved' || alert.status === 'expired') && state.alertSensorSnapshots[alert.id] == null)
+    const ended = alertHistory.filter((alert) => alert.status === 'resolved' && state.alertSensorSnapshots[alert.id] == null)
     if (ended.length === 0 || sensor.state.points.length === 0) return
     setState((current) => ({
       ...current,
@@ -527,7 +527,17 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     return syncActiveDocumentGroup({ ...current, report: reportState('draft', reportContent(alertFor(current.documentAlertId ?? current.selectedAlertId), order)) })
   }), [])
   const saveReportDraft = useCallback((content: string) => setState((current) => current.report.status !== 'draft' ? current : syncActiveDocumentGroup({ ...current, report: { ...current.report, content, savedAt: new Date().toISOString() } })), [])
-  const completeReport = useCallback(() => setState((current) => current.report.status !== 'draft' ? current : syncActiveDocumentGroup({ ...current, report: { ...current.report, status: 'completed', savedAt: current.report.savedAt ?? new Date().toISOString(), completedAt: new Date().toISOString() } })), [])
+  const completeReport = useCallback(() => setState((current) => {
+    if (current.report.status !== 'draft') return current
+    const alertId = current.documentAlertId ?? current.selectedAlertId
+    const next = syncActiveDocumentGroup({ ...current, report: { ...current.report, status: 'completed', savedAt: current.report.savedAt ?? new Date().toISOString(), completedAt: new Date().toISOString() } })
+    return {
+      ...next,
+      resolvedAlertTimes: next.resolvedAlertTimes[alertId] ? next.resolvedAlertTimes : { ...next.resolvedAlertTimes, [alertId]: sensor.state.simulatedAt },
+      alertSensorSnapshots: next.alertSensorSnapshots[alertId] ? next.alertSensorSnapshots : { ...next.alertSensorSnapshots, [alertId]: [...sensor.state.points] },
+      dismissedIncidentAlertIds: next.dismissedIncidentAlertIds.includes(alertId) ? next.dismissedIncidentAlertIds : [...next.dismissedIncidentAlertIds, alertId],
+    }
+  }), [sensor.state.points, sensor.state.simulatedAt])
   const postReportMessage = useCallback((content: string) => {
     const trimmed = content.trim()
     if (!trimmed) return

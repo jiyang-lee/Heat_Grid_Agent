@@ -46,7 +46,7 @@ export interface ScenarioAlert {
   readonly detectedAt: string
 }
 
-export type ScenarioAlertStatus = 'active' | 'expired' | 'resolved'
+export type ScenarioAlertStatus = 'active' | 'resolved'
 
 export interface ScenarioTimelineAlert extends ScenarioAlert {
   readonly status: ScenarioAlertStatus

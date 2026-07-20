@@ -22,13 +22,13 @@ export function SurfaceCard({ title, action, children, className = '' }: Surface
 interface MetricCardProps {
   readonly label: string
   readonly value: string
-  readonly hint: string
+  readonly hint?: string
   readonly icon: IconName
   readonly tone?: Tone
 }
 
 export function MetricCard({ label, value, hint, icon, tone = 'primary' }: MetricCardProps) {
-  return <article className="metric-card"><div className={`metric-icon tone-${tone}`}><Icon name={icon} /></div><div><p>{label}</p><strong>{value}</strong><span>{hint}</span></div></article>
+  return <article className="metric-card"><div className={`metric-icon tone-${tone}`}><Icon name={icon} /></div><div><p>{label}</p><strong>{value}</strong>{hint != null && <span>{hint}</span>}</div></article>
 }
 
 interface HomeMetricProps {

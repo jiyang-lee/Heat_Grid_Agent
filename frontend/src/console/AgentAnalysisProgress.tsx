@@ -13,6 +13,17 @@ export interface AgentAnalysisQueueEntry {
 interface RunProgress {
   readonly status: AgentRunStatus
   readonly error: string | null
+  readonly elapsedMs: number
+}
+
+const TERMINAL_STATUSES: readonly AgentRunStatus[] = ['completed', 'failed', 'cancelled']
+
+function formatElapsed(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.round(elapsedMs / 1000))
+  if (totalSeconds < 60) return `${totalSeconds}초`
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}분 ${seconds}초`
 }
 
 interface Props {
@@ -60,7 +71,13 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
           return [runId, { status: 'failed' as const, error: '작업 상태를 불러오지 못했습니다.' }] as const
         }
       }))
-      if (!disposed) setProgress(Object.fromEntries(snapshots))
+      if (!disposed) setProgress((current) => Object.fromEntries(snapshots.map(([runId, snap]) => {
+        const previous = current[runId]
+        const requestedAt = entries.find((entry) => entry.runId === runId)?.requestedAt
+        const frozen = previous && TERMINAL_STATUSES.includes(previous.status)
+        const elapsedMs = frozen ? previous.elapsedMs : requestedAt ? Date.now() - Date.parse(requestedAt) : 0
+        return [runId, { status: snap.status, error: snap.error, elapsedMs }]
+      })))
       refreshing = false
     }
 
@@ -86,7 +103,7 @@ export function AgentAnalysisProgress({ entries, onRemoveEntries, onOpen }: Prop
   const progress = useQueueProgress(entries)
   const items = entries.map((entry) => ({
     ...entry,
-    progress: progress[entry.runId] ?? { status: 'queued' as const, error: null },
+    progress: progress[entry.runId] ?? { status: 'queued' as const, error: null, elapsedMs: Date.now() - Date.parse(entry.requestedAt) },
   }))
   const active = items.filter((item) => item.progress.status === 'queued' || item.progress.status === 'running')
   const completed = items.filter((item) => item.progress.status === 'completed')
@@ -132,7 +149,7 @@ export function AgentAnalysisProgress({ entries, onRemoveEntries, onOpen }: Prop
       </header>
       <ul>
         {items.map((item) => <li key={item.runId}>
-          <div><strong>{item.label}</strong><span>{cancelErrors[item.runId] ?? item.progress.error ?? statusLabel(item.progress.status)}</span></div>
+          <div><strong>{item.label}</strong><span>{cancelErrors[item.runId] ?? item.progress.error ?? `${statusLabel(item.progress.status)} · ${formatElapsed(item.progress.elapsedMs)}`}</span></div>
           <div className="scenario-analysis-progress-actions"><StatusBadge tone={statusTone(item.progress.status)}>{statusLabel(item.progress.status)}</StatusBadge>{item.progress.status === 'queued' && <button className="scenario-analysis-cancel" disabled={cancellingRunIds.includes(item.runId)} onClick={() => void cancelQueuedRun(item.runId)} type="button">{cancellingRunIds.includes(item.runId) ? '취소 중' : '대기 취소'}</button>}<Button icon="arrow" onClick={() => onOpen(item.runId)} tone="ghost">{item.progress.status === 'completed' ? '결과 보기' : '진행 보기'}</Button></div>
         </li>)}
       </ul>

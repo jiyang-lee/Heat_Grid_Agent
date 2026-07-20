@@ -54,10 +54,9 @@ function roundedLeadTime(hours: number): number {
 function alertWithElapsedTime(alert: ScenarioAlert, simulatedAt: string, resolvedAt: string | null): ScenarioTimelineAlert {
   const elapsedHours = Math.max(0, (Date.parse(simulatedAt) - Date.parse(alert.detectedAt)) / 3_600_000)
   const leadTimeHours = roundedLeadTime(Math.max(0, alert.leadTimeHours - elapsedHours))
-  const expiredAt = new Date(Date.parse(alert.detectedAt) + alert.leadTimeHours * 3_600_000).toISOString()
-  const status = resolvedAt != null ? 'resolved' : leadTimeHours === 0 ? 'expired' : 'active'
+  const status = resolvedAt != null ? 'resolved' : 'active'
   const evidence = alert.evidence.map((item, index) => index === 1 ? `예상 출동 리드타임 ${leadTimeHours}시간` : item)
-  return { ...alert, leadTimeHours, evidence, status, resolvedAt: status === 'active' ? null : resolvedAt ?? expiredAt }
+  return { ...alert, leadTimeHours, evidence, status, resolvedAt }
 }
 
 export function scenarioAlertsAt(simulatedAt: string, resolvedAlertTimes: Readonly<Record<string, string>> = {}): { readonly active: readonly ScenarioTimelineAlert[]; readonly history: readonly ScenarioTimelineAlert[] } {

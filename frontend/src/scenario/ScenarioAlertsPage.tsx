@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { agentRunsApi, scenarioAlertsApi } from '../api/client'
 import type { AgentAnalysisQueueEntry } from '../console/AgentAnalysisProgress'
 import { agentAnalysisErrorMessage } from '../console/agentAnalysisProgressState'
@@ -66,8 +66,12 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
     onConsumeInitialAlert()
   }, [allAlerts, initialAlertId, onConsumeInitialAlert, selectAlert, selectAsset])
 
+  const lastSelectedStatusRef = useRef<Readonly<Record<string, ScenarioTimelineAlert['status']>>>({})
   useEffect(() => {
-    if (selected != null && selected.status !== 'active') setScope('history')
+    if (selected == null) return
+    const wasActive = lastSelectedStatusRef.current[selected.id] === 'active'
+    lastSelectedStatusRef.current = { ...lastSelectedStatusRef.current, [selected.id]: selected.status }
+    if (wasActive && selected.status !== 'active') setScope('history')
   }, [selected])
 
   const openDetail = (alert: ScenarioTimelineAlert) => {
@@ -102,7 +106,7 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
       onRunQueued({
         runId: run.run_id,
         alertId: alert.id,
-        label: alert.title,
+        label: `기계실 ${alert.substationId}`,
         requestedAt: new Date().toISOString(),
       })
     } catch (error: unknown) {
@@ -120,11 +124,11 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
           <label className="filter-search"><span>알림 검색</span><input onChange={(event) => setSearch(event.target.value)} placeholder="설비명, 알림 내용 검색" value={search} /></label>
           <strong>{rows.length}건</strong>
         </div>
-        {rows.length === 0 ? <div className="alerts-empty"><StatusBadge tone={scope === 'active' ? 'success' : 'neutral'}>{scope === 'active' ? '정상' : '이력 없음'}</StatusBadge><strong>{scope === 'active' ? '활성 알림이 없습니다.' : '조건에 맞는 과거 알림이 없습니다.'}</strong></div> : <div className="alerts-table-scroll"><table className="alerts-table"><thead><tr><th>상태</th><th>알림 내용</th><th>설비 / 위치</th><th>발생 시간</th><th>자동 해소 시각</th><th aria-label="알림 작업" /></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.id === alert.id ? 'selected' : ''} key={alert.id} onClick={() => openDetail(alert)}><td><span className={`alerts-severity-icon ${alert.priority}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span><StatusBadge tone={alert.status === 'resolved' ? 'success' : priorityTone(alert)}>{alert.status === 'resolved' ? '자동 해소' : alert.status === 'expired' ? '데이터 동결' : alert.priority === 'urgent' ? '긴급' : '경고'}</StatusBadge></td><td><strong>{alert.title}</strong></td><td><strong>기계실 {alert.substationId}</strong><small>{alert.facility}</small></td><td>{operationsDateTime(alert.detectedAt)}</td><td>{alert.status === 'resolved' ? operationsDateTime(alert.resolvedAt) : '-'}</td><td><button className="alerts-row-action" onClick={(event) => { event.stopPropagation(); openDetail(alert) }} type="button">상세</button></td></tr>)}</tbody></table></div>}
+        {rows.length === 0 ? <div className="alerts-empty"><StatusBadge tone={scope === 'active' ? 'success' : 'neutral'}>{scope === 'active' ? '정상' : '이력 없음'}</StatusBadge><strong>{scope === 'active' ? '활성 알림이 없습니다.' : '조건에 맞는 과거 알림이 없습니다.'}</strong></div> : <div className="alerts-table-scroll"><table className="alerts-table"><thead><tr><th>상태</th><th>알림 내용</th><th>설비 / 위치</th><th>발생 시간</th><th>해소 시각</th><th aria-label="알림 작업" /></tr></thead><tbody>{rows.map((alert) => <tr className={selected?.id === alert.id ? 'selected' : ''} key={alert.id} onClick={() => openDetail(alert)}><td><span className={`alerts-severity-icon ${alert.priority}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span><StatusBadge tone={alert.status === 'resolved' ? 'success' : priorityTone(alert)}>{alert.status === 'resolved' ? '조치 완료' : alert.priority === 'urgent' ? '긴급' : '경고'}</StatusBadge></td><td><strong>{alert.title}</strong></td><td><strong>기계실 {alert.substationId}</strong><small>{alert.facility}</small></td><td>{operationsDateTime(alert.detectedAt)}</td><td>{alert.status === 'resolved' ? operationsDateTime(alert.resolvedAt) : '-'}</td><td><button className="alerts-row-action" onClick={(event) => { event.stopPropagation(); openDetail(alert) }} type="button">상세</button></td></tr>)}</tbody></table></div>}
       </SurfaceCard>
       {selected && <SurfaceCard action={<button aria-label="상세 정보 닫기" className="scenario-detail-close" onClick={() => setDetailId(null)} type="button"><Icon name="x" /></button>} className="alerts-detail-card" title="상세 정보">
         <div className="scenario-detail-compact">
-          <div className="scenario-detail-title"><StatusBadge tone={selected.status === 'resolved' ? 'success' : priorityTone(selected)}>{selected.status === 'resolved' ? '자동 해소' : selected.status === 'expired' ? '데이터 동결' : selected.priority}</StatusBadge><strong>{selected.title}</strong><span>{selected.facility}</span></div>
+          <div className="scenario-detail-title"><StatusBadge tone={selected.status === 'resolved' ? 'success' : priorityTone(selected)}>{selected.status === 'resolved' ? '조치 완료' : selected.priority}</StatusBadge><strong>{selected.title}</strong><span>{selected.facility}</span></div>
           <div className="scenario-sensor-facts"><div><span>이상 센서</span><strong>{metricLabel(selected)}</strong></div><div><span>현재값</span><strong>{sensorEvidence(selected)[0]}</strong></div><div><span>정상 범위</span><strong>{sensorEvidence(selected)[1]}</strong></div><div><span>변화량</span><strong className="critical-text">{sensorEvidence(selected)[2]}</strong></div></div>
           <ScenarioSensorEvidenceChart alert={selected} points={selected.status === 'active' ? sensor.state.points : (state.alertSensorSnapshots[selected.id] ?? sensor.state.points)} />
           <section><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>이상 점수와 센서 품질 검증을 통과한 데이터가 동일 시점의 설비 패턴과 일치합니다.</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '급탕 공급 안정성과 제어밸브 동작에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol></section>

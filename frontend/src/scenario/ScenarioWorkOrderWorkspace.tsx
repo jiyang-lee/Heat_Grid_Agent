@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatProposalResponse, ReviewChatThreadResponse } from '../api/contracts'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../api/client'
 import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen } from '../api/hooks'
+import { useConfirmDialog } from '../console/ConfirmDialog'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { downloadDocumentPdf } from './documentPdf'
 import type { ScenarioAlert, ScenarioState } from './types'
@@ -138,6 +139,7 @@ function proposalTargetLabel(proposal: ReviewChatProposalResponse, target: WorkO
 }
 
 export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMessages, onAppendRevision, onCreateReport, onOpenAnalysis, onSelectDocumentGroup, onSelectVersion, onUpdateContent }: Props) {
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const latestOrder = state.workOrders.at(-1)
   const selectedOrder = state.workOrders.find((order) => order.version === state.selectedWorkOrderVersion) ?? latestOrder
   const conversationRunId = state.workOrders[0]?.sourceRunId ?? null
@@ -382,7 +384,7 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
     }
   }
   const saveEdit = async () => {
-    if (adopted && state.report.status !== 'idle' && !window.confirm('이 버전은 현재 보고서의 기준 문서입니다.\n편집을 저장하면 기존 보고서와 보고서 메모를 초기화하고 다시 생성해야 합니다. 계속할까요?')) return
+    if (adopted && state.report.status !== 'idle' && !await confirm('이 버전은 현재 보고서의 기준 문서입니다.\n편집을 저장하면 기존 보고서와 보고서 메모를 초기화하고 다시 생성해야 합니다. 계속할까요?')) return
     if (!await discardProposal()) return
     onUpdateContent(selectedOrder.version, draft)
     setEditing(false)
@@ -390,7 +392,7 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
   const adoptVersion = async () => {
     const replacesReport = state.acceptedWorkOrderVersion != null && state.acceptedWorkOrderVersion !== selectedOrder.version && state.report.status !== 'idle'
     const reportWarning = replacesReport ? '\n기존 보고서와 보고서 메모는 초기화되며 새 기준 버전으로 다시 생성해야 합니다.' : ''
-    if (!window.confirm(`작업지시서 v${selectedOrder.version}을 최종 채택할까요?\n보고서는 이 버전을 기준으로 생성됩니다.${reportWarning}`)) return
+    if (!await confirm(`작업지시서 v${selectedOrder.version}을 최종 채택할까요?\n보고서는 이 버전을 기준으로 생성됩니다.${reportWarning}`)) return
     const serverDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === selectedOrder.version)
     if (serverDocument != null) {
       const latestServerVersion = Math.max(...(incidentDocuments.data?.items.filter((document) => document.document_type === 'work_order').map((document) => document.version) ?? [serverDocument.version]))
@@ -539,7 +541,9 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
     }
   }
 
-  return <div className="scenario-order-layout">
+  return <>
+  {confirmDialog}
+  <div className="scenario-order-layout">
     <SurfaceCard className="scenario-version-rail-card" title="작업지시서 목록"><ScenarioVersionRail activeGroupId={state.activeDocumentGroupId} groups={state.documentGroups} onSelect={onSelectDocumentGroup} /></SurfaceCard>
     <SurfaceCard
       action={<StatusBadge tone={adopted ? 'success' : 'notice'}>{adopted ? '최종 채택' : '검토 중'}</StatusBadge>}
@@ -579,4 +583,5 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
       </div>
     </SurfaceCard>
   </div>
+  </>
 }

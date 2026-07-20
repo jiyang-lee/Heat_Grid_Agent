@@ -6,7 +6,7 @@ services:
       HEATGRID_DEMO_AI_HISTORY_RESET_ENABLED: "true"
       HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
     volumes:
-      - ${USERPROFILE}/Downloads:/var/lib/heatgrid/incoming:ro
+      - ./data/replay:/var/lib/heatgrid/incoming:ro
       - heatgrid_replay_storage:/var/lib/heatgrid/replay
 
 volumes:

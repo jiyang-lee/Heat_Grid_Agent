@@ -3,6 +3,7 @@ import type { OperatorReviewDecision, OpsAgentOutput, OpsAgentResultV4, ReviewCh
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../../api/client'
 import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen, useAgentRunResult } from '../../api/hooks'
 import { downloadDocumentPdf } from '../../scenario/documentPdf'
+import { useConfirmDialog } from '../ConfirmDialog'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
 import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
@@ -171,6 +172,7 @@ function bodyFromResult(title: string, result: OpsAgentResultV4): string {
 
 export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }: Props) {
   const result = useAgentRunResult(item.run_id)
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirmDialog()
   const resultNotReady = result.error instanceof ApiError && result.error.status === 409
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
   const [reviewDecision, setReviewDecision] = useState<OperatorReviewDecision | null>(null)
@@ -668,7 +670,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
 
   const approveSelectedDocument = async () => {
     if (activeIncidentId == null || activeDocumentVersion == null) return
-    if (!window.confirm(`작업지시서 v${activeVersion}을 현장 조치 기준 문서로 최종 승인할까요?`)) return
+    if (!await askConfirm(`작업지시서 v${activeVersion}을 현장 조치 기준 문서로 최종 승인할까요?`)) return
     setChatError(null)
     try {
       await approveIncidentWorkOrder.mutateAsync({
@@ -692,7 +694,9 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   }
 
   const preview = mode === 'preview'
-  return <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
+  return <>
+  {confirmDialog}
+  <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
     <div className="detail-body work-order-detail-body">
       <div className="detail-title"><StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge><h2>{title}</h2><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p><span>생성 {formatDateTime(item.created_at)}</span></div>
       {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button onClick={() => scrollToSection(documentSectionRef.current)}>문서 본문</Button><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button></nav>}
@@ -724,4 +728,5 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     {!preview && <div className="activity-detail-footer detail-actions"><Button disabled={!body || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 다운로드'}</Button>{activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}</div>}
     {reviewDecision && <ReviewActionModal currentOutput={reviewOutput} decision={reviewDecision} onClose={() => setReviewDecision(null)} runId={activeReviewRunId} />}
   </SurfaceCard>
+  </>
 }

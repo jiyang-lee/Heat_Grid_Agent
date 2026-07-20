@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ApiError } from '../../api/client'
 import type { ActivityProjectionQuery, AgentRunListQuery, OpsAgentResultV4 } from '../../api/contracts'
-import { useAgentReports, useAgentRuns, useResetDemoAiHistory, useWorkOrderRunMetadata, useWorkOrders } from '../../api/hooks'
+import { useAgentReports, useAgentRuns, useWorkOrderRunMetadata, useWorkOrders } from '../../api/hooks'
 import { ScenarioReportWorkspace } from '../../scenario/ScenarioReportWorkspace'
 import { ScenarioWorkOrderWorkspace } from '../../scenario/ScenarioWorkOrderWorkspace'
 import { SCENARIO_ALERTS } from '../../scenario/scenarioData'
@@ -40,17 +39,6 @@ interface TabFilterState {
 
 const initialFilters: TabFilterState = { period: '7d', facilityId: null, status: 'all', searchInput: '', search: '' }
 
-type ResetFeedback = { readonly tone: 'success' | 'error'; readonly message: string }
-
-function resetErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 409) return '진행 중인 AI 분석이 있어 초기화할 수 없습니다. 완료 후 다시 시도해 주세요.'
-    if (error.status === 404 || error.status === 405) return '현재 서버에서 AI 기록 초기화 기능을 사용할 수 없습니다.'
-    return `AI 기록을 초기화하지 못했습니다. (오류 ${error.status})`
-  }
-  return 'AI 기록을 초기화하지 못했습니다. 잠시 후 다시 시도해 주세요.'
-}
-
 interface Props {
   readonly entryMode: EntryMode | null
   readonly incidentAlertId: string | null
@@ -76,8 +64,6 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
   const [focusedIncidentAlertId, setFocusedIncidentAlertId] = useState<string | null>(restoredIncidentAlertId)
   const [incidentEntry, setIncidentEntry] = useState(faultMode)
   const [openedWorkOrderId, setOpenedWorkOrderId] = useState<string | null>(null)
-  const [resetFeedback, setResetFeedback] = useState<ResetFeedback | null>(null)
-  const resetHistory = useResetDemoAiHistory()
 
   useEffect(() => {
     if (initialRunId == null) return
@@ -211,37 +197,9 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
       setFocusedRunId(group.rootRunId)
     }
   }
-  const clearAiHistory = async () => {
-    const confirmed = window.confirm('누적된 AI 분석, 작업지시서, 보고서와 검토 대화를 모두 삭제할까요?\n삭제한 기록은 복구할 수 없습니다.')
-    if (!confirmed) return
-
-    const nextIncidentAlertId = entryMode === 'fault'
-      ? scenario.state.documentAlertId ?? focusedIncidentAlertId ?? scenario.state.selectedAlertId
-      : null
-    setResetFeedback(null)
-
-    try {
-      await resetHistory.mutateAsync()
-      scenario.clearAiHistory()
-      setSelected({ execution: null, orders: null, reports: null })
-      setOpenedWorkOrderId(null)
-      setFocusedRunId(null)
-      setFocusedIncidentAlertId(nextIncidentAlertId)
-      setIncidentEntry(entryMode === 'fault')
-      setTab('execution')
-      setFilters({ execution: initialFilters, orders: initialFilters, reports: initialFilters })
-      setResetFeedback({ tone: 'success', message: '누적 기록을 모두 지웠습니다. 알림에서 새 AI 분석을 시작할 수 있습니다.' })
-    } catch (error: unknown) {
-      setResetFeedback({ tone: 'error', message: resetErrorMessage(error) })
-    }
-  }
-
   return <div className="page-stack activity-page">
     <div className="activity-tabbar">
       <div className="activity-tabs" role="tablist">{([['execution', 'AI 분석 목록'], ['orders', '작업지시서'], ['reports', '보고서']] as const).map(([key, label]) => <button aria-selected={tab === key} className={tab === key ? 'active' : ''} key={key} onClick={() => changeTab(key)} role="tab" type="button">{label}</button>)}</div>
-      {(tab === 'orders' || tab === 'reports') && <Button disabled={resetHistory.isPending} onClick={() => void clearAiHistory()} tone="danger">{resetHistory.isPending ? '초기화 중' : '누적 기록 초기화'}</Button>}
-      {resetHistory.isPending && <p aria-live="polite" className="activity-reset-feedback">누적 기록을 지우는 중입니다.</p>}
-      {!resetHistory.isPending && resetFeedback && <p className={`activity-reset-feedback ${resetFeedback.tone}`} role={resetFeedback.tone === 'error' ? 'alert' : 'status'}>{resetFeedback.message}</p>}
     </div>
     <div className={`activity-workspace${split ? ' split' : ''}${showList ? '' : ' focused'}`}>
       {showList && <div className="activity-main"><SurfaceCard className="activity-list-card">

@@ -231,6 +231,10 @@ html, body, #root { height: 100%; overflow: hidden; }
 .activity-plan-structured ul, .activity-plan-structured ol { display: grid; gap: var(--space-2); margin: 0; padding-left: 20px; }
 .activity-plan-structured li strong, .activity-plan-structured li span { display: block; }
 .activity-plan-structured li strong { color: var(--ops-text); }
+.activity-stage-timing-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.activity-stage-timing-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); border-radius: 7px; background: var(--ops-surface-muted); }
+.activity-stage-timing-list li span { color: var(--ops-text-muted); font-size: 14px; }
+.activity-stage-timing-list li strong { color: var(--ops-text); font-size: 14px; font-variant-numeric: tabular-nums; }
 .report-single-body { max-height: none; min-height: 320px; }
 .report-official-document { min-height: 0; }
 .scenario-report-empty { display: grid; place-items: center; align-content: center; gap: var(--space-3); min-height: 180px; padding: var(--space-4); color: var(--ops-text-muted); text-align: center; }
