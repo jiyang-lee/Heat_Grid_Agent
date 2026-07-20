@@ -11,6 +11,7 @@ import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
 import { ScenarioProvider } from './scenario/ScenarioContext'
 import { useScenario } from './scenario/useScenario'
 import { useThemePreference } from './console/useThemePreference'
+import { demoAiHistoryApi } from './api/client'
 import './console/operations.css'
 import './scenario/scenario.css'
 
@@ -40,13 +41,21 @@ function ConsoleApp() {
     setInitialAlertId(alertId ?? null)
     setPage('alerts')
   }
-  const refresh = () => {
-    setRefreshRevision((revision) => revision + 1)
-    scenario.sensor.refresh()
-  }
+  const refreshConsole = useCallback(async () => {
+    if (!replay) {
+      setRefreshRevision((revision) => revision + 1)
+      scenario.sensor.refresh()
+      return
+    }
+    await demoAiHistoryApi.reset()
+    scenario.restartScenario()
+    setInitialAlertId(null)
+    setPendingRunId(null)
+    setPage('dashboard')
+  }, [replay, scenario])
 
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
-    <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : undefined} onPageChange={navigate} onRefresh={refresh} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
+    <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : undefined} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
       {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
       {page === 'alerts' && (replay ? <ScenarioAlertsPage initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} /> : <AlertsPage onRunCreated={openRun} />)}
       {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}

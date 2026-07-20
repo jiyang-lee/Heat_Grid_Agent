@@ -1,8 +1,9 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAlerts } from '../api/hooks'
+import { qk, useAlerts } from '../api/hooks'
 import { operationsClock } from './operationsTime'
 import { Icon, type IconName } from './icons'
+import heatgridMark from '../assets/brand/heatgrid-mark.webp'
 
 export type ConsolePage = 'dashboard' | 'alerts' | 'ai-action' | 'operations-reports' | 'settings' | 'admin'
 
@@ -63,7 +64,13 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
     setRefreshing(true)
     try {
       await onRefresh?.()
-      await queryClient.refetchQueries({ type: 'active' })
+      await Promise.allSettled([
+        queryClient.refetchQueries({ queryKey: qk.prioritySnapshot }),
+        queryClient.refetchQueries({ queryKey: ['alerts'] }),
+        queryClient.refetchQueries({ queryKey: qk.health }),
+        queryClient.refetchQueries({ queryKey: ['agent-runs'] }),
+        queryClient.refetchQueries({ queryKey: ['work-orders'] }),
+      ])
     } finally {
       setRefreshing(false)
       button.blur()
@@ -72,7 +79,12 @@ export function AppShell({ page, onPageChange, simulatedAt, alertCount, onRefres
 
   return <div className={`ops-app-shell ${collapsed ? 'collapsed' : ''}`.trim()}>
     <aside className="ops-sidebar">
-      <div className="ops-brand"><Icon className="brand-drop" fill="currentColor" name="droplet" strokeWidth={0} /><div className="brand-text"><strong>HeatGrid</strong><small>AIoT 운영 콘솔</small></div></div>
+      <div className="ops-brand">
+        <span aria-hidden="true" className="brand-mark">
+          <img alt="" height="44" src={heatgridMark} width="44" />
+        </span>
+        <div className="brand-text"><strong>HeatGrid</strong></div>
+      </div>
       <nav aria-label="주요 화면" className="ops-navigation">
         {navigation.map((item) => <button aria-current={page === item.page ? 'page' : undefined} aria-label={item.label} className={page === item.page ? 'active' : ''} key={item.page} onClick={() => onPageChange(item.page)} title={item.label} type="button"><Icon name={item.icon} /><span>{item.label}</span></button>)}
       </nav>

@@ -14,6 +14,7 @@ interface Props {
   results: readonly PriorityEvaluationResult[]
   loading: boolean
   error: boolean
+  missingStatus?: 'missing' | 'low'
 }
 
 /**
@@ -69,6 +70,7 @@ class FitAllControl implements maplibregl.IControl {
 function addComplexLayers(
   map: maplibregl.Map,
   results: readonly PriorityEvaluationResult[],
+  missingStatus: 'missing' | 'low',
 ) {
   // 베이스맵 자체 3D 건물(예: Streets 'Building 3D') 제거.
   // MapLibre는 모든 fill-extrusion을 첫 돌출 레이어 위치에서 한 패스로 그려서,
@@ -79,12 +81,12 @@ function addComplexLayers(
     }
   }
 
-  const footprints = buildComplexFootprints(results)
+  const footprints = buildComplexFootprints(results, missingStatus)
   const footprintSource = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
   if (footprintSource) footprintSource.setData(footprints)
   else map.addSource('complexes', { type: 'geojson', data: footprints })
 
-  const markers = buildComplexMarkers(results)
+  const markers = buildComplexMarkers(results, missingStatus)
   const markerSource = map.getSource(MARKER_SOURCE) as maplibregl.GeoJSONSource | undefined
   if (markerSource) markerSource.setData(markers)
   else map.addSource(MARKER_SOURCE, { type: 'geojson', data: markers })
@@ -137,7 +139,7 @@ function addComplexLayers(
 
 }
 
-export default function MapView({ onSelectComplex, onClearSelection, theme, results, loading, error }: Props) {
+export default function MapView({ onSelectComplex, onClearSelection, theme, results, loading, error, missingStatus = 'missing' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const [mapUnavailable, setMapUnavailable] = useState(() => !hasWebglContext())
@@ -175,7 +177,7 @@ export default function MapView({ onSelectComplex, onClearSelection, theme, resu
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false, showCompass: false }), 'top-left')
     map.addControl(new FitAllControl(), 'top-left')
 
-    map.on('load', () => addComplexLayers(map, resultsRef.current))
+    map.on('load', () => addComplexLayers(map, resultsRef.current, missingStatus))
 
     const selectFeature = (e: maplibregl.MapLayerMouseEvent) => {
       e.preventDefault()
@@ -208,7 +210,7 @@ export default function MapView({ onSelectComplex, onClearSelection, theme, resu
       map.remove()
       mapRef.current = null
     }
-  }, [mapUnavailable])
+  }, [mapUnavailable, missingStatus])
 
   // 테마 변경 → 지도 스타일 교체 후 단지 레이어 재구성.
   useEffect(() => {
@@ -217,23 +219,23 @@ export default function MapView({ onSelectComplex, onClearSelection, theme, resu
     if (themeRef.current === theme) return // 초기 마운트/동일 테마는 무시
     themeRef.current = theme
     map.setStyle(mapStyleFor(theme))
-    whenStyleReady(map, () => addComplexLayers(map, resultsRef.current))
-  }, [theme])
+    whenStyleReady(map, () => addComplexLayers(map, resultsRef.current, missingStatus))
+  }, [theme, missingStatus])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
     const footprintSource = map.getSource('complexes') as maplibregl.GeoJSONSource | undefined
-    footprintSource?.setData(buildComplexFootprints(results))
+    footprintSource?.setData(buildComplexFootprints(results, missingStatus))
     const markerSource = map.getSource(MARKER_SOURCE) as maplibregl.GeoJSONSource | undefined
-    markerSource?.setData(buildComplexMarkers(results))
-  }, [results])
+    markerSource?.setData(buildComplexMarkers(results, missingStatus))
+  }, [results, missingStatus])
 
   if (mapUnavailable) {
     const statusById = new Map(results.map((result) => [result.substation_id, priorityDisplayStatus(result)]))
     return <div className="map-runtime map-runtime-fallback" role="img" aria-label="세종 지역난방 단지 위치 지도" onClick={onClearSelection}>
       <span className="map-fallback-title">세종 1생활권</span>
-      {complexes.map((complex) => <button aria-label={`${complex.name} 선택`} className={`map-fallback-marker status-${statusById.get(complex.id) ?? 'missing'}`} key={complex.id} onClick={(event) => { event.stopPropagation(); onSelectComplex(complex.id) }} style={fallbackPosition(complex.lat, complex.lng)} type="button"><span>{complex.id}</span></button>)}
+      {complexes.map((complex) => <button aria-label={`${complex.name} 선택`} className={`map-fallback-marker status-${statusById.get(complex.id) ?? missingStatus}`} key={complex.id} onClick={(event) => { event.stopPropagation(); onSelectComplex(complex.id) }} style={fallbackPosition(complex.lat, complex.lng)} type="button"><span>{complex.id}</span></button>)}
       <span className="map-fallback-note">브라우저 지도 가속을 사용할 수 없어 위치 요약 지도를 표시합니다.</span>
       {loading && <div className="map-state">최신 Priority 평가를 불러오는 중입니다.</div>}
       {error && <div className="map-state error">운영 상태 연결 지연 · 단지 위치는 계속 표시됩니다.</div>}

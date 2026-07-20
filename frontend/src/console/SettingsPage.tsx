@@ -163,7 +163,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
 
   return <div className="page-stack settings-page">
     <SurfaceCard className="settings-admin-entry">
-      <div><strong>관리자 운영 도구</strong><span>훈련 재생, 교대 시간, anomaly 생성·해소 정책을 관리합니다.</span></div>
+      <div><strong>관리자 운영 도구</strong></div>
       <Button icon="shield" onClick={onOpenAdmin}>관리자 화면 열기</Button>
     </SurfaceCard>
     <div className="settings-tabbar">
@@ -175,7 +175,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
     </div>
 
     {tab === '내 프로필' ? (
-      <div className="settings-profile-view">
+      <div className="settings-profile-view" key="profile">
         <SurfaceCard className="settings-profile-card" title="내 프로필">
           <div className="profile-body">
             <aside className="profile-side">
@@ -266,8 +266,9 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
         </SurfaceCard>
       </div>
     ) : tab === '화면 및 알림' ? (
-      <div className="settings-profile-view">
-        <SurfaceCard className="settings-sn-card">
+      <div className="settings-profile-view" key="screen-notification">
+        <SurfaceCard className="settings-sn-card" title="화면 및 알림">
+          <div className="settings-sn-content">
           <div className="sn-body">
             <div className="sn-col">
               <section>
@@ -393,6 +394,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
               ))}
             </div>
           </section>
+          </div>
 
           <footer className="profile-footer">
             <Button onClick={cancel}>취소</Button>
@@ -401,7 +403,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
         </SurfaceCard>
       </div>
     ) : (
-      <div className="settings-profile-view">
+      <div className="settings-profile-view" key="security">
         <SurfaceCard className="settings-sec-card" title="로그인 및 보안">
           <div className="sec-body">
             <div className="sec-card">
@@ -431,7 +433,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
 
             <section className="sec-section">
               <h3>현재 로그인 기기</h3>
-              <table className="sec-table">
+              <table className="sec-table sec-current-table">
                 <thead><tr><th>기기명</th><th>위치</th><th>최근 접속</th><th>상태</th></tr></thead>
                 <tbody>
                   {currentDevices.map((device) => (
@@ -448,7 +450,7 @@ export function SettingsPage({ themePreference, onThemePreferenceChange, onOpenA
 
             <section className="sec-section">
               <h3>최근 로그인 기록</h3>
-              <table className="sec-table">
+              <table className="sec-table sec-history-table">
                 <thead><tr><th>기기명</th><th>위치</th><th>일시</th><th>IP 주소</th></tr></thead>
                 <tbody>
                   {loginHistory.map((entry) => (

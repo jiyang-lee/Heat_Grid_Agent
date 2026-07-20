@@ -697,7 +697,7 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expectNoPageScroll(page)
 })
 
-test('fault refresh keeps the current page and replay detail without resetting it', async ({ page }, testInfo) => {
+test('refresh resets the fault scenario and returns to the initial dashboard', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-375', '새로고침 버튼은 모바일 레이아웃에서 숨김')
   await startFaultScenario(page)
   await waitForIncident(page)
@@ -707,10 +707,10 @@ test('fault refresh keeps the current page and replay detail without resetting i
   const refreshButton = page.getByRole('button', { name: '새로고침', exact: true })
   await refreshButton.click()
   await expect(refreshButton).not.toBeFocused()
-  await expect(page.locator('.topbar-page-context')).toContainText('알림')
-  await expect(page.getByRole('combobox', { name: '표시 범위' })).toHaveValue('active')
-  await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
-  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
+  await expect(page.locator('.topbar-page-context')).toContainText('홈')
+  await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
+  await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
+  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toHaveCount(0)
 })
 
 test('incident document flow supports edits, two AI reruns, adoption, report completion and PDF names', async ({ page }, testInfo) => {

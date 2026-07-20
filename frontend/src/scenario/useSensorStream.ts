@@ -5,7 +5,7 @@ import { fallbackSensorPoint, initialSensorPoints, SCENARIO_START_AT } from './s
 import type { EntryMode, ScenarioIncidentState, SensorPoint, SensorStreamState } from './types'
 
 const POLL_MS = 3_000
-const MAX_POINTS = 12
+const MAX_POINTS = 13
 
 function numericValue(reading: ReplayReading, key: string): number | null {
   const value = reading.values[key]
@@ -20,16 +20,16 @@ function pointFromReading(reading: ReplayReading): SensorPoint | null {
   return { at: reading.simulated_at, supply, returnTemperature, flow, quality: reading.quality == null ? 'unknown' : 'validated', sequence: reading.sequence }
 }
 
-function seedState(mode: EntryMode, substationId: number, incidentState: ScenarioIncidentState): SensorStreamState {
-  const points = initialSensorPoints(mode, substationId)
+function seedState(mode: EntryMode, substationId: number, incidentState: ScenarioIncidentState, endAt?: string): SensorStreamState {
+  const points = initialSensorPoints(mode, substationId, endAt)
   const latest = points.at(-1)
   const incidentPoint = mode === 'fault' && incidentState === 'incident-active' && latest
-    ? fallbackSensorPoint(mode, substationId, true, 0, latest.at)
+    ? { ...fallbackSensorPoint(mode, substationId, true, 0, latest.at), at: latest.at, sequence: latest.sequence }
     : null
   return {
     status: 'connecting',
     source: 'scenario-fallback',
-    points: incidentPoint ? [...points.slice(1), incidentPoint] : points,
+    points: incidentPoint ? [...points.slice(0, -1), incidentPoint] : points,
     simulatedAt: incidentPoint?.at ?? latest?.at ?? SCENARIO_START_AT,
     receivedAt: null,
     nextReceiveSeconds: 3,
@@ -49,6 +49,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const simulatedAtRef = useRef(state.simulatedAt)
   const manualRefreshRef = useRef<() => void>(() => {})
   const restartAtScenarioStartRef = useRef(false)
+  const activeModeRef = useRef(activeMode)
 
   useEffect(() => {
     pausedRef.current = state.paused
@@ -63,6 +64,8 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     let fallbackSequence = 0
     let failures = 0
     const incidentActive = activeMode === 'fault' && incidentState === 'incident-active'
+    const modeChanged = activeModeRef.current !== activeMode
+    activeModeRef.current = activeMode
 
     const appendPoint = (point: SensorPoint, source: SensorStreamState['source'], message: string) => {
       if (cancelled || (activeMode === 'fault' && !incidentActive)) return
@@ -112,11 +115,9 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     }
 
     const connect = async () => {
-      const replayStartAt = activeMode === 'fault' || restartAtScenarioStartRef.current ? SCENARIO_START_AT : simulatedAtRef.current
+      const replayStartAt = restartAtScenarioStartRef.current || modeChanged ? SCENARIO_START_AT : simulatedAtRef.current
       restartAtScenarioStartRef.current = false
-      setState((current) => current.substationId === substationId
-        ? seedState(activeMode, substationId, incidentState)
-        : { ...current, status: 'connecting', substationId, connectionMessage: '선택 설비 센서 스트림 연결 중' })
+      setState(seedState(activeMode, substationId, incidentState, replayStartAt))
       try {
         const datasets = await replayApi.listDatasets()
         if (cancelled) return
@@ -135,9 +136,10 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
           if (pausedRef.current) return
           void replayApi.snapshot(created.run_id).then((snapshot) => {
             failures = 0
-            const reading = snapshot.readings.find((item) => item.substation_id === substationId) ?? snapshot.readings[0]
+            const reading = snapshot.readings.find((item) => item.substation_id === substationId)
             const point = reading ? pointFromReading(reading) : null
             if (point) appendPoint(point, 'backend-replay', '실시간 센서 연동 수신 중')
+            else advanceFallback('선택 기계실 sensor_reading 수신 전까지 시나리오 대체 데이터를 표시합니다.')
           }).catch((error: unknown) => {
             failures += 1
             if (error instanceof Error && failures < 3) {
@@ -178,7 +180,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const reset = useCallback(() => {
     restartAtScenarioStartRef.current = true
     simulatedAtRef.current = SCENARIO_START_AT
-    setState(seedState(activeMode, substationId, 'monitoring'))
+    setState(seedState(activeMode, substationId, 'monitoring', SCENARIO_START_AT))
     setResetKey((current) => current + 1)
   }, [activeMode, substationId])
   const refresh = useCallback(() => manualRefreshRef.current(), [])

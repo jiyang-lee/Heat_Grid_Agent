@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ACTIVE_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, scenarioAlertsAt, workOrderVersion } from './scenarioData'
+import { ACTIVE_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, SCENARIO_INCIDENT_AT, scenarioAlertsAt, workOrderVersion } from './scenarioData'
 import { ScenarioContext, type ScenarioContextValue } from './ScenarioContextDefinition'
 import type {
   EntryMode,
@@ -406,9 +406,12 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
 
   useEffect(() => {
     if (state.entryStep !== 'console' || state.mode !== 'fault' || state.incidentState === 'incident-active') return undefined
-    const timer = window.setTimeout(() => setState((current) => current.mode === 'fault' && current.entryStep === 'console' ? { ...current, incidentState: 'incident-active', incidentPopupVisible: true } : current), 5_000)
-    return () => window.clearTimeout(timer)
-  }, [state.entryStep, state.incidentState, state.mode])
+    const simulatedTime = Date.parse(sensor.state.simulatedAt)
+    const incidentTime = Date.parse(SCENARIO_INCIDENT_AT)
+    if (simulatedTime < incidentTime || simulatedTime - incidentTime > 86_400_000) return undefined
+    setState((current) => current.mode === 'fault' && current.entryStep === 'console' ? { ...current, incidentState: 'incident-active', incidentPopupVisible: true } : current)
+    return undefined
+  }, [sensor.state.simulatedAt, state.entryStep, state.incidentState, state.mode])
 
   const update = useCallback((next: ScenarioState) => { persist(next); setState(next) }, [])
   const selectMode = useCallback((mode: EntryMode) => {
