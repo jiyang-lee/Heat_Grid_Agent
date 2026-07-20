@@ -135,7 +135,7 @@ export interface PriorityEvaluationCreateRequest {
 // Agent runs
 // ---------------------------------------------------------------------------
 
-export type AgentRunStatus = 'queued' | 'running' | 'completed' | 'failed'
+export type AgentRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type AgentMode = 'llm' | 'fallback'
 export type OpsAgentEvidenceSource = 'postgres' | 'pgvector' | 'jsonl' | 'kma' | 'fallback' | 'manual'
 

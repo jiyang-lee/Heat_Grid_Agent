@@ -16,6 +16,7 @@ from agent_loop_repository import list_agent_loop_iterations
 from agent_runner import (
     AgentRunRequest,
     SimulateCard,
+    cancel_scheduled_agent_graph,
     is_agent_run_scheduled,
     schedule_reserved_agent_graph,
 )
@@ -33,6 +34,7 @@ from agent_run_event_repository import (
     list_agent_run_events_after,
 )
 from agent_run_repository import (
+    cancel_queued_agent_run,
     get_agent_run,
     record_agent_run_event,
     reserve_agent_run,
@@ -112,6 +114,20 @@ def make_agent_run_router(
                 runtime,
             )
         return queued
+
+    @router.post("/agent-runs/{run_id}/cancel", response_model=AgentRunResponse)
+    async def cancel_agent_run(run_id: str) -> AgentRunResponse:
+        cancelled = await cancel_queued_agent_run(engine, run_id)
+        if cancelled is not None:
+            cancel_scheduled_agent_graph(run_id)
+            return cancelled
+        existing = await get_agent_run(engine, run_id)
+        if existing is None:
+            raise HTTPException(status_code=404, detail="run_id를 찾을 수 없습니다.")
+        raise HTTPException(
+            status_code=409,
+            detail="대기 중인 AI 조치만 취소할 수 있습니다.",
+        )
 
     @router.get("/agent-runs/{run_id}", response_model=AgentRunResponse)
     async def agent_run(run_id: str) -> AgentRunResponse:

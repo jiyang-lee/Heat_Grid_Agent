@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     requested_by text,
     trigger_reason text,
     approved_action_task_id uuid,
-    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed')),
+    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled')),
     agent_mode text CHECK (agent_mode IN ('llm', 'fallback')),
     ops_output jsonb,
     token_usage jsonb,
@@ -70,12 +70,12 @@ ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_status_check
 
 ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = (
     "ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check "
-    "CHECK (status IN ('queued', 'running', 'completed', 'failed'))"
+    "CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled'))"
 )
 
 ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
 ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check
-CHECK (status IN ('queued', 'running', 'completed', 'failed'))
+CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled'))
 """
 
 AGENT_RUN_SELECT: Final = (
@@ -473,6 +473,38 @@ async def get_agent_run(engine: AsyncEngine, run_id: str) -> AgentRunResponse | 
         result = await connection.execute(query, {"run_id": run_id})
     row = result.mappings().one_or_none()
     return None if row is None else _run_from_row(row)
+
+
+async def cancel_queued_agent_run(
+    engine: AsyncEngine,
+    run_id: str,
+) -> AgentRunResponse | None:
+    query = text(
+        "UPDATE agent_runs SET status = 'cancelled', error = NULL, updated_at = now() "
+        "WHERE run_id = :run_id AND status = 'queued' "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+        "approved_action_task_id, status, agent_mode, "
+        "CAST(ops_output AS text) AS ops_output, "
+        "CAST(token_usage AS text) AS token_usage, "
+        "CAST(loop_summary AS text) AS loop_summary, "
+        "review_status, review_task_id, error"
+    )
+    async with engine.begin() as connection:
+        result = await connection.execute(query, {"run_id": run_id})
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        await insert_agent_run_event(
+            connection,
+            AgentRunEventRecord(
+                run_id=run_id,
+                event_type="status_changed",
+                message="agent run cancelled before execution",
+                payload={"status": "cancelled"},
+            ),
+        )
+    return _run_from_row(row)
 
 
 async def _set_agent_run_status(

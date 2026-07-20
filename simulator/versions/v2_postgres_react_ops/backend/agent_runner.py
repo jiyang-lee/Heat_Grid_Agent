@@ -54,6 +54,10 @@ from settings import Settings
 logger = logging.getLogger(__name__)
 
 _BACKGROUND_AGENT_TASKS: dict[str, asyncio.Task[AgentRunResponse]] = {}
+# 분석 요청은 모두 DB에 queued 상태로 먼저 저장된다. 한 프로세스가 동시에 실행하는
+# 그래프 수만 제한해, 초과 요청은 상태를 유지한 채 FIFO 대기열에서 기다리게 한다.
+MAX_CONCURRENT_AGENT_RUNS = 2
+_AGENT_RUN_SLOTS = asyncio.Semaphore(MAX_CONCURRENT_AGENT_RUNS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,7 +224,7 @@ def schedule_reserved_agent_graph(
     if existing is not None and not existing.done():
         return existing
     task = asyncio.create_task(
-        run_reserved_agent_graph(
+        _run_queued_agent_graph(
             engine,
             request,
             simulate_card,
@@ -237,6 +241,26 @@ def schedule_reserved_agent_graph(
         )
     )
     return task
+
+
+async def _run_queued_agent_graph(
+    engine: AsyncEngine,
+    request: AgentRunRequest,
+    simulate_card: SimulateCard | None = None,
+    runtime: AgentRuntime | None = None,
+    graph: AgentGraphInvoker | None = None,
+    *,
+    task_key: str = AGENT_GRAPH_TASK_KEY_V1,
+) -> AgentRunResponse:
+    async with _AGENT_RUN_SLOTS:
+        return await run_reserved_agent_graph(
+            engine,
+            request,
+            simulate_card,
+            runtime,
+            graph,
+            task_key=task_key,
+        )
 
 
 async def resume_reclaimable_agent_runs(
@@ -268,6 +292,14 @@ async def resume_reclaimable_agent_runs(
 def is_agent_run_scheduled(run_id: str) -> bool:
     task = _BACKGROUND_AGENT_TASKS.get(run_id)
     return task is not None and not task.done()
+
+
+def cancel_scheduled_agent_graph(run_id: str) -> bool:
+    task = _BACKGROUND_AGENT_TASKS.get(run_id)
+    if task is None or task.done():
+        return False
+    task.cancel()
+    return True
 
 
 def _finish_background_agent_task(

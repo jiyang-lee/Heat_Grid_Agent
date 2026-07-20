@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, JsonValue as PydanticJsonValue
 JsonValue: TypeAlias = PydanticJsonValue
 JsonObject: TypeAlias = dict[str, Any]
 AlertStatus: TypeAlias = Literal["open", "acked", "resolved"]
-AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed"]
+AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed", "cancelled"]
 PriorityEvaluationStatus: TypeAlias = Literal["running", "completed", "failed"]
 FreshnessStatus: TypeAlias = Literal["fresh", "stale", "missing"]
 ReviewStatus: TypeAlias = Literal["pending", "approved", "rejected", "corrected"]

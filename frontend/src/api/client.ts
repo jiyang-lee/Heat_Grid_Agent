@@ -236,6 +236,7 @@ export const agentRunsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  cancel: (runId: string) => apiFetch<AgentRunResponse>(`/agent-runs/${runId}/cancel`, { method: 'POST' }),
   get: (runId: string) => apiFetch<AgentRunResponse>(`/agent-runs/${runId}`),
   review: (runId: string) =>
     apiFetch<AgentRunReviewSnapshotResponse>(`/agent-runs/${runId}/review`),

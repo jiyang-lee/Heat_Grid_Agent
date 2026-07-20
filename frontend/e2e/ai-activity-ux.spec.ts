@@ -146,20 +146,26 @@ test.beforeEach(async ({ page }) => {
   await page.route(/^https?:\/\/[^/]+\/api\//, fallbackApi)
 })
 
-test('normal alert shortcut opens the requested initial run detail', async ({ page }) => {
-  await mockActivityData(page)
-  await page.route(/\/api\/alerts(?:\?.*)?$/, (route) => route.fulfill({ json: [alert] }))
-  await page.route('**/api/alerts/alert-ux-28/read', (route) => route.fulfill({ json: alert }))
-  await page.route(/\/api\/agent-runs$/, (route) => route.request().method() === 'POST'
-    ? route.fulfill({ json: runDetail() })
-    : route.fallback())
+test('normal mode keeps the completed AI task tray available', async ({ page }) => {
+  await page.addInitScript((requestedAt) => {
+    window.sessionStorage.setItem('heatgrid:agent-analysis-queue', JSON.stringify([
+      { runId: 'run-normal-completed', alertId: 'alert-normal-completed', label: '정상 모드 확인 작업', requestedAt },
+    ]))
+  }, createdAt)
+  await page.route('**/api/agent-runs/run-normal-completed', (route) => route.fulfill({ json: { ...runDetail('run-normal-completed'), status: 'completed' } }))
 
   await page.goto('/?devtools=0')
-  await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /순환펌프 진동 증가/ }).click()
-  await page.getByRole('button', { name: 'AI 조치 바로가기', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '계획서 상세' })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: '순환펌프 진동 증가' })).toBeVisible()
+  const taskTray = page.getByRole('button', { name: 'AI 조치 1건 완료', exact: true })
+  await expect(taskTray).toBeVisible()
+  const trayBounds = await page.locator('.scenario-analysis-progress').boundingBox()
+  const viewport = page.viewportSize()
+  expect(trayBounds).not.toBeNull()
+  expect(viewport).not.toBeNull()
+  if (trayBounds == null || viewport == null) throw new Error('AI 조치 토스트 위치를 확인하지 못했습니다.')
+  expect(Math.round(trayBounds.x + trayBounds.width)).toBe(viewport.width - 8)
+  expect(Math.round(trayBounds.y + trayBounds.height)).toBe(viewport.height - (viewport.width <= 720 ? 64 : 8))
+  await taskTray.click()
+  await expect(page.getByText('정상 모드 확인 작업', { exact: true })).toBeVisible()
 })
 
 test('fault alert shortcut opens the requested initial run detail', async ({ page }) => {
@@ -176,17 +182,18 @@ test('fault alert shortcut opens the requested initial run detail', async ({ pag
   await page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
   const scenarioRequest = page.waitForRequest('**/api/scenario-alerts')
   const runRequest = page.waitForRequest((request) => new URL(request.url()).pathname === '/api/agent-runs' && request.method() === 'POST')
-  await page.getByRole('button', { name: 'AI 조치 바로가기', exact: true }).click()
+  await page.getByRole('button', { name: 'AI 조치 생성', exact: true }).click()
   await scenarioRequest
   await runRequest
-  const readyShortcut = page.getByRole('button', { name: '완료된 AI 조치 열기', exact: true })
-  await expect(readyShortcut).toBeVisible({ timeout: 5_000 })
-  await readyShortcut.click()
+  const taskTray = page.getByRole('button', { name: /AI 조치 1건/ })
+  await expect(taskTray).toBeVisible({ timeout: 5_000 })
+  await taskTray.click()
+  await page.getByRole('button', { name: '결과 보기', exact: true }).click()
   await expect(page.getByRole('heading', { name: '계획서 상세' })).toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: '순환펌프 진동 증가' })).toBeVisible()
 })
 
-test('fault analysis failure clearly changes the action to retry', async ({ page }) => {
+test('fault analysis failure is kept in the AI task tray', async ({ page }) => {
   await page.addInitScript((session) => window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session)), faultSession())
   await page.route('**/api/scenario-alerts', (route) => route.fulfill({ json: { ...alert, alert_id: 'fault-alert-ux-28' } }))
   await page.route(/\/api\/agent-runs$/, (route) => route.request().method() === 'POST'
@@ -197,10 +204,39 @@ test('fault analysis failure clearly changes the action to retry', async ({ page
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: '알림', exact: true }).click()
   await page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
-  await page.getByRole('button', { name: 'AI 조치 바로가기', exact: true }).click()
+  await page.getByRole('button', { name: 'AI 조치 생성', exact: true }).click()
 
-  await expect(page.getByRole('alert')).toContainText('AI 조치 분석 실행이 실패했습니다', { timeout: 5_000 })
-  await expect(page.getByRole('button', { name: 'AI 조치 다시 시도', exact: true })).toBeVisible()
+  const taskTray = page.getByRole('button', { name: 'AI 조치 1건 확인 필요', exact: true })
+  await expect(taskTray).toBeVisible({ timeout: 5_000 })
+  await taskTray.click()
+  await expect(page.locator('.scenario-analysis-progress-panel')).toContainText('실패')
+})
+
+test('AI task tray shows queued and running requests together', async ({ page }) => {
+  let queuedRunCancelled = false
+  await page.addInitScript((requestedAt) => {
+    window.sessionStorage.setItem('heatgrid:agent-analysis-queue', JSON.stringify([
+      { runId: 'run-running', alertId: 'alert-running', label: '1호기 압력 이상', requestedAt },
+      { runId: 'run-queued', alertId: 'alert-queued', label: '2호기 온도 경보', requestedAt },
+    ]))
+  }, createdAt)
+  await page.route('**/api/agent-runs/run-running', (route) => route.fulfill({ json: { ...runDetail('run-running'), status: 'running' } }))
+  await page.route('**/api/agent-runs/run-queued', (route) => route.fulfill({ json: { ...runDetail('run-queued'), status: queuedRunCancelled ? 'cancelled' : 'queued' } }))
+  await page.route('**/api/agent-runs/run-queued/cancel', (route) => {
+    queuedRunCancelled = true
+    return route.fulfill({ json: { ...runDetail('run-queued'), status: 'cancelled' } })
+  })
+
+  await page.goto('/?devtools=0')
+  const taskTray = page.getByRole('button', { name: 'AI 조치 2건 진행 중', exact: true })
+  await expect(taskTray).toBeVisible()
+  await taskTray.click()
+  await expect(page.getByText('1호기 압력 이상', { exact: true })).toBeVisible()
+  await expect(page.getByText('2호기 온도 경보', { exact: true })).toBeVisible()
+  await expect(page.locator('.scenario-analysis-progress-panel')).toContainText('분석 중')
+  await expect(page.locator('.scenario-analysis-progress-panel')).toContainText('대기 중')
+  await page.getByRole('button', { name: '대기 취소', exact: true }).click()
+  await expect(page.locator('.scenario-analysis-progress-panel')).toContainText('취소됨')
 })
 
 test('failed history reset keeps the selected full work-order detail open', async ({ page }) => {

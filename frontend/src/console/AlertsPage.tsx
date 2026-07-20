@@ -3,13 +3,16 @@ import type { AlertSummary, PriorityLevel } from '../api/contracts'
 import { useAlerts, useCreateAgentRun, useReadAlert } from '../api/hooks'
 import { complexNameOf } from '../domain/model'
 import { Icon } from './icons'
+import type { AgentAnalysisQueueEntry } from './AgentAnalysisProgress'
 import { useOperations } from './OperationsContext'
 import { operationsDateTime } from './operationsTime'
 import { ApiState, Button, StatusBadge, SurfaceCard, type Tone } from './ui'
 import { useScenario } from '../scenario/useScenario'
 
 interface Props {
-  readonly onRunCreated: (runId: string) => void
+  readonly analysisQueue: readonly AgentAnalysisQueueEntry[]
+  readonly onOpenAiAction: (runId: string) => void
+  readonly onRunCreated: (entry: AgentAnalysisQueueEntry) => void
 }
 
 type AlertScope = 'active' | 'history'
@@ -24,7 +27,7 @@ function statusLabel(alert: AlertSummary): string {
   return alert.priority_level === 'urgent' ? '긴급' : '경고'
 }
 
-export function AlertsPage({ onRunCreated }: Props) {
+export function AlertsPage({ analysisQueue, onOpenAiAction, onRunCreated }: Props) {
   const operations = useOperations()
   const scenario = useScenario()
   const [search, setSearch] = useState('')
@@ -44,6 +47,7 @@ export function AlertsPage({ onRunCreated }: Props) {
     return text.toLowerCase().includes(search.toLowerCase())
   }), [allRows, priority, scope, search])
   const selected = selectedId ? allRows.find((alert) => alert.alert_id === selectedId) ?? null : null
+  const selectedRun = selected == null ? null : analysisQueue.find((entry) => entry.alertId === selected.alert_id) ?? null
 
   const openDetail = (alert: AlertSummary) => {
     setSelectedId(alert.alert_id)
@@ -55,8 +59,12 @@ export function AlertsPage({ onRunCreated }: Props) {
   }
   const startAgentRun = () => {
     if (!selected) return
+    if (selectedRun) {
+      onOpenAiAction(selectedRun.runId)
+      return
+    }
     createRun.reset()
-    createRun.mutate({ alertId: selected.alert_id, requestedBy: 'ops-manager', reason: '운영 콘솔에서 AI 조치 생성을 요청했습니다.' }, { onSuccess: (run) => onRunCreated(run.run_id) })
+    createRun.mutate({ alertId: selected.alert_id, requestedBy: 'ops-manager', reason: '운영 콘솔에서 AI 조치 생성을 요청했습니다.' }, { onSuccess: (run) => onRunCreated({ runId: run.run_id, alertId: selected.alert_id, label: selected.enqueue_reason, requestedAt: new Date().toISOString() }) })
   }
 
   return <div className="page-stack alert-page">
@@ -78,7 +86,7 @@ export function AlertsPage({ onRunCreated }: Props) {
           <section><h3>연결 정보</h3><p>카드 ID: {selected.card_id}</p><p>평가 실행 ID: {selected.evaluation_run_id ?? '-'}</p></section>
           {createRun.isError && <p className="form-error">AI 실행을 시작하지 못했습니다. 백엔드 연결 상태를 확인해 주세요.</p>}
           {selected.freshness_status !== 'fresh' && <p className="form-error">최신 센서 데이터가 확인되지 않아 AI 분석을 시작할 수 없습니다. 사건은 백엔드 정상 판정 전까지 활성 상태로 유지됩니다.</p>}
-          <div className="detail-actions">{selected.status !== 'resolved' && <Button disabled={createRun.isPending || selected.freshness_status !== 'fresh'} icon="activity" onClick={startAgentRun} tone="primary">{createRun.isPending ? 'AI 조치 준비 중' : 'AI 조치 바로가기'}</Button>}</div>
+          <div className="detail-actions">{selected.status !== 'resolved' && <Button disabled={createRun.isPending || selected.freshness_status !== 'fresh'} icon="activity" onClick={startAgentRun} tone="primary">{createRun.isPending ? 'AI 조치 준비 중' : selectedRun ? 'AI 조치 진행 보기' : 'AI 조치 생성'}</Button>}</div>
         </div>
       </SurfaceCard>}
     </div>

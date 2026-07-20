@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { agentRunsApi, scenarioAlertsApi } from '../api/client'
-import { AgentAnalysisProgress } from '../console/AgentAnalysisProgress'
-import { agentAnalysisErrorMessage, useAgentAnalysis } from '../console/agentAnalysisProgressState'
+import type { AgentAnalysisQueueEntry } from '../console/AgentAnalysisProgress'
+import { agentAnalysisErrorMessage } from '../console/agentAnalysisProgressState'
 import { Icon } from '../console/icons'
 import { useOperations } from '../console/OperationsContext'
 import { operationsDateTime } from '../console/operationsTime'
@@ -11,13 +11,14 @@ import type { ScenarioAlert, ScenarioTimelineAlert } from './types'
 import { useScenario } from './useScenario'
 
 interface Props {
+  readonly analysisQueue: readonly AgentAnalysisQueueEntry[]
   readonly initialAlertId: string | null
   readonly onConsumeInitialAlert: () => void
   readonly onOpenAiAction: (runId: string) => void
+  readonly onRunQueued: (entry: AgentAnalysisQueueEntry) => void
 }
 
 type AlertScope = 'active' | 'history'
-type ActiveAnalysis = { readonly alertId: string; readonly runId: string }
 
 function priorityTone(alert: ScenarioAlert): 'critical' | 'warning' {
   return alert.priority === 'urgent' ? 'critical' : 'warning'
@@ -35,7 +36,7 @@ function metricLabel(alert: ScenarioAlert): string {
   return '환수온도'
 }
 
-export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOpenAiAction }: Props) {
+export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeInitialAlert, onOpenAiAction, onRunQueued }: Props) {
   const scenario = useScenario()
   const operations = useOperations()
   const selectAsset = operations.selectAsset
@@ -44,11 +45,8 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
   const [scope, setScope] = useState<AlertScope>('active')
   const [search, setSearch] = useState('')
   const [priority, setPriority] = useState<'all' | ScenarioAlert['priority']>('all')
-  const [isStarting, setIsStarting] = useState(false)
-  const [analysisError, setAnalysisError] = useState<string | null>(null)
-  const [activeAnalysis, setActiveAnalysis] = useState<ActiveAnalysis | null>(null)
-  const [readyAnalysis, setReadyAnalysis] = useState<ActiveAnalysis | null>(null)
-  const analysis = useAgentAnalysis(activeAnalysis?.runId ?? null)
+  const [startingAlertIds, setStartingAlertIds] = useState<readonly string[]>([])
+  const [analysisErrors, setAnalysisErrors] = useState<Readonly<Record<string, string>>>({})
   const allAlerts = useMemo(() => [...alerts, ...alertHistory], [alertHistory, alerts])
   const source = scope === 'active' ? alerts : alertHistory
   const rows = useMemo(() => source.filter((alert) => {
@@ -72,33 +70,22 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
     if (selected != null && selected.status !== 'active') setScope('history')
   }, [selected])
 
-  useEffect(() => {
-    if (activeAnalysis == null) return
-    if (analysis.status === 'completed') {
-      setReadyAnalysis(activeAnalysis)
-      setActiveAnalysis(null)
-      scenario.completeAnalysis()
-      return
-    }
-    if (analysis.status === 'failed') {
-      setAnalysisError(analysis.error ?? 'AI 조치 분석을 완료하지 못했습니다. 다시 시도해 주세요.')
-      setActiveAnalysis(null)
-      scenario.failAnalysis()
-    }
-  }, [activeAnalysis, analysis.error, analysis.status, scenario])
-
   const openDetail = (alert: ScenarioTimelineAlert) => {
     selectAlert(alert.id)
     selectAsset(alert.substationId)
     setDetailId(alert.id)
   }
   const runAnalysis = async (alert: ScenarioTimelineAlert) => {
-    if (readyAnalysis?.alertId === alert.id) {
-      onOpenAiAction(readyAnalysis.runId)
+    const existing = analysisQueue.find((entry) => entry.alertId === alert.id)
+    if (existing) {
+      onOpenAiAction(existing.runId)
       return
     }
-    setAnalysisError(null)
-    setIsStarting(true)
+    setAnalysisErrors((current) => {
+      const { [alert.id]: _removed, ...rest } = current
+      return rest
+    })
+    setStartingAlertIds((current) => [...current, alert.id])
     try {
       const persisted = await scenarioAlertsApi.create({
         scenario_alert_id: alert.id,
@@ -112,12 +99,16 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
         requested_by: 'operator',
         reason: '고장 시나리오 알림에서 AI 조치 분석 실행',
       })
-      scenario.startAnalysis(alert.id)
-      setActiveAnalysis({ alertId: alert.id, runId: run.run_id })
+      onRunQueued({
+        runId: run.run_id,
+        alertId: alert.id,
+        label: alert.title,
+        requestedAt: new Date().toISOString(),
+      })
     } catch (error: unknown) {
-      setAnalysisError(agentAnalysisErrorMessage(error))
+      setAnalysisErrors((current) => ({ ...current, [alert.id]: agentAnalysisErrorMessage(error) }))
     } finally {
-      setIsStarting(false)
+      setStartingAlertIds((current) => current.filter((id) => id !== alert.id))
     }
   }
   return <div className="page-stack alert-page scenario-alert-page">
@@ -137,11 +128,10 @@ export function ScenarioAlertsPage({ initialAlertId, onConsumeInitialAlert, onOp
           <div className="scenario-sensor-facts"><div><span>이상 센서</span><strong>{metricLabel(selected)}</strong></div><div><span>현재값</span><strong>{sensorEvidence(selected)[0]}</strong></div><div><span>정상 범위</span><strong>{sensorEvidence(selected)[1]}</strong></div><div><span>변화량</span><strong className="critical-text">{sensorEvidence(selected)[2]}</strong></div></div>
           <ScenarioSensorEvidenceChart alert={selected} points={selected.status === 'active' ? sensor.state.points : (state.alertSensorSnapshots[selected.id] ?? sensor.state.points)} />
           <section><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>이상 점수와 센서 품질 검증을 통과한 데이터가 동일 시점의 설비 패턴과 일치합니다.</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '급탕 공급 안정성과 제어밸브 동작에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol></section>
-          {analysisError && <p className="scenario-analysis-error" role="alert">{analysisError}</p>}
-          <div className="scenario-detail-actions">{selected.status === 'active' && <Button disabled={isStarting || activeAnalysis != null || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{isStarting ? 'AI 조치 준비 중' : activeAnalysis?.alertId === selected.id ? 'AI 조치 분석 중' : activeAnalysis != null ? '다른 분석 진행 중' : readyAnalysis?.alertId === selected.id ? '완료된 AI 조치 열기' : analysisError ? 'AI 조치 다시 시도' : 'AI 조치 바로가기'}</Button>}</div>
+          {analysisErrors[selected.id] && <p className="scenario-analysis-error" role="alert">{analysisErrors[selected.id]}</p>}
+          <div className="scenario-detail-actions">{selected.status === 'active' && <Button disabled={startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisQueue.some((entry) => entry.alertId === selected.id) ? 'AI 조치 진행 보기' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : 'AI 조치 생성'}</Button>}</div>
         </div>
       </SurfaceCard>}
     </div>
-    {activeAnalysis && <AgentAnalysisProgress onOpen={() => onOpenAiAction(activeAnalysis.runId)} phase={analysis.phase} />}
   </div>
 }
