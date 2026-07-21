@@ -2,7 +2,6 @@
 
 import type { KeyboardEvent } from 'react'
 import type { WorkOrderListItem } from '../../api/contracts'
-import { displayAlertReason } from '../../domain/alertReason'
 import { StatusBadge } from '../ui'
 import {
   RAW_REVIEW_STATUS_LABELS,
@@ -36,7 +35,6 @@ export function WorkOrderList({ items, selectedId, onSelect }: Props) {
         <tbody>
           {items.map((item) => {
             const selected = item.run_id === selectedId
-            const alertReason = displayAlertReason(item.alert_reason)
             return (
               <tr
                 aria-selected={selected}
@@ -47,7 +45,7 @@ export function WorkOrderList({ items, selectedId, onSelect }: Props) {
                 tabIndex={0}
               >
                 <td><StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge></td>
-                <td className="activity-reason-cell"><span title={alertReason === '-' ? undefined : alertReason}>{alertReason}</span></td>
+                <td className="activity-reason-cell"><span title={item.alert_reason ?? undefined}>{item.alert_reason ?? '-'}</span></td>
                 <td>
                   <strong>{facilityName(item.substation_id, item.manufacturer_id)}</strong>
                   <small>기계실 {item.substation_id ?? '-'}</small>

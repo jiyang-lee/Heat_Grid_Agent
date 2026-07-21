@@ -38,8 +38,8 @@ const TARGET_INFERENCE_STOP_WORDS = new Set([
   '해주세요', '해줘', '해주세', '바꿔줘', '바꿔', '조금', '더', '좀', '최신', '기준', '관련',
 ])
 
-const EXPLICIT_REVISION_PATTERN = /(?:수정|교정|고쳐|바꿔|변경|추가|삭제|보강|재작성|다시\s*작성|반영|줄여|늘려|짧게|길게|정리|다듬|축약|간결|명확|구체적|보수적|강하게|엄격)(?:\s*(?:해|해줘|해주세요|해\s*주세요|하자|하십시오|바랍니다|잡아줘|써줘|줘|주세요))|(?:수정|교정|변경|추가|삭제|보강|재작성)\s*(?:요청|필요)/
-const REVISION_PROBLEM_PATTERN = /(?:부족|너무\s*짧|너무\s*길|틀렸|잘못|오류|누락|맞지\s*않|개선이?\s*필요|더\s*(?:강|보수|엄격|짧|길)|둘\s*(?:다|모두)\s*(?:해|반영))/
+const EXPLICIT_REVISION_PATTERN = /(?:수정|교정|고쳐|바꿔|변경|추가|삭제|보강|재작성|다시\s*작성|반영|줄여|늘려|짧게|길게|정리)(?:\s*(?:해|해줘|해주세요|해\s*주세요|하자|하십시오|바랍니다|줘|주세요))|(?:수정|교정|변경|추가|삭제|보강|재작성)\s*(?:요청|필요)/
+const REVISION_PROBLEM_PATTERN = /(?:부족|너무\s*짧|너무\s*길|틀렸|잘못|오류|누락|맞지\s*않|개선이?\s*필요)/
 const QUESTION_PATTERN = /\?|왜|어떻게|무엇|무슨|뭐(?:야|지|였|였지|라고)|알려|설명|보여|기억|했지|였지|인가|맞아|궁금|요청한\s*(?:내용|사항)|말한\s*(?:내용|사항)/
 
 export function isWorkOrderRevisionRequest(instruction: string): boolean {
@@ -52,13 +52,6 @@ export function isWorkOrderRevisionRequest(instruction: string): boolean {
 
 export function isWorkOrderQuestion(instruction: string): boolean {
   return !isWorkOrderRevisionRequest(instruction)
-}
-
-export function isWorkOrderProposalConfirmation(instruction: string): boolean {
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/[.!?]/g, '').replace(/\s+/g, ' ').trim()
-  return /^(?:고고|좋아\s*(?:진행|반영|확정)?|이대로|그대로|수정안\s*)?(?:확정|반영|적용|진행)(?:해|해줘|해주세요|할게)?$/.test(normalized)
-    || /^(?:이대로|그대로)(?:\s*(?:해|가|진행해|반영해|확정해))?(?:줘|주세요)?$/.test(normalized)
-    || normalized === '고고'
 }
 
 function itemIndexFromInstruction(instruction: string): number | null {
@@ -183,7 +176,7 @@ export function resolveWorkOrderRevisionScope(
   if (isExplicitWholeDocumentRequest(instruction)) return { target: WHOLE_DOCUMENT_TARGET, source: 'explicit', clarification: null }
   const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
   if (/\?|왜|어떻게|설명|알려/.test(normalized)) return { target: direct, source: 'explicit', clarification: null }
-  const followup = /그거|그것|그 부분|그 항목|그 문장|그 절차|해당|방금|앞에서|이전|앞의 요청|방금 요청|조금 더|좀 더|더 짧|더 길|더 강|더 보수|보수적으로|강하게|엄격하게|둘 다|둘 모두|모두 반영|함께 반영|다시/.test(normalized)
+  const followup = /그거|그것|그 부분|그 항목|그 문장|그 절차|해당|방금|앞에서|이전|조금 더|좀 더|더 짧|더 길|다시/.test(normalized)
   if (followup) {
     for (const previous of [...previousInstructions].reverse()) {
       const target = detectWorkOrderRevisionTarget(visibleReviewChatContent(previous))

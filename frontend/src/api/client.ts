@@ -82,7 +82,6 @@ import type {
   OperationsPolicyUpdate,
   CurrentShiftMemo,
   IncidentDocumentApproveRequest,
-  IncidentDocumentEditRequest,
   IncidentDocumentPage,
   IncidentDocumentResponse,
   OperationsReportPage,
@@ -324,11 +323,6 @@ export const incidentDocumentsApi = {
   approveWorkOrder: (incidentId: string, body: IncidentDocumentApproveRequest) =>
     apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/approve`, {
       method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  editWorkOrder: (incidentId: string, version: number, body: IncidentDocumentEditRequest) =>
-    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/versions/${version}`, {
-      method: 'PUT',
       body: JSON.stringify(body),
     }),
 }
