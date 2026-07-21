@@ -50,10 +50,10 @@ export function EntryGate() {
           <div className="scenario-card-grid">
             <button className="scenario-select-card active" onClick={startFaultScenario} type="button">
               <div className="scenario-card-top"><span className="entry-card-icon"><Icon name="thermometer" /></span><span className="entry-card-status critical"><i />실행 가능</span></div>
-              <strong>환수온도 이상 및 동시다발 설비 고장</strong>
-              <p>2020년 1월 13일 15시, 환수온도 급락과 설비 고장 3건이 동시에 감지됩니다.</p>
-              <dl><div><dt>최고 우선순위</dt><dd>urgent</dd></div><div><dt>최단 리드타임</dt><dd>4.9시간</dd></div><div><dt>동시 경보</dt><dd>3건</dd></div></dl>
-              <span className="scenario-tags"><i>환수온도</i><i>순환펌프</i><i>열교환기</i></span>
+              <strong>공급온도 저하 및 유량 변동 추세</strong>
+              <p>2023년 3월 12일 12시, 기계실 1에서 고장 전 이상 추세가 검증된 단일 사례를 재생합니다.</p>
+              <dl><div><dt>우선순위</dt><dd>high</dd></div><div><dt>대응 목표</dt><dd>24시간</dd></div><div><dt>대상 경보</dt><dd>1건</dd></div></dl>
+              <span className="scenario-tags"><i>공급온도</i><i>유량</i><i>pre-fault drift</i></span>
               <b>시나리오 시작 <Icon name="arrow" /></b>
             </button>
             {upcomingScenarios.map((scenario) => (
@@ -64,7 +64,7 @@ export function EntryGate() {
             ))}
           </div>
         )}
-        <footer className="entry-footer"><span><Icon name="info" />시나리오 데이터는 교육·검증용이며 실제 안전 판단을 대체하지 않습니다.</span><b>운영 시작 2020.01.01</b></footer>
+        <footer className="entry-footer"><span><Icon name="info" />시나리오 데이터는 교육·검증용이며 실제 안전 판단을 대체하지 않습니다.</span><b>시나리오 기준 2023.03.12</b></footer>
       </section>
     </main>
   )

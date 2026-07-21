@@ -78,6 +78,8 @@ def make_alert_router(
                 scenario_alert_id=payload.scenario_alert_id,
                 substation_id=payload.substation_id,
                 priority_level=payload.priority_level,
+                priority_score=payload.priority_score,
+                priority_rank=payload.priority_rank,
                 reason=payload.reason,
             )
             if row is None:

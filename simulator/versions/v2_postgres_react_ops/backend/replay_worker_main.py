@@ -33,7 +33,7 @@ class ReplayWorkerProcess:
                 await asyncio.sleep(0.5)
                 continue
             await self._apply_commands(run)
-            refreshed = await self._run(run["run_id"])
+            refreshed = await self._run(str(run["run_id"]))
             if refreshed is None:
                 await asyncio.sleep(0.1)
             else:
@@ -43,9 +43,17 @@ class ReplayWorkerProcess:
         async with self.engine.begin() as connection:
             result = await connection.execute(
                 text(
-                    "SELECT run_id FROM replay_runs WHERE state IN ('ready', 'running', 'paused') "
-                    "AND (lease_expires_at IS NULL OR lease_expires_at < now() OR lease_owner = :owner) "
-                    "ORDER BY updated_at FOR UPDATE SKIP LOCKED LIMIT 1"
+                    "WITH recent_command AS ("
+                    " SELECT run_id FROM replay_run_commands WHERE status = 'queued' "
+                    " AND created_at >= now() - interval '5 minutes' "
+                    " ORDER BY created_at DESC LIMIT 1"
+                    ") SELECT r.run_id FROM replay_runs r LEFT JOIN recent_command c ON c.run_id = r.run_id "
+                    "WHERE r.state IN ('ready', 'running', 'paused') "
+                    "AND (r.lease_expires_at IS NULL OR r.lease_expires_at < now() OR r.lease_owner = :owner) "
+                    "ORDER BY CASE WHEN c.run_id IS NOT NULL THEN 0 "
+                    "WHEN r.state = 'running' AND r.lease_owner = :owner THEN 1 "
+                    "WHEN r.state = 'running' THEN 2 ELSE 3 END, r.updated_at DESC "
+                    "FOR UPDATE OF r SKIP LOCKED LIMIT 1"
                 ),
                 {"owner": self.owner},
             )

@@ -5,9 +5,10 @@ import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmRev
 import { useConfirmDialog } from '../console/ConfirmDialog'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { downloadDocumentPdf } from './documentPdf'
+import { SCENARIO_INCIDENT_AT } from './scenarioData'
 import type { ScenarioAlert, ScenarioState } from './types'
 import { ScenarioVersionRail } from './ScenarioVersionRail'
-import { detectWorkOrderRevisionTarget, isWorkOrderQuestion, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, resolveWorkOrderRevisionTarget, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderRevisionTarget } from './workOrderRevision'
+import { detectWorkOrderRevisionTarget, isWorkOrderQuestion, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, resolveWorkOrderRevisionScope, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, workOrderRevisionScopeOptions, type WorkOrderRevisionTarget } from './workOrderRevision'
 
 interface Props {
   readonly alert: ScenarioAlert
@@ -22,10 +23,16 @@ interface Props {
   readonly onUpdateContent: (version: 1 | 2 | 3, content: string) => void
 }
 
+interface ScopeClarification {
+  readonly instruction: string
+  readonly message: string
+  readonly options: readonly WorkOrderRevisionTarget[]
+}
+
 function documentNumber(alert: ScenarioAlert, version: 1 | 2 | 3): string {
   const date = new Date(alert.detectedAt)
   const compactDate = Number.isNaN(date.getTime())
-    ? '20200113'
+    ? SCENARIO_INCIDENT_AT.slice(0, 10).replaceAll('-', '')
     : `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`
   return `HG-${compactDate}-${alert.substationId}-v${version}`
 }
@@ -159,6 +166,8 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
   const [pendingBeforeContent, setPendingBeforeContent] = useState('')
   const [executionState, setExecutionState] = useState<'idle' | 'confirming' | 'queued' | 'running' | 'completed' | 'blocked' | 'failed'>('idle')
   const [contextNotice, setContextNotice] = useState<string | null>(null)
+  const [scopeNotice, setScopeNotice] = useState<string | null>(null)
+  const [scopeClarification, setScopeClarification] = useState<ScopeClarification | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
   const documentBodyRef = useRef<HTMLElement>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
@@ -178,6 +187,8 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
   useEffect(() => {
     setDraft(selectedOrder?.content ?? '')
     setEditing(false)
+    setScopeClarification(null)
+    setScopeNotice(null)
   }, [selectedOrder?.content, selectedOrder?.version])
 
   useEffect(() => {
@@ -192,6 +203,8 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
     setPendingBeforeContent(storedProposal?.beforeContent ?? '')
     setExecutionState('idle')
     setContextNotice(null)
+    setScopeClarification(null)
+    setScopeNotice(null)
     if (conversationRunId == null) {
       setThreadId(null)
       return undefined
@@ -274,10 +287,11 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
     failed: '새 문서 버전 생성 중 오류가 발생했습니다.',
   }
 
-  const sendMessage = async () => {
+  const sendMessage = async (selectedTarget?: WorkOrderRevisionTarget) => {
     const instruction = message.trim()
     if (!instruction || reviewThread.isPending || postMessage.isPending || rerunning || apiProposal != null) return
-    if (messageIsRevision && chatbotLocked) {
+    const revisionRequest = isWorkOrderRevisionRequest(instruction)
+    if (revisionRequest && chatbotLocked) {
       setApiError('v3까지 생성되어 AI 문서 수정은 더 실행할 수 없습니다. 이전 요청 회상과 문서 질문은 계속할 수 있습니다.')
       return
     }
@@ -287,6 +301,27 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
       setApiError('이전 세션에서 만든 작업지시서라 AI 재생성에 연결되지 않았습니다. 상단 새로고침 후 계획서에서 작업지시서를 다시 생성해 주세요.')
       return
     }
+    const scope = revisionRequest
+      ? selectedTarget == null
+        ? resolveWorkOrderRevisionScope(
+          instruction,
+          conversationMessages.filter((item) => item.role === 'operator').map((item) => item.content),
+          selectedOrder.content,
+        )
+        : { target: selectedTarget, source: 'explicit' as const, clarification: null }
+      : { target: detectWorkOrderRevisionTarget(instruction), source: null, clarification: null }
+    if (revisionRequest && scope.target == null) {
+      setScopeNotice(null)
+      setScopeClarification({
+        instruction,
+        message: scope.clarification ?? '수정할 범위를 선택해 주세요.',
+        options: workOrderRevisionScopeOptions(),
+      })
+      return
+    }
+    const target = scope.target ?? detectWorkOrderRevisionTarget(instruction)
+    setScopeClarification(null)
+    setScopeNotice(scope.source === 'document' ? `현재 문서와 대화 문맥을 기준으로 '${target.label}'을 수정 대상으로 추정했습니다. 아래 비교에서 범위를 확인해 주세요.` : null)
     try {
       let assistantContent = '수정 제안을 준비하지 못했습니다.'
       let activeThreadId = threadId
@@ -297,10 +332,6 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
         setThreadRunId(conversationRunId)
         setThreadContext(thread)
       }
-      const target = resolveWorkOrderRevisionTarget(
-        instruction,
-        conversationMessages.filter((item) => item.role === 'operator').map((item) => item.content),
-      )
       const idempotencyKey = requestId(`message-${conversationRunId}`)
       const baseRequest = { content: reviewChatRequest(instruction, target), created_by: 'ops-manager', idempotency_key: idempotencyKey }
       const serverDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === selectedOrder.version)
@@ -375,6 +406,7 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
       setPendingBaseVersion(null)
       setPendingBeforeContent('')
       setExecutionState('idle')
+      setScopeNotice(null)
       if (conversationRunId) storeReviewChatProposal(conversationRunId, null)
       void pendingProposalQuery.refetch()
       return true
@@ -574,9 +606,10 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMes
       <div className="scenario-chat">
         <div className="scenario-chat-source"><StatusBadge tone="primary">기계실 {alert.substationId} · 선택 v{selectedOrder.version}</StatusBadge><span>이 기계실 작업지시서 전용 대화입니다. 선택한 버전을 문맥과 수정 기준으로 사용하며 다른 기계실과 공유하지 않습니다.</span><Button onClick={scrollToDocument}>문서 본문 보기</Button></div>
         <div aria-busy={reviewMessages.isLoading} aria-live="polite" className="scenario-chat-messages" ref={chatMessagesRef}>{reviewMessages.isLoading && conversationMessages.length === 0 ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : conversationMessages.length === 0 && <p>수정 범위와 내용을 함께 입력하세요. 예: “안전 확인 2번째 항목만 보호구 기준에 맞게 수정해줘.”</p>}{conversationMessages.map((item) => <article className={item.role} key={item.id}><strong>{item.role === 'operator' ? '운영자' : item.role === 'assistant' ? 'AI 검토' : '실행 결과'}</strong><span>{chatText(item.content)}</span></article>)}</div>
-        <div className="scenario-chat-input"><label htmlFor="scenario-chat-message">문서 질문 또는 수정 요청</label><textarea aria-describedby="scenario-chat-hint" disabled={reviewThread.isPending || postMessage.isPending || rerunning || apiProposal != null} id="scenario-chat-message" onChange={(event) => setMessage(event.target.value)} onKeyDown={submitOnEnter} placeholder={chatbotLocked ? '예: 내가 요청한 수정 내용이 뭐였지?' : '예: 안전 확인 2번째 항목만 최신 보호구 기준으로 수정해줘.'} value={message} /><span id="scenario-chat-hint">Enter 전송 · Shift+Enter 줄바꿈 · v3에서도 질문 가능</span><Button disabled={!message.trim() || (chatbotLocked && messageIsRevision) || rerunning || apiProposal != null || reviewThread.isPending || postMessage.isPending} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? '검토 중' : messageIsRevision ? '수정 초안 요청' : '질문 보내기'}</Button></div>
+        <div className="scenario-chat-input"><label htmlFor="scenario-chat-message">문서 질문 또는 수정 요청</label><textarea aria-describedby="scenario-chat-hint" disabled={reviewThread.isPending || postMessage.isPending || rerunning || apiProposal != null} id="scenario-chat-message" onChange={(event) => { setMessage(event.target.value); setScopeClarification(null); setScopeNotice(null) }} onKeyDown={submitOnEnter} placeholder={chatbotLocked ? '예: 내가 요청한 수정 내용이 뭐였지?' : '예: 안전 확인 2번째 항목만 최신 보호구 기준으로 수정해줘.'} value={message} /><span id="scenario-chat-hint">대상을 모호하게 입력해도 문서 문맥으로 범위를 제안합니다 · Enter 전송 · Shift+Enter 줄바꿈</span><Button disabled={!message.trim() || (chatbotLocked && messageIsRevision) || rerunning || apiProposal != null || reviewThread.isPending || postMessage.isPending} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? '검토 중' : messageIsRevision ? '수정 초안 요청' : '질문 보내기'}</Button></div>
+        {scopeClarification && !apiProposal && <div className="scenario-scope-clarification" role="status"><strong>수정 범위를 선택해 주세요</strong><p>{scopeClarification.message}</p><div>{scopeClarification.options.map((option) => <Button disabled={rerunning || reviewThread.isPending || postMessage.isPending} key={`${option.section}-${option.itemIndex ?? 'all'}`} onClick={() => void sendMessage(option)} tone={option.section === 'document' ? undefined : 'primary'}>{option.section === 'document' ? '전체 재작성' : option.label}</Button>)}<Button disabled={rerunning || reviewThread.isPending || postMessage.isPending} onClick={() => setScopeClarification(null)}>취소</Button></div></div>}
         {apiError && <p className="scenario-analysis-error" role="alert">{apiError}</p>}
-        {apiProposal && previewData && <div className="scenario-proposal"><header><div><span>확정 전 수정 초안</span><strong>{proposalTargetLabel(apiProposal, pendingTarget)}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? selectedOrder.version} → v{Math.min(3, latestOrder.version + 1)}</StatusBadge></header><p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? selectedOrder.version}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 모두 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestOrder.version + 1)}</dd></div><div><dt>남은 기회</dt><dd>실행 후 {Math.max(0, rerunsRemaining - 1)}회</dd></div></dl><div><Button disabled={rerunning || cancelProposal.isPending} onClick={() => void cancelNextVersion()}>초안 취소</Button><Button disabled={rerunning || confirmProposal.isPending || chatbotLocked} onClick={() => void createNextVersion()} tone="primary">{rerunning || confirmProposal.isPending ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestOrder.version + 1)} 생성`}</Button></div></div>}
+        {apiProposal && previewData && <div className="scenario-proposal"><header><div><span>확정 전 수정 초안</span><strong>{proposalTargetLabel(apiProposal, pendingTarget)}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? selectedOrder.version} → v{Math.min(3, latestOrder.version + 1)}</StatusBadge></header>{scopeNotice && <p className="work-order-chat-context-note">{scopeNotice}</p>}<p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? selectedOrder.version}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 모두 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestOrder.version + 1)}</dd></div><div><dt>남은 기회</dt><dd>실행 후 {Math.max(0, rerunsRemaining - 1)}회</dd></div></dl><div><Button disabled={rerunning || cancelProposal.isPending} onClick={() => void cancelNextVersion()}>초안 취소</Button><Button disabled={rerunning || confirmProposal.isPending || chatbotLocked} onClick={() => void createNextVersion()} tone="primary">{rerunning || confirmProposal.isPending ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestOrder.version + 1)} 생성`}</Button></div></div>}
         {executionState !== 'idle' && <p className={`work-order-chat-execution ${executionState}`} role="status">{executionStateLabel[executionState]}</p>}
         {contextNotice && <p className="work-order-chat-context-note">{contextNotice}</p>}
         {chatbotLocked && <div className="scenario-chat-locked"><StatusBadge tone="neutral">v3 생성 완료</StatusBadge><p>AI 문서 수정 2회를 모두 사용했습니다. 이전 요청 회상과 문서 질문은 계속할 수 있으며, 서버 정본이 없는 세션 문서만 직접 편집할 수 있습니다.</p></div>}

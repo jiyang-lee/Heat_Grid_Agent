@@ -6,7 +6,7 @@ import { ScenarioWorkOrderWorkspace } from '../../scenario/ScenarioWorkOrderWork
 import { SCENARIO_ALERTS } from '../../scenario/scenarioData'
 import type { EntryMode } from '../../scenario/types'
 import { useScenario } from '../../scenario/useScenario'
-import { ApiState, Button, SurfaceCard } from '../ui'
+import { ApiState, SurfaceCard } from '../ui'
 import { ActivityFilters, type FacilityOption } from './ActivityFilters'
 import {
   EXECUTION_STATUS_FILTERS,

@@ -107,8 +107,8 @@ function scenarioGroup() {
   return {
     id: runItem.run_id,
     rootRunId: runItem.run_id,
-    alertId: 'scenario-alert-pump-28',
-    substationId: 28,
+    alertId: 'scenario-alert-prefault-drift-1',
+    substationId: 1,
     createdAt,
     workOrders: [scenarioOrder(1)],
     selectedWorkOrderVersion: 1,
@@ -127,9 +127,9 @@ function faultSession(group = scenarioGroup()) {
   return {
     mode: 'fault',
     entryStep: 'console',
-    scenarioId: 'heat-exchanger-fault',
-    selectedAlertId: 'scenario-alert-pump-28',
-    selectedSubstationId: 28,
+    scenarioId: 'pre-fault-drift-2023-03-12-substation-1',
+    selectedAlertId: 'scenario-alert-prefault-drift-1',
+    selectedSubstationId: 1,
     incidentState: 'incident-active',
     analyzedAlertIds: [],
     documentGroups: [group],
@@ -162,8 +162,9 @@ test('normal mode keeps the completed AI task tray available', async ({ page }) 
   expect(trayBounds).not.toBeNull()
   expect(viewport).not.toBeNull()
   if (trayBounds == null || viewport == null) throw new Error('AI 조치 토스트 위치를 확인하지 못했습니다.')
-  expect(Math.round(trayBounds.x + trayBounds.width)).toBe(viewport.width - 8)
-  expect(Math.round(trayBounds.y + trayBounds.height)).toBe(viewport.height - (viewport.width <= 720 ? 64 : 8))
+  const trayInset = viewport.width <= 720 ? 8 : 16
+  expect(Math.round(trayBounds.x + trayBounds.width)).toBe(viewport.width - trayInset)
+  expect(Math.round(trayBounds.y + trayBounds.height)).toBe(viewport.height - (viewport.width <= 720 ? 64 : trayInset))
   await taskTray.click()
   await expect(page.getByText('정상 모드 확인 작업', { exact: true })).toBeVisible()
 })
@@ -179,7 +180,7 @@ test('fault alert shortcut opens the requested initial run detail', async ({ pag
 
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
+  await page.getByRole('row', { name: /공급온도 저하 및 유량 변동 추세/ }).click()
   const scenarioRequest = page.waitForRequest('**/api/scenario-alerts')
   const runRequest = page.waitForRequest((request) => new URL(request.url()).pathname === '/api/agent-runs' && request.method() === 'POST')
   await page.getByRole('button', { name: 'AI 조치 생성', exact: true }).click()
@@ -203,7 +204,7 @@ test('fault analysis failure is kept in the AI task tray', async ({ page }) => {
 
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ }).click()
+  await page.getByRole('row', { name: /공급온도 저하 및 유량 변동 추세/ }).click()
   await page.getByRole('button', { name: 'AI 조치 생성', exact: true }).click()
 
   const taskTray = page.getByRole('button', { name: 'AI 조치 1건 확인 필요', exact: true })

@@ -190,7 +190,9 @@ async def create_priority_evaluation(
             active_result = await connection.execute(
                 text(
                     "SELECT as_of_time FROM priority_evaluation_runs "
-                    "WHERE is_active FOR UPDATE"
+                    "WHERE is_active "
+                    "ORDER BY as_of_time DESC, completed_at DESC, evaluation_run_id "
+                    "LIMIT 1 FOR UPDATE"
                 )
             )
             active_row = active_result.mappings().one_or_none()

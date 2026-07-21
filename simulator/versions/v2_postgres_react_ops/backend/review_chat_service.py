@@ -558,6 +558,17 @@ async def _with_revision_draft(
         base_body = "AI 작업지시서\n\n수정할 기존 본문이 없습니다."
     instruction = correction.get("instruction", parsed.reason)
     target_label = _revision_target_label(instruction)
+    if target_label == "작업지시서 전체" and not _has_explicit_whole_document_scope(instruction):
+        return ParsedAction(
+            "clarify",
+            None,
+            "수정할 범위를 찾지 못했습니다. 제목, 상황 요약, 위험성 및 근거, 작업 절차, 안전 확인 중 하나를 선택하거나 전체 재작성을 명시해 주세요.",
+            None,
+            "none",
+            None,
+            None,
+            0.9,
+        )
     change_summary = _operator_revision_instruction(instruction)
     current_scope = _scope_content(base_body, target_label)
     replacement = await _generate_scope_replacement(
@@ -641,8 +652,12 @@ async def _generate_scope_replacement(
                 model=model,
                 input=(
                     "Revise a Korean field work order. Preserve facts and safety constraints. "
-                    "Do not add headings, explanations, Markdown fences, or approval claims unless "
-                    "the requested target is the whole document. Follow the JSON request exactly.\n\n"
+                    "The supplied current_target_content is the only editable range. Do not infer, "
+                    "rewrite, summarize, or mention content outside that range. Return only the "
+                    "replacement text for that range; never return the complete work order unless "
+                    "the requested target is the whole document. Do not add headings, explanations, "
+                    "Markdown fences, or approval claims for a partial revision. Follow the JSON "
+                    "request exactly.\n\n"
                     + prompt
                 ),
             )
@@ -661,6 +676,15 @@ async def _generate_scope_replacement(
             instruction=instruction,
             whole_document=whole_document,
         )
+    if not whole_document:
+        value = _bounded_scope_replacement(value, target_label=target_label)
+        if not value:
+            return _deterministic_scope_replacement(
+                current_scope,
+                target_label=target_label,
+                instruction=instruction,
+                whole_document=False,
+            )
     return value[:8000 if whole_document else 4000]
 
 
@@ -714,6 +738,32 @@ def _revision_target_label(instruction: str) -> str:
     if any(token in normalized for token in ("상황 요약", "작업 목적", "사고 개요", "summary")):
         return "상황 요약"
     return "작업지시서 전체"
+
+
+def _has_explicit_whole_document_scope(instruction: str) -> bool:
+    normalized = " ".join(instruction.casefold().split())
+    return any(
+        marker in normalized
+        for marker in (
+            "본문 전체를 수정",
+            "작업지시서 전체",
+            "문서 전체",
+            "전체 재작성",
+            "전부 재작성",
+            "모든 항목을 다시",
+        )
+    )
+
+
+def _bounded_scope_replacement(value: str, *, target_label: str) -> str:
+    """Reject a full-document LLM reply before it can be spliced into one target."""
+    headings = [heading for heading in WORK_ORDER_SECTION_HEADINGS if heading in value]
+    if not headings:
+        return value.strip()
+    extracted = _scope_content(value, target_label)
+    if extracted:
+        return extracted.strip()
+    return ""
 
 
 def _operator_revision_instruction(instruction: str) -> str:
@@ -2665,6 +2715,8 @@ def _reason_from_content(content: str, decision: str) -> str:
 
 def _clarification_message(parsed: ParsedAction, context: ReviewChatContext) -> str:
     if parsed.kind == "clarify":
+        if parsed.reason:
+            return parsed.reason
         return "거절 사유와 하나의 검토 결정을 명확히 입력해 주세요. 제안은 별도 확정 전에는 실행되지 않습니다."
     summary = context.output.get("summary")
     if isinstance(summary, str) and summary:

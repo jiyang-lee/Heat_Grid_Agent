@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, replayApi } from '../api/client'
 import type { AutomationMode, PolicyCandidate, ReplayDataset } from '../api/contracts'
 import { useAutomationPolicy, useDecidePolicyCandidate, useHealth, useOperationsMetrics, usePolicyCandidates, useUpdateAutomationPolicy } from '../api/hooks'
-import { SCENARIO_ALERTS, SCENARIO_START_AT } from '../scenario/scenarioData'
+import { ACTIVE_SCENARIO_DATASET_VERSION, SCENARIO_ALERTS, SCENARIO_START_AT } from '../scenario/scenarioData'
 import { useScenario } from '../scenario/useScenario'
 import { Button, MetricCard, StatusBadge, SurfaceCard, type Tone } from './ui'
 
@@ -27,18 +27,18 @@ interface DatasetFaultSummary {
 }
 
 function faultSummaryFor(dataset: ReplayDataset): DatasetFaultSummary {
-  if (dataset.dataset_version !== 'predist-synthetic-replay-v2') {
+  if (dataset.dataset_version !== ACTIVE_SCENARIO_DATASET_VERSION) {
     return { title: '시나리오 데이터셋', description: '이 데이터셋에 대한 고장 시나리오 요약이 아직 등록되지 않았습니다.', tags: [] }
   }
-  const urgentCount = SCENARIO_ALERTS.filter((alert) => alert.priority === 'urgent').length
-  const minLeadTime = Math.min(...SCENARIO_ALERTS.map((alert) => alert.leadTimeHours))
+  const highestPriority = SCENARIO_ALERTS.some((alert) => alert.priority === 'urgent') ? 'urgent' : 'high'
+  const responseTarget = Math.min(...SCENARIO_ALERTS.map((alert) => alert.leadTimeHours))
   const tags = SCENARIO_ALERTS.flatMap((alert) => {
     const facilityLabel = alert.facility.split('·')[1]?.trim()
     return facilityLabel ? [facilityLabel] : []
   })
   return {
-    title: '환수온도 급락 및 동시다발 설비 고장',
-    description: `설비 이상 ${SCENARIO_ALERTS.length}건이 동시에 감지됩니다 (긴급 ${urgentCount}건 · 최단 리드타임 ${minLeadTime}시간).`,
+    title: `${SCENARIO_ALERTS.length}개 기계실 동시다발 고장`,
+    description: `기계실 ${SCENARIO_ALERTS.map((alert) => alert.substationId).join('·')}의 동일 시점 이상 추세입니다 (${highestPriority} · 최단 대응 목표 ${responseTarget}시간).`,
     tags,
   }
 }
@@ -46,7 +46,7 @@ function faultSummaryFor(dataset: ReplayDataset): DatasetFaultSummary {
 /** 데이터셋의 기술적 replay_start~replay_end는 재생 인덱싱용 범위라 사용자에게는 의미가 없다.
  * 알려진 시나리오는 실제 사고 스토리의 날짜를 대신 보여준다. */
 function datasetStoryDate(dataset: ReplayDataset): string {
-  if (dataset.dataset_version === 'predist-synthetic-replay-v2') return formatDate(SCENARIO_START_AT)
+  if (dataset.dataset_version === ACTIVE_SCENARIO_DATASET_VERSION) return formatDate(SCENARIO_START_AT)
   return `${formatDate(dataset.replay_start)} ~ ${formatDate(dataset.replay_end)}`
 }
 

@@ -328,6 +328,10 @@ class PostgresReplayStore:
                 )
 
     async def _persist_synthetic_contract(self, connection: Any, *, run_id: str, record: dict[str, Any], inference: dict[str, Any], window_id: str, decision_id: str, card_id: str) -> None:
+        # CSV window records retain their values as strings.  The operations
+        # schema uses an integer key for the substation, so normalize it at the
+        # persistence boundary rather than changing the replay source data.
+        substation_id = int(record["substation_id"])
         await connection.execute(
             text(
                 "INSERT INTO windows (window_id, manufacturer_id, substation_id, substation_uid, window_start, window_end, source_file, season_bucket, label, fault_event_id) "
@@ -335,7 +339,7 @@ class PostgresReplayStore:
                 "FROM substations WHERE manufacturer_id = :manufacturer_id AND substation_id = :substation_id "
                 "ON CONFLICT (window_id) DO NOTHING"
             ),
-            {"window_id": window_id, "manufacturer_id": record["manufacturer_id"], "substation_id": record["substation_id"], "window_start": _timestamp(record["window_start"]), "window_end": _timestamp(record["window_end"]), "source_file": f"synthetic-replay:{run_id}", "season_bucket": record.get("season_bucket"), "label": record.get("label"), "fault_event_id": record.get("fault_event_id")},
+            {"window_id": window_id, "manufacturer_id": record["manufacturer_id"], "substation_id": substation_id, "window_start": _timestamp(record["window_start"]), "window_end": _timestamp(record["window_end"]), "source_file": f"synthetic-replay:{run_id}", "season_bucket": record.get("season_bucket"), "label": record.get("label"), "fault_event_id": record.get("fault_event_id")},
         )
         await connection.execute(
             text(
@@ -359,7 +363,7 @@ class PostgresReplayStore:
                 "(:card_id, :decision_id, 'synthetic replay priority', :primary_state, true, 'synthetic', :why_reason, :recommended_action, CAST(:raw_card AS jsonb)) "
                 "ON CONFLICT (card_id) DO UPDATE SET raw_card = EXCLUDED.raw_card"
             ),
-            {"card_id": card_id, "decision_id": decision_id, "primary_state": _primary_state(inference), "why_reason": "Priority was inferred from a synthetic replay window.", "recommended_action": "Operator review is required before action.", "raw_card": _json({"synthetic": True, "replay_run_id": run_id, "manufacturer_id": record["manufacturer_id"], "substation_id": record["substation_id"], "priority_score": inference.get("priority_score")})},
+            {"card_id": card_id, "decision_id": decision_id, "primary_state": _primary_state(inference), "why_reason": "Priority was inferred from a synthetic replay window.", "recommended_action": "Operator review is required before action.", "raw_card": _json({"synthetic": True, "replay_run_id": run_id, "manufacturer_id": record["manufacturer_id"], "substation_id": substation_id, "priority_score": inference.get("priority_score")})},
         )
 
 async def register_imported_dataset(

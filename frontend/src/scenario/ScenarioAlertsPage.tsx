@@ -7,7 +7,7 @@ import { useOperations } from '../console/OperationsContext'
 import { operationsDateTime } from '../console/operationsTime'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { ScenarioSensorEvidenceChart } from './ScenarioSensorEvidenceChart'
-import type { ScenarioAlert, ScenarioTimelineAlert } from './types'
+import type { ScenarioAlert, ScenarioTimelineAlert, SensorPoint } from './types'
 import { useScenario } from './useScenario'
 
 interface Props {
@@ -24,10 +24,22 @@ function priorityTone(alert: ScenarioAlert): 'critical' | 'warning' {
   return alert.priority === 'urgent' ? 'critical' : 'warning'
 }
 
-function sensorEvidence(alert: ScenarioAlert): readonly [string, string, string] {
-  if (alert.affectedMetric === 'flow') return ['86.0 m³/h', '100~130 m³/h', '-32.0 m³/h']
-  if (alert.affectedMetric === 'supply') return ['84.6 °C', '75~85 °C', '+8.2 °C']
-  return ['34.1 °C', '40~50 °C', '-8.1 °C']
+function sensorEvidence(alert: ScenarioAlert, points: readonly SensorPoint[]): readonly [string, string, string] {
+  const latest = points.at(-1)
+  if (alert.substationId === 1) {
+    const value = latest?.supply ?? 70.5
+    return [`${value.toFixed(1)} °C`, '75~85 °C', `${(value - 76.4).toFixed(1)} °C`]
+  }
+  if (alert.affectedMetric === 'flow') {
+    const value = latest?.flow ?? 86.0
+    return [`${value.toFixed(1)} m³/h`, '100~130 m³/h', `${(value - 118.0).toFixed(1)} m³/h`]
+  }
+  if (alert.affectedMetric === 'supply') {
+    const value = latest?.supply ?? 89.5
+    return [`${value.toFixed(1)} °C`, '90.0 °C 이상 유지', `${(value - 94.0).toFixed(1)} °C`]
+  }
+  const value = latest?.returnTemperature ?? 34.1
+  return [`${value.toFixed(1)} °C`, '40~50 °C', `${(value - 42.2).toFixed(1)} °C`]
 }
 
 function metricLabel(alert: ScenarioAlert): string {
@@ -54,6 +66,9 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
     return `${alert.title} ${alert.facility} ${alert.summary}`.toLowerCase().includes(search.toLowerCase())
   }), [priority, search, source])
   const selected = detailId ? allAlerts.find((alert) => alert.id === detailId) ?? null : null
+  const selectedPoints = selected?.status === 'resolved'
+    ? state.alertSensorSnapshots[selected.id] ?? sensor.state.points
+    : sensor.state.points
 
   useEffect(() => {
     if (initialAlertId == null) return
@@ -95,7 +110,9 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
         scenario_alert_id: alert.id,
         substation_id: alert.substationId,
         priority_level: alert.priority,
-        reason: `${alert.title} · ${alert.summary}`,
+        priority_score: alert.modelResult.priorityScore,
+        priority_rank: [...alerts].sort((left, right) => right.modelResult.priorityScore - left.modelResult.priorityScore || left.id.localeCompare(right.id)).findIndex((candidate) => candidate.id === alert.id) + 1,
+        reason: `${alert.title} · ${alert.summary} [ML 결과: 모델 ${alert.modelResult.modelVersion}, 이상 ${Math.round(alert.modelResult.anomalyScore * 100)}%, 위험 ${Math.round(alert.modelResult.riskScore * 100)}%, 우선순위 ${alert.modelResult.priorityScore.toFixed(0)}점, 대응 긴급도 ${Math.round(alert.modelResult.leadtimeUrgencyScore * 100)}%]`,
       })
       const run = await agentRunsApi.create({
         alert_id: persisted.alert_id,
@@ -129,11 +146,10 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
       {selected && <SurfaceCard action={<button aria-label="상세 정보 닫기" className="scenario-detail-close" onClick={() => setDetailId(null)} type="button"><Icon name="x" /></button>} className="alerts-detail-card" title="상세 정보">
         <div className="scenario-detail-compact">
           <div className="scenario-detail-title"><StatusBadge tone={selected.status === 'resolved' ? 'success' : priorityTone(selected)}>{selected.status === 'resolved' ? '조치 완료' : selected.priority}</StatusBadge><strong>{selected.title}</strong><span>{selected.facility}</span></div>
-          <div className="scenario-sensor-facts"><div><span>이상 센서</span><strong>{metricLabel(selected)}</strong></div><div><span>현재값</span><strong>{sensorEvidence(selected)[0]}</strong></div><div><span>정상 범위</span><strong>{sensorEvidence(selected)[1]}</strong></div><div><span>변화량</span><strong className="critical-text">{sensorEvidence(selected)[2]}</strong></div></div>
-          <ScenarioSensorEvidenceChart alert={selected} points={selected.status === 'active' ? sensor.state.points : (state.alertSensorSnapshots[selected.id] ?? sensor.state.points)} />
-          <section><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>이상 점수와 센서 품질 검증을 통과한 데이터가 동일 시점의 설비 패턴과 일치합니다.</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '급탕 공급 안정성과 제어밸브 동작에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol></section>
-          {analysisErrors[selected.id] && <p className="scenario-analysis-error" role="alert">{analysisErrors[selected.id]}</p>}
-          <div className="scenario-detail-actions">{selected.status === 'active' && <Button disabled={startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisQueue.some((entry) => entry.alertId === selected.id) ? 'AI 조치 진행 보기' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : 'AI 조치 생성'}</Button>}</div>
+          <div className="scenario-sensor-facts"><div><span>이상 센서</span><strong>{metricLabel(selected)}</strong></div><div><span>현재값</span><strong>{sensorEvidence(selected, selectedPoints)[0]}</strong></div><div><span>비교 기준</span><strong>{sensorEvidence(selected, selectedPoints)[1]}</strong></div><div><span>변화량</span><strong className="critical-text">{sensorEvidence(selected, selectedPoints)[2]}</strong></div></div>
+          <ScenarioSensorEvidenceChart alert={selected} points={selectedPoints} />
+          <section className="scenario-model-result"><h3>머신러닝 결과</h3><div><span>이상 점수</span><strong>{Math.round(selected.modelResult.anomalyScore * 100)}%</strong></div><div><span>위험 점수</span><strong>{Math.round(selected.modelResult.riskScore * 100)}%</strong></div><div><span>우선순위</span><strong>{selected.modelResult.priorityScore.toFixed(0)}점</strong></div><div><span>대응 긴급도</span><strong>{Math.round(selected.modelResult.leadtimeUrgencyScore * 100)}%</strong></div><p>{selected.modelResult.rationale}</p></section>
+          <section className="scenario-reasoning-card"><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>{selected.modelResult.rationale}</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '공급온도 설정과 열원·순환 계통의 운전 안정성에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol>{analysisErrors[selected.id] && <p className="scenario-analysis-error" role="alert">{analysisErrors[selected.id]}</p>}<div className="scenario-detail-actions">{selected.status === 'active' && <Button disabled={startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisQueue.some((entry) => entry.alertId === selected.id) ? 'AI 조치 진행 보기' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : 'AI 조치 생성'}</Button>}</div></section>
         </div>
       </SurfaceCard>}
     </div>

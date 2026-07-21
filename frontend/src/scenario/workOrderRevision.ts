@@ -9,11 +9,34 @@ export interface WorkOrderRevisionTarget {
   readonly label: string
 }
 
+export type WorkOrderRevisionTargetSource = 'explicit' | 'conversation' | 'document'
+
+export interface WorkOrderRevisionTargetResolution {
+  readonly target: WorkOrderRevisionTarget | null
+  readonly source: WorkOrderRevisionTargetSource | null
+  readonly clarification: string | null
+}
+
 const WHOLE_DOCUMENT_TARGET: WorkOrderRevisionTarget = {
   section: 'document',
   itemIndex: null,
   label: '작업지시서 전체',
 }
+
+const SECTION_TARGETS: readonly WorkOrderRevisionTarget[] = [
+  { section: 'title', itemIndex: null, label: '제목' },
+  { section: 'situation', itemIndex: null, label: '상황 요약' },
+  { section: 'evidence', itemIndex: null, label: '위험성 및 근거' },
+  { section: 'actions', itemIndex: null, label: '작업 절차' },
+  { section: 'cautions', itemIndex: null, label: '안전 확인' },
+  WHOLE_DOCUMENT_TARGET,
+]
+
+const TARGET_INFERENCE_STOP_WORDS = new Set([
+  '수정', '교정', '고쳐', '변경', '추가', '삭제', '보강', '반영', '재작성', '작성', '작업지시서',
+  '문서', '내용', '문장', '부분', '항목', '사항', '전체', '전부', '이것', '그것', '이거', '그거',
+  '해주세요', '해줘', '해주세', '바꿔줘', '바꿔', '조금', '더', '좀', '최신', '기준', '관련',
+])
 
 const EXPLICIT_REVISION_PATTERN = /(?:수정|교정|고쳐|바꿔|변경|추가|삭제|보강|재작성|다시\s*작성|반영|줄여|늘려|짧게|길게|정리)(?:\s*(?:해|해줘|해주세요|해\s*주세요|하자|하십시오|바랍니다|줘|주세요))|(?:수정|교정|변경|추가|삭제|보강|재작성)\s*(?:요청|필요)/
 const REVISION_PROBLEM_PATTERN = /(?:부족|너무\s*짧|너무\s*길|틀렸|잘못|오류|누락|맞지\s*않|개선이?\s*필요)/
@@ -68,20 +91,109 @@ export function detectWorkOrderRevisionTarget(instruction: string): WorkOrderRev
   return { section, itemIndex: applicableItemIndex, label: targetLabel(section, applicableItemIndex) }
 }
 
-export function resolveWorkOrderRevisionTarget(instruction: string, previousInstructions: readonly string[]): WorkOrderRevisionTarget {
-  const direct = detectWorkOrderRevisionTarget(instruction)
-  if (isWorkOrderQuestion(instruction)) return direct
-  if (direct.section !== 'document') return direct
+function isExplicitWholeDocumentRequest(instruction: string): boolean {
   const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
-  if (/\?|왜|어떻게|설명|알려/.test(normalized)) return direct
-  if (/전체|전부|rag|검색|모델|예측|날씨|기상|외부 데이터/.test(normalized)) return direct
-  const followup = /그거|그것|그 부분|그 항목|그 문장|그 절차|해당|방금|앞에서|이전|조금 더|좀 더|더 짧|더 길|다시/.test(normalized)
-  if (!followup) return direct
-  for (const previous of [...previousInstructions].reverse()) {
-    const target = detectWorkOrderRevisionTarget(visibleReviewChatContent(previous))
-    if (target.section !== 'document') return target
+  return /작업지시서\s*전체|문서\s*전체|전체\s*(?:수정|변경|재작성|다시\s*작성)|전부\s*(?:수정|변경|재작성)|모든\s*항목/.test(normalized)
+}
+
+function documentSectionFromHeading(line: string): Exclude<WorkOrderRevisionSection, 'document' | 'title'> | null {
+  const normalized = line.replace(/^\s*#+\s*/, '').trim()
+  if (/상황\s*요약|작업\s*목적|사고\s*개요|현황\s*요약/.test(normalized)) return 'situation'
+  if (/위험성|판단\s*근거|진단\s*근거|근거/.test(normalized)) return 'evidence'
+  if (/작업\s*절차|점검\s*절차|권장\s*조치|조치\s*순서/.test(normalized)) return 'actions'
+  if (/안전\s*확인|주의\s*사항|안전\s*기준/.test(normalized)) return 'cautions'
+  return null
+}
+
+function inferenceTokens(value: string): readonly string[] {
+  return Array.from(new Set(
+    (value.toLocaleLowerCase('ko-KR').match(/[가-힣a-z0-9]{2,}/g) ?? [])
+      .filter((token) => !TARGET_INFERENCE_STOP_WORDS.has(token)),
+  ))
+}
+
+interface DocumentTargetCandidate {
+  readonly target: WorkOrderRevisionTarget
+  readonly content: string
+}
+
+function documentTargetCandidates(content: string): readonly DocumentTargetCandidate[] {
+  const lines = content.split(/\r?\n/)
+  const candidates: DocumentTargetCandidate[] = []
+  const title = lines.find((line) => line.trim())?.trim()
+  if (title) candidates.push({ target: SECTION_TARGETS[0]!, content: title })
+
+  let section: Exclude<WorkOrderRevisionSection, 'document' | 'title'> | null = null
+  let itemIndex = 0
+  for (const line of lines) {
+    const nextSection = documentSectionFromHeading(line)
+    if (nextSection != null) {
+      section = nextSection
+      itemIndex = 0
+      continue
+    }
+    const value = line.trim()
+    if (!value || section == null) continue
+    if (section === 'situation') {
+      candidates.push({ target: { section, itemIndex: null, label: targetLabel(section, null) }, content: value })
+      continue
+    }
+    candidates.push({ target: { section, itemIndex, label: targetLabel(section, itemIndex) }, content: value })
+    itemIndex += 1
   }
-  return direct
+  return candidates
+}
+
+function inferTargetFromDocument(instruction: string, documentContent: string): WorkOrderRevisionTarget | null {
+  const tokens = inferenceTokens(instruction)
+  if (!documentContent.trim() || tokens.length === 0) return null
+  const ranked = documentTargetCandidates(documentContent)
+    .map((candidate) => ({
+      candidate,
+      score: inferenceTokens(candidate.content).reduce((total, token) => total + (tokens.includes(token) ? Math.max(1, Math.min(3, token.length - 1)) : 0), 0),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+  const best = ranked[0]
+  if (best == null) return null
+  const runnerUp = ranked[1]
+  if (runnerUp != null && runnerUp.score === best.score) return null
+  return best.candidate.target
+}
+
+export function workOrderRevisionScopeOptions(): readonly WorkOrderRevisionTarget[] {
+  return SECTION_TARGETS
+}
+
+export function resolveWorkOrderRevisionScope(
+  instruction: string,
+  previousInstructions: readonly string[],
+  documentContent: string,
+): WorkOrderRevisionTargetResolution {
+  const direct = detectWorkOrderRevisionTarget(instruction)
+  if (isWorkOrderQuestion(instruction)) return { target: direct, source: 'explicit', clarification: null }
+  if (direct.section !== 'document') return { target: direct, source: 'explicit', clarification: null }
+  if (isExplicitWholeDocumentRequest(instruction)) return { target: WHOLE_DOCUMENT_TARGET, source: 'explicit', clarification: null }
+  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  if (/\?|왜|어떻게|설명|알려/.test(normalized)) return { target: direct, source: 'explicit', clarification: null }
+  const followup = /그거|그것|그 부분|그 항목|그 문장|그 절차|해당|방금|앞에서|이전|조금 더|좀 더|더 짧|더 길|다시/.test(normalized)
+  if (followup) {
+    for (const previous of [...previousInstructions].reverse()) {
+      const target = detectWorkOrderRevisionTarget(visibleReviewChatContent(previous))
+      if (target.section !== 'document') return { target, source: 'conversation', clarification: null }
+    }
+  }
+  const inferred = inferTargetFromDocument(instruction, documentContent)
+  if (inferred != null) return { target: inferred, source: 'document', clarification: null }
+  return {
+    target: null,
+    source: null,
+    clarification: '어느 부분을 수정할지 확신하지 못했습니다. 아래에서 범위를 고르면 해당 범위만 수정합니다.',
+  }
+}
+
+export function resolveWorkOrderRevisionTarget(instruction: string, previousInstructions: readonly string[]): WorkOrderRevisionTarget {
+  return resolveWorkOrderRevisionScope(instruction, previousInstructions, '').target ?? WHOLE_DOCUMENT_TARGET
 }
 
 export function visibleReviewChatContent(content: string): string {
@@ -92,10 +204,13 @@ export function visibleReviewChatContent(content: string): string {
 
 export function reviewChatRequest(instruction: string, target: WorkOrderRevisionTarget): string {
   if (isWorkOrderQuestion(instruction)) return instruction
-  if (target.section === 'document') return instruction
   return [
-    `작업지시서 보고서 본문 중 '${target.label}'만 수정해 주세요.`,
-    '지정하지 않은 다른 부분은 반드시 유지해 주세요.',
+    target.section === 'document'
+      ? "작업지시서 보고서 본문 전체를 수정해 주세요. 수정 범위는 '작업지시서 전체'입니다."
+      : `작업지시서 보고서 본문 중 '${target.label}'만 수정해 주세요.`,
+    target.section === 'document'
+      ? '사용자가 전체 재작성을 명시했습니다.'
+      : '지정하지 않은 다른 부분은 문구, 수치, 순서, 서식을 포함해 반드시 그대로 유지해 주세요.',
     `운영자 요청: ${instruction}`,
   ].join('\n')
 }

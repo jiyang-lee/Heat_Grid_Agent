@@ -287,3 +287,16 @@ def test_structured_sections_follow_the_revised_body() -> None:
         "점검 결과 기록",
     )
     assert _structured_section_items(body, "안전 확인") == ("절연 보호구 착용",)
+
+
+def test_partial_reply_cannot_splice_an_entire_work_order_into_one_item() -> None:
+    from review_chat_service import _bounded_scope_replacement, _has_explicit_whole_document_scope
+
+    full_reply = (
+        "작업지시서\n\n작업 절차\n1. 차단기 상태 확인\n2. 점검 결과 기록\n\n"
+        "안전 확인\n1. 절연 보호구 착용\n2. 작업 전 위험 구역 확인\n"
+    )
+
+    assert not _has_explicit_whole_document_scope("점검 주기를 주 1회로 변경해줘")
+    assert _has_explicit_whole_document_scope("작업지시서 전체를 다시 작성해줘")
+    assert _bounded_scope_replacement(full_reply, target_label="안전 확인 2번째 항목") == "작업 전 위험 구역 확인"

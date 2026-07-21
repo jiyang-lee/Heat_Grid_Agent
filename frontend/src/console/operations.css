@@ -523,7 +523,7 @@
 .alerts-workspace.has-detail { grid-template-columns: minmax(560px, 1.15fr) minmax(420px, .85fr); }
 .alerts-list-card, .alerts-detail-card { min-height: 0; overflow: hidden; }
 .alerts-list-card { display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
-.alerts-detail-card { display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: auto; }
+.alerts-detail-card { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; max-height: 100%; overflow-x: hidden; overflow-y: auto; }
 .alerts-filter-bar { display: grid; grid-template-columns: 150px 140px minmax(220px, 1fr) auto; align-items: end; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--ops-border); }
 .alerts-filter-bar label { display: grid; gap: 5px; min-width: 0; color: var(--ops-text-muted); font-size: 14px; font-weight: 700; }
 .alerts-filter-bar input, .alerts-filter-bar select { width: 100%; min-width: 0; min-height: 36px; padding: 0 var(--space-2); border: 1px solid var(--ops-border); border-radius: 7px; outline-color: var(--ops-primary); color: var(--ops-text); background: var(--ops-surface); font: inherit; }
@@ -601,7 +601,8 @@
 }
 
 @media (max-width: 900px) {
-  .alerts-workspace.has-detail { grid-template-columns: 1fr; }
+  .alerts-workspace.has-detail { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
+  .alerts-workspace.has-detail .alerts-list-card { display: none; }
   .alerts-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .alerts-filter-bar .filter-search { grid-column: 1 / -1; }
   .alerts-filter-bar > strong { position: absolute; visibility: hidden; }
@@ -666,6 +667,10 @@
 .scenario-chat-input textarea { min-height: 78px; padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 7px; outline-color: var(--ops-primary); color: var(--ops-text); background: var(--ops-surface); font: inherit; line-height: 1.5; resize: vertical; word-break: keep-all; }
 .scenario-chat-input button { align-self: end; }
 .scenario-proposal, .scenario-evaluation { margin: var(--space-3); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--ops-warning) 34%, var(--ops-border)); border-radius: 10px; background: color-mix(in srgb, var(--ops-warning) 6%, var(--ops-surface)); }
+.scenario-scope-clarification { margin: var(--space-3); padding: var(--space-3); border: 1px solid color-mix(in srgb, var(--ops-primary) 34%, var(--ops-border)); border-radius: 10px; background: var(--ops-primary-soft); }
+.scenario-scope-clarification > strong { display: block; }
+.scenario-scope-clarification > p { margin: var(--space-1) 0 var(--space-3); color: var(--ops-text-muted); font-size: 13px; line-height: 1.5; }
+.scenario-scope-clarification > div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .scenario-proposal header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .scenario-proposal header div { display: grid; gap: 2px; }
 .scenario-proposal header span, .scenario-proposal p, .scenario-proposal dt { color: var(--ops-text-muted); font-size: 12px; }

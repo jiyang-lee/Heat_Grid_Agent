@@ -85,7 +85,11 @@ class ReplayWorker:
         event_id = await self.store.persist_tick(run_id=self.run_id, tick=tick)
         if event_id is None:
             return None
-        if tick.sequence < self.dataset.manifest.window_ticks - 1:
+        # Raw sequence numbers are global dataset offsets, not a counter that
+        # starts from zero for each replay run.  Score only at the configured
+        # window boundary; otherwise a run started mid-dataset attempts to
+        # score on every 10-minute tick and asks for non-existent windows.
+        if (tick.sequence + 1) % self.dataset.manifest.window_ticks != 0:
             return {"event_id": event_id, "type": "replay.sensor_tick.v1"}
         window_end = tick.simulated_at + self.dataset.manifest.source_interval
         try:

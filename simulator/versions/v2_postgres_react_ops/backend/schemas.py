@@ -155,6 +155,8 @@ class ScenarioAlertCreateRequest(BaseModel):
     scenario_alert_id: str = Field(min_length=1, max_length=120)
     substation_id: int = Field(ge=1)
     priority_level: Literal["urgent", "high"]
+    priority_score: float = Field(ge=0.0, le=100.0)
+    priority_rank: int = Field(ge=1)
     reason: str = Field(min_length=1, max_length=500)
 
 

@@ -45,6 +45,12 @@ class PostgresAgentInputModelAdapter:
             sections = source_input.get("sections")
             if isinstance(sections, dict):
                 sections["evaluation"] = evaluation_context
+        scenario_context = _scenario_alert_context(alert)
+        if scenario_context is not None:
+            source_input["scenario_alert_context"] = scenario_context
+            sections = source_input.get("sections")
+            if isinstance(sections, dict):
+                sections["scenario_alert"] = scenario_context
         return AgentInputSnapshot(source_input=source_input)
 
     async def feature_values(self, card_id: str) -> dict[str, float]:
@@ -124,6 +130,25 @@ async def _evaluation_context(
         )
     except (TypeError, ValueError):
         return None
+
+
+def _scenario_alert_context(
+    alert: dict[str, JsonValue] | None,
+) -> JsonObject | None:
+    if alert is None:
+        return None
+    reason = _text(alert.get("enqueue_reason"))
+    if reason is None or "[ML" not in reason:
+        return None
+    return {
+        "alert_id": _text(alert.get("alert_id")),
+        "substation_id": _integer(alert.get("substation_id")),
+        "priority_level": _text(alert.get("priority_level")),
+        "priority_score": alert.get("priority_score"),
+        "priority_rank": _integer(alert.get("priority_rank")),
+        "source": "validated-scenario-replay",
+        "ml_result_summary": reason,
+    }
 
 
 def _source_identity(source_input: JsonObject) -> JsonObject:

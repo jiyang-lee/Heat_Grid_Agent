@@ -3,6 +3,7 @@ import { useConfirmDialog } from '../console/ConfirmDialog'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { downloadDocumentPdf, safeFilePart } from './documentPdf'
 import { ScenarioReportRail } from './ScenarioReportRail'
+import { SCENARIO_INCIDENT_AT } from './scenarioData'
 import type { ScenarioAlert, ScenarioDocumentGroup, ScenarioReport, ScenarioReportMessage, WorkOrderVersion } from './types'
 
 interface Props {
@@ -22,7 +23,7 @@ interface Props {
 
 function reportDate(alert: ScenarioAlert): string {
   const date = new Date(alert.detectedAt)
-  if (Number.isNaN(date.getTime())) return '2020-01-13'
+  if (Number.isNaN(date.getTime())) return SCENARIO_INCIDENT_AT.slice(0, 10)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 

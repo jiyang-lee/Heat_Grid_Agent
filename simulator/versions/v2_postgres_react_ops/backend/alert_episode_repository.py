@@ -379,7 +379,7 @@ async def _freeze_unobserved_episodes(
             "manufacturer_id, substation_id, event_type, severity, payload) "
             "SELECT episode.episode_id, CAST(:evaluation_run_id AS uuid), episode.stream_key, "
             "episode.manufacturer_id, episode.substation_id, 'frozen', episode.severity, "
-            "jsonb_build_object('freshness_status', :reason) FROM anomaly_episodes episode "
+            "jsonb_build_object('freshness_status', CAST(:reason AS text)) FROM anomaly_episodes episode "
             "WHERE episode.stream_key = :stream_key "
             "AND episode.lifecycle_status IN ('pending', 'open') "
             "AND NOT EXISTS (SELECT 1 FROM priority_evaluation_results result "

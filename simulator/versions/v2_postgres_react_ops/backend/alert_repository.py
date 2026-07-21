@@ -206,9 +206,19 @@ async def materialize_scenario_alert(
     scenario_alert_id: str,
     substation_id: int,
     priority_level: str,
+    priority_score: float,
+    priority_rank: int,
     reason: str,
 ) -> dict[str, JsonValue] | None:
     await ensure_alert_queue(engine)
+    existing_query = text(
+        "UPDATE ops_alert_queue SET "
+        " freshness_status = 'fresh', priority_level = :priority_level,"
+        " priority_score = :priority_score, priority_rank = :priority_rank,"
+        " status = 'open', enqueue_reason = :reason, acked_at = NULL, acked_by = NULL"
+        " WHERE alert_id = md5('scenario-alert|' || :scenario_alert_id)::uuid"
+        " RETURNING alert_id"
+    )
     query = text(
         "WITH latest_evaluation AS ("
         " SELECT evaluation_run_id FROM priority_evaluation_runs"
@@ -225,11 +235,11 @@ async def materialize_scenario_alert(
         "), upserted AS ("
         " INSERT INTO ops_alert_queue ("
         "  alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,"
-        "  freshness_status, priority_level, priority_score, status, enqueue_reason"
+        "  freshness_status, priority_level, priority_score, priority_rank, status, enqueue_reason"
         " )"
         " SELECT md5('scenario-alert|' || :scenario_alert_id)::uuid, card.card_id,"
         "  evaluation.evaluation_run_id, card.substation_uid, card.manufacturer_id, card.substation_id,"
-        "  'fresh', :priority_level, card.priority_score, 'open', :reason"
+        "  'fresh', :priority_level, :priority_score, :priority_rank, 'open', :reason"
         " FROM selected_card card CROSS JOIN latest_evaluation evaluation"
         " ON CONFLICT (evaluation_run_id, substation_uid)"
         " WHERE evaluation_run_id IS NOT NULL DO UPDATE SET"
@@ -237,22 +247,28 @@ async def materialize_scenario_alert(
         "  substation_uid = EXCLUDED.substation_uid, manufacturer_id = EXCLUDED.manufacturer_id,"
         "  substation_id = EXCLUDED.substation_id,"
         "  freshness_status = EXCLUDED.freshness_status, priority_level = EXCLUDED.priority_level,"
-        "  priority_score = EXCLUDED.priority_score, status = 'open',"
+        "  priority_score = EXCLUDED.priority_score, priority_rank = EXCLUDED.priority_rank, status = 'open',"
         "  enqueue_reason = EXCLUDED.enqueue_reason, acked_at = NULL, acked_by = NULL"
         " RETURNING alert_id"
         ") SELECT alert_id FROM upserted"
     )
     async with engine.begin() as connection:
-        result = await connection.execute(
-            query,
-            {
-                "scenario_alert_id": scenario_alert_id,
-                "substation_id": substation_id,
-                "priority_level": priority_level,
-                "reason": reason,
-            },
-        )
-        row = result.mappings().one_or_none()
+        params = {
+            "scenario_alert_id": scenario_alert_id,
+            "substation_id": substation_id,
+            "priority_level": priority_level,
+            "priority_score": priority_score,
+            "priority_rank": priority_rank,
+            "reason": reason,
+        }
+        existing = await connection.execute(existing_query, params)
+        row = existing.mappings().one_or_none()
+        if row is None:
+            result = await connection.execute(
+                query,
+                params,
+            )
+            row = result.mappings().one_or_none()
     if row is None:
         return None
     return await get_alert(engine, str(row["alert_id"]))
@@ -273,6 +289,9 @@ async def list_alerts(
         filters.append("q.priority_level = :priority_level")
         params["priority_level"] = priority_level
     filters.append("q.episode_id IS NOT NULL")
+    # 과거 batch 평가로 만들어진 학습용 알림은 보존하되, 운영 화면에는 현재 리플레이 실행에서
+    # 생성된 알림만 노출한다. scenario-alerts도 최신 replay 평가를 참조하므로 함께 포함된다.
+    filters.append("evaluation.source_kind = 'replay'")
     where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
     query = text(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "

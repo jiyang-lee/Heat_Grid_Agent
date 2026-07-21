@@ -32,6 +32,16 @@ export interface SensorStreamState {
 
 export type ScenarioPriority = 'urgent' | 'high'
 
+export interface ScenarioMlResult {
+  /** Fixed inference result bundled with this validated replay scenario. */
+  readonly modelVersion: string
+  readonly anomalyScore: number
+  readonly riskScore: number
+  readonly priorityScore: number
+  readonly leadtimeUrgencyScore: number
+  readonly rationale: string
+}
+
 export interface ScenarioAlert {
   readonly id: string
   readonly title: string
@@ -44,6 +54,7 @@ export interface ScenarioAlert {
   readonly summary: string
   readonly evidence: readonly string[]
   readonly detectedAt: string
+  readonly modelResult: ScenarioMlResult
 }
 
 export type ScenarioAlertStatus = 'active' | 'resolved'

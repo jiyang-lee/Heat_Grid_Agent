@@ -42,6 +42,8 @@ export interface ScenarioAlertCreateRequest {
   readonly scenario_alert_id: string
   readonly substation_id: number
   readonly priority_level: 'urgent' | 'high'
+  readonly priority_score: number
+  readonly priority_rank: number
   readonly reason: string
 }
 

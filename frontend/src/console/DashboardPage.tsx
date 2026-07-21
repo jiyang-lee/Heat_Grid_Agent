@@ -51,10 +51,8 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
   const medium = dashboardBuckets.filter((bucket) => bucket === 'medium').length
   const normal = dashboardBuckets.filter((bucket) => bucket === 'low').length
   const buildingCount = complexes.length
-  const incidentAlerts = [...scenario.alerts].sort((left, right) => {
-    const priorityOrder = (left.priority === 'urgent' ? 0 : 1) - (right.priority === 'urgent' ? 0 : 1)
-    return priorityOrder || left.detectedAt.localeCompare(right.detectedAt)
-  })
+  const incidentAlerts = [...scenario.alerts]
+    .sort((left, right) => right.modelResult.priorityScore - left.modelResult.priorityScore || left.id.localeCompare(right.id))
   const incidentAlertKey = incidentAlerts.map((alert) => alert.id).join('|')
   const visibleIncidentAlerts = incidentAlerts.filter((alert) => visibleIncidentAlertIds.includes(alert.id) && !scenario.state.dismissedIncidentAlertIds.includes(alert.id))
 
@@ -115,7 +113,7 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
 
         <SurfaceCard action={<button className="text-link" onClick={() => onOpenAlerts()} type="button">자세히 보기</button>} className="home-alerts" title="주요 알림">
         {(!faultMode || !incidentActive) && <div className="home-alert-empty"><Icon name="shield" /><div><strong>현재 주요 알림 없음</strong><span>모든 설비를 정상 모니터링 중입니다.</span></div></div>}
-        {faultMode && incidentActive ? scenario.alerts.map((alert) => (
+        {faultMode && incidentActive ? incidentAlerts.map((alert) => (
           <button aria-pressed={selectedGraphSubstationId === alert.substationId} className={`home-alert-row ${selectedGraphSubstationId === alert.substationId ? 'selected' : ''}`.trim()} key={alert.id} onClick={() => { setSelectedGraphSubstationId(alert.substationId); scenario.selectAlert(alert.id); scenario.selectSubstation(alert.substationId); operations.selectAsset(alert.substationId) }} type="button">
             <span className={`alert-symbol tone-${alert.priority === 'urgent' ? 'critical' : 'warning'}`}><Icon name={alert.priority === 'urgent' ? 'alert' : 'warning'} /></span>
             <div><strong>{complexById.get(alert.substationId)?.name ?? `기계실 ${alert.substationId}`}</strong><small>기계실 {alert.substationId} · {alert.title}</small></div>
