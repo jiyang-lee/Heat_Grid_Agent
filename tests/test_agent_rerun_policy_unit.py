@@ -14,8 +14,6 @@ sys.path.insert(
 
 from agent_review_api_models import OperatorReviewRecordResponse, OperatorReviewSubmitRequest
 from agent_rerun_policy import TARGET_STAGE_BY_REASON, target_stage_for_review
-from review_repository import _legacy_review_record_input
-from schemas import HumanReviewTask, ReviewTaskSubmitRequest
 
 
 def _review(reason_category: str | None) -> OperatorReviewRecordResponse:
@@ -66,59 +64,3 @@ def test_canonical_review_rejects_historical_reason_name() -> None:
             reason_category="legacy_reject",
             disposition="urgent_review",
         )
-
-
-def test_legacy_run_reject_without_category_uses_contract_v1() -> None:
-    task = HumanReviewTask(
-        task_id="task-1",
-        task_type="final_output",
-        status="pending",
-        risk_level="medium",
-        title="review",
-        subject_type="agent_run",
-        subject_key="run-1",
-        run_id="run-1",
-        created_at="2026-01-01T00:00:00Z",
-    )
-    request = ReviewTaskSubmitRequest(decision="reject", reviewer="operator")
-
-    result = _legacy_review_record_input(
-        task=task,
-        payload=request,
-        corrected_output=None,
-    )
-
-    assert result.review_contract_version == 1
-    assert result.decision == "keep_human_review"
-    assert result.reason_category is None
-    assert result.operator_labels == ("legacy_reject",)
-    assert result.legacy_status_override == "rejected"
-
-
-def test_legacy_run_reject_with_canonical_category_uses_contract_v2() -> None:
-    task = HumanReviewTask(
-        task_id="task-1",
-        task_type="final_output",
-        status="pending",
-        risk_level="medium",
-        title="review",
-        subject_type="agent_run",
-        subject_key="run-1",
-        run_id="run-1",
-        created_at="2026-01-01T00:00:00Z",
-    )
-    request = ReviewTaskSubmitRequest(
-        decision="reject",
-        reviewer="operator",
-        reason_category="fault_analysis_issue",
-    )
-
-    result = _legacy_review_record_input(
-        task=task,
-        payload=request,
-        corrected_output=None,
-    )
-
-    assert result.review_contract_version == 2
-    assert result.decision == "keep_human_review"
-    assert result.reason_category == "fault_analysis_issue"

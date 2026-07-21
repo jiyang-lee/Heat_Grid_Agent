@@ -105,6 +105,7 @@ def _psycopg_database_url(database_url: str) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await verify_database_contract(settings.database_url)
     await ensure_priority_evaluation_tables(engine)
     await ensure_latest_priority_evaluation(
         engine,
@@ -120,10 +121,51 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await verify_operations_policy(engine)
     await operations_report_repository.ensure_runtime_tables()
     await operations_report_scheduler.run_due_reports(now=datetime.now(UTC))
-    yield
+    checkpoint_pool: AsyncConnectionPool[AsyncConnection[DictRow]] = AsyncConnectionPool(
+        conninfo=_psycopg_database_url(settings.database_url),
+        min_size=1,
+        max_size=10,
+        open=False,
+        kwargs={
+            "autocommit": True,
+            "prepare_threshold": 0,
+            "row_factory": dict_row,
+        },
+    )
+    await checkpoint_pool.open()
+    try:
+        checkpointer = AsyncPostgresSaver(checkpoint_pool)
+        context = create_agent_graph_context(engine, agent_runtime)
+        graph_v1 = build_agent_graph(context, checkpointer=checkpointer)
+        graph_v2 = build_agent_graph_v2(
+            graph_v1,
+            engine,
+            openai_model=settings.integrated_agent_model,
+            rag_quality_enabled=settings.rag_quality_enabled,
+            evidence_threshold=settings.agent_evidence_threshold,
+            model_score_tolerance=settings.model_score_tolerance,
+            checkpointer=checkpointer,
+            runtime=agent_runtime,
+        )
+        agent_resources.graph_v1 = graph_v1
+        agent_resources.graph_v2 = graph_v2
+        agent_resources.checkpoint_pool = checkpoint_pool
+        await resume_reclaimable_agent_runs(
+            engine,
+            runtime=agent_runtime,
+            graph=graph_v1,
+            v2_graph=graph_v2,
+        )
+        yield
+    finally:
+        agent_resources.graph_v1 = None
+        agent_resources.graph_v2 = None
+        agent_resources.checkpoint_pool = None
+        await checkpoint_pool.close()
 
 
 app = FastAPI(title="HeatGrid V2 Local", lifespan=lifespan)
+install_agent_error_handlers(app)
 app.include_router(make_alert_router(engine, settings))
 app.include_router(make_alert_router(engine, settings, prefix="/api"))
 app.include_router(make_priority_evaluation_router(engine, settings))

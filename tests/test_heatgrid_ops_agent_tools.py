@@ -14,20 +14,22 @@ BACKEND_DIR: Final = (
 )
 sys.path.insert(0, str(BACKEND_DIR))
 
-from heatgrid_ops.agent.tools import (
+import agent_evidence_adapters  # noqa: E402
+import agent_report_writer_adapter  # noqa: E402
+from agent_evidence_adapters import StructuredExternalDataAdapter  # noqa: E402
+from agent_report_writer_adapter import LocalReportWriterAdapter  # noqa: E402
+from heatgrid_ops.agent.contracts import ReportWriteRequest  # noqa: E402
+from heatgrid_ops.agent.helpers import to_json  # noqa: E402
+from heatgrid_ops.agent.models import JsonValue, OpsAgentOutput  # noqa: E402
+from heatgrid_ops.agent.run_models import ExternalDataRequest  # noqa: E402
+from heatgrid_ops.agent.tools import (  # noqa: E402
     ALL_AGENT_TOOL_NAMES,
-    GRAPH_CONTROLLED_TOOL_NAMES,
-    LLM_SELECTABLE_TOOL_NAMES,
-    make_anomaly_report_tool,
     make_daily_report_tool,
     make_external_context_tool,
-    make_external_search_tool,
     make_operational_tools,
     make_ops_evidence_tool,
-    make_stage_evidence_candidate_tool,
 )
-from heatgrid_ops.agent.external_search import ExternalEvidenceSearchResult
-from schemas import JsonValue
+from heatgrid_rag.search import RagSearcher  # noqa: E402
 
 
 def test_ops_evidence_and_external_context_tools_return_json_payloads() -> None:
@@ -61,10 +63,13 @@ def test_tool_registry_has_no_generic_network_capability() -> None:
         },
     )
 
-    assert tuple(item.name for item in tools) == LLM_SELECTABLE_TOOL_NAMES
-    assert len(LLM_SELECTABLE_TOOL_NAMES) == 8
-    assert GRAPH_CONTROLLED_TOOL_NAMES == ("write_anomaly_report", "write_daily_report")
-    assert len(ALL_AGENT_TOOL_NAMES) == 10
+    assert tuple(item.name for item in tools) == ("get_ops_evidence", "get_external_context")
+    assert ALL_AGENT_TOOL_NAMES == (
+        "get_ops_evidence",
+        "get_external_context",
+        "write_anomaly_report",
+        "write_daily_report",
+    )
     assert not {"search_external_evidence", "stage_evidence_candidate"} & set(
         ALL_AGENT_TOOL_NAMES
     )
@@ -184,54 +189,6 @@ async def test_weather_snapshot_failure_keeps_provenance(
         "error_type": "RuntimeError",
         "message": "weather provider unavailable",
     }
-
-
-def test_tool_registry_has_eight_llm_tools_and_four_graph_tools() -> None:
-    source_input = fake_source_input()
-    external_context: dict[str, JsonValue] = {
-        "status": "available",
-        "site": {"status": "mapped"},
-        "weather": {"status": "available"},
-        "retrieval": {"status": "available", "chunks": []},
-    }
-    tools = make_operational_tools(source_input, external_context)
-
-    assert tuple(item.name for item in tools) == LLM_SELECTABLE_TOOL_NAMES
-    assert len(LLM_SELECTABLE_TOOL_NAMES) == 8
-    assert len(GRAPH_CONTROLLED_TOOL_NAMES) == 4
-    assert len(ALL_AGENT_TOOL_NAMES) == 12
-    assert set(LLM_SELECTABLE_TOOL_NAMES).isdisjoint(GRAPH_CONTROLLED_TOOL_NAMES)
-
-    for item in tools:
-        payload = orjson.loads(item.invoke({"card_id": "card-test"}))
-        assert isinstance(payload, dict)
-        assert "error" not in payload
-
-
-@pytest.mark.anyio
-async def test_graph_controlled_tools_expose_search_and_staging_boundaries() -> None:
-    async def search(query: str) -> ExternalEvidenceSearchResult:
-        return ExternalEvidenceSearchResult(status="no_match", query=query)
-
-    async def stage(payload: dict[str, JsonValue]) -> dict[str, JsonValue]:
-        return {"candidate_id": "candidate-1", "payload": payload}
-
-    search_tool = make_external_search_tool(search)
-    stage_tool = make_stage_evidence_candidate_tool(stage)
-    graph_tools = (
-        search_tool,
-        stage_tool,
-        make_anomaly_report_tool(mock=True),
-        make_daily_report_tool(mock=True),
-    )
-
-    assert tuple(item.name for item in graph_tools) == GRAPH_CONTROLLED_TOOL_NAMES
-    search_result = orjson.loads(await search_tool.ainvoke({"query": "heat grid"}))
-    stage_result = orjson.loads(
-        await stage_tool.ainvoke({"payload_json": to_json({"title": "candidate"})})
-    )
-    assert search_result["status"] == "no_match"
-    assert stage_result["candidate_id"] == "candidate-1"
 
 
 def test_write_daily_report_tool_writes_json_artifact(tmp_path: Path) -> None:

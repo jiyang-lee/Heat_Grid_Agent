@@ -565,13 +565,35 @@ async def get_priority_evaluation_result(
     snapshot = await get_priority_evaluation(engine, evaluation_run_id)
     if snapshot is None:
         return None
-    for result in snapshot["results"]:
-        if int(result["substation_id"]) != substation_id:
-            continue
-        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
-            continue
-        return {"evaluation": snapshot["evaluation"], "result": result}
-    return None
+    result = _resolve_substation_result(
+        snapshot["results"],
+        substation_id=substation_id,
+        manufacturer_id=manufacturer_id,
+    )
+    return None if result is None else {"evaluation": snapshot["evaluation"], "result": result}
+
+
+class AmbiguousSubstationError(ValueError):
+    pass
+
+
+def _resolve_substation_result(
+    results: list[dict[str, Any]],
+    *,
+    substation_id: int,
+    manufacturer_id: str | None,
+) -> dict[str, Any] | None:
+    matches = [
+        result
+        for result in results
+        if int(result["substation_id"]) == substation_id
+        and (manufacturer_id is None or result["manufacturer_id"] == manufacturer_id)
+    ]
+    if manufacturer_id is None and len(matches) > 1:
+        raise AmbiguousSubstationError(
+            "manufacturer_id is required because substation_id is ambiguous"
+        )
+    return matches[0] if matches else None
 
 
 def latest_alert_results(snapshot: dict[str, Any]) -> list[dict[str, Any]]:

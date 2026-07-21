@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentRunStatus } from '../api/contracts'
 import { agentRunsApi } from '../api/client'
 import { Button, StatusBadge } from './ui'
@@ -51,6 +51,8 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
   const [progress, setProgress] = useState<Readonly<Record<string, RunProgress>>>({})
   const runIds = useMemo(() => entries.map((entry) => entry.runId), [entries])
   const runKey = runIds.join('|')
+  const entriesRef = useRef(entries)
+  entriesRef.current = entries
 
   useEffect(() => {
     if (runIds.length === 0) {
@@ -73,7 +75,7 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
       }))
       if (!disposed) setProgress((current) => Object.fromEntries(snapshots.map(([runId, snap]) => {
         const previous = current[runId]
-        const requestedAt = entries.find((entry) => entry.runId === runId)?.requestedAt
+        const requestedAt = entriesRef.current.find((entry) => entry.runId === runId)?.requestedAt
         const frozen = previous && TERMINAL_STATUSES.includes(previous.status)
         const elapsedMs = frozen ? previous.elapsedMs : requestedAt ? Date.now() - Date.parse(requestedAt) : 0
         return [runId, { status: snap.status, error: snap.error, elapsedMs }]
