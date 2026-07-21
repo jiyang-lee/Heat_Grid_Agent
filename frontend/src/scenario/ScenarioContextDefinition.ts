@@ -28,9 +28,10 @@ export interface ScenarioContextValue {
   readonly createWorkOrder: (runId?: string, result?: OpsAgentResultV4, alertId?: string) => void
   readonly selectDocumentGroup: (groupId: string) => void
   readonly appendWorkOrderRevision: (runId: string, result: OpsAgentResultV4, instruction: string, target: WorkOrderRevisionTarget, baseVersion: 1 | 2 | 3, documentContent?: string) => void
+  readonly appendManualWorkOrderRevision: (version: 2 | 3, baseVersion: 1 | 2 | 3, title: string, content: string, instruction: string, sourceRunId: string) => void
   readonly appendWorkOrderMessages: (messages: readonly import('./types').ScenarioChatMessage[]) => void
   readonly selectWorkOrderVersion: (version: 1 | 2 | 3) => void
-  readonly updateWorkOrderContent: (version: 1 | 2 | 3, content: string) => void
+  readonly updateWorkOrderContent: (version: 1 | 2 | 3, content: string, title?: string) => void
   readonly acceptWorkOrder: (version: 1 | 2 | 3) => void
   readonly createReportDraft: () => void
   readonly saveReportDraft: (content: string) => void

@@ -6,6 +6,7 @@ import { Icon } from '../console/icons'
 import { useOperations } from '../console/OperationsContext'
 import { operationsDateTime } from '../console/operationsTime'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
+import { compactScenarioAlertReason } from '../domain/alertReason'
 import { ScenarioSensorEvidenceChart } from './ScenarioSensorEvidenceChart'
 import type { ScenarioAlert, ScenarioTimelineAlert, SensorPoint } from './types'
 import { useScenario } from './useScenario'
@@ -112,7 +113,7 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
         priority_level: alert.priority,
         priority_score: alert.modelResult.priorityScore,
         priority_rank: [...alerts].sort((left, right) => right.modelResult.priorityScore - left.modelResult.priorityScore || left.id.localeCompare(right.id)).findIndex((candidate) => candidate.id === alert.id) + 1,
-        reason: `${alert.title} · ${alert.summary} [ML 결과: 모델 ${alert.modelResult.modelVersion}, 이상 ${Math.round(alert.modelResult.anomalyScore * 100)}%, 위험 ${Math.round(alert.modelResult.riskScore * 100)}%, 우선순위 ${alert.modelResult.priorityScore.toFixed(0)}점, 대응 긴급도 ${Math.round(alert.modelResult.leadtimeUrgencyScore * 100)}%]`,
+        reason: compactScenarioAlertReason(alert.title, alert.summary),
       })
       const run = await agentRunsApi.create({
         alert_id: persisted.alert_id,

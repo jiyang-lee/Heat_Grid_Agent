@@ -145,7 +145,13 @@ async def test_incident_document_review_edit_approve_and_conflict_flow() -> None
                     "body": "mutate approved document",
                 },
             )
-            assert after_approval.status_code == 409
+            assert after_approval.status_code == 200
+            edited_after_approval = after_approval.json()
+            assert edited_after_approval["version"] == 3
+            assert edited_after_approval["parent_document_version_id"] == approved.json()["document_version_id"]
+            assert edited_after_approval["status"] == "draft"
+            assert edited_after_approval["review_state"] == "pending_ai_review"
+            assert edited_after_approval["content"]["body"] == "mutate approved document"
     finally:
         await engine.dispose()
 
