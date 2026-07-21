@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { OperatorReviewDecision, OpsAgentOutput, OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatMessageResponse, ReviewChatProposalResponse, ReviewChatThreadResponse, WorkOrderListItem } from '../../api/contracts'
+import { isWorkOrderStructuredContent } from '../../api/contracts'
 import { displayAlertReason } from '../../domain/alertReason'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../../api/client'
 import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useEditIncidentWorkOrder, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen, useAgentRunResult } from '../../api/hooks'
@@ -8,6 +9,8 @@ import { useConfirmDialog } from '../ConfirmDialog'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
 import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
+import { WorkOrderStructuredPanel } from './WorkOrderStructuredPanel'
+import { legacyViewOfContent } from './workOrderStructuredView'
 import { detectWorkOrderRevisionTarget, isWorkOrderProposalConfirmation, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionScope, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
 
 interface Props {
@@ -33,7 +36,10 @@ function chatErrorMessage(error: unknown): string {
     if (/document version is stale|문서 버전/i.test(error.message)) return '선택한 문서 버전이 최신 상태와 다릅니다. 버전을 다시 선택한 뒤 요청해 주세요.'
     return '다른 검토 변경과 충돌했습니다. 최신 대화와 문서를 불러온 뒤 다시 시도해 주세요.'
   }
-  if (error instanceof ApiError && error.status === 422) return '수정 요청 내용을 확인한 뒤 다시 보내 주세요.'
+  if (error instanceof ApiError && error.status === 422) {
+    if (/부적절한 내용/.test(error.message)) return '부적절한 내용이 포함되어 있어 처리할 수 없습니다.'
+    return '수정 요청 내용을 확인한 뒤 다시 보내 주세요.'
+  }
   if (error instanceof ApiError && error.status === 404) return '이 작업지시서의 대화 또는 문서 연결을 찾지 못했습니다.'
   if (error instanceof Error && /시간이 초과/.test(error.message)) return `${error.message} 서버 작업은 계속될 수 있으니 AI 분석 목록에서 상태를 확인해 주세요.`
   if (error instanceof Error && error.message.trim()) return error.message
@@ -221,11 +227,13 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const activeRevision = revisions.find((revision) => revision.version === activeVersion)
   const activeResult = activeRevision?.result ?? result.data ?? null
   const baseServerDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === 1)
+  const baseServerContentView = baseServerDocument ? legacyViewOfContent(baseServerDocument.content) : null
+  const structuredContent = baseServerDocument && isWorkOrderStructuredContent(baseServerDocument.content) ? baseServerDocument.content : null
   const threadDocument = canonicalDocument(threadContext?.document_content)
   const activeThreadDocument = (threadContext?.document_version ?? 1) === activeVersion ? threadDocument : { title: null, body: null }
-  const title = activeRevision?.title ?? baseServerDocument?.content.title ?? activeThreadDocument.title ?? baseTitle
+  const title = activeRevision?.title ?? baseServerContentView?.title ?? activeThreadDocument.title ?? baseTitle
   const number = `HG-${compactDate(item.created_at)}-${item.substation_id ?? 'NA'}-v${activeVersion}`
-  const body = activeRevision?.content ?? baseServerDocument?.content.body ?? activeThreadDocument.body ?? (activeResult == null ? '' : bodyFromResult(title, activeResult))
+  const body = activeRevision?.content ?? baseServerContentView?.body ?? activeThreadDocument.body ?? (activeResult == null ? '' : bodyFromResult(title, activeResult))
   const reviewOutput: OpsAgentOutput | null = activeResult == null ? null : { summary: activeResult.situation, action_plan: activeResult.actions.map((action) => `${action.title}: ${action.detail}`).join('\n'), caution: activeResult.cautions.join('\n') }
   const previewActions = activeResult == null ? [] : workOrderSummaryLines(activeResult.actions)
   const messages = useMemo(() => {
@@ -240,6 +248,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const draftIsRevision = isWorkOrderRevisionRequest(draft)
   const activeReviewRunId = activeRevision?.runId ?? activeRevision?.result.run_id ?? item.run_id
   const activeServerDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === activeVersion)
+  const activeStructuredContent = activeServerDocument && isWorkOrderStructuredContent(activeServerDocument.content) ? activeServerDocument.content : structuredContent
   const activeIncidentId = activeRevision?.incidentId ?? activeServerDocument?.episode_id ?? threadContext?.incident_id ?? null
   const activeDocumentVersion = activeRevision?.documentVersion ?? activeServerDocument?.version ?? (activeVersion === 1 ? threadContext?.document_version ?? null : null)
   const activeDocumentVersionId = activeRevision?.documentVersionId ?? activeServerDocument?.document_version_id ?? (activeVersion === 1 ? threadContext?.document_version_id ?? null : null)
@@ -408,11 +417,12 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     setRevisions((current) => {
       const next = documents.map((document): StoredRevision => {
         const existing = current.find((revision) => revision.version === document.version)
+        const contentView = legacyViewOfContent(document.content)
         return {
           version: document.version,
-          title: document.content.title,
+          title: contentView.title,
           result: existing?.result ?? baseResult,
-          content: document.content.body,
+          content: contentView.body,
           runId: existing?.runId,
           documentVersionId: document.document_version_id,
           documentVersion: document.version,
@@ -623,7 +633,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
       if (revisionResult != null) {
         if (nextVersionValue !== 2 && nextVersionValue !== 3) throw new Error('서버가 지원 범위를 벗어난 문서 버전을 반환했습니다.')
         const mergedResult = canonical.body == null ? mergeOpsAgentResult(baseResult, revisionResult, target) : revisionResult
-        const baseRevisionTitle = baseRevision?.title ?? baseServerDocument?.content.title ?? threadDocument.title ?? baseTitle
+        const baseRevisionTitle = baseRevision?.title ?? baseServerContentView?.title ?? threadDocument.title ?? baseTitle
         const nextTitle = canonical.title ?? (target.section === 'title' ? revisionResult.headline : baseRevisionTitle)
         const nextRevision: StoredRevision = {
           version: nextVersionValue,
@@ -742,11 +752,12 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
           note: manualNote.trim() || '운영자 직접 편집',
         },
       })
+      const editedContentView = legacyViewOfContent(document.content)
       const nextRevision: StoredRevision = {
         version: document.version,
-        title: document.content.title,
+        title: editedContentView.title,
         result: activeResult,
-        content: document.content.body,
+        content: editedContentView.body,
         documentVersionId: document.document_version_id,
         documentVersion: document.version,
         incidentId: document.episode_id,
@@ -765,7 +776,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
         incident_id: document.episode_id,
         document_version: document.version,
         document_version_id: document.document_version_id,
-        document_content: { title: document.content.title, body: document.content.body, actions: [...document.content.actions], evidence: [...document.content.evidence], safety_notes: document.content.safety_notes },
+        document_content: { title: editedContentView.title, body: editedContentView.body, actions: [...editedContentView.actions], evidence: [...editedContentView.evidence], safety_notes: editedContentView.safety_notes },
       })
       setManualEditing(false)
       setContextNotice(`운영자 편집본을 v${document.version} 새 초안으로 저장했습니다. AI 검토 후 운영자 재승인이 필요합니다.`)
@@ -818,6 +829,9 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
           </div>}
           <dl><div><dt>문서번호</dt><dd>{number}</dd></div><div><dt>대상 설비</dt><dd>{facilityName(item.substation_id, item.manufacturer_id)}</dd></div><div><dt>생성 시각</dt><dd>{formatDateTime(activeRevision?.createdAt ?? item.created_at)}</dd></div><div><dt>문서 버전</dt><dd>v{activeVersion}</dd></div></dl>
           {manualEditing ? <div className="work-order-manual-editor"><p className="work-order-chat-context-note">현재 v{activeVersion}은 그대로 보존되고, 저장 시 v{activeDocumentVersion == null ? '-' : activeDocumentVersion + 1} 새 초안이 생성됩니다. 새 버전은 AI 검토와 운영자 재승인이 필요합니다.</p><label><span>문서 제목</span><input onChange={(event) => setManualTitle(event.target.value)} value={manualTitle} /></label><label><span>작업지시서 본문</span><textarea className="scenario-document-editor" onChange={(event) => setManualBody(event.target.value)} value={manualBody} /></label><label><span>수정 사유</span><input onChange={(event) => setManualNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={manualNote} /></label><div><Button disabled={editIncidentWorkOrder.isPending} onClick={() => setManualEditing(false)}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !manualTitle.trim() || !manualBody.trim()} icon="check" onClick={() => void saveManualEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : '새 버전으로 저장'}</Button></div></div> : <pre className="activity-report-body report-single-body">{body}</pre>}
+          {!manualEditing && activeStructuredContent && activeIncidentId != null && (
+            <WorkOrderStructuredPanel content={activeStructuredContent} incidentId={activeIncidentId} version={activeVersion} />
+          )}
         </article>
         <section className="work-order-review-chat" aria-label="AI 수정 챗봇" ref={chatSectionRef}>
           <header><div><h3>AI 문서 검토 챗봇</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 선택한 v{activeVersion}을 문맥으로 사용하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>

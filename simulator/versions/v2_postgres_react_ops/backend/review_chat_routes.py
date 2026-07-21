@@ -35,6 +35,7 @@ from review_chat_api_models import (
 )
 from review_chat_service import (
     ReviewChatConflictError,
+    ReviewChatGuardrailRejectedError,
     ReviewChatNotFoundError,
     cancel_review_chat_proposal,
     confirm_review_chat_proposal,
@@ -99,7 +100,16 @@ def make_review_chat_router(
         run_id: UUID,
         request: ReviewChatOpenRequest,
     ) -> ReviewChatThreadResponse:
-        return await _map_errors(open_review_chat(engine, str(run_id), request))
+        key = active_settings.openai_api_key
+        return await _map_errors(
+            open_review_chat(
+                engine,
+                str(run_id),
+                request,
+                api_key=None if key is None else key.get_secret_value(),
+                model=active_settings.natural_chat_model,
+            )
+        )
 
     @router.get(
         "/review-chat/threads/{thread_id}/messages",
@@ -225,6 +235,8 @@ async def _map_errors(awaitable):
         return await awaitable
     except ReviewChatNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ReviewChatGuardrailRejectedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (
         IdempotencyConflictError,
         ReviewChatConflictError,

@@ -102,6 +102,11 @@ APPLICATION_TABLES_V016: Final = APPLICATION_TABLES_V011 | frozenset(
         "preventive_projections",
     }
 )
+APPLICATION_TABLES_V019: Final = APPLICATION_TABLES_V016 | frozenset(
+    {
+        "work_order_checklist_catalog",
+    }
+)
 APPEND_ONLY_TABLES_V016: Final = (
     "incident_document_versions",
     "incident_document_reviews",
@@ -644,7 +649,12 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    expected = APPLICATION_TABLES_V016 if version >= 16 else APPLICATION_TABLES_V011
+    if version >= 19:
+        expected = APPLICATION_TABLES_V019
+    elif version >= 16:
+        expected = APPLICATION_TABLES_V016
+    else:
+        expected = APPLICATION_TABLES_V011
     if actual != expected:
         raise MigrationContractError(
             "application tables mismatch: "

@@ -1002,6 +1002,89 @@ export interface IncidentDocumentContent {
   readonly safety_notes: string
 }
 
+export type WorkOrderKind = 'site_check' | 'maintenance'
+export type ChecklistResult = 'pass' | 'fail' | 'not_applicable' | 'pending'
+
+export interface WorkOrderHeader {
+  readonly document_number: string
+  readonly issued_at: string
+  readonly priority: string
+  readonly assignee: string | null
+  readonly target_building: string
+  readonly mechanical_room: string | null
+  readonly equipment_type: string
+  readonly work_type: string
+}
+
+export interface WorkOrderChecklistItem {
+  readonly seq: number
+  readonly instrument_or_target: string
+  readonly check_or_task_action: string
+  readonly pass_fail_criteria: string | null
+  readonly parts_or_tools: string | null
+  readonly completion_condition: string | null
+  readonly result: ChecklistResult
+  readonly measured_before: string | null
+  readonly measured_after: string | null
+  readonly checked_by: string | null
+  readonly signature: string | null
+  readonly note: string | null
+}
+
+export interface BooleanChecklistItem {
+  readonly label: string
+  readonly checked: boolean
+}
+
+export interface SafetyPermitQuestion {
+  readonly question: string
+  readonly applicable: boolean
+  readonly required_action: string | null
+}
+
+export interface SafetyPermitPrecheck {
+  readonly questions: readonly SafetyPermitQuestion[]
+  readonly permit_required: boolean
+}
+
+export interface WorkOrderStructuredContent {
+  readonly work_order_kind: WorkOrderKind
+  readonly header: WorkOrderHeader
+  readonly purpose: string
+  readonly risk_and_evidence: string
+  readonly restriction_or_prep_checklist: readonly BooleanChecklistItem[]
+  readonly checklist: readonly WorkOrderChecklistItem[]
+  readonly commissioning_checklist: readonly WorkOrderChecklistItem[]
+  readonly outcome_and_followup: string
+  readonly safety_permit_precheck: SafetyPermitPrecheck
+  readonly disclaimer: string
+}
+
+export type WorkOrderPatchSection =
+  | 'purpose'
+  | 'risk_and_evidence'
+  | 'restriction_or_prep_checklist'
+  | 'checklist'
+  | 'commissioning_checklist'
+  | 'outcome_and_followup'
+  | 'safety_permit_precheck'
+
+export interface WorkOrderFieldPatchRequest {
+  readonly expected_version: number
+  readonly edited_by: string
+  readonly idempotency_key: string
+  readonly target_section: WorkOrderPatchSection
+  readonly target_seq: number
+  readonly target_field: string
+  readonly new_value: string
+}
+
+export function isWorkOrderStructuredContent(
+  content: IncidentDocumentContent | WorkOrderStructuredContent,
+): content is WorkOrderStructuredContent {
+  return 'work_order_kind' in content
+}
+
 export interface IncidentDocumentResponse {
   readonly document_version_id: string
   readonly episode_id: string
@@ -1011,7 +1094,7 @@ export interface IncidentDocumentResponse {
   readonly status: 'draft' | 'ai_reviewed' | 'approved' | 'failed'
   readonly review_state: 'none' | 'pending_ai_review' | 'operator_noted' | 'approved' | 'failed'
   readonly retryable: boolean
-  readonly content: IncidentDocumentContent
+  readonly content: IncidentDocumentContent | WorkOrderStructuredContent
   readonly content_hash: string
   readonly created_by: string
   readonly created_at: string

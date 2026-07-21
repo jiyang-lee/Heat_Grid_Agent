@@ -85,6 +85,7 @@ import type {
   IncidentDocumentEditRequest,
   IncidentDocumentPage,
   IncidentDocumentResponse,
+  WorkOrderFieldPatchRequest,
   OperationsReportPage,
   OperationsReportPeriod,
   OperationsReportVersion,
@@ -329,6 +330,11 @@ export const incidentDocumentsApi = {
   editWorkOrder: (incidentId: string, version: number, body: IncidentDocumentEditRequest) =>
     apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/versions/${version}`, {
       method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  patchWorkOrderField: (incidentId: string, version: number, body: WorkOrderFieldPatchRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/versions/${version}/field`, {
+      method: 'PATCH',
       body: JSON.stringify(body),
     }),
 }

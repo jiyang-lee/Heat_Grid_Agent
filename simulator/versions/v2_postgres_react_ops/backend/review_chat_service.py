@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+import logging
 import re
 from typing import Literal, cast
 from uuid import uuid4
@@ -17,10 +18,20 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from agent_operator_review_repository import ReviewRecordInput, record_review
 from agent_rerun_policy import TARGET_STAGE_BY_REASON
 from agent_rerun_repository import TargetedChildRun, create_targeted_child_run
-from incident_document_api_models import IncidentDocumentContent, IncidentEvidenceCitation
+from incident_document_api_models import (
+    IncidentDocumentContent,
+    IncidentEvidenceCitation,
+    WorkOrderStructuredContent,
+)
 from incident_document_content import content_from_row
 from incident_document_repository_errors import IncidentDocumentNotFoundError
 from incident_document_store import document_by_id, insert_review, insert_version, latest_version
+from review_chat_guardrail import check_operator_message, check_output_text
+from work_order_generation import (
+    WorkOrderGenerationError,
+    generate_structured_work_order,
+    render_work_order_markdown,
+)
 from review_chat_api_models import (
     ReviewChatCancelRequest,
     ReviewChatConfirmationResponse,
@@ -36,6 +47,8 @@ from review_chat_api_models import (
     ReviewChatThreadResponse,
 )
 
+
+LOGGER = logging.getLogger(__name__)
 
 PROMPT_VERSION = "review-chat.v2"
 PROPOSAL_TTL = timedelta(hours=1)
@@ -64,6 +77,15 @@ class ReviewChatNotFoundError(RuntimeError):
 class ReviewChatConflictError(RuntimeError):
     def __init__(self, detail: str) -> None:
         super().__init__(detail)
+
+
+class ReviewChatGuardrailRejectedError(RuntimeError):
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+    def __str__(self) -> str:
+        return "부적절한 내용이 포함되어 있어 처리할 수 없습니다."
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +146,9 @@ async def open_review_chat(
     engine: AsyncEngine,
     run_id: str,
     request: ReviewChatOpenRequest,
+    *,
+    api_key: str | None = None,
+    model: str = "gpt-5.4-mini",
 ) -> ReviewChatThreadResponse:
     async with engine.begin() as connection:
         canonical_run_id = await _canonical_chat_run_id(connection, run_id)
@@ -135,6 +160,8 @@ async def open_review_chat(
             connection,
             context_run_id,
             actor=request.created_by,
+            api_key=api_key,
+            model=model,
         )
         context = await _context_for_run(connection, context_run_id)
         existing = await connection.execute(
@@ -311,6 +338,8 @@ async def submit_review_chat_message(
             connection,
             context_run_id,
             actor=request.created_by,
+            api_key=api_key,
+            model=model,
         )
         thread = await _locked_thread(connection, thread_id)
         existing = await _message_by_idempotency(
@@ -337,6 +366,9 @@ async def submit_review_chat_message(
                 if message.role == "operator"
             ),
         )
+        guardrail_verdict = await check_operator_message(request.content, api_key=api_key)
+        if not guardrail_verdict.allowed:
+            raise ReviewChatGuardrailRejectedError(guardrail_verdict.reason or "unknown")
         parsed = parse_review_chat_intent(resolved_content, document_context)
         message_kind = "action_request" if parsed.kind != "explain" else "question"
         operator = await _append_message(
@@ -394,20 +426,22 @@ async def submit_review_chat_message(
             )
         else:
             fallback = _clarification_message(parsed, context)
+            reply = await _natural_language_reply(
+                api_key=api_key,
+                model=model,
+                question=request.content,
+                conversation=conversation,
+                context=context,
+                document_context=document_context,
+                fallback=fallback,
+            )
+            reply = await check_output_text(reply, api_key=api_key)
             assistant = await _append_message(
                 connection,
                 thread_id=thread_id,
                 role="assistant",
                 message_kind="explanation",
-                content=await _natural_language_reply(
-                    api_key=api_key,
-                    model=model,
-                    question=request.content,
-                    conversation=conversation,
-                    context=context,
-                    document_context=document_context,
-                    fallback=fallback,
-                ),
+                content=reply,
                 structured_payload={"mode": parsed.kind},
                 citations=context.citations,
                 context_hash=context.context_hash,
@@ -1276,6 +1310,10 @@ async def _persist_proposed_document_version(
     if latest_version_number >= 3:
         return DocumentPersistenceResult(None, "document_version_limit_reached")
     base_content = content_from_row(base)
+    if isinstance(base_content, WorkOrderStructuredContent):
+        raise ReviewChatConflictError(
+            "structured work orders must be revised via the work-order field API"
+        )
     update: dict[str, object] = {"body": proposed_body[:8000]}
     target_label = correction.get("target_label", "")
     if target_label in {"제목", "작업지시서 전체"}:
@@ -1707,6 +1745,8 @@ async def _ensure_run_work_order_document(
     run_id: str,
     *,
     actor: str,
+    api_key: str | None = None,
+    model: str = "gpt-5.4-mini",
 ) -> dict[str, str] | None:
     schema_ready = await connection.scalar(
         text(
@@ -1784,10 +1824,23 @@ async def _ensure_run_work_order_document(
             raise ReviewChatConflictError("alert episode context changed concurrently")
     latest = await latest_version(connection, episode_id, "work_order")
     if latest is None:
-        content = _incident_content_from_ops_output(
-            _json_object(row["ops_output"]),
-            episode_id=episode_id,
-        )
+        ops_output = _json_object(row["ops_output"])
+        try:
+            content: IncidentDocumentContent | WorkOrderStructuredContent = (
+                await generate_structured_work_order(
+                    connection,
+                    episode_id=episode_id,
+                    ops_output=ops_output,
+                    manufacturer_id=row["manufacturer_id"],
+                    substation_id=row["substation_id"],
+                    priority_level=row["priority_level"],
+                    api_key=api_key,
+                    model=model,
+                )
+            )
+        except WorkOrderGenerationError:
+            LOGGER.warning("structured work order generation failed; using legacy fallback", exc_info=True)
+            content = _incident_content_from_ops_output(ops_output, episode_id=episode_id)
         try:
             async with connection.begin_nested():
                 latest = await insert_version(
@@ -1807,6 +1860,7 @@ async def _ensure_run_work_order_document(
                     "work-order bootstrap changed concurrently"
                 )
         else:
+            bootstrap_evidence = () if isinstance(content, WorkOrderStructuredContent) else content.evidence
             await insert_review(
                 connection,
                 document_version_id=str(latest["document_version_id"]),
@@ -1814,7 +1868,7 @@ async def _ensure_run_work_order_document(
                 decision="pending",
                 note="Bootstrapped from the completed agent run for review chat.",
                 actor="system",
-                evidence=content.evidence,
+                evidence=bootstrap_evidence,
             )
     return _document_context_from_row(latest)
 
@@ -2088,10 +2142,12 @@ async def _canonical_document_context(
 
 
 def _document_context_from_row(row: RowMapping) -> dict[str, str]:
-    content = _json_object(row["content"])
-    body = content.get("body")
-    if not isinstance(body, str):
-        raise ReviewChatConflictError("document content is malformed")
+    raw_content = _json_object(row["content"])
+    parsed_content = content_from_row(row)
+    if isinstance(parsed_content, WorkOrderStructuredContent):
+        body = render_work_order_markdown(parsed_content)
+    else:
+        body = parsed_content.body
     content_hash = str(row["content_hash"])
     return {
         "incident_id": str(row["episode_id"]),
@@ -2103,7 +2159,7 @@ def _document_context_from_row(row: RowMapping) -> dict[str, str]:
         "base_content_hash": content_hash,
         "content_hash": content_hash,
         "current_body": body,
-        "base_document_content": _dump(content),
+        "base_document_content": _dump(raw_content),
     }
 
 

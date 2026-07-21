@@ -12,6 +12,7 @@ from incident_document_api_models import (
     IncidentDocumentGenerateRequest,
     IncidentDocumentPage,
     IncidentDocumentResponse,
+    WorkOrderFieldPatchRequest,
 )
 from incident_document_repository import (
     IncidentDocumentRepository,
@@ -76,6 +77,19 @@ def make_incident_document_router(
     ) -> IncidentDocumentResponse:
         return await _map_errors(
             repository.edit_document(str(episode_id), document_type, version, request)
+        )
+
+    @router.patch(
+        "/incidents/{episode_id}/documents/work_order/versions/{version}/field",
+        response_model=IncidentDocumentResponse,
+    )
+    async def patch_work_order_field(
+        episode_id: UUID,
+        version: int,
+        request: WorkOrderFieldPatchRequest,
+    ) -> IncidentDocumentResponse:
+        return await _map_errors(
+            repository.patch_work_order_field(str(episode_id), version, request)
         )
 
     @router.post(

@@ -12,6 +12,7 @@ from incident_document_api_models import (
     IncidentDocumentResponse,
     IncidentEvidenceCitation,
     ReviewState,
+    WorkOrderStructuredContent,
 )
 from incident_document_content import content_from_row, document_status, dump_json, hash_json
 from incident_document_repository_errors import (
@@ -54,7 +55,7 @@ async def insert_version(
     version: int,
     parent_document_version_id: str | None,
     status: str,
-    content: IncidentDocumentContent,
+    content: IncidentDocumentContent | WorkOrderStructuredContent,
     actor: str,
 ) -> RowMapping:
     payload = content.model_dump(mode="json")

@@ -46,6 +46,7 @@ import type {
   RunLineageResponse,
   IncidentDocumentApproveRequest,
   IncidentDocumentEditRequest,
+  WorkOrderFieldPatchRequest,
 } from './contracts'
 
 export const qk = {
@@ -547,6 +548,18 @@ export function useEditIncidentWorkOrder() {
       qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) })
       qc.invalidateQueries({ queryKey: ['work-orders'] })
       qc.invalidateQueries({ queryKey: ['incident-reports'] })
+    },
+  })
+}
+
+export function usePatchWorkOrderField() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; version: number; body: WorkOrderFieldPatchRequest }) =>
+      incidentDocumentsApi.patchWorkOrderField(value.incidentId, value.version, value.body),
+    onSuccess: (_document, value) => {
+      qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) })
+      qc.invalidateQueries({ queryKey: ['work-orders'] })
     },
   })
 }
