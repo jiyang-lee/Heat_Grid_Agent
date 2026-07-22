@@ -89,7 +89,7 @@ function ConsoleApp() {
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
     <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
       {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
-      {page === 'alerts' && (replay ? <ScenarioAlertsPage analysisQueue={analysisQueue} initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} onRunQueued={queueAgentRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
+      {page === 'alerts' && (replay ? <ScenarioAlertsPage initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
       {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
       {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
       {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}

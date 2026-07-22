@@ -95,6 +95,15 @@ Base unit: 4px. Use `--space-1` through `--space-8` (4–32px). Desktop uses a 2
 - Behavior: version selection changes the central document only; review history stays visible and uses compact operator, AI-review and execution-result rows.
 - Input: Enter submits a review; Shift+Enter inserts a line break; IME composition is never submitted early.
 
+### FinalTestDocumentChatWorkspace
+
+- Structure: one preloaded `demo_id` owns the normal snapshot, fault snapshot, work order, report and chat script. The document preview and conversation are separate bordered surfaces inside one resizable split workspace.
+- Conversation anatomy: compact domain header, scrollable message transcript, DB-backed suggested prompts and a bottom composer. Operator messages align right; assistant and safety responses align left without copying another product's branding.
+- Ratio controls: desktop supports 60:40, 50:50 and 40:60 document-to-chat ratios. At 960px and below the surfaces stack and each keeps its own internal scroll.
+- States: loading skeleton, read error with retry, work-order preview, report preview, assistant response, fixed domain fallback and safety refusal.
+- Safety and determinism: the demo never calls a model. Guardrails are matched before domain scripts, and all text comes from the selected DB package.
+- Accessibility: tab and ratio controls expose selected state, the transcript is a polite live log, Enter submits, Shift+Enter creates a new line and IME composition never submits early.
+
 ## 6. Motion & Interaction
 
 100–150ms ease-out for controls and 200ms ease-in-out for panels. Use only `transform` and `opacity`. Every non-essential transition is disabled by `prefers-reduced-motion`.

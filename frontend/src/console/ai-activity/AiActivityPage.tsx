@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ActivityProjectionQuery, AgentRunListQuery, OpsAgentResultV4 } from '../../api/contracts'
 import { useAgentReports, useAgentRuns, useWorkOrderRunMetadata, useWorkOrders } from '../../api/hooks'
+import { FinalTestDemoWorkspace } from '../../final-test/FinalTestDemoWorkspace'
 import { ScenarioReportWorkspace } from '../../scenario/ScenarioReportWorkspace'
 import { ScenarioWorkOrderWorkspace } from '../../scenario/ScenarioWorkOrderWorkspace'
 import { SCENARIO_ALERTS } from '../../scenario/scenarioData'
@@ -48,6 +49,13 @@ interface Props {
 }
 
 export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onConsumeInitialRun }: Props) {
+  if (entryMode === 'fault' && initialRunId?.startsWith('final-test-fault-')) {
+    return <FinalTestDemoWorkspace demoId={initialRunId} />
+  }
+  return <LegacyAiActivityPage entryMode={entryMode} incidentAlertId={incidentAlertId} initialRunId={initialRunId} onConsumeInitialRun={onConsumeInitialRun} />
+}
+
+function LegacyAiActivityPage({ entryMode, incidentAlertId, initialRunId, onConsumeInitialRun }: Props) {
   const scenario = useScenario()
   const activeScenarioGroup = scenario.state.documentGroups.find((group) => group.id === scenario.state.activeDocumentGroupId) ?? null
   const faultMode = entryMode === 'fault'
