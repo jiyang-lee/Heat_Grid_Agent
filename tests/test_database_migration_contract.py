@@ -32,11 +32,30 @@ def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(23))
+    assert [migration.version for migration in migrations] == list(range(24))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "022_demo_building_context.sql"
+    assert migrations[-1].path.name == "023_final_test_demo_packages.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
+
+
+def test_final_test_demo_packages_are_seeded_and_read_only() -> None:
+    sql = (
+        ROOT / "migrations" / "023_final_test_demo_packages.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    assert "create table if not exists public.final_test_demo_packages" in sql
+    assert "primary key" in sql
+    assert "normal_payload jsonb" in sql
+    assert "fault_payload jsonb" in sql
+    assert "work_order_document jsonb" in sql
+    assert "report_document jsonb" in sql
+    assert "chat_script jsonb" in sql
+    assert sql.count("final-test-fault-") >= 3
+    assert "grant select on table public.final_test_demo_packages to heatgrid_app" in sql
+    assert "grant insert" not in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
 
 
 def test_legacy_work_order_migration_lineage_is_recognized() -> None:

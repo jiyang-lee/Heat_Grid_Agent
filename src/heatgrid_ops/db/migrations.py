@@ -121,6 +121,11 @@ APPLICATION_TABLES_V020: Final = APPLICATION_TABLES_V016 | frozenset(
         "work_order_checklist_catalog",
     }
 )
+APPLICATION_TABLES_V023: Final = APPLICATION_TABLES_V020 | frozenset(
+    {
+        "final_test_demo_packages",
+    }
+)
 APPEND_ONLY_TABLES_V016: Final = (
     "incident_document_versions",
     "incident_document_reviews",
@@ -732,7 +737,9 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    if version >= 20:
+    if version >= 23:
+        expected = APPLICATION_TABLES_V023
+    elif version >= 20:
         expected = APPLICATION_TABLES_V020
     elif version >= 16:
         expected = APPLICATION_TABLES_V016

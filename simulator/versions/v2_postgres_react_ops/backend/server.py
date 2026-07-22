@@ -66,6 +66,8 @@ from operations_report_scheduler import OperationsReportScheduler
 from replay_routes import make_replay_router
 from retrain_routes import make_retrain_router
 from demo_ai_history_routes import make_demo_ai_history_router
+from final_test_demo_repository import PostgresFinalTestDemoRepository
+from final_test_demo_routes import make_final_test_demo_router
 from retrain_repository import ensure_retrain_tables
 from review_repository import ensure_review_tables
 from schemas import (
@@ -80,6 +82,7 @@ from settings import Settings
 
 settings = Settings()
 engine = make_engine(settings.database_url)
+final_test_demo_repository = PostgresFinalTestDemoRepository(engine)
 rag_searcher = RagSearcher()
 agent_runtime = create_agent_runtime(settings, engine, rag_searcher)
 operations_report_repository = PostgresOperationsReportRepository(engine)
@@ -351,6 +354,7 @@ app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 app.include_router(make_demo_ai_history_router(engine, enabled=settings.demo_ai_history_reset_enabled))
+app.include_router(make_final_test_demo_router(final_test_demo_repository))
 
 
 if __name__ == "__main__":
