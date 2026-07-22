@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 from uuid import UUID
 
 import orjson
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -17,6 +17,8 @@ from agent_operator_review_repository import (
 from agent_rerun_repository import TargetedChildRun, mark_rerun_scheduled
 from incident_document_repository import PostgresIncidentDocumentRepository
 from incident_document_routes import make_incident_document_router
+from operations_policy_api_models import CurrentUserResponse
+from operations_policy_routes import current_user
 
 if TYPE_CHECKING:
     from settings import Settings
@@ -98,8 +100,10 @@ def make_review_chat_router(
     async def open_thread(
         run_id: UUID,
         request: ReviewChatOpenRequest,
+        user: Annotated[CurrentUserResponse, Depends(current_user)],
     ) -> ReviewChatThreadResponse:
-        return await _map_errors(open_review_chat(engine, str(run_id), request))
+        trusted_request = request.model_copy(update={"created_by": user.user_id})
+        return await _map_errors(open_review_chat(engine, str(run_id), trusted_request))
 
     @router.get(
         "/review-chat/threads/{thread_id}/messages",
@@ -138,13 +142,15 @@ def make_review_chat_router(
     async def submit_message(
         thread_id: UUID,
         request: ReviewChatMessageRequest,
+        user: Annotated[CurrentUserResponse, Depends(current_user)],
     ) -> ReviewChatSubmissionResponse:
         key = active_settings.openai_api_key
+        trusted_request = request.model_copy(update={"created_by": user.user_id})
         return await _map_errors(
             submit_review_chat_message(
                 engine,
                 str(thread_id),
-                request,
+                trusted_request,
                 api_key=None if key is None else key.get_secret_value(),
                 model=active_settings.natural_chat_model,
             )
@@ -180,12 +186,14 @@ def make_review_chat_router(
     async def confirm(
         proposal_id: UUID,
         request: ReviewChatConfirmRequest,
+        user: Annotated[CurrentUserResponse, Depends(current_user)],
     ) -> ReviewChatConfirmationResponse:
+        trusted_request = request.model_copy(update={"confirmed_by": user.user_id})
         result, child = await _map_errors(
             confirm_review_chat_proposal(
                 engine,
                 str(proposal_id),
-                request,
+                trusted_request,
                 rag_quality_enabled=active_settings.rag_quality_enabled,
             )
         )
@@ -214,8 +222,12 @@ def make_review_chat_router(
     async def cancel(
         proposal_id: UUID,
         request: ReviewChatCancelRequest,
+        user: Annotated[CurrentUserResponse, Depends(current_user)],
     ) -> ReviewChatConfirmationResponse:
-        return await _map_errors(cancel_review_chat_proposal(engine, str(proposal_id), request))
+        trusted_request = request.model_copy(update={"cancelled_by": user.user_id})
+        return await _map_errors(
+            cancel_review_chat_proposal(engine, str(proposal_id), trusted_request)
+        )
 
     return router
 

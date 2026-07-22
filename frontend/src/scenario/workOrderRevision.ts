@@ -41,6 +41,104 @@ const TARGET_INFERENCE_STOP_WORDS = new Set([
 const EXPLICIT_REVISION_PATTERN = /(?:수정|교정|고쳐|바꿔|변경|추가|삭제|보강|재작성|다시\s*작성|반영|줄여|늘려|짧게|길게|정리)(?:\s*(?:해|해줘|해주세요|해\s*주세요|하자|하십시오|바랍니다|줘|주세요))|(?:수정|교정|변경|추가|삭제|보강|재작성)\s*(?:요청|필요)/
 const REVISION_PROBLEM_PATTERN = /(?:부족|너무\s*짧|너무\s*길|틀렸|잘못|오류|누락|맞지\s*않|개선이?\s*필요)/
 const QUESTION_PATTERN = /\?|왜|어떻게|무엇|무슨|뭐(?:야|지|였|였지|라고)|알려|설명|보여|기억|했지|였지|인가|맞아|궁금|요청한\s*(?:내용|사항)|말한\s*(?:내용|사항)/
+const NON_OPERATIONAL_REVISION_TERMS = [
+  '레시피', '요리법', '조리법', '김치볶음밥', '볶음밥', '라면', '스시', '초밥', '맛집', '식당',
+  '점심메뉴', '저녁메뉴', '여행지', '드라마', '영화', '넷플릭스', '애플tv', '연애상담',
+  '쇼핑추천', '게임추천', '주식추천', '코인추천', '파이썬코드', '자바스크립트코드',
+  '프로그래밍코드', '영어번역', '일본어번역', '시를써', '소설을써', '농담', '축구선수', '야구선수',
+  '손흥민', '태양계', '행성설명', '고양이', '사육법', '비트코인', '투자전략', 'sql쿼리',
+] as const
+const OPERATIONAL_REVISION_TERMS = [
+  '보호구', '안전모', '안전화', '보안경', '장갑', '착용', '책임자', '감시자', '허가', '2인1조',
+  '차단', '잠금', '표지', '출입', '밸브', '전원', '압력', '온도', '유량', '누설', '환기',
+  '화상', '감전', '미끄럼', '위험', '경고', '비상', '정지', '설비', '펌프', '열교환', '배관',
+  '기계실', '지역난방', '난방', '센서', '환수', '공급', '진동', '소음', '순환펌프', '이상탐지',
+  '우선순위', '근거', '출처', '외기온', '긴급', '모델', '예측', 'rag', '검색',
+] as const
+const REVISION_STYLE_MARKERS = [
+  '짧', '간결', '길게', '자세', '명확', '쉽게', '정리', '다듬', '오탈자', '맞춤법',
+  '최신기준', '부족', '틀렸', '잘못', '오류', '누락', '보강', '강화', '완화',
+] as const
+const REVISION_SCOPE_TERMS = [
+  '작업지시서', '보고서본문', '문서전체', '문서', '본문', '제목', '상황요약', '작업목적', '사고개요',
+  '위험성및근거', '위험성', '판단근거', '작업절차', '권장조치', '안전확인', '주의사항',
+  '안전기준', '첫번째항목', '두번째항목', '세번째항목', '항목', '내용', '문장', '부분',
+] as const
+const REVISION_ACTION_TERMS = [
+  '수정', '교정', '고쳐', '바꿔', '변경', '추가', '삭제', '보강', '반영', '재작성',
+  '다시작성', '줄여', '늘려', '짧게', '길게', '정리',
+] as const
+const PROMPT_ATTACK_SKELETONS = [
+  'ignoreprevious', 'ignoreallinstructions', 'forgetprevious', 'forgetinstructions',
+  'overrideinstructions', 'systemprompt', 'developermessage', 'developerinstructions',
+  'revealprompt', 'showprompt', 'printprompt', 'bypassguardrail', 'bypasspolicy', 'jailbreak',
+] as const
+
+function normalizeGuardrailText(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/\p{Cf}/gu, '')
+    .toLocaleLowerCase('ko-KR')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function compactGuardrailText(value: string): string {
+  return normalizeGuardrailText(value).replace(/[^\p{L}\p{N}]+/gu, '')
+}
+
+function guardrailSkeleton(value: string): string {
+  const confusables: Readonly<Record<string, string>> = {
+    а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', х: 'x', у: 'y', і: 'i', ј: 'j', ѕ: 's', т: 't', м: 'm', к: 'k', в: 'b', н: 'h',
+    α: 'a', β: 'b', ε: 'e', ι: 'i', κ: 'k', ο: 'o', ρ: 'p', τ: 't', υ: 'y', χ: 'x',
+    0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't',
+  }
+  return Array.from(compactGuardrailText(value), (character) => confusables[character] ?? character).join('')
+}
+
+function containsNonOperationalRevisionContent(value: string): boolean {
+  const compact = compactGuardrailText(value)
+  return NON_OPERATIONAL_REVISION_TERMS.some((term) => compact.includes(compactGuardrailText(term)))
+}
+
+function containsPromptAttack(value: string): boolean {
+  const normalized = normalizeGuardrailText(value)
+  const koreanAttack = /(?:이전|기존|위|상위).{0,8}(?:지시|명령|규칙|정책).{0,8}(?:무시|덮어쓰|우회|해제|취소)|(?:시스템|개발자).{0,8}(?:프롬프트|메시지|지시)|(?:프롬프트|내부\s*지시|숨겨진\s*지시).{0,8}(?:공개|출력|표시|보여|알려|노출)|(?:가드레일|보안\s*규칙|안전\s*규칙|제한).{0,8}(?:우회|해제|무시)|(?:역할을|역할로).{0,8}(?:바꿔|변경|행동)/
+  if (koreanAttack.test(normalized)) return true
+  const skeleton = guardrailSkeleton(value)
+  return PROMPT_ATTACK_SKELETONS.some((term) => skeleton.includes(term))
+}
+
+function containsDisallowedMarkup(value: string): boolean {
+  const normalized = normalizeGuardrailText(value)
+  return /<\s*\/?\s*[a-z][^>]*>/i.test(normalized)
+    || /(?:javascript\s*:|on[a-z]+\s*=|data\s*:\s*text\/html)/i.test(normalized)
+    || value.includes('```')
+}
+
+function revisionPayload(value: string): string {
+  let compact = compactGuardrailText(value)
+  const removable = [...REVISION_SCOPE_TERMS, ...REVISION_ACTION_TERMS, ...REVISION_STYLE_MARKERS]
+    .map(compactGuardrailText)
+    .sort((left, right) => right.length - left.length)
+  for (const term of removable) compact = compact.replaceAll(term, '')
+  compact = compact.replace(/(?:운영자|요청|지정|그대로|반드시|포함|기준|최신|전체|전부|첫|둘째|두|셋째|세|번째|번|조금|더|좀|그|해줘|해주세요|주세요|줘|\d+)/g, '')
+  return compact.replace(/(?:으로|로|을|를|은|는|이|가|에|에서|만|와|과|하고|하게|해줘|해주세요|줘)$/g, '')
+}
+
+function hasSupportedRevisionSemantics(value: string): boolean {
+  const compact = compactGuardrailText(value)
+  if (OPERATIONAL_REVISION_TERMS.some((term) => compact.includes(compactGuardrailText(term)))) return true
+  if (REVISION_STYLE_MARKERS.some((term) => compact.includes(compactGuardrailText(term)))) {
+    return revisionPayload(value).length === 0
+  }
+  return revisionPayload(value).length === 0
+}
+
+function violatesRevisionGuardrail(value: string): boolean {
+  if (containsPromptAttack(value) || containsDisallowedMarkup(value) || containsNonOperationalRevisionContent(value)) return true
+  return isWorkOrderRevisionRequest(value) && !hasSupportedRevisionSemantics(value)
+}
 
 export type WorkOrderChatIntent =
   | 'revision'
@@ -49,10 +147,11 @@ export type WorkOrderChatIntent =
   | 'ambiguous'
 
 export function isWorkOrderRevisionRequest(instruction: string): boolean {
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  const normalized = normalizeGuardrailText(instruction)
   if (!normalized) return false
-  if (EXPLICIT_REVISION_PATTERN.test(normalized)) return true
   if (QUESTION_PATTERN.test(normalized)) return false
+  if (/(?:하지\s*마|하지\s*말|수정\s*안|변경\s*안|삭제\s*안|취소|그만)/.test(normalized)) return false
+  if (EXPLICIT_REVISION_PATTERN.test(normalized)) return true
   return REVISION_PROBLEM_PATTERN.test(normalized)
 }
 
@@ -61,8 +160,9 @@ export function isWorkOrderQuestion(instruction: string): boolean {
 }
 
 export function classifyWorkOrderChatIntent(instruction: string): WorkOrderChatIntent {
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  const normalized = normalizeGuardrailText(instruction)
   if (!normalized) return 'ambiguous'
+  if (violatesRevisionGuardrail(instruction)) return 'out_of_scope'
   if (isWorkOrderRevisionRequest(instruction)) return 'revision'
   if (hasWorkOrderScopeMarker(normalized)) return 'in_scope_question'
   if (isClearOutOfScopeRequest(normalized)) return 'out_of_scope'
@@ -71,7 +171,7 @@ export function classifyWorkOrderChatIntent(instruction: string): WorkOrderChatI
 }
 
 function isClearOutOfScopeRequest(normalized: string): boolean {
-  const offTopicDomains = /스시|초밥|맛집|식당|여행|여행지|드라마|영화|애플tv|넷플릭스|연애|데이트|쇼핑|옷|뭐 입지|패션|게임|주식|코인|서울 날씨|날씨|파이썬|python|프로그래밍|코딩|자바스크립트|javascript|점심|저녁|메뉴|뭐 먹/
+  const offTopicDomains = /레시피|요리법|조리법|김치\s*볶음밥|볶음밥|라면|스시|초밥|맛집|식당|여행|여행지|드라마|영화|애플tv|넷플릭스|연애|데이트|쇼핑|옷|뭐 입지|패션|게임|주식|코인|서울 날씨|날씨|파이썬|python|프로그래밍|코딩|자바스크립트|javascript|점심|저녁|메뉴|뭐 먹/
   const offTopicActions = /추천|상담|골라|알려|입지|설명|뭔지|무엇|어때|먹지|먹을/
   return offTopicDomains.test(normalized) && offTopicActions.test(normalized)
 }
@@ -105,7 +205,7 @@ function targetLabel(section: Exclude<WorkOrderRevisionSection, 'document'>, ite
 }
 
 export function detectWorkOrderRevisionTarget(instruction: string): WorkOrderRevisionTarget {
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  const normalized = normalizeGuardrailText(instruction)
   const itemIndex = itemIndexFromInstruction(normalized)
   const section = (
     /제목|문서명|지시서명/.test(normalized) ? 'title'
@@ -122,7 +222,7 @@ export function detectWorkOrderRevisionTarget(instruction: string): WorkOrderRev
 }
 
 function isExplicitWholeDocumentRequest(instruction: string): boolean {
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  const normalized = normalizeGuardrailText(instruction)
   return /작업지시서\s*전체|문서\s*전체|전체\s*(?:수정|변경|재작성|다시\s*작성)|전부\s*(?:수정|변경|재작성)|모든\s*항목/.test(normalized)
 }
 
@@ -204,7 +304,7 @@ export function resolveWorkOrderRevisionScope(
   if (isWorkOrderQuestion(instruction)) return { target: direct, source: 'explicit', clarification: null }
   if (direct.section !== 'document') return { target: direct, source: 'explicit', clarification: null }
   if (isExplicitWholeDocumentRequest(instruction)) return { target: WHOLE_DOCUMENT_TARGET, source: 'explicit', clarification: null }
-  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  const normalized = normalizeGuardrailText(instruction)
   if (/\?|왜|어떻게|설명|알려/.test(normalized)) return { target: direct, source: 'explicit', clarification: null }
   const followup = /그거|그것|그 부분|그 항목|그 문장|그 절차|해당|방금|앞에서|이전|조금 더|좀 더|더 짧|더 길|다시/.test(normalized)
   if (followup) {
@@ -233,7 +333,7 @@ export function visibleReviewChatContent(content: string): string {
 }
 
 export function reviewChatRequest(instruction: string, target: WorkOrderRevisionTarget): string {
-  if (isWorkOrderQuestion(instruction)) return instruction
+  if (classifyWorkOrderChatIntent(instruction) !== 'revision') return instruction
   return [
     target.section === 'document'
       ? "작업지시서 보고서 본문 전체를 수정해 주세요. 수정 범위는 '작업지시서 전체'입니다."
