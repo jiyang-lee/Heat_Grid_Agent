@@ -38,7 +38,7 @@ from review_chat_api_models import (
 
 
 PROMPT_VERSION = "review-chat.v2"
-PROPOSAL_TTL = timedelta(minutes=15)
+PROPOSAL_TTL = timedelta(hours=1)
 MODEL_CONVERSATION_CHAR_BUDGET = 48_000
 WORK_ORDER_SECTION_HEADINGS = (
     "상황 요약",
@@ -334,7 +334,7 @@ async def submit_review_chat_message(
             tuple(
                 message.content
                 for message in conversation
-                if message.role == "operator" and message.message_kind == "action_request"
+                if message.role == "operator"
             ),
         )
         parsed = parse_review_chat_intent(resolved_content, document_context)
@@ -1467,14 +1467,31 @@ def _resolve_review_chat_followup(content: str, operator_history: tuple[str, ...
         return content
     followup_markers = (
         "그거", "그것", "그 부분", "그 항목", "그 문장", "그 절차", "해당", "방금",
-        "앞에서", "이전", "같은 부분", "조금 더", "좀 더", "더 짧", "더 길", "다시",
+        "앞에서", "이전", "같은 부분", "앞의 요청", "방금 요청", "조금 더", "좀 더",
+        "더 짧", "더 길", "더 강", "더 보수", "보수적으로", "강하게", "엄격하게",
+        "둘 다", "둘 모두", "모두 반영", "함께 반영", "다시",
     )
     if not any(marker in normalized for marker in followup_markers):
         return content
-    anchor = operator_history[-1].strip()
-    if not anchor:
+    recent = tuple(
+        item.strip()
+        for item in operator_history[-12:]
+        if item.strip()
+        and not _is_question_statement(" ".join(item.casefold().split()))
+        and not _is_negative_action_statement(" ".join(item.casefold().split()))
+    )[-6:]
+    if not recent:
         return content
-    return f"{anchor[:4000]}\n후속 수정 요청: {content}"
+    scope_index = next(
+        (index for index in range(len(recent) - 1, -1, -1) if any(marker in recent[index].casefold() for marker in explicit_scope)),
+        len(recent) - 1,
+    )
+    scope_anchor = recent[scope_index]
+    combine_requests = any(marker in normalized for marker in ("둘 다", "둘 모두", "모두 반영", "함께 반영"))
+    anchors = recent[scope_index:] if combine_requests else (scope_anchor,)
+    ordered = tuple(dict.fromkeys((scope_anchor, *anchors)))
+    context = "\n".join(f"이전 수정 요청: {item[:1800]}" for item in ordered)
+    return f"{context}\n후속 수정 요청: {content}"
 
 
 def parse_review_chat_intent(
@@ -2269,6 +2286,13 @@ async def _create_proposal(
     parsed: ParsedAction,
 ) -> ReviewChatProposalResponse:
     assert parsed.decision is not None
+    await connection.execute(
+        text(
+            "UPDATE review_chat_action_proposals SET status = 'cancelled', updated_at = now() "
+            "WHERE thread_id = :thread_id AND status = 'awaiting_confirmation'"
+        ),
+        {"thread_id": thread_id},
+    )
     proposal_id = str(uuid4())
     expires_at = datetime.now(UTC) + PROPOSAL_TTL
     proposal_hash = _hash(
@@ -2661,6 +2685,13 @@ def _is_work_order_change_request(
         "완화",
         "정리",
         "다듬",
+        "보수적",
+        "강하게",
+        "엄격",
+        "축약",
+        "간결",
+        "명확",
+        "구체적",
     )
     return any(marker in normalized for marker in change_markers)
 

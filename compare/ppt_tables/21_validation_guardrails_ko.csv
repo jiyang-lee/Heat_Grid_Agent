@@ -1,0 +1,18 @@
+﻿구분,대상,평가기준,기준값,근거,주의
+현재 설정,Agent evidence,근거충분성,>= 0.75,backend settings,현재 코드값
+현재 설정,모델 점수 대조,UI/API 허용 오차,<= 0.12,backend settings,현재 코드값
+현재 설정,Answer quality,Judge 점수,>= 75/100,backend settings,기능 기본 비활성
+현재 설정,RAG,JSONL top score,>= 6.0,backend settings,기능 기본 비활성
+현재 설정,RAG,고유 match 수,>= 2,backend settings,기능 기본 비활성
+공식 v4,Priority Risk/pre-event gate,현재 결과의 이벤트 재현율,0.875 (7/8),재현 실행 결과,표본이 작아 신규 이벤트에서 계속 감시
+공식 v4,Priority Risk/pre-event gate,현재 결과의 FPR,0.1038,재현 실행 결과,"균형 F1 최상, 장기 목표 0.05는 미달"
+PPT/PoC 권고,Risk,재현율 / FPR,>= 0.80 / <= 0.05,운영비용 기반 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Risk,ROC-AUC / AP,>= 0.70 / 기존 대비 +0.05,분리·불균형 성능 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Risk,Brier / ECE,<= 0.20 / <= 0.05,확률 보정 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Leadtime,Macro-F1 / Top-2,>= 0.60 / >= 0.90,구간분류 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Leadtime,Bucket MAE / 지연예측률,<= 0.40 / <= 0.10,운영 안전 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Priority,이벤트 재현율 / FPR,>= 0.90 / <= 0.05,알람 운영 제안,이벤트 30건 이상 재검증 권장
+PPT/PoC 권고,Priority,정밀도 / median lead,>= 0.80 / >= 24h,출동효율·선행시간 제안,프로젝트 확정 계약 아님
+PPT/PoC 권고,Agent,보고서 성공률 / task 완료율,>= 0.95 / >= 0.90,운영 안정성 제안,V2 실측 필요
+PPT/PoC 권고,Agent,근거충실도 / 무근거 주장률,>= 0.90 / <= 0.02,LLM 품질 제안,사람평가셋 필요
+PPT/PoC 권고,Agent,p95 지연 / p95 비용,<= 90초 / <= $0.05,SLO 제안,실제 트래픽에서 조정

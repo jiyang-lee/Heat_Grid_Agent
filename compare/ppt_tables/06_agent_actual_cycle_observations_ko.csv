@@ -1,0 +1,8 @@
+﻿run_id,substation_id,lineage_kind,duration_seconds,model_calls,input_tokens,cached_input_tokens,output_tokens,total_tokens,logged_main_cost_usd,output_retry_count,retry_elapsed_seconds,retry_attributed_tokens,retry_attributed_cost_usd,loop_decision_count,model_verification_count,report_call_attempted,report_call_status,report_call_seconds,전체 API 호출 수(보고서 포함),보고서 성공
+bf86872c-bb1f-4ac8-ac89-9ca0fffa3101,1,child,44.58000000,4,6161,1536,725,6886,0.00684645,1,4.06500000,4102.00000000,0.00387720,1,1,1,completed,29.14400000,5,True
+148bd946-660f-4dad-8e69-0cb8d73d3bd9,1,child,47.23000000,3,4843,0,1156,5999,0.00883425,0,,,,1,1,1,completed,37.57600000,4,True
+9ec58c78-d242-4946-9979-3889f8ee9971,1,root,47.64000000,6,5939,1536,1346,7285,0.00947445,0,,,,4,1,1,completed,33.06600000,7,True
+45bb1daf-dbe4-45b0-bf93-14a05d453d55,10,root,49.88000000,6,5997,0,1227,7224,0.01001925,1,3.58200000,4647.00000000,0.00545025,4,1,1,failed,30.01600000,7,False
+376dca4e-d91e-4321-8f09-9296b88682cf,30,child,51.90000000,5,5575,0,1126,6701,0.00924825,0,,,,3,1,1,failed,38.18400000,6,False
+232e36ee-9efd-4e78-924c-12a0c2f596e2,30,root,91.56000000,5,5636,0,1224,6860,0.00973500,1,6.43700000,4785.00000000,0.00604500,3,1,1,completed,29.00500000,6,True
+a7491bc0-d6af-4f39-9597-e515025ff161,10,child,93.73000000,7,6393,0,1522,7915,0.01164375,0,,,,5,1,1,completed,35.93900000,8,True

@@ -174,6 +174,44 @@ def test_followup_question_is_not_reinterpreted_as_a_revision() -> None:
     assert parse_review_chat_intent(resolved).kind == "explain"
 
 
+def test_natural_safety_revision_phrases_create_a_proposal() -> None:
+    from review_chat_service import parse_review_chat_intent
+
+    document_context = {
+        "document_type": "work_order",
+        "base_version": "1",
+        "current_body": "기존 작업지시서",
+    }
+    for content in (
+        "안전 확인 항목을 보수적으로 잡아줘",
+        "안전 확인 문구를 더 강하게 경고해줘",
+        "작업 절차를 간결하게 정리해줘",
+    ):
+        result = parse_review_chat_intent(content, document_context)
+        assert result.kind == "proposal"
+        assert result.decision == "correct"
+        assert result.reason_category == "report_draft_issue"
+
+
+def test_followup_strength_and_combined_requests_reuse_conversation_scope() -> None:
+    from review_chat_service import _resolve_review_chat_followup, parse_review_chat_intent
+
+    history = (
+        "안전 확인 항목을 보수적으로 잡아줘",
+        "보호구 미착용 위험을 명확하게 추가해줘",
+    )
+    strengthened = _resolve_review_chat_followup("더 강하게 경고해줘", history)
+    combined = _resolve_review_chat_followup("둘 다 해줘", history)
+
+    assert "안전 확인" in strengthened
+    assert "후속 수정 요청: 더 강하게 경고해줘" in strengthened
+    assert parse_review_chat_intent(strengthened, {"document_type": "work_order"}).kind == "proposal"
+    assert "안전 확인" in combined
+    assert "보호구 미착용" in combined
+    assert "후속 수정 요청: 둘 다 해줘" in combined
+    assert parse_review_chat_intent(combined, {"document_type": "work_order"}).kind == "proposal"
+
+
 def test_recall_questions_and_negative_sentences_are_not_actions() -> None:
     from review_chat_service import parse_review_chat_intent
 

@@ -1,5 +1,6 @@
 import type { AgentRunListItem, OpsAgentResultV4 } from '../../api/contracts'
 import { ApiError } from '../../api/client'
+import { displayAlertReason } from '../../domain/alertReason'
 import { useAgentRun, useAgentRunResult, useAgentRunReviewSnapshot, useRunStages } from '../../api/hooks'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
 import { STAGE_LABELS, executionStatus, executionStatusTone, facilityName, priorityLabel } from './activityMappers'
@@ -21,8 +22,9 @@ function displayText(value: string): string {
 }
 
 function conciseTitle(item: AgentRunListItem): string {
-  const source = item.alert_reason?.trim() || '설비 이상 조치 계획서'
-  const firstSummary = source.split(/\s*[·|]\s*/)[0]?.trim() || source
+  const source = displayAlertReason(item.alert_reason)
+  const titleSource = source === '-' ? '설비 이상 조치 계획서' : source
+  const firstSummary = titleSource.split(/\s*[·|]\s*/)[0]?.trim() || titleSource
   return displayText(firstSummary.length > 90 ? `${firstSummary.slice(0, 89)}…` : firstSummary)
 }
 
@@ -36,6 +38,7 @@ export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
   const status = executionStatus(item)
   const actions = result.data?.actions ?? []
   const canOpenWorkOrder = item.status === 'completed' && result.data != null
+  const alertReason = displayAlertReason(item.alert_reason)
 
   const runStartedAt = run.data?.created_at ? Date.parse(run.data.created_at) : null
   const sortedStages = [...(stages.data?.items ?? [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
@@ -71,7 +74,7 @@ export function ExecutionDetail({ item, onClose, onOpenWorkOrder }: Props) {
       </section>}
 
       <section className="activity-plan-section">
-        <header><span>계획 제목</span><h3>{displayText(result.data?.report.title ?? item.alert_reason ?? '현장 대응 계획')}</h3></header>
+        <header><span>계획 제목</span><h3>{displayText(result.data?.report.title ?? (alertReason === '-' ? '현장 대응 계획' : alertReason))}</h3></header>
         <div className="activity-plan-structured">
           <article><h4>핵심 근거</h4>{result.data?.evidence.length ? <ul>{result.data.evidence.map((entry) => <li key={`${entry.label}-${entry.content}`}><strong>{displayText(entry.label)}</strong><span>{displayText(entry.content)}</span></li>)}</ul> : <p>{displayText(snapshot?.handling_reason ?? 'AI 판단 근거를 정리하고 있습니다.')}</p>}</article>
           <article><h4>현장 영향</h4><p>{displayText(result.data?.situation ?? snapshot?.handling_reason ?? '설비 영향 범위를 확인하고 있습니다.')}</p></article>

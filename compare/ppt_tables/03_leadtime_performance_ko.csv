@@ -1,0 +1,4 @@
+﻿현재 모델,검증 구간,표본 수,Macro-F1,Weighted-F1,Top-2 정확도,판정
+best_leadtime_lgbm_risk_anomaly_v2_restored,학습,229,0.3852,0.5062,0.8515,학습 적합값; 일반화 성능 아님
+best_leadtime_lgbm_risk_anomaly_v2_restored,검증,26,0.4313,0.4817,1.0000,표본 26건; 추가 검증 필요
+best_leadtime_lgbm_risk_anomaly_v2_restored,홀드아웃,66,0.6933,0.7079,0.9848,승격 후보; 외부검증 필요

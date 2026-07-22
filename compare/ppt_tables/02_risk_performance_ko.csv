@@ -1,0 +1,4 @@
+﻿현재 모델,검증 구간,표본 수,정상,사전고장,정밀도,재현율,F1,오경보율,ROC-AUC,Average Precision,판정
+best_risk_lgbm_anomaly_ensemble_v1_restored_fpr05_v2,학습,896,667,229,1.0000,0.3668,0.5367,0.0000,0.9942,0.9877,학습 적합값; 일반화 성능 아님
+best_risk_lgbm_anomaly_ensemble_v1_restored_fpr05_v2,검증,204,178,26,0.5556,0.3846,0.4545,0.0449,0.7109,0.4066,FPR 5% cap 통과; recall 보완 필요
+best_risk_lgbm_anomaly_ensemble_v1_restored_fpr05_v2,홀드아웃,152,86,66,0.8571,0.3636,0.5106,0.0465,0.6718,0.7127,저오경보 복원; pre-event 결합 사용

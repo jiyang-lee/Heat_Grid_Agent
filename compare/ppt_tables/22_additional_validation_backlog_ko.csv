@@ -1,0 +1,21 @@
+﻿영역,검증,방법,현재상태,필요조건/한계,우선순위
+시간 일반화,Walk-forward/rolling split,월별 순차 학습-다음 기간 평가,부분 가능,현재 로컬 동일 계약 rolling 재실험 필요,최우선
+이벤트 일반화,Untouched event holdout,임계값 선택에 사용하지 않은 고장이벤트,미실시,공식 v4 validation 이벤트가 3건뿐이라 신규 검증 필요,최우선
+설비 일반화,Leave-one-substation-out,기계실 1곳씩 완전 제외,가능,substation 컬럼 존재,높음
+제조사 일반화,Leave-one-manufacturer-out,미관측 제조사 외부검증,불가,현재 데이터 manufacturer 1만 존재,높음
+구성 일반화,설비 구성별 성능,SH+DHW / sub-circuit 분리,계산 완료,Risk subgroup CSV 제공,높음
+계절 일반화,계절별 성능,겨울·봄·여름·가을 분리,계산 완료,Risk subgroup CSV 제공,높음
+고장 유형,Fault-type event recall,누수·펌프·밸브 등 유형별 이벤트,추가 가능,유형별 이벤트 수가 작아 CI 필수,높음
+결측 강건성,센서 결측 주입,5/10/20/30% block missing,미실시,재현 가능한 corruption test 필요,높음
+노이즈 강건성,센서 잡음·spike 주입,표준편차 0.5/1/2배 및 outlier,미실시,물리 허용범위 보존 필요,높음
+임계값 민감도,Threshold/weight sweep,Risk·Priority 성능곡선,부분 완료,hybrid sweep 존재; untouched 검증 필요,최우선
+확률 보정,Reliability/Brier/ECE,예측확률의 의미 검증,계산 완료,Risk/Leadtime CSV 제공,높음
+분포 이동,PSI/KS,train-holdout 점수 이동,계산 완료,score drift CSV 제공,높음
+통계 불확실성,Bootstrap/Wilson CI,점수 95% 신뢰구간,부분 완료,핵심 비율 Wilson CI 제공; event bootstrap 추가 권장,높음
+통계 비교,McNemar/DeLong,후보 간 차이의 유의성,미실시,동일 행 예측쌍과 충분한 표본 필요,중간
+운영 알람,False episodes/site-month,연속 오경보를 에피소드로 묶어 월 환산,상위 계약만 존재,현재 로컬 M1 동일 계약 재산출 필요,높음
+선행시간,첫 알람 lead time,median/p10/mean 및 24h·3d recall,상위 계약만 존재,현재 로컬 M1 동일 계약 재산출 필요,높음
+용량 제한,Precision/Recall/NDCG@K,일일 처리 가능량 K별 평가,계산 완료,두 개의 서로 다른 holdout 계약 분리,높음
+V2 Agent,실제 1사이클 호출·비용·시간,단계별 p50/p95와 재실행,미실시,DB에 V2 실행 표본 없음,최우선
+LLM 정확성,Groundedness/claim support,문장별 근거 연결,미실시,한글 사람평가셋 필요,최우선
+사용자 효율,승인율·수정률·편집거리,작업지시서 초안의 사람 수정량,미실시,UI 이벤트 로깅 필요,높음

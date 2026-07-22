@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS ops_alert_queue (
     enqueue_reason text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     acked_at timestamptz,
-    acked_by text
+    acked_by text,
+    synthetic boolean NOT NULL DEFAULT false
 )
 """
 
@@ -58,6 +59,7 @@ ALERT_QUEUE_COMPATIBILITY_DDL: Final = (
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS substation_id integer",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS priority_rank integer",
     "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS freshness_status text",
+    "ALTER TABLE ops_alert_queue ADD COLUMN IF NOT EXISTS synthetic boolean NOT NULL DEFAULT false",
     "ALTER TABLE ops_alert_queue DROP CONSTRAINT IF EXISTS ops_alert_queue_card_id_key",
     "CREATE UNIQUE INDEX IF NOT EXISTS ops_alert_queue_evaluation_substation_uidx "
     "ON ops_alert_queue(evaluation_run_id, substation_uid) "
@@ -211,36 +213,62 @@ async def materialize_scenario_alert(
     reason: str,
 ) -> dict[str, JsonValue] | None:
     await ensure_alert_queue(engine)
-    existing_query = text(
-        "UPDATE ops_alert_queue SET "
-        " freshness_status = 'fresh', priority_level = :priority_level,"
-        " priority_score = :priority_score, priority_rank = :priority_rank,"
-        " status = 'open', enqueue_reason = :reason, acked_at = NULL, acked_by = NULL"
-        " WHERE alert_id = md5('scenario-alert|' || :scenario_alert_id)::uuid"
-        " RETURNING alert_id"
-    )
     query = text(
         "WITH latest_evaluation AS ("
         " SELECT evaluation_run_id FROM priority_evaluation_runs"
         " WHERE status = 'completed'"
         " ORDER BY is_active DESC, as_of_time DESC, completed_at DESC LIMIT 1"
         "), selected_card AS ("
-        " SELECT pc.card_id, s.substation_uid, s.manufacturer_id, s.substation_id, pd.priority_score"
-        " FROM priority_cards pc"
-        " JOIN priority_decisions pd ON pd.priority_decision_id = pc.priority_decision_id"
-        " JOIN windows w ON w.window_id = pd.window_id"
-        " JOIN substations s ON s.substation_uid = w.substation_uid"
-        " WHERE s.substation_id = :substation_id"
-        " ORDER BY w.window_end DESC, pc.created_at DESC LIMIT 1"
-        "), upserted AS ("
+        " SELECT result.source_card_id AS card_id, result.substation_uid,"
+        "  result.manufacturer_id, result.substation_id"
+        " FROM priority_evaluation_results result"
+        " JOIN latest_evaluation evaluation"
+        "  ON evaluation.evaluation_run_id = result.evaluation_run_id"
+        " WHERE result.substation_id = :substation_id"
+        " ORDER BY result.priority_score DESC, result.manufacturer_id LIMIT 1"
+        "), updated_current AS ("
+        " UPDATE ops_alert_queue alert SET"
+        "  card_id = card.card_id, manufacturer_id = card.manufacturer_id,"
+        "  substation_id = card.substation_id, freshness_status = 'fresh',"
+        "  priority_level = :priority_level, priority_score = :priority_score,"
+        "  priority_rank = :priority_rank, status = 'open', enqueue_reason = :reason,"
+        "  synthetic = true, acked_at = NULL, acked_by = NULL"
+        " FROM selected_card card CROSS JOIN latest_evaluation evaluation"
+        " WHERE alert.evaluation_run_id = evaluation.evaluation_run_id"
+        "  AND alert.substation_uid = card.substation_uid"
+        " RETURNING alert.alert_id"
+        "), retired_stale_scenario AS ("
+        " UPDATE ops_alert_queue alert SET status = 'resolved',"
+        "  acked_at = COALESCE(alert.acked_at, now()),"
+        "  acked_by = COALESCE(alert.acked_by, 'scenario-rebound')"
+        " WHERE alert.alert_id = md5('scenario-alert|' || :scenario_alert_id)::uuid"
+        "  AND EXISTS (SELECT 1 FROM updated_current)"
+        "  AND alert.alert_id <> (SELECT alert_id FROM updated_current LIMIT 1)"
+        " RETURNING alert.alert_id"
+        "), rebound_scenario AS ("
+        " UPDATE ops_alert_queue alert SET"
+        "  card_id = card.card_id, evaluation_run_id = evaluation.evaluation_run_id,"
+        "  substation_uid = card.substation_uid, manufacturer_id = card.manufacturer_id,"
+        "  substation_id = card.substation_id, freshness_status = 'fresh',"
+        "  priority_level = :priority_level, priority_score = :priority_score,"
+        "  priority_rank = :priority_rank, status = 'open', enqueue_reason = :reason,"
+        "  synthetic = true, acked_at = NULL, acked_by = NULL"
+        " FROM selected_card card CROSS JOIN latest_evaluation evaluation"
+        " WHERE alert.alert_id = md5('scenario-alert|' || :scenario_alert_id)::uuid"
+        "  AND NOT EXISTS (SELECT 1 FROM updated_current)"
+        " RETURNING alert.alert_id"
+        "), inserted AS ("
         " INSERT INTO ops_alert_queue ("
         "  alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,"
-        "  freshness_status, priority_level, priority_score, priority_rank, status, enqueue_reason"
+        "  freshness_status, priority_level, priority_score, priority_rank, status, enqueue_reason,"
+        "  synthetic"
         " )"
         " SELECT md5('scenario-alert|' || :scenario_alert_id)::uuid, card.card_id,"
         "  evaluation.evaluation_run_id, card.substation_uid, card.manufacturer_id, card.substation_id,"
-        "  'fresh', :priority_level, :priority_score, :priority_rank, 'open', :reason"
+        "  'fresh', :priority_level, :priority_score, :priority_rank, 'open', :reason, true"
         " FROM selected_card card CROSS JOIN latest_evaluation evaluation"
+        " WHERE NOT EXISTS (SELECT 1 FROM updated_current)"
+        "  AND NOT EXISTS (SELECT 1 FROM rebound_scenario)"
         " ON CONFLICT (evaluation_run_id, substation_uid)"
         " WHERE evaluation_run_id IS NOT NULL DO UPDATE SET"
         "  card_id = EXCLUDED.card_id, evaluation_run_id = EXCLUDED.evaluation_run_id,"
@@ -248,9 +276,13 @@ async def materialize_scenario_alert(
         "  substation_id = EXCLUDED.substation_id,"
         "  freshness_status = EXCLUDED.freshness_status, priority_level = EXCLUDED.priority_level,"
         "  priority_score = EXCLUDED.priority_score, priority_rank = EXCLUDED.priority_rank, status = 'open',"
-        "  enqueue_reason = EXCLUDED.enqueue_reason, acked_at = NULL, acked_by = NULL"
+        "  enqueue_reason = EXCLUDED.enqueue_reason, synthetic = true, acked_at = NULL, acked_by = NULL"
         " RETURNING alert_id"
-        ") SELECT alert_id FROM upserted"
+        ")"
+        " SELECT alert_id FROM updated_current"
+        " UNION ALL SELECT alert_id FROM rebound_scenario"
+        " UNION ALL SELECT alert_id FROM inserted"
+        " LIMIT 1"
     )
     async with engine.begin() as connection:
         params = {
@@ -261,14 +293,8 @@ async def materialize_scenario_alert(
             "priority_rank": priority_rank,
             "reason": reason,
         }
-        existing = await connection.execute(existing_query, params)
-        row = existing.mappings().one_or_none()
-        if row is None:
-            result = await connection.execute(
-                query,
-                params,
-            )
-            row = result.mappings().one_or_none()
+        result = await connection.execute(query, params)
+        row = result.mappings().one_or_none()
     if row is None:
         return None
     return await get_alert(engine, str(row["alert_id"]))
@@ -288,10 +314,10 @@ async def list_alerts(
     if priority_level is not None:
         filters.append("q.priority_level = :priority_level")
         params["priority_level"] = priority_level
-    filters.append("q.episode_id IS NOT NULL")
+    filters.append("(q.episode_id IS NOT NULL OR q.synthetic)")
     # 과거 batch 평가로 만들어진 학습용 알림은 보존하되, 운영 화면에는 현재 리플레이 실행에서
     # 생성된 알림만 노출한다. scenario-alerts도 최신 replay 평가를 참조하므로 함께 포함된다.
-    filters.append("evaluation.source_kind = 'replay'")
+    filters.append("(evaluation.source_kind = 'replay' OR q.synthetic)")
     where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
     query = text(
         "SELECT q.alert_id, q.card_id, q.evaluation_run_id, evaluation.as_of_time, "

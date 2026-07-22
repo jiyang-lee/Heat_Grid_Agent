@@ -57,7 +57,7 @@ artifacts/current_best/**
 - `risk_model_best.joblib`, `leadtime_model_best.joblib`, `priority_engine_best_metadata.json` 존재와 재현 가능성 설명 여부
 - 외부 source 의존성: `THIRD_MODEL_SOURCE_BEST_ROOT`, `THIRD_MODEL_3RD_PROJECT_ROOT`, 같은 상위 폴더 자동 탐색, 저장소 내부 보존본 사용 여부
 - raw -> canonical `trainable_windows.csv` 재생성 파이프라인
-- M1 canonical 1252 -> final agent 1226, missing 26개 전부 `pre_fault`
+- M1 canonical 1252개가 final agent 1252개로 모두 보존되는지 확인
 - `risk_scores`, `leadtime_scores`, `priority_scores`, `priority_cards` key coverage
 - M1-only scope와 M2 calibration 필요성
 - IF 0.90 / Mahalanobis 1.00 threshold sweep
@@ -65,23 +65,23 @@ artifacts/current_best/**
 - fault/task/activity gate 0.5, pre-event gate 0.6 threshold sweep
 - `risk_scores.csv`의 applied threshold 컬럼 기준 실제 M1 risk level threshold. 과거 fallback/중간 설계값과 active output 값을 분리
 - M1 specialist priority weight 0.55/0.30/0.15 ablation
-- `fault_group_weight` 빈도, severity, monitoring potential, 동일 weight baseline, live inference 가능성
-- hybrid priority 0.65/0.35, 0.72/0.28, 0.90/0.10 비교
+- `fault_group_weight`가 live inference와 동일한 unknown_review=0.1 상수인지 확인
+- 공식 Risk/pre-event gate v4와 이전 v3, 요청 v2 0.72/0.28, legacy v1 0.65/0.35 비교
 - level calibration FPR cap 0.05/0.10/0.15/0.20 비교
 - 모델별 성능표와 Plotly 시각화 참조 여부
-- 최종 agent card 55 columns와 M1 specialist parallel card 29 columns 구분 여부
+- 최종 agent card 67 columns와 M1 specialist parallel card 29 columns 구분 여부
 
 ## 3. 해석 규칙
 
-- `0.65/0.35`를 절대 최적이라고 쓰지 않는다. validation 안정성, current-best baseline 유지, M1 specialist 반영률을 같이 본 운영 선택점으로 쓴다.
-- holdout precision/FPR만 보면 0.72/0.28 또는 0.90/0.10이 같거나 더 좋아 보일 수 있음을 표로 남긴다.
+- 공식 v4는 restored Risk 0.78 OR pre-event 0.99, level 90/99/99.8로 표기한다.
+- 공식 v4, 이전 v3, 요청 v2, legacy v1을 동일 holdout 표로 제시한다.
 - anomaly는 단독 fault classifier가 아니라 정상 이탈 evidence다.
 - `criticality=5`는 anomaly-only recall best가 아니라 지속 evidence threshold다.
 - leadtime은 고장 시각 단정값이 아니라 urgency 참고 신호다.
-- `fault_group_weight`가 `fault_label` 파생 성격을 가지면 live inference에서 label leakage로 보일 수 있으므로 반드시 제한사항으로 쓴다.
+- `fault_group_weight`는 live inference와 동일하게 0.1 상수로 고정됐음을 확인한다.
 - M1 gate 0.50/0.60은 standalone alarm optimum이 아니라 specialist evidence threshold로 해석한다.
 - task/activity gate는 native label이 없으면 성능 claim으로 쓰지 않고 proxy/산출물 한계로 쓴다.
-- 현재 M1 risk output의 actual applied threshold가 0.22/0.92/0.92라면, 0.44를 active high threshold처럼 쓰지 않는다.
+- 현재 M1 risk output의 actual applied threshold가 0.22/0.78/0.92이므로, 0.44를 active high threshold처럼 쓰지 않는다.
 - M1 결과를 전체 제조사 일반 성능처럼 표현하지 않는다.
 
 ## 4. 실험 재실행과 문서 보완 구분
@@ -138,8 +138,8 @@ output/reports/hybrid_selected_weight_comparison.csv
 - 실제 파일을 확인하지 않고 추정으로 작성하지 말 것.
 - 성능 수치를 임의 생성하지 말 것.
 - 없는 모델/CSV를 있다고 쓰지 말 것.
-- 0.65/0.35를 best로 단정하지 말 것.
+- 공식 v4는 validation 3개 이벤트로 고정됐으므로 신규 event/rolling 검증 없이 절대 최적이라고 단정하지 말 것.
 - M1-only 결과를 M2 또는 전체 제조사 성능으로 일반화하지 말 것.
-- `fault_group_weight`의 inference risk를 숨기지 말 것.
+- label-derived `fault_group_weight`가 공식 점수에서 제거됐는지 확인할 것.
 - M1 gate 0.50/0.60을 최종 알람 최적 threshold처럼 표현하지 말 것.
 - 실제 산출물의 applied threshold 컬럼과 다른 오래된 수치를 active threshold처럼 쓰지 말 것.

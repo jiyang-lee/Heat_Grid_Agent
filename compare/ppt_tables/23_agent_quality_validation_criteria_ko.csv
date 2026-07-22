@@ -1,0 +1,16 @@
+﻿품질축,KPI,정의,필요 데이터,현재 상태
+완료성,Task completion rate,요청된 단계와 필수 필드가 모두 생성된 비율,자동+사람평가,현재 미계측
+정확성,Groundedness,보고서 주장 중 모델·센서·RAG 근거로 지지되는 비율,문장별 라벨,현재 미계측
+안전성,Unsupported claim rate,근거 없이 원인·조치를 단정한 문장 비율,문장별 라벨,현재 미계측
+검색,Citation precision,인용 근거 중 실제 주장과 관련된 비율,RAG 평가셋,RAG quality 기본 비활성
+검색,Citation coverage,검증 필요 주장 중 근거가 붙은 비율,RAG 평가셋,RAG quality 기본 비활성
+대화,Intent hit rate,수정·확정·취소 의도를 올바르게 분류한 비율,한글 대화 테스트셋,현 적중률 정량 로그 없음
+사람검토,First-pass acceptance,수정 없이 바로 승인된 초안 비율,UI 승인 이벤트,현재 미계측
+사람검토,Normalized edit distance,초안 대비 최종본 수정량,텍스트 diff,현재 미계측
+안정성,Report success rate,보고서 단계가 정상 완료된 비율,실행 로그,V1 실측 5/7=71.4%
+안정성,Regeneration rate,출력 파싱·품질 문제로 재생성한 비율,실행 로그,V1 출력 재생성 3/7=42.9%
+성능,Latency p50/p95,전체 및 단계별 응답시간 분위수,실행 로그,현재 7건이라 범위·평균 중심
+비용,Cost p50/p95,한 사이클·재생성·검토 대화별 비용,token+공식단가,nano 사용량 누락
+효율,Tokens per accepted report,승인 보고서 1건당 총 토큰,실행+승인 로그,현재 미계측
+복구,Checkpoint reuse rate,전체 재실행 대신 실패 단계만 재사용한 비율,V2 task 로그,V2 실측 없음
+결정성,Idempotency,같은 snapshot 재실행 시 핵심 판정이 유지되는 비율,반복실험,현재 미계측

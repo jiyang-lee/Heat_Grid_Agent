@@ -389,15 +389,16 @@ def build_evaluation_results(
             "feature_set_version": candidate.get("feature_set_version"),
             "feature_coverage": inference.get("feature_coverage", {}),
             "priority_source": inference.get("priority_source"),
+            "policy_version": inference.get("policy_version"),
             "current_best": {
                 "score": _float(inference.get("current_best_priority_score")),
                 "level": inference.get("current_best_priority_level"),
-                "weight": 0.65,
+                "weight": _float(inference.get("current_best_weight")),
             },
             "m1_specialist": {
                 "score": _float(inference.get("m1_specialist_priority_score")),
                 "level": inference.get("m1_specialist_priority_level"),
-                "weight": 0.35,
+                "weight": _float(inference.get("m1_specialist_weight")),
                 "agreement": inference.get("m1_priority_agreement"),
                 **dict(inference.get("components", {}).get("m1_specialist", {})),
             },

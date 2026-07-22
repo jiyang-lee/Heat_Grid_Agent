@@ -1,0 +1,11 @@
+﻿계약,모델,K,전체표본,양성표본,Precision_at_K,Recall_at_K,NDCG_at_K
+상위 current-best 366행 holdout,Rule-based v2_threshold48,10,366,115,1.000000,0.086957,1.000000
+상위 current-best 366행 holdout,Rule-based v2_threshold48,20,366,115,1.000000,0.173913,0.901387
+상위 current-best 366행 holdout,Rule-based v2_threshold48,50,366,115,1.000000,0.434783,0.844625
+상위 current-best 366행 holdout,Rule-based v2_threshold48,100,366,115,0.840000,0.730435,0.827853
+상위 current-best 366행 holdout,Rule-based v2_threshold48,R,366,115,0.730435,0.730435,0.780468
+상위 current-best 366행 holdout,LGBM priority-only package,10,366,115,1.000000,0.086957,0.944396
+상위 current-best 366행 holdout,LGBM priority-only package,20,366,115,0.900000,0.156522,0.798378
+상위 current-best 366행 holdout,LGBM priority-only package,50,366,115,0.820000,0.356522,0.728036
+상위 current-best 366행 holdout,LGBM priority-only package,100,366,115,0.570000,0.495652,0.620069
+상위 current-best 366행 holdout,LGBM priority-only package,R,366,115,0.513043,0.513043,0.597601

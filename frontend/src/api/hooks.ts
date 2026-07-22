@@ -45,6 +45,7 @@ import type {
   ToolCallProjection,
   RunLineageResponse,
   IncidentDocumentApproveRequest,
+  IncidentDocumentEditRequest,
 } from './contracts'
 
 export const qk = {
@@ -534,6 +535,19 @@ export function useApproveIncidentWorkOrder() {
     mutationFn: (value: { incidentId: string; body: IncidentDocumentApproveRequest }) =>
       incidentDocumentsApi.approveWorkOrder(value.incidentId, value.body),
     onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
+  })
+}
+
+export function useEditIncidentWorkOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; version: number; body: IncidentDocumentEditRequest }) =>
+      incidentDocumentsApi.editWorkOrder(value.incidentId, value.version, value.body),
+    onSuccess: (_document, value) => {
+      qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) })
+      qc.invalidateQueries({ queryKey: ['work-orders'] })
+      qc.invalidateQueries({ queryKey: ['incident-reports'] })
+    },
   })
 }
 

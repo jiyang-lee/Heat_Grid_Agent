@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AlertsPage } from './console/AlertsPage'
-import { AdminPage } from './console/AdminPage'
-import { AiActivityPage } from './console/ai-activity/AiActivityPage'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AppShell, type ConsolePage } from './console/AppShell'
 import { DashboardPage } from './console/DashboardPage'
 import { OperationsProvider } from './console/OperationsContext'
-import { SettingsPage } from './console/SettingsPage'
 import { AgentAnalysisProgress, type AgentAnalysisQueueEntry } from './console/AgentAnalysisProgress'
-import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
 import { ScenarioProvider } from './scenario/ScenarioContext'
 import { useScenario } from './scenario/useScenario'
 import { useThemePreference } from './console/useThemePreference'
 import { demoAiHistoryApi } from './api/client'
 import './console/operations.css'
 import './scenario/scenario.css'
+
+const AlertsPage = lazy(() => import('./console/AlertsPage').then((module) => ({ default: module.AlertsPage })))
+const AdminPage = lazy(() => import('./console/AdminPage').then((module) => ({ default: module.AdminPage })))
+const AiActivityPage = lazy(() => import('./console/ai-activity/AiActivityPage').then((module) => ({ default: module.AiActivityPage })))
+const SettingsPage = lazy(() => import('./console/SettingsPage').then((module) => ({ default: module.SettingsPage })))
+const ScenarioAlertsPage = lazy(() => import('./scenario/ScenarioAlertsPage').then((module) => ({ default: module.ScenarioAlertsPage })))
 
 const AGENT_QUEUE_STORAGE_KEY = 'heatgrid:agent-analysis-queue'
 
@@ -88,11 +89,13 @@ function ConsoleApp() {
 
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
     <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
-      {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
-      {page === 'alerts' && (replay ? <ScenarioAlertsPage analysisQueue={analysisQueue} initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} onRunQueued={queueAgentRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
-      {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
-      {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
-      {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
+      <Suspense fallback={<div className="page-stack" role="status">화면을 불러오는 중입니다.</div>}>
+        {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
+        {page === 'alerts' && (replay ? <ScenarioAlertsPage analysisQueue={analysisQueue} initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} onRunQueued={queueAgentRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
+        {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
+        {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
+        {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
+      </Suspense>
     </AppShell>
     <AgentAnalysisProgress entries={analysisQueue} onOpen={openRun} onRemoveEntries={removeAgentRuns} />
   </OperationsProvider>

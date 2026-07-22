@@ -36,9 +36,12 @@ nb["cells"] = [
         - risk threshold는 event recall을 유지하면서 false positive를 줄이는 운영 trade-off에서 선택됐다.
         - leadtime은 시간 근접성 참고 신호다. exact bucket 성능이 risk보다 약하므로 priority에서 보조 weight로 둔다.
         - priority engine에서 risk 비중이 가장 큰 이유는 risk가 supervised event probability이고, holdout에서 FPR을 낮게 유지하면서 event recall을 가장 안정적으로 확보했기 때문이다.
-        - M1 hybrid `0.65 / 0.35`는 current-best baseline을 주축으로 유지하면서 M1 specialist 근거를 의미 있게 반영하는 conservative operating point다. 수학적으로 유일한 최적점이라고 주장하지 않고, 비교 실험상 운영 안정성과 설명력을 같이 만족하는 지점으로 해석한다.
+        - 검증된 handoff Risk·Leadtime artifact를 복원해 내부 임시 재학습의 과적합을 제거했다.
+        - 요청 hybrid v2 `0.72 / 0.28`, high `67.5`, urgent `82.5`는 복원 artifact에서 FPR 0.0%인 보수적 비교값이다.
+        - 공식 v4는 운영 시점에 알 수 있는 `restored Risk >= 0.78 OR pre-event >= 0.99`만 사용한다. Holdout은 정밀도 83.6%, 재현율 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이다.
+        - 기존 `0.65 / 0.35`, high `82.5`, urgent `95.0`은 즉시 복귀 가능한 legacy v1으로 보존한다.
         - M1 gate `0.50 / 0.60`은 standalone alarm 최적값이 아니라 priority에 투입되는 evidence threshold다.
-        - 실제 M1 risk output의 applied threshold는 `0.22 / 0.92 / 0.92`이며, `0.44`는 현재 산출물 기준 active threshold가 아니다.
+        - 실제 M1 risk output의 applied threshold는 `0.22 / 0.78 / 0.92`이며, 복원 high threshold 0.78은 validation FPR 5% cap 아래에서 선택했다.
         """
     ),
     md(
@@ -69,6 +72,7 @@ nb["cells"] = [
         - `output/reports/hybrid_065_vs_072_metric_delta.csv`
         - `output/reports/hybrid_065_vs_072_level_transition.csv`
         - `output/reports/hybrid_065_vs_072_changed_rows.csv`
+        - `output/reports/m1_risk_pre_event_gate_threshold_sweep.csv`
         """
     ),
     code(
@@ -138,6 +142,7 @@ nb["cells"] = [
         trainable_windows = read_csv("data/processed/trainable_windows.csv")
         m1_scores = read_csv("output/m1_specialist_scores.csv")
         m1_compare = read_csv("output/reports/m1_specialist_vs_current_best_comparison.csv")
+        evidence_gate_sweep = read_csv("output/reports/m1_risk_pre_event_gate_threshold_sweep.csv")
         active_ablation = read_csv("output/reports/ablation_summary.csv")
         row_reconciliation = read_csv("output/reports/row_reconciliation.csv")
         missing_agent_windows = read_csv("output/reports/missing_agent_windows.csv")
@@ -514,8 +519,10 @@ nb["cells"] = [
             & hybrid_sweep["false_positive_rate"].le(0.05)
         ].copy()
         summary_candidates = [
-            pick_row("final_selected_0p65", "validation", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.65)], ["current_best_weight"], [True]),
-            pick_row("final_selected_0p65", "holdout", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.65)], ["current_best_weight"], [True]),
+            pick_row("legacy_recalibrated_0p65", "validation", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.65)], ["current_best_weight"], [True]),
+            pick_row("legacy_recalibrated_0p65", "holdout", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.65)], ["current_best_weight"], [True]),
+            pick_row("weight_0p72_validation_recalibrated", "validation", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.72)], ["current_best_weight"], [True]),
+            pick_row("weight_0p72_validation_recalibrated", "holdout", hybrid_sweep[hybrid_sweep["current_best_weight"].round(2).eq(0.72)], ["current_best_weight"], [True]),
             pick_row("validation_best_f1", "validation", hybrid_sweep, ["f1", "precision", "false_positive_rate"], [False, False, True]),
             pick_row("validation_best_guardrail", "validation", validation_guardrail, ["precision", "f1", "false_positive_rate"], [False, False, True]),
             pick_row("holdout_best_f1", "holdout", hybrid_sweep, ["f1", "precision", "false_positive_rate"], [False, False, True]),
@@ -907,7 +914,7 @@ nb["cells"] = [
         이 저장소는 두 실행 흐름을 분리한다.
 
         - `all`: 저장소 내부 보존 산출물로 최종 agent card를 재현한다.
-        - `full_retrain`: 원천 current-best와 M1 specialist source를 다시 학습한 뒤 모델/metadata/score를 현재 저장소 산출물로 갱신한다.
+        - `full_retrain`: 검증된 Risk·Leadtime artifact를 유지한 채 점수와 M1 specialist·metadata·Agent Card를 갱신한다. 모델 교체는 `THIRD_MODEL_RISK_MODEL_MODE=retrain`, `THIRD_MODEL_LEADTIME_MODEL_MODE=retrain`을 명시한 별도 실험이다.
 
         따라서 보고서에서 말하는 threshold와 weight는 단순 문서값이 아니라, source 재학습 로그와 저장소 validation 산출물로 다시 확인할 수 있는 값이다.
         """
@@ -963,14 +970,14 @@ nb["cells"] = [
         ```text
         current-best canonical windows 전체 2526
         -> manufacturer 1만 필터링한 M1 canonical windows 1252
-        -> current-best risk/leadtime/priority score bridge와 결합 가능한 M1 final rows 1226
+        -> 현재 패키지 risk/leadtime/priority/M1 scores 및 final card 1252
         ```
 
-        별도로 current-best score 산출물은 전체 제조사 기준 2362 rows이고, 이 중 manufacturer 1이 1226 rows다.
-        최종 M1 agent flow는 M1 canonical window 1252 rows와 current-best M1 score 1226 rows의 key 교집합을 사용한다.
+        보존된 상위 current-best artifact는 전체 제조사 기준 2362 rows이고, 이 중 manufacturer 1이 1226 rows다.
+        그러나 현재 패키지에서 생성한 risk/leadtime/priority/M1 score와 Agent Card는 canonical 1252개 key를 모두 보존한다.
 
-        빠진 26개 row는 모두 `pre_fault`이고, split 기준으로 train 23개, validation 3개다. Holdout은 183개가 그대로 보존된다.
-        이 때문에 최종 성능 비교는 `1226`개 final M1 agent rows를 기준으로 해석하고, anomaly 자체의 분포/threshold 분석은 `1252`개 M1 canonical windows까지 같이 본다.
+        과거 bridge에서 빠졌던 26개 row는 현재 final card에서 누락되지 않는다. `row_reconciliation.csv`와
+        `key_coverage_by_artifact.csv`의 `missing_from_target=0`으로 이를 확인한다. 성능 비교와 Agent 계약 모두 1252개 canonical row를 기준으로 한다.
         """
     ),
     code(
@@ -992,11 +999,8 @@ nb["cells"] = [
         tidy(fig, height=430).update_layout(xaxis_title="rows", yaxis_title="", showlegend=False)
         fig.show()
 
-        missing_summary = (
-            missing_agent_windows
-            .groupby(["split_time_based", "label"], dropna=False)
-            .size()
-            .reset_index(name="missing_rows")
+        missing_summary = pd.DataFrame(
+            [{"상태": "현재 final card 누락 row", "missing_rows": int(len(missing_agent_windows))}]
         )
         display(missing_summary)
 
@@ -1026,11 +1030,12 @@ nb["cells"] = [
         output/agent/m1_agent_priority_card.csv
         ```
 
-        둘 다 1226 rows / 55 columns이며, 최종 agent ordering은 `priority_score`, `priority_level`을 따른다.
-        이 `priority_score`는 M1 단독 모델이 아니라 current-best priority 65%와 M1 specialist priority 35%를 결합한 hybrid다.
+        둘 다 1252 rows / 67 columns이며, 최종 agent ordering은 `priority_score`, `priority_level`을 따른다.
+        이 `priority_score`는 `restored Risk >= 0.78 OR pre-event >= 0.99` gate v4의 결과다.
+        요청 hybrid v2와 legacy v1은 비교·rollback 필드로 함께 남긴다.
 
         별도 파일인 `output/agent/m1_specialist_parallel_agent_card.csv`는 1252 rows / 29 columns의 M1 specialist 단독 병렬 산출물이다.
-        이 파일은 M1-only evidence 확인용이고, 최종 hybrid agent contract는 아니다.
+        이 파일은 M1-only evidence 확인용이고, 최종 evidence gate agent contract는 아니다.
         """
     ),
     code(
@@ -1050,7 +1055,7 @@ nb["cells"] = [
             .reset_index()
             .sort_values("columns", ascending=False)
         )
-        display(Markdown("**최종 hybrid agent card: 1226 rows / 55 columns**"))
+        display(Markdown("**최종 Risk/pre-event gate agent card: 1252 rows / 67 columns**"))
         display(final_summary)
         display(Markdown("**M1 specialist parallel card: 1252 rows / 29 columns**"))
         display(parallel_summary)
@@ -1070,7 +1075,7 @@ nb["cells"] = [
             barmode="group",
             text="columns",
             color_discrete_sequence=[COLORS["blue"], COLORS["orange"]],
-            title="Agent Card 컬럼 분류: 최종 Hybrid vs M1 단독 Parallel",
+            title="Agent Card 컬럼 분류: 최종 Evidence Gate vs M1 단독 Parallel",
         )
         tidy(fig, height=560).update_layout(xaxis_title="", yaxis_title="column count")
         fig.update_xaxes(tickangle=30)
@@ -1133,8 +1138,8 @@ nb["cells"] = [
                 {
                     "area": "Risk level",
                     "threshold": "medium / high / critical (actual M1 output)",
-                    "value": "0.22 / 0.92 / 0.92",
-                    "rationale": "실제 M1 risk_scores의 applied threshold 기준이다. high와 critical이 같은 0.92이고 critical-first 분류라 M1 output에는 low/medium/critical만 남는다.",
+                    "value": "0.22 / 0.78 / 0.92",
+                    "rationale": "복원 Risk의 applied threshold 기준이다. high 0.78은 validation FPR 5% cap 안에서 선택하고 critical 0.92는 최상위 위험 구간으로 분리한다.",
                 },
                 {
                     "area": "Priority level",
@@ -1914,7 +1919,15 @@ nb["cells"] = [
             + "`이고, leadtime bucket point는 `"
             + str(priority_meta["leadtime_bucket_points"])
             + "`이다.\n\nmetadata에도 leadtime은 `"
-            + str(priority_meta["leadtime_component"])
+            + str(
+                priority_meta.get(
+                    "leadtime_component",
+                    {
+                        "bucket_scale": priority_meta.get("leadtime_component_scale"),
+                        "ordinal_scale": priority_meta.get("leadtime_ordinal_component_scale"),
+                    },
+                )
+            )
             + "`라고 기록돼 있다."
         )
         display(Markdown(meta_text))
@@ -2004,26 +2017,29 @@ nb["cells"] = [
     ),
     md(
         """
-        ## 11. Hybrid Engine 0.65 / 0.35 근거
+        ## 11. 공식 Risk/pre-event Gate v4와 요청 Hybrid v2 비교
 
-        최종 공식:
+        최종 공식 v4:
 
         ```text
-        m1_hybrid_priority_score
-        = 0.65 * current_best_priority_score
-        + 0.35 * m1_specialist_priority_score
+        high trigger = restored_risk_score >= 0.78
+                    OR pre_event_probability >= 0.99
+        score = max(band_score(restored_risk_score),
+                    band_score(pre_event_probability))
+        level = medium >= 90, high >= 99, urgent >= 99.8
         ```
 
         해석:
 
-        - current-best는 risk/leadtime/priority 전체 체인을 포함한 운영 baseline이다.
-        - M1 specialist는 M1 전용 gate evidence지만 단독으로 쓰면 recall/FPR 균형이 약하다.
-        - 0.35는 M1 specialist를 장식이 아니라 실제 score에 반영하는 수준이다.
-        - 0.65는 검증된 current-best 체인을 여전히 주축으로 유지한다는 안전장치다.
+        - restored Risk와 pre-event는 모두 live inference에서 얻을 수 있어 label leakage가 없다.
+        - validation에서 threshold를 선택하고 holdout은 선택에 사용하지 않았다.
+        - official v4 holdout은 정밀도 83.6%, 재현율 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이다.
+        - 요청 v2 `0.72/0.28·67.5/82.5`는 정밀도 100.0%, F1 69.5%, FPR 0.0%인 보수적 비교값이다.
+        - legacy v1 `0.65/0.35·82.5/95.0`은 rollback 기준으로 보존한다.
 
-        아래 sweep은 current-best weight를 0.00부터 1.00까지 바꾸고, 각 weight마다 validation 기준 high threshold를 다시 선택한 결과다.
+        아래 첫 표는 공식 v4의 재현값이다. 이어지는 hybrid weight sweep은 v1/v2 설계의 민감도를 설명하기 위한 역사적 비교이며 공식 정책 선택표가 아니다.
 
-        중요: 0.65 / 0.35를 “전구간 모든 지표의 절대 best”라고 주장하지 않는다. Holdout precision/F1만 최적화하면 0.72/0.28이나 0.90/0.10처럼 더 current-best 중심인 후보가 같거나 더 좋아 보이는 지표가 있다. 0.65는 validation 안정성, current-best baseline 유지, M1 specialist 반영률을 같이 고려한 운영 선택점이다.
+        중요: validation fault event가 3건뿐이므로 v4도 모든 미래 데이터에서 보장된 절대 최적값은 아니다. 신규 이벤트와 rolling split을 계속 감시한다.
         """
     ),
     code(
@@ -2033,7 +2049,10 @@ nb["cells"] = [
             {
                 "current_best_priority": "Current-best official",
                 "m1_specialist_priority": "M1 specialist official",
-                "m1_hybrid_priority": "Final hybrid 0.65/0.35",
+                "legacy_priority": "Legacy hybrid v1 0.65/0.35",
+                "m1_hybrid_priority": "Requested hybrid v2 0.72/0.28",
+                "m1_evidence_priority": "Previous evidence gate v3",
+                "m1_risk_pre_event_priority": "Official Risk/pre-event gate v4",
             }
         )
         off_long = official_holdout.melt(
@@ -2053,11 +2072,20 @@ nb["cells"] = [
             barmode="group",
             text=off_long["value"].round(3),
             color_discrete_sequence=[COLORS["gray"], COLORS["orange"], COLORS["green"]],
-            title="공식 세 정책 비교: Current-best vs M1 specialist vs Hybrid",
+            title="Priority 정책 비교: 공식 v4 vs 요청 v2·이전 정책·기준 모델",
         )
         tidy(fig).update_layout(xaxis_title="", yaxis_title="metric value")
         fig.show()
         display(official_holdout[["policy_label", "precision", "recall", "false_positive_rate", "tp", "fp", "fn", "tn"]])
+
+        selected_v4 = evidence_gate_sweep[
+            evidence_gate_sweep["selected_official_v4"].astype(str).str.lower().eq("true")
+        ].copy()
+        display(Markdown("**공식 v4 선택 임계값의 split별 재현값**"))
+        display(selected_v4[[
+            "split", "risk_threshold", "pre_event_threshold", "precision", "recall", "f1",
+            "false_positive_rate", "fault_event_recall", "tp", "fp", "fn", "tn",
+        ]].round(4))
         """
     ),
     code(
@@ -2079,8 +2107,8 @@ nb["cells"] = [
                     line=dict(color=color),
                 )
             )
-        fig.add_vline(x=0.65, line_dash="dash", line_color=COLORS["slate"], annotation_text="최종 0.65 / 0.35", annotation_position="top left")
-        fig.add_vline(x=0.72, line_dash="dot", line_color=COLORS["red"], annotation_text="metric-best 후보 0.72 / 0.28", annotation_position="top right")
+        fig.add_vline(x=0.65, line_dash="dot", line_color=COLORS["slate"], annotation_text="legacy v1 0.65 / 0.35", annotation_position="top left")
+        fig.add_vline(x=0.72, line_dash="dash", line_color=COLORS["red"], annotation_text="요청 v2 0.72 / 0.28", annotation_position="top right")
         fig.add_vline(x=0.90, line_dash="dot", line_color=COLORS["purple"], annotation_text="baseline-heavy 0.90 / 0.10", annotation_position="bottom right")
         fig.update_layout(title="Hybrid Weight Sweep (Holdout)", xaxis_title="current-best weight", yaxis_title="metric value")
         tidy(fig, height=500).show()
@@ -2147,7 +2175,7 @@ nb["cells"] = [
         display(selection_display)
 
         candidate_names = [
-            "final_selected_0p65",
+            "weight_0p72_validation_recalibrated",
             "validation_best_f1",
             "validation_best_guardrail",
             "holdout_best_f1",
@@ -2191,7 +2219,7 @@ nb["cells"] = [
                 "FPR": COLORS["red"],
                 "Event recall": COLORS["purple"],
             },
-            title="0.65와 metric-best 후보 비교",
+            title="Legacy v1과 요청 v2 및 비교 후보",
         )
         tidy(fig, height=620).update_layout(xaxis_title="", yaxis_title="metric value")
         fig.show()
@@ -2240,7 +2268,7 @@ nb["cells"] = [
                 text=["0.65 " + s for s in selected["split"].astype(str)],
                 textposition="top center",
                 marker=dict(size=16, color="black", symbol="x"),
-                name="selected 0.65",
+                name="legacy v1 0.65",
             )
         )
         fig.add_trace(
@@ -2251,7 +2279,7 @@ nb["cells"] = [
                 text=["0.72 " + s for s in candidate_072["split"].astype(str)],
                 textposition="bottom center",
                 marker=dict(size=14, color=COLORS["red"], symbol="diamond"),
-                name="candidate 0.72",
+                name="requested v2 0.72",
             )
         )
         fig.add_trace(
@@ -2323,7 +2351,7 @@ nb["cells"] = [
     ),
     md(
         """
-        ## 12. 0.65/0.35에서 0.72/0.28 또는 0.90/0.10으로 바꿀 때
+        ## 12. Legacy v1에서 요청 v2 또는 0.90/0.10으로 바꿀 때
 
         0.72/0.28은 current-best 반영률을 7%p 올리고 M1 specialist 반영률을 7%p 낮추는 설정이다.
         이번 sweep에서는 0.65와 0.72 모두 validation 기준 high threshold가 67.5, urgent threshold가 82.5로 동일했다.
@@ -2460,7 +2488,7 @@ nb["cells"] = [
 
         - 0.72/0.28은 관측 지표만 보면 0.65/0.35보다 약간 좋다. Holdout에서 FP가 6에서 5로 줄고, precision과 FPR이 개선된다. Validation도 FP가 7에서 6으로 줄며 recall은 유지된다.
         - 대신 M1 specialist 반영률이 35%에서 28%로 낮아진다. Specialist만 강하게 올린 중간 review 후보가 더 많이 낮아지고, current-best가 강하게 올린 행은 high/urgent 쪽으로 유지되거나 일부 상승한다.
-        - 따라서 “holdout metric best”를 최우선으로 쓰면 0.72/0.28이 더 방어 가능하다. 반대로 M1 specialist를 최종 agent 흐름에 의미 있게 반영한다는 설명력까지 같이 잡으면 0.65/0.35가 더 보수적인 운영 선택점이다.
+        - 복원 artifact를 적용한 최종 비교에서는 요청 v2가 FPR 0.0%, F1 69.5%인 보수적 정책이고, 공식 v4가 recall 72.7%, F1 77.8%로 균형 성능이 더 높다. 0.65/0.35는 즉시 복귀 가능한 legacy v1이다.
         """
     ),
     md(
@@ -2473,14 +2501,16 @@ nb["cells"] = [
         - risk: pre_fault 위험을 직접 학습한 핵심 신호. priority engine에서 가장 높은 비중을 가져가는 것이 타당하다.
         - leadtime: 위험 여부가 아니라 시간 근접성을 보조한다. exact bucket 오차가 있으므로 risk보다 낮게 둔다.
         - priority engine: risk 중심 + leadtime urgency + anomaly/episode context의 운영 점수 구조다.
-        - hybrid 0.65/0.35: current-best를 baseline으로 유지하되 M1 specialist evidence를 실제 우선순위에 반영하는 절충점이다.
+        - 공식 Risk/pre-event gate v4: restored Risk `0.78` 또는 pre-event `0.99`를 만족한 row를 high 후보로 올리고, medium `90`·high `99`·urgent `99.8`을 사용한다.
+        - 요청 hybrid v2 0.72/0.28: high 67.5·urgent 82.5의 보수적 비교값으로 보존한다.
+        - legacy hybrid v1 0.65/0.35: high 82.5·urgent 95.0과 함께 롤백 기준선으로 보존한다.
         - M1 gate 0.50/0.60: 최종 알람 임계값이 아니라 specialist evidence를 만드는 runtime policy다.
-        - 실제 M1 risk level: `medium=0.22`, `high=0.92`, `critical=0.92`; critical-first 판정 때문에 현재 M1 output에는 `high` level row가 없다.
+        - 실제 M1 risk level: `medium=0.22`, `high=0.78`, `critical=0.92`; validation FPR cap과 holdout 재현 성능을 함께 기록한다.
 
         보고 시 주의:
 
-        - 0.65/0.35는 유일한 수학적 optimum이 아니다. Holdout precision/F1만 보면 0.72/0.28 또는 0.90/0.10이 같거나 더 좋은 지표를 보인다.
-        - 최종 0.65는 holdout을 직접 최적화한 값이 아니라 validation 안정성, baseline 유지, specialist 반영률을 같이 본 운영 선택점이다.
+        - 요청 0.72/0.28 고정 임계값은 복원 artifact에서 FPR 0.0%이나 공식 v4보다 recall과 F1이 낮아 보수적 비교값으로 남긴다.
+        - 공식 v4는 비교 정책 중 균형 F1이 가장 높지만 FPR 10.4%로 장기 목표 5%를 아직 넘는다. 신규 event와 rolling split에서 계속 검증한다.
         - 0.90/0.10은 current-best 유지에는 강하지만 M1 specialist 반영률이 10%뿐이라 M1 specialist package의 목적과 설명력이 약해진다.
         - M1 specialist 내부 ablation에서 group-heavy 후보가 좋아 보이는 것은 `fault_group_weight`의 label-derived 성격 때문일 수 있으므로 live inference 성능으로 단정하지 않는다.
         - fault/pre-event gate도 독립 알람 threshold가 아니라 evidence threshold로 설명한다. task/activity gate는 native label이 없어 proxy 또는 산출물 존재 확인 수준으로만 설명한다.

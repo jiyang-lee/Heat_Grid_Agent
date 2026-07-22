@@ -642,7 +642,7 @@ nb["cells"] = [
         - M1 holdout event 수는 8개로 작다. event recall은 방향성 근거로 보되 과대 해석하지 않는다.
         - label은 실제 고장 발생 시각이 아니라 event/proxy 성격이 있다.
         - pseudo-clean normal은 현장 완전 정상 보장이 아니다.
-        - row reconciliation 기준 canonical 1252개 중 agent card는 1226개이며, 누락 26개는 모두 train/validation pre_fault다.
+        - row reconciliation 기준 canonical 1252개와 현재 agent card 1252개가 모두 일치하며, final card 누락은 0개다.
         - priority score는 자동 정비 지시가 아니라 사람이 먼저 볼 대상을 정렬하는 운영 신호다.
         """
     ),

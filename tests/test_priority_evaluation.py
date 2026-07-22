@@ -15,11 +15,44 @@ from heatgrid_ops.priority.evaluation import (
     build_evaluation_results,
     create_priority_evaluation,
 )
-from heatgrid_ops.priority.inference import PriorityInferenceRuntime
+from heatgrid_ops.priority.inference import (
+    M1_PRIORITY_POLICY_VERSION,
+    M1_PRIORITY_SOURCE,
+    PriorityInferenceRuntime,
+    _score_hybrid,
+)
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 BACKEND_DIR: Final = ROOT / "simulator" / "versions" / "v2_postgres_react_ops" / "backend"
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
+
+
+def test_risk_pre_event_gate_v4_is_the_fixed_runtime_policy() -> None:
+    result = _score_hybrid(
+        {"score": 100.0, "level": "urgent"},
+        {"score": 0.50, "level": "medium"},
+        {
+            "score": 50.0,
+            "level": "low",
+            "pre_event_probability": 0.995,
+            "leadtime_urgency_score": 0.50,
+        },
+        {
+            # An older bundle must not silently restore the legacy thresholds.
+            "priority_thresholds": {"hybrid": {"high": 82.5, "urgent": 95.0}}
+        },
+    )
+
+    assert result["priority_score"] == pytest.approx(99.5)
+    assert result["priority_level"] == "high"
+    assert result["priority_source"] == M1_PRIORITY_SOURCE
+    assert result["policy_version"] == M1_PRIORITY_POLICY_VERSION
+    assert result["current_best_weight"] is None
+    assert result["m1_specialist_weight"] is None
+    assert result["m1_hybrid_priority_score"] == pytest.approx(86.0)
+    assert result["m1_hybrid_priority_level"] == "urgent"
+    assert result["m1_evidence_trigger"] == "pre_event"
+    assert result["m1_risk_pre_event_trigger"] == "pre_event"
 
 
 def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:

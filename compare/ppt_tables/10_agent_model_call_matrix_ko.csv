@@ -1,0 +1,11 @@
+﻿단계,모델,호출량,시간/조건,계측 상태
+V1 Evidence loop,gpt-5.4-mini,1~4회(설정),실측 1~5 decision event,근거 충분성 판단
+V1 운영 답변,gpt-5.4-mini,1회 이상,구조화 출력·도구 turn에 따라 증가,token_usage 포함
+V1 출력 재생성,gpt-5.4-mini,0~1회,실측 3/7건,token_usage 포함
+이상 보고서 JSON,gpt-5.4-nano,1회,"실측 7/7 시도, 5/7 성공",현재 token_usage 누락
+V2 상위 재판정,gpt-5.4,0~1회,ML 품질 저하 시,현재 V2 실측 없음
+V2 보고서 초안,gpt-5.4-nano,1회,snapshot-only,도구 호출 0
+V2 품질 Judge,gpt-5.4,0~2회,초안·재생성안 각각 평가,현재 비활성
+독립 고장 진단 Worker,gpt-5.4-mini,0~2회,"45초 + 15초, 총 60초 예산",모델은 설정됐지만 현재 V2 fault stage 미연결
+내부 RAG 검색,LLM 없음,1회; broaden 시 최대 2회,DB/vector 검색,품질 기능 기본 비활성
+외부 Web 검색,gpt-5.4-mini,0~1회,예산 $0.02/run,현재 비활성

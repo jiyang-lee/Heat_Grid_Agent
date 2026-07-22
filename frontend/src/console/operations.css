@@ -372,9 +372,10 @@
 .work-order-cautions { display: grid; gap: var(--space-2); margin: 0; padding-left: 20px; color: var(--ops-critical); font-size: 14px; line-height: 1.6; }
 .work-order-preview { display: grid; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); }
 .work-order-preview h3, .work-order-review-chat h3 { margin: 0; font-size: 17px; }
-.work-order-preview ol { display: grid; gap: var(--space-2); margin: 0; padding-left: 22px; }
-.work-order-preview li { color: var(--ops-text-muted); line-height: 1.55; }
-.work-order-preview strong, .work-order-preview span { display: block; }
+.work-order-preview ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.work-order-preview li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--space-1); color: var(--ops-text-muted); line-height: 1.55; }
+.work-order-preview li > b { color: var(--ops-primary); }
+.work-order-preview li > span { min-width: 0; overflow-wrap: anywhere; }
 .work-order-preview strong { color: var(--ops-text); }
 .work-order-section-nav { position: sticky; z-index: 3; top: 0; display: flex; justify-content: flex-end; gap: var(--space-2); margin: 0 calc(var(--space-4) * -1); padding: var(--space-2) var(--space-4); border-block: 1px solid var(--ops-border); background: color-mix(in srgb, var(--ops-surface) 96%, transparent); backdrop-filter: blur(8px); }
 .work-order-document, .work-order-review-chat { scroll-margin-top: 64px; }
@@ -400,6 +401,13 @@
 .work-order-chat-proposal > dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: 0; }
 .work-order-chat-proposal > dl div { padding: var(--space-2); border-radius: 6px; background: var(--ops-surface-muted); }
 .work-order-chat-proposal > dl dd { margin: 3px 0 0; font-weight: 700; }
+.work-order-proposal-requirements { padding: var(--space-2) var(--space-3); border-left: 3px solid var(--ops-warning); border-radius: 4px; background: var(--ops-surface-muted); }
+.work-order-proposal-requirements b { font-size: 13px; }
+.work-order-proposal-requirements ol { display: grid; gap: 4px; margin: var(--space-2) 0 0; padding-left: 20px; color: var(--ops-text); font-size: 13px; line-height: 1.5; }
+.work-order-manual-editor { display: grid; gap: var(--space-3); }
+.work-order-manual-editor label { display: grid; gap: var(--space-1); color: var(--ops-text-muted); font-size: 13px; font-weight: 700; }
+.work-order-manual-editor input, .work-order-manual-editor textarea { width: 100%; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; color: var(--ops-text); background: var(--ops-surface); font: inherit; }
+.work-order-manual-editor > div:last-child { display: flex; justify-content: flex-end; gap: var(--space-2); }
 .work-order-proposal-diff, .work-order-chat-proposal > .work-order-proposal-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; gap: var(--space-2); }
 .work-order-proposal-diff section { min-width: 0; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; background: var(--ops-surface-muted); }
 .work-order-proposal-diff b { display: block; margin-bottom: var(--space-1); color: var(--ops-text-muted); font-size: 12px; }

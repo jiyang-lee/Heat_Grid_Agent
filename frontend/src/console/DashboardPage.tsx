@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { usePrioritySnapshot } from '../api/hooks'
 import type { PriorityEvaluationResult } from '../api/contracts'
 import { complexById } from '../domain/model'
 import { complexes } from '../data/complexes'
-import MapView from '../map/MapView'
 import { scenarioPriorityRows } from '../scenario/scenarioData'
 import { useScenario } from '../scenario/useScenario'
 import type { ResolvedTheme } from './useThemePreference'
 import { Icon } from './icons'
-import SensorFlowCard from './SensorFlowCard'
 import { useOperations } from './OperationsContext'
 import { HomeMetric, StatusBadge, SurfaceCard } from './ui'
+
+const MapView = lazy(() => import('../map/MapView'))
+const SensorFlowCard = lazy(() => import('./SensorFlowCard'))
 
 type DashboardPriorityBucket = 'urgent' | 'high' | 'medium' | 'low'
 
@@ -106,7 +107,9 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         title="MAP"
       >
         <div aria-label="설비 위치 지도" className="map-live" ref={mapWrapRef}>
-          <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} missingStatus="low" onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
+          <Suspense fallback={<div className="map-state">지도를 불러오는 중입니다.</div>}>
+            <MapView error={faultMode ? false : priority.isError} loading={faultMode ? false : priority.isLoading} missingStatus="low" onClearSelection={clearMapSelection} onSelectComplex={selectMapComplex} results={rows} theme={theme} />
+          </Suspense>
           <button className="map-expand" onClick={openFullMap} type="button"><Icon name="expand" />전체 지도 보기</button>
         </div>
         </SurfaceCard>
@@ -122,7 +125,9 @@ export function DashboardPage({ onOpenAlerts, theme }: Props) {
         )) : null}
         </SurfaceCard>
       </div>
-      <SensorFlowCard substationId={selectedGraphSubstationId} />
+      <Suspense fallback={<div className="sensor-flow" role="status">그래프를 불러오는 중입니다.</div>}>
+        <SensorFlowCard substationId={selectedGraphSubstationId} />
+      </Suspense>
     </div>
     {faultMode && incidentActive && visibleIncidentAlerts.length > 0 && <div aria-live="polite" className="scenario-incident-toasts">
       {visibleIncidentAlerts.map((alert) => {

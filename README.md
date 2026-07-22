@@ -10,7 +10,7 @@
 | 항목 | 현재 범위 |
 |---|---|
 | 대상 | manufacturer 1(M1) 설비 데이터 |
-| 최종 모델 산출물 | M1 hybrid agent card 1,252행 · 55개 컬럼 |
+| 최종 모델 산출물 | M1 Risk/pre-event gate v4 Agent Card 1,252행 · 67개 컬럼 |
 | 데이터 정합성 | canonical window와 agent card 간 key 누락 0건 |
 | 운영 화면 | 지도 관제, 알림 큐, agent run, v4 작업 지시 결과 |
 | 실행 환경 | PostgreSQL/pgvector, FastAPI, LangGraph, React/Vite |
@@ -45,16 +45,19 @@ flowchart LR
     Window["M1 canonical window<br/>1,252개"] --> Anomaly["Anomaly evidence<br/>IsolationForest + Mahalanobis"]
     Window --> Current["Current-best 계열<br/>risk · leadtime · priority"]
     Window --> Specialist["M1 specialist<br/>RF gate + LogisticRegression gate"]
-    Current --> Hybrid["M1 hybrid priority<br/>0.65 × current-best<br/>+ 0.35 × specialist"]
+    Current --> Hybrid["요청 v2 비교값<br/>0.72 × current-best<br/>+ 0.28 × specialist"]
     Specialist --> Hybrid
+    Current --> Evidence["공식 priority v4<br/>restored Risk ≥ 0.78<br/>OR pre-event ≥ 0.99"]
+    Specialist --> Evidence
     Anomaly --> Card["agent card<br/>priority · evidence · review"]
-    Hybrid --> Card
+    Evidence --> Card
     Card --> Review["review_required<br/>운영자 확인"]
 ```
 
 - anomaly는 정상 분포에서 벗어난 정도를 보는 evidence이며 단독 고장 분류기가 아니다.
 - leadtime은 정확한 고장 시각이 아니라 priority 계산에 쓰는 보조 신호다.
 - M1 specialist는 current-best risk/leadtime을 대체하지 않고, M1 전용 상태·사전 이벤트 근거를 priority에 반영한다.
+- 공식 v4는 운영 시 알 수 없는 label-derived 필드를 제거하고 복원 Risk·pre-event evidence만 사용한다. holdout Precision 83.6%, Recall 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이며 v3/v2/v1은 비교·rollback 값으로 보존한다.
 
 모델 설계와 범위는 [모델 설계](docs/03_MODEL_DESIGN.md), [M1 범위](docs/model/M1_SCOPE.md), [최종 결과](docs/06_FINAL_RESULTS.md)를 기준으로 한다.
 

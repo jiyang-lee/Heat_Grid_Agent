@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import type { AgentRunListItem } from '../../api/contracts'
+import { displayAlertReason } from '../../domain/alertReason'
 import { StatusBadge } from '../ui'
 import {
   executionStatus,
@@ -33,6 +34,7 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
           {items.map((item) => {
             const status = executionStatus(item)
             const selected = item.run_id === selectedId
+            const alertReason = displayAlertReason(item.alert_reason)
             return (
               <tr
                 aria-selected={selected}
@@ -48,7 +50,7 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
                 </td>
                 <td className="activity-alert-cell">
                   <StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge>
-                  <span className="activity-alert-reason" title={item.alert_reason ?? undefined}>{item.alert_reason ?? '-'}</span>
+                  <span className="activity-alert-reason" title={alertReason === '-' ? undefined : alertReason}>{alertReason}</span>
                 </td>
                 <td><StatusBadge tone={executionStatusTone(status)}>{status}</StatusBadge></td>
               </tr>

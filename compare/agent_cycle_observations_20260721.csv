@@ -1,0 +1,8 @@
+run_id,substation_id,lineage_kind,duration_seconds,model_calls,input_tokens,cached_input_tokens,output_tokens,total_tokens,logged_main_cost_usd,output_retry_count,retry_elapsed_seconds,retry_attributed_tokens,retry_attributed_cost_usd,loop_decision_count,model_verification_count,report_call_attempted,report_call_status,report_call_seconds
+bf86872c-bb1f-4ac8-ac89-9ca0fffa3101,1,child,44.58,4,6161,1536,725,6886,0.00684645,1,4.065,4102,0.00387720,1,1,1,completed,29.144
+148bd946-660f-4dad-8e69-0cb8d73d3bd9,1,child,47.23,3,4843,0,1156,5999,0.00883425,0,,,,1,1,1,completed,37.576
+9ec58c78-d242-4946-9979-3889f8ee9971,1,root,47.64,6,5939,1536,1346,7285,0.00947445,0,,,,4,1,1,completed,33.066
+45bb1daf-dbe4-45b0-bf93-14a05d453d55,10,root,49.88,6,5997,0,1227,7224,0.01001925,1,3.582,4647,0.00545025,4,1,1,failed,30.016
+376dca4e-d91e-4321-8f09-9296b88682cf,30,child,51.90,5,5575,0,1126,6701,0.00924825,0,,,,3,1,1,failed,38.184
+232e36ee-9efd-4e78-924c-12a0c2f596e2,30,root,91.56,5,5636,0,1224,6860,0.00973500,1,6.437,4785,0.00604500,3,1,1,completed,29.005
+a7491bc0-d6af-4f39-9597-e515025ff161,10,child,93.73,7,6393,0,1522,7915,0.01164375,0,,,,5,1,1,completed,35.939
