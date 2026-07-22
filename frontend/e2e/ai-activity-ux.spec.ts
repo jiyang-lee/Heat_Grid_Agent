@@ -291,34 +291,33 @@ test('full work-order detail exposes document and AI shortcuts with an always-ac
   await expect(footer.getByRole('button', { name: 'v1 실행 검토 승인', exact: true })).toBeVisible()
 })
 
-test('fault report memo stays in its local document group without calling review-chat', async ({ page }) => {
+test('fault report uses its own review chatbot without calling work-order review-chat', async ({ page }) => {
   const group = scenarioGroup()
   await page.addInitScript((session) => window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session)), faultSession(group))
-  let reviewChatCalls = 0
+  let workOrderReviewCalls = 0
+  let reportReviewCalls = 0
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname.includes('/review-chat')) reviewChatCalls += 1
+    const path = new URL(request.url()).pathname
+    if (path.includes('/review-chat')) workOrderReviewCalls += 1
+    if (path === '/api/report-review/chat') reportReviewCalls += 1
+  })
+  await page.route('**/api/report-review/chat', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await route.fulfill({ json: { answer: '관리자 요약의 위험 근거를 센서 관측과 연결해 제시하세요.' } })
   })
 
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
   await page.getByRole('tab', { name: '보고서', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '보고서 검토 메모' })).toBeVisible()
-  const callsBeforeMemo = reviewChatCalls
-
-  await page.getByRole('textbox', { name: '검토 메모' }).fill('현장 인계 항목을 다시 확인')
-  await page.getByRole('button', { name: '메모 저장', exact: true }).click()
-  await expect(page.locator('.scenario-chat-messages')).toContainText('현장 인계 항목을 다시 확인')
-  expect(reviewChatCalls).toBe(callsBeforeMemo)
-
-  await expect.poll(() => page.evaluate((groupId) => {
-    const session = JSON.parse(window.sessionStorage.getItem('heatgrid:scenario-session') ?? '{}') as {
-      documentGroups?: Array<{ id: string; reportMessages?: Array<{ content: string }> }>
-    }
-    return session.documentGroups?.find((candidate) => candidate.id === groupId)?.reportMessages?.map((message) => message.content) ?? []
-  }, group.id)).toEqual([
-    '현장 인계 항목을 다시 확인',
-    '보고서 검토 의견으로 정리했습니다. 본문은 변경하지 않았으니 운영자가 필요한 문구만 직접 반영해 주세요.',
-  ])
+  await expect(page.getByRole('heading', { name: 'AI 보고서 검토 챗봇' })).toBeVisible()
+  await expect(page.locator('.report-docx-page')).toHaveCount(4)
+  const workOrderCallsBeforeQuestion = workOrderReviewCalls
+  await page.getByRole('textbox', { name: '보고서 질문 또는 검토 요청' }).fill('관리자 요약의 근거를 검토해줘')
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click()
+  await expect(page.locator('.work-order-chat-message.is-thinking')).toBeVisible()
+  await expect(page.getByText('관리자 요약의 위험 근거를 센서 관측과 연결해 제시하세요.')).toBeVisible()
+  expect(reportReviewCalls).toBe(1)
+  expect(workOrderReviewCalls).toBe(workOrderCallsBeforeQuestion)
 })
 
 test('creating v2 keeps the previously adopted version and completed report', async ({ page }) => {
@@ -381,8 +380,8 @@ test('creating v2 keeps the previously adopted version and completed report', as
   await expect(page.getByRole('tab', { name: 'v2', exact: true })).toBeVisible()
 
   await page.getByRole('tab', { name: '보고서', exact: true }).click()
-  await expect(page.locator('.scenario-report-content')).toContainText('기존 완료 보고서 본문')
-  await expect(page.locator('.scenario-report-meta')).toContainText('작업지시서 v1')
+  await expect(page.locator('.report-docx-pages')).toContainText('기존 완료 보고서 본문')
+  await expect(page.locator('.report-docx-pages')).toContainText('5. 판정과 후속 조치')
   await expect.poll(() => page.evaluate((groupId) => {
     const session = JSON.parse(window.sessionStorage.getItem('heatgrid:scenario-session') ?? '{}') as {
       documentGroups?: Array<{ id: string; acceptedWorkOrderVersion?: number; report?: { status?: string; content?: string } }>

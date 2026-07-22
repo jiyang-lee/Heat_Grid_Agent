@@ -18,6 +18,7 @@ ChatMessageKind = Literal[
     "action_proposal",
     "confirmation",
     "execution_result",
+    "scope_notice",
     "error",
 ]
 ProposalStatus = Literal[

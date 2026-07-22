@@ -768,6 +768,7 @@ export type ReviewChatMessageKind =
   | 'action_proposal'
   | 'confirmation'
   | 'execution_result'
+  | 'scope_notice'
   | 'error'
 
 export type ReviewChatProposalStatus =
@@ -1116,6 +1117,18 @@ export interface IncidentDocumentApproveRequest {
   readonly note: string
 }
 
+export interface IncidentDocumentGenerateRequest {
+  readonly created_by: string
+  readonly idempotency_key: string
+  readonly evidence_ids?: readonly string[]
+  readonly content?: {
+    readonly title: string
+    readonly body: string
+    readonly actions: readonly string[]
+    readonly safety_notes: string
+  }
+}
+
 export interface IncidentDocumentEditRequest {
   readonly expected_version: number
   readonly edited_by: string
@@ -1314,6 +1327,46 @@ export interface AgentReportListPage {
   readonly items: readonly AgentReportListItem[]
   readonly next_cursor: string | null
   readonly total_count: number | null
+}
+
+export type AnomalyReportSection = Readonly<Record<string, unknown>>
+
+export interface AnomalyReportArtifact {
+  readonly report_metadata?: AnomalyReportSection
+  readonly target_asset?: AnomalyReportSection
+  readonly priority_summary?: AnomalyReportSection
+  readonly situation_summary?: AnomalyReportSection
+  readonly key_evidence?: readonly AnomalyReportSection[]
+  readonly risk_analysis?: AnomalyReportSection
+  readonly suspected_causes?: readonly AnomalyReportSection[]
+  readonly recommended_actions?: readonly AnomalyReportSection[]
+  readonly evidence_references?: readonly AnomalyReportSection[]
+  readonly operator_note?: AnomalyReportSection
+  readonly [key: string]: unknown
+}
+
+export interface ReportReviewMessage {
+  readonly role: 'operator' | 'assistant'
+  readonly content: string
+}
+
+export interface ReportReviewRequest {
+  readonly message: string
+  readonly report_context: AnomalyReportArtifact | string
+  readonly history: readonly ReportReviewMessage[]
+}
+
+export interface ReportReviewResponse {
+  readonly answer: string
+}
+
+export interface ReportDocumentRequest {
+  readonly report_context: AnomalyReportArtifact
+  readonly alert_id?: string | null
+  readonly building_name: string
+  readonly machine_room: string
+  readonly status_label: string
+  readonly document_version: number
 }
 
 // ---------------------------------------------------------------------------

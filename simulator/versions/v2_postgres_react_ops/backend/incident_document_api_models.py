@@ -129,6 +129,7 @@ class IncidentDocumentGenerateRequest(FrozenIncidentDocumentModel):
     created_by: str = Field(min_length=1, max_length=120)
     idempotency_key: str = Field(min_length=1, max_length=200)
     evidence_ids: tuple[str, ...] = Field(default=())
+    content: IncidentDocumentContent | None = None
 
 
 class IncidentDocumentEditRequest(FrozenIncidentDocumentModel):

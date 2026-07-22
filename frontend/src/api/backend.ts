@@ -3,6 +3,7 @@ export {
   agentRunsApi,
   workOrdersApi,
   agentReportsApi,
+  reportDocumentsApi,
   demoAiHistoryApi,
   agentRunEvaluationsApi,
   operatorReviewsApi,

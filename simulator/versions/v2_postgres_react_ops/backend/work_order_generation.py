@@ -525,7 +525,9 @@ async def generate_structured_work_order(
     )
     risk_fallback = _default_risk_and_evidence(evidence_lines)
     outcome_fallback = _default_outcome_and_followup(work_order_kind)
-    purpose = _strip_forbidden_terms(narrative.purpose if narrative else purpose_fallback)
+    # 작업 목적은 같은 분석을 재생성해도 화면과 다운로드 문서가 바뀌지 않도록
+    # 분석 상황·점검 항목에서 결정적으로 만들고, LLM은 위험성·후속 조치 문장에만 사용한다.
+    purpose = purpose_fallback
     risk_and_evidence = _strip_forbidden_terms(
         narrative.risk_and_evidence if narrative else risk_fallback
     )

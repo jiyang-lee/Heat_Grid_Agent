@@ -7,7 +7,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from incident_document_api_models import DocumentType, IncidentDocumentApproveRequest, IncidentDocumentEditRequest
-from incident_document_api_models import IncidentDocumentGenerateRequest, IncidentDocumentPage, IncidentDocumentResponse
+from incident_document_api_models import IncidentDocumentContent, IncidentDocumentGenerateRequest, IncidentDocumentPage, IncidentDocumentResponse
+from incident_document_api_models import IncidentEvidenceCitation
 from incident_document_api_models import WorkOrderFieldPatchRequest, WorkOrderStructuredContent
 from incident_document_content import content_from_row, generated_content, has_content_edit
 from incident_document_idempotency import begin_idempotent_operation, complete_idempotency
@@ -91,7 +92,12 @@ class PostgresIncidentDocumentRepository:
             next_version = 1 if latest is None else int(latest["version"]) + 1
             parent_id = None if latest is None else str(latest["document_version_id"])
             status = "draft" if model_available else "failed"
-            content = generated_content(document_type, citations, model_available=model_available)
+            content = _generated_or_supplied_content(
+                document_type,
+                request.content,
+                citations,
+                model_available=model_available,
+            )
             row = await insert_version(
                 connection,
                 episode_id=episode_id,
@@ -259,6 +265,24 @@ class PostgresIncidentDocumentRepository:
             rows = result.mappings().all()
             items = tuple([await response_from_row(connection, row) for row in rows])
         return IncidentDocumentPage(items=items)
+
+
+def _generated_or_supplied_content(
+    document_type: DocumentType,
+    supplied: IncidentDocumentContent | None,
+    citations: tuple[IncidentEvidenceCitation, ...],
+    *,
+    model_available: bool,
+) -> IncidentDocumentContent:
+    if supplied is None:
+        return generated_content(document_type, citations, model_available=model_available)
+    return IncidentDocumentContent(
+        title=supplied.title,
+        body=supplied.body,
+        actions=supplied.actions,
+        evidence=citations,
+        safety_notes=supplied.safety_notes,
+    )
 
     async def patch_work_order_field(
         self,

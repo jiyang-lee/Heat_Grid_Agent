@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import type { OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatProposalResponse, ReviewChatThreadResponse } from '../api/contracts'
+import type { OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatProposalResponse, ReviewChatThreadResponse, WorkOrderStructuredContent } from '../api/contracts'
 import { isWorkOrderStructuredContent } from '../api/contracts'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../api/client'
 import { WorkOrderExcelPreview } from '../console/ai-activity/WorkOrderExcelPreview'
@@ -31,6 +31,37 @@ interface ScopeClarification {
   readonly instruction: string
   readonly message: string
   readonly options: readonly WorkOrderRevisionTarget[]
+}
+
+function scenarioFallbackStructuredContent(alert: ScenarioAlert, order: ScenarioState['workOrders'][number]): WorkOrderStructuredContent {
+  const items = order.sections.flatMap((section) => section.items).slice(0, 6)
+  return {
+    work_order_kind: 'site_check',
+    header: {
+      document_number: `HG-SCENARIO-${alert.substationId}-v${order.version}`,
+      issued_at: order.createdAt,
+      priority: alert.priority,
+      assignee: '현장 운영팀',
+      target_building: alert.facility,
+      mechanical_room: `기계실 ${alert.substationId}`,
+      equipment_type: alert.facility.split('·').at(-1)?.trim() ?? '대상 설비',
+      work_type: '현장 확인',
+      issue_reason: alert.title,
+      status: '검토 중',
+    },
+    purpose: `${alert.summary}\n\n${alert.title}와 관련된 현상이 현장에서도 지속되는지 확인하고, 대상 설비의 현재 운전값과 외관 상태를 점검해 주십시오. 확인 결과에는 측정값, 이상 여부, 현상 지속 여부를 함께 기록하여 후속 조치 판단에 사용할 수 있도록 남겨 주십시오.`,
+    risk_and_evidence: alert.evidence.join('\n'),
+    restriction_or_prep_checklist: [
+      { label: '현장 책임자와 작업 범위를 확인한다', checked: false },
+      { label: '보호구와 측정 장비를 준비한다', checked: false },
+      { label: '이상 발견 시 즉시 현장 관리자에게 보고한다', checked: false },
+    ],
+    checklist: items.map((item, index) => ({ seq: index + 1, instrument_or_target: alert.facility, check_or_task_action: item, pass_fail_criteria: '현장 기준에 따라 확인', parts_or_tools: null, completion_condition: '측정값과 현상을 기록', result: 'pending', measured_before: null, measured_after: null, checked_by: null, signature: null, note: null })),
+    commissioning_checklist: [],
+    outcome_and_followup: '점검 결과와 측정값을 기록하고, 이상이 지속되면 운영 담당자에게 인계합니다.',
+    safety_permit_precheck: { questions: [], permit_required: false },
+    disclaimer: '현장 확인 결과를 기준으로 최종 조치 여부를 판단합니다.',
+  }
 }
 
 function requestId(prefix: string): string {
@@ -283,6 +314,10 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMan
   // 서버가 생성한 문서(개발자용 내부 진단 문구를 걸러낸 정제본)가 있으면 그걸 우선 표시한다.
   // 없으면 클라이언트가 AI 원본 분석 결과로 즉석에서 만든 초안(selectedOrder.content)으로 대체 표시한다.
   const displayBody = selectedServerDocument != null ? legacyViewOfContent(selectedServerDocument.content).body : selectedOrder.content
+  const fallbackStructuredContent = scenarioFallbackStructuredContent(alert, selectedOrder)
+  const previewContent = selectedServerDocument != null && isWorkOrderStructuredContent(selectedServerDocument.content)
+    ? { ...selectedServerDocument.content, purpose: fallbackStructuredContent.purpose }
+    : fallbackStructuredContent
   const latestServerVersion = Math.max(...(incidentDocuments.data?.items.filter((document) => document.document_type === 'work_order').map((document) => document.version) ?? [selectedOrder.version]))
   const selectedIsLatest = selectedOrder.version === latestOrder.version && (selectedServerDocument == null || selectedServerDocument.version === latestServerVersion)
   const messageConfirmsProposal = apiProposal != null && isWorkOrderProposalConfirmation(message)
@@ -664,8 +699,7 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMan
       </div>
       <article className="scenario-order-body" ref={documentBodyRef}>
         {editing && <div className="work-order-manual-editor"><p className="work-order-chat-context-note">{selectedServerDocument ? `현재 v${selectedOrder.version}은 그대로 보존되고 저장 시 v${selectedOrder.version + 1} 새 초안이 생성됩니다. 새 버전은 다시 최종 채택해야 합니다.` : '이 편집은 현재 시나리오 세션 버전에 저장됩니다. 저장 후에는 해당 버전을 다시 최종 채택해야 합니다.'}</p><label><span>문서 제목</span><input onChange={(event) => setEditTitle(event.target.value)} value={editTitle} /></label><label><span>작업지시서 본문</span><textarea aria-label="작업지시서 본문 편집" className="scenario-document-editor" onChange={(event) => setDraft(event.target.value)} value={draft} /></label><label><span>수정 사유</span><input onChange={(event) => setEditNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={editNote} /></label></div>}
-        {!editing && selectedServerDocument != null && isWorkOrderStructuredContent(selectedServerDocument.content) && <WorkOrderExcelPreview content={selectedServerDocument.content} status={selectedServerDocument.status} version={selectedServerDocument.version} />}
-        {!editing && (selectedServerDocument == null || !isWorkOrderStructuredContent(selectedServerDocument.content)) && <p className="scenario-document-content">작업지시서를 준비하고 있습니다.</p>}
+        {!editing && <WorkOrderExcelPreview content={previewContent} status={selectedServerDocument?.status} version={selectedOrder.version} />}
         <WorkOrderActionFooter
           notice={adopted ? '이 버전이 보고서 생성 기준입니다.' : state.acceptedWorkOrderVersion != null ? `현재 보고서는 채택된 v${state.acceptedWorkOrderVersion} 기준입니다.` : 'v1-v3 중 현장 조치 기준으로 사용할 버전을 선택하세요.'}
           saveErrorDetail={downloadState === 'error' ? 'Excel 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}

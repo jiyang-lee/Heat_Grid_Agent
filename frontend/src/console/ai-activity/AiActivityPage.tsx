@@ -154,8 +154,9 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
   const statusOptions = tab === 'execution' ? EXECUTION_STATUS_FILTERS : REVIEW_STATUS_FILTERS
   const incidentWorkspace = incidentEntry && incidentAlert != null && (tab === 'orders' || tab === 'reports')
   const normalOrderWorkspace = !incidentEntry && tab === 'orders' && selectedOrder != null
-  const selectedDetail = (tab === 'execution' && selectedExecution != null) || (!incidentEntry && tab === 'reports' && selectedReport != null)
-  const showList = !incidentWorkspace && !normalOrderWorkspace
+  const normalReportWorkspace = !incidentEntry && tab === 'reports' && selectedReport != null
+  const selectedDetail = tab === 'execution' && selectedExecution != null
+  const showList = !incidentWorkspace && !normalOrderWorkspace && !normalReportWorkspace
   const split = showList && selectedDetail
   const isEmpty = tab === 'execution' ? executionItems.length === 0 : tab === 'orders' ? orderItems.length === 0 : reportItems.length === 0
 
@@ -176,7 +177,7 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
       scenario.selectAlert(targetAlert.id)
       scenario.createWorkOrder(runId, result, targetAlert.id)
       setFocusedIncidentAlertId(targetAlert.id)
-      setFocusedRunId(runId)
+      setFocusedRunId(null)
       setTab('orders')
       return
     }
@@ -211,9 +212,9 @@ export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onCon
 
       {tab === 'execution' && selectedExecution && <div className="activity-detail-pane"><ExecutionDetail item={selectedExecution} onClose={closePlan} onOpenWorkOrder={openWorkOrderFromExecution} /></div>}
       {normalOrderWorkspace && <div className="work-order-normal-workspace"><WorkOrderHoverRail><WorkOrderList items={orderItems} onSelect={(runId) => setSelected((current) => ({ ...current, orders: runId }))} selectedId={selected.orders} /></WorkOrderHoverRail><div className="activity-detail-pane"><WorkOrderDetail item={selectedOrder} key={selectedOrder.run_id} mode="detail" onClose={() => setSelected((current) => ({ ...current, orders: null }))} /></div></div>}
-      {!incidentEntry && tab === 'reports' && selectedReport && <div className="activity-detail-pane"><ReportDetail item={selectedReport} onClose={() => setSelected((current) => ({ ...current, reports: null }))} /></div>}
+      {normalReportWorkspace && <div className="work-order-normal-workspace report-normal-workspace"><WorkOrderHoverRail label="보고서 목록"><ReportList items={reportItems} onSelect={(artifactId) => setSelected((current) => ({ ...current, reports: artifactId }))} selectedId={selected.reports} /></WorkOrderHoverRail><div className="activity-detail-pane"><ReportDetail item={selectedReport} onClose={() => setSelected((current) => ({ ...current, reports: null }))} /></div></div>}
       {incidentEntry && tab === 'orders' && incidentAlert && <ScenarioWorkOrderWorkspace alert={incidentAlert} key={scenario.state.activeDocumentGroupId ?? 'empty-order'} onAccept={scenario.acceptWorkOrder} onAppendManualRevision={scenario.appendManualWorkOrderRevision} onAppendMessages={scenario.appendWorkOrderMessages} onAppendRevision={scenario.appendWorkOrderRevision} onCreateReport={createIncidentReport} onOpenAnalysis={() => setTab('execution')} onSelectDocumentGroup={selectIncidentDocument} onSelectVersion={scenario.selectWorkOrderVersion} onUpdateContent={scenario.updateWorkOrderContent} state={scenario.state} />}
-      {incidentEntry && tab === 'reports' && incidentAlert && <ScenarioReportWorkspace activeGroupId={scenario.state.activeDocumentGroupId} alert={incidentAlert} groups={scenario.state.documentGroups} key={scenario.state.activeDocumentGroupId ?? 'empty-report'} messages={scenario.state.reportMessages} onComplete={scenario.completeReport} onCreateDraft={scenario.createReportDraft} onOpenWorkOrders={() => setTab('orders')} onPostMessage={scenario.postReportMessage} onSave={scenario.saveReportDraft} onSelectDocumentGroup={selectIncidentDocument} order={scenario.state.workOrders.find((order) => order.version === scenario.state.acceptedWorkOrderVersion)} report={scenario.state.report} />}
+      {incidentEntry && tab === 'reports' && incidentAlert && <ScenarioReportWorkspace activeGroupId={scenario.state.activeDocumentGroupId} alert={incidentAlert} groups={scenario.state.documentGroups} key={scenario.state.activeDocumentGroupId ?? 'empty-report'} onComplete={scenario.completeReport} onCreateDraft={scenario.createReportDraft} onOpenWorkOrders={() => setTab('orders')} onSave={scenario.saveReportDraft} onSelectDocumentGroup={selectIncidentDocument} order={scenario.state.workOrders.find((order) => order.version === scenario.state.acceptedWorkOrderVersion)} report={scenario.state.report} />}
     </div>
   </div>
 }

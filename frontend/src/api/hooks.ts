@@ -46,6 +46,7 @@ import type {
   RunLineageResponse,
   IncidentDocumentApproveRequest,
   IncidentDocumentEditRequest,
+  IncidentDocumentGenerateRequest,
   WorkOrderFieldPatchRequest,
 } from './contracts'
 
@@ -216,6 +217,14 @@ export function useAgentReports(query?: ActivityProjectionQuery) {
     queryKey: qk.agentReports(query),
     queryFn: () => agentReportsApi.list(query),
     refetchInterval: 15000,
+  })
+}
+
+export function useAgentReportContent(runId: string | null, artifactId: string | null) {
+  return useQuery({
+    queryKey: ['agent-report-content', runId ?? '', artifactId ?? ''],
+    queryFn: () => agentReportsApi.content(runId as string, artifactId as string),
+    enabled: runId != null && artifactId != null,
   })
 }
 
@@ -535,6 +544,33 @@ export function useApproveIncidentWorkOrder() {
   return useMutation({
     mutationFn: (value: { incidentId: string; body: IncidentDocumentApproveRequest }) =>
       incidentDocumentsApi.approveWorkOrder(value.incidentId, value.body),
+    onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
+  })
+}
+
+export function useGenerateIncidentReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; body: IncidentDocumentGenerateRequest }) =>
+      incidentDocumentsApi.generateReport(value.incidentId, value.body),
+    onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
+  })
+}
+
+export function useApproveIncidentReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; body: IncidentDocumentApproveRequest }) =>
+      incidentDocumentsApi.approveReport(value.incidentId, value.body),
+    onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
+  })
+}
+
+export function useEditIncidentReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: { incidentId: string; version: number; body: IncidentDocumentEditRequest }) =>
+      incidentDocumentsApi.editReport(value.incidentId, value.version, value.body),
     onSuccess: (_document, value) => qc.invalidateQueries({ queryKey: qk.incidentDocuments(value.incidentId) }),
   })
 }

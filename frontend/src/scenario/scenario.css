@@ -150,6 +150,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-plan-evidence span { color: var(--ops-text-muted); }
 .scenario-order-layout { grid-template-columns: minmax(160px, .24fr) minmax(360px, 1.08fr) minmax(320px, .68fr); align-items: stretch; height: 100%; min-height: 0; }
 .scenario-order-layout.work-order-unified-layout { grid-template-columns: 40px repeat(2, minmax(0, 1fr)); }
+.report-unified-layout > .report-docx-panel, .report-unified-layout > .report-review-chat { min-width: 0; min-height: 0; height: 100%; }
 .scenario-report-list-layout { display: grid; grid-template-columns: minmax(180px, .25fr) minmax(0, 1.75fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
 .scenario-report-list-layout > .ops-surface, .scenario-report-list-layout > .scenario-document-workspace { min-width: 0; min-height: 0; }
 .scenario-document-workspace { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(340px, .72fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
@@ -445,6 +446,8 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-order-layout.work-order-unified-layout { height: auto; grid-auto-rows: max-content; align-content: start; }
   .scenario-order-layout.work-order-unified-layout > .work-order-excel-panel { height: min(760px, calc(100dvh - 96px)); min-height: 600px; }
   .scenario-order-layout.work-order-unified-layout > .work-order-chat-panel { height: min(680px, calc(100dvh - 96px)); min-height: 520px; }
+  .scenario-order-layout.work-order-unified-layout > .report-docx-panel { height: min(760px, calc(100dvh - 96px)); min-height: 600px; }
+  .scenario-order-layout.work-order-unified-layout > .report-review-chat { height: min(680px, calc(100dvh - 96px)); min-height: 520px; }
   .scenario-document-workspace { gap: var(--space-2); padding-bottom: 56px; }
   .scenario-document-toolbar { grid-template-columns: 1fr; align-items: stretch; }
   .scenario-version-switch { width: 100%; }
