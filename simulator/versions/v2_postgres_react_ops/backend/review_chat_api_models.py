@@ -16,6 +16,7 @@ ChatMessageKind = Literal[
     "explanation",
     "action_request",
     "action_proposal",
+    "scope_notice",
     "confirmation",
     "execution_result",
     "error",

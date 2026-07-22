@@ -42,6 +42,12 @@ const EXPLICIT_REVISION_PATTERN = /(?:수정|교정|고쳐|바꿔|변경|추가|
 const REVISION_PROBLEM_PATTERN = /(?:부족|너무\s*짧|너무\s*길|틀렸|잘못|오류|누락|맞지\s*않|개선이?\s*필요)/
 const QUESTION_PATTERN = /\?|왜|어떻게|무엇|무슨|뭐(?:야|지|였|였지|라고)|알려|설명|보여|기억|했지|였지|인가|맞아|궁금|요청한\s*(?:내용|사항)|말한\s*(?:내용|사항)/
 
+export type WorkOrderChatIntent =
+  | 'revision'
+  | 'in_scope_question'
+  | 'out_of_scope'
+  | 'ambiguous'
+
 export function isWorkOrderRevisionRequest(instruction: string): boolean {
   const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
   if (!normalized) return false
@@ -51,7 +57,31 @@ export function isWorkOrderRevisionRequest(instruction: string): boolean {
 }
 
 export function isWorkOrderQuestion(instruction: string): boolean {
-  return !isWorkOrderRevisionRequest(instruction)
+  return classifyWorkOrderChatIntent(instruction) === 'in_scope_question'
+}
+
+export function classifyWorkOrderChatIntent(instruction: string): WorkOrderChatIntent {
+  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/\s+/g, ' ').trim()
+  if (!normalized) return 'ambiguous'
+  if (isWorkOrderRevisionRequest(instruction)) return 'revision'
+  if (hasWorkOrderScopeMarker(normalized)) return 'in_scope_question'
+  if (isClearOutOfScopeRequest(normalized)) return 'out_of_scope'
+  if (isAmbiguousScopeRequest(normalized)) return 'ambiguous'
+  return 'out_of_scope'
+}
+
+function isClearOutOfScopeRequest(normalized: string): boolean {
+  const offTopicDomains = /스시|초밥|맛집|식당|여행|여행지|드라마|영화|애플tv|넷플릭스|연애|데이트|쇼핑|옷|뭐 입지|패션|게임|주식|코인|서울 날씨|날씨|파이썬|python|프로그래밍|코딩|자바스크립트|javascript|점심|저녁|메뉴|뭐 먹/
+  const offTopicActions = /추천|상담|골라|알려|입지|설명|뭔지|무엇|어때|먹지|먹을/
+  return offTopicDomains.test(normalized) && offTopicActions.test(normalized)
+}
+
+function isAmbiguousScopeRequest(normalized: string): boolean {
+  return /^(추천|추천해 줘|추천해줘|알려줘|설명해줘|뭐가 좋아|뭐 하면 돼)$/.test(normalized)
+}
+
+function hasWorkOrderScopeMarker(normalized: string): boolean {
+  return /작업\s*지시서|문서|설비|기계실|지역난방|난방|센서|온도|압력|환수|공급|유량|진동|소음|열교환|펌프|순환펌프|이상\s*탐지|우선순위|근거|출처|작업\s*절차|점검|안전|보호구|항목|그\s*항목|그\s*부분|이\s*판단|외기온|대화|수정\s*요청|승인|거절|검토|긴급|분류|모델|예측|rag|검색|기억|뭐였|뭐라고/.test(normalized)
 }
 
 function itemIndexFromInstruction(instruction: string): number | null {

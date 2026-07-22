@@ -228,6 +228,54 @@ async def test_followup_message_reuses_the_previous_operator_scope() -> None:
         await engine.dispose()
 
 
+@pytest.mark.anyio
+async def test_out_of_scope_message_returns_scope_notice_without_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+    from review_chat_api_models import ReviewChatMessageRequest, ReviewChatOpenRequest
+    import review_chat_service
+    from review_chat_service import open_review_chat, submit_review_chat_message
+
+    class FailIfOpenAIConstructed:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise AssertionError("OpenAI must not be called for out-of-scope review-chat messages")
+
+    monkeypatch.setattr(review_chat_service, "AsyncOpenAI", FailIfOpenAIConstructed)
+
+    engine = create_async_engine(str(DATABASE_URL))
+    suffix = str(uuid4())
+    try:
+        await _seed_chat_run(engine)
+        thread = await open_review_chat(
+            engine,
+            RUN_ID,
+            ReviewChatOpenRequest(created_by="chat-test", idempotency_key=f"scope-open-{suffix}"),
+        )
+
+        # Given / When: a non-work request is submitted even though an API key is present.
+        submission = await submit_review_chat_message(
+            engine,
+            thread.thread_id,
+            ReviewChatMessageRequest(
+                content="스시 집 추천",
+                created_by="chat-test",
+                idempotency_key=f"scope-message-{suffix}",
+            ),
+            api_key="test-api-key",
+        )
+
+        # Then: the server stores only the scope notice and never builds a proposal.
+        assert submission.proposal is None
+        assert submission.assistant_message.message_kind == "scope_notice"
+        assert submission.assistant_message.structured_payload["mode"] == "out_of_scope"
+        assert submission.assistant_message.content == review_chat_service.REVIEW_CHAT_SCOPE_NOTICE
+        assert "순환펌프" not in submission.assistant_message.content
+        assert "환수 압력" not in submission.assistant_message.content
+        assert "작업 절차" not in submission.assistant_message.content
+        assert "모델 우선순위" not in submission.assistant_message.content
+        assert "현재 제공된 작업지시서" not in submission.assistant_message.content
+    finally:
+        await engine.dispose()
+
+
 async def _seed_chat_run(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(

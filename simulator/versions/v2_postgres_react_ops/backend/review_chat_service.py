@@ -40,6 +40,7 @@ from review_chat_api_models import (
 PROMPT_VERSION = "review-chat.v2"
 PROPOSAL_TTL = timedelta(minutes=15)
 MODEL_CONVERSATION_CHAR_BUDGET = 48_000
+REVIEW_CHAT_SCOPE_NOTICE = "이 채팅은 작업지시서 검토 전용입니다. 작업지시서 수정이나 설비·근거 관련 질문을 입력해 주세요."
 WORK_ORDER_SECTION_HEADINGS = (
     "상황 요약",
     "위험성 및 근거",
@@ -78,7 +79,7 @@ class ReviewChatContext:
 
 @dataclass(frozen=True, slots=True)
 class ParsedAction:
-    kind: Literal["explain", "clarify", "proposal"]
+    kind: Literal["explain", "clarify", "proposal", "out_of_scope"]
     decision: Literal["approve", "reject", "correct", "keep_human_review"] | None
     reason: str
     reason_category: str | None
@@ -338,7 +339,7 @@ async def submit_review_chat_message(
             ),
         )
         parsed = parse_review_chat_intent(resolved_content, document_context)
-        message_kind = "action_request" if parsed.kind != "explain" else "question"
+        message_kind = "action_request" if parsed.kind == "proposal" else "question"
         operator = await _append_message(
             connection,
             thread_id=thread_id,
@@ -388,6 +389,19 @@ async def submit_review_chat_message(
                 content=_proposal_message(parsed),
                 structured_payload={"proposal_id": proposal.proposal_id},
                 citations=context.citations,
+                context_hash=context.context_hash,
+                created_by=None,
+                idempotency_key=None,
+            )
+        elif parsed.kind == "out_of_scope":
+            assistant = await _append_message(
+                connection,
+                thread_id=thread_id,
+                role="assistant",
+                message_kind="scope_notice",
+                content=REVIEW_CHAT_SCOPE_NOTICE,
+                structured_payload={"mode": parsed.kind},
+                citations=(),
                 context_hash=context.context_hash,
                 created_by=None,
                 idempotency_key=None,
@@ -464,6 +478,10 @@ async def _natural_language_reply(
                 input=(
                     "Answer in Korean using only the supplied operational context and recent conversation. "
                     "Resolve references such as '그 항목' from the recent conversation when possible. "
+                    "If the request is unrelated to the current work order, equipment operation, "
+                    "sensor evidence, safety, or document review, return only the Korean scope notice. "
+                    "Do not summarize the current work order, do not answer the unrelated request, "
+                    "and do not ask follow-up questions about the unrelated topic. "
                     "Do not approve, reject, or execute an action; explain the evidence and "
                     "tell the operator when confirmation is required. Use plain text only. "
                     "Do not use Markdown, asterisks, underscores, backticks, or headings.\n\n"
@@ -1482,8 +1500,27 @@ def parse_review_chat_intent(
     document_context: dict[str, str] | None = None,
 ) -> ParsedAction:
     normalized = " ".join(content.casefold().split())
-    if _is_question_statement(normalized) or _is_negative_action_statement(normalized):
+    if not normalized:
+        return ParsedAction("clarify", None, "", None, "none", None, None, 0.0)
+    if _is_clear_out_of_scope_request(normalized):
+        return ParsedAction("out_of_scope", None, REVIEW_CHAT_SCOPE_NOTICE, None, "none", None, None, 1.0)
+    if _is_ambiguous_scope_request(normalized):
+        return ParsedAction(
+            "clarify",
+            None,
+            "작업지시서 범위 안에서 무엇을 추천하거나 설명할지 한 번만 더 구체적으로 입력해 주세요.",
+            None,
+            "none",
+            None,
+            None,
+            0.4,
+        )
+    if _is_negative_action_statement(normalized):
         return ParsedAction("explain", None, "", None, "none", None, None, 1.0)
+    if _is_question_statement(normalized):
+        if _is_in_scope_review_question(normalized):
+            return ParsedAction("explain", None, "", None, "none", None, None, 1.0)
+        return ParsedAction("out_of_scope", None, REVIEW_CHAT_SCOPE_NOTICE, None, "none", None, None, 1.0)
     injection = any(token in normalized for token in ("ignore previous", "system prompt", "도구 호출", "api key"))
     decisions = [
         decision
@@ -1520,7 +1557,20 @@ def parse_review_chat_intent(
     if not decisions and _is_work_order_change_request(normalized, document_context):
         decisions.append("correct")
     if not decisions:
-        return ParsedAction("explain", None, "", None, "none", None, None, 1.0)
+        if _is_in_scope_review_question(normalized):
+            return ParsedAction("explain", None, "", None, "none", None, None, 1.0)
+        if _is_ambiguous_scope_request(normalized):
+            return ParsedAction(
+                "clarify",
+                None,
+                "작업지시서 범위 안에서 무엇을 추천하거나 설명할지 한 번만 더 구체적으로 입력해 주세요.",
+                None,
+                "none",
+                None,
+                None,
+                0.4,
+            )
+        return ParsedAction("out_of_scope", None, REVIEW_CHAT_SCOPE_NOTICE, None, "none", None, None, 1.0)
     decision = cast(
         Literal["approve", "reject", "correct", "keep_human_review"],
         decisions[0],
@@ -1571,6 +1621,109 @@ def parse_review_chat_intent(
                 "target_area": "risk_evidence" if any(token in normalized for token in ("위험", "근거")) else "document_body",
             })
     return ParsedAction("proposal", decision, reason or "operator review", category, next_action, disposition, correction, 0.9)
+
+
+def _is_clear_out_of_scope_request(normalized: str) -> bool:
+    if _has_work_order_scope_marker(normalized):
+        return False
+    off_topic_domains = (
+        "스시",
+        "초밥",
+        "맛집",
+        "식당",
+        "여행",
+        "여행지",
+        "드라마",
+        "영화",
+        "애플tv",
+        "넷플릭스",
+        "연애",
+        "데이트",
+        "쇼핑",
+        "옷",
+        "뭐 입지",
+        "패션",
+        "게임",
+        "주식",
+        "코인",
+        "서울 날씨",
+        "날씨",
+        "파이썬",
+        "python",
+        "프로그래밍",
+        "코딩",
+        "자바스크립트",
+        "javascript",
+        "점심",
+        "저녁",
+        "메뉴",
+        "뭐 먹",
+    )
+    off_topic_actions = ("추천", "상담", "골라", "알려", "입지", "설명", "뭔지", "무엇", "어때", "먹지", "먹을")
+    return any(domain in normalized for domain in off_topic_domains) and any(
+        action in normalized for action in off_topic_actions
+    )
+
+
+def _is_ambiguous_scope_request(normalized: str) -> bool:
+    if _has_work_order_scope_marker(normalized):
+        return False
+    return normalized in {"추천", "추천해 줘", "추천해줘", "알려줘", "설명해줘", "뭐가 좋아", "뭐 하면 돼"}
+
+
+def _is_in_scope_review_question(normalized: str) -> bool:
+    if _is_recall_question(normalized):
+        return True
+    return _has_work_order_scope_marker(normalized)
+
+
+def _has_work_order_scope_marker(normalized: str) -> bool:
+    markers = (
+        "작업지시서",
+        "작업 지시서",
+        "문서",
+        "설비",
+        "기계실",
+        "지역난방",
+        "난방",
+        "센서",
+        "온도",
+        "압력",
+        "환수",
+        "공급",
+        "유량",
+        "진동",
+        "소음",
+        "열교환",
+        "펌프",
+        "순환펌프",
+        "이상탐지",
+        "이상 탐지",
+        "우선순위",
+        "근거",
+        "출처",
+        "작업 절차",
+        "점검",
+        "안전",
+        "보호구",
+        "항목",
+        "그 항목",
+        "그 부분",
+        "이 판단",
+        "외기온",
+        "대화",
+        "수정 요청",
+        "승인",
+        "거절",
+        "검토",
+        "긴급",
+        "분류",
+        "모델",
+        "예측",
+        "rag",
+        "검색",
+    )
+    return any(marker in normalized for marker in markers)
 
 
 def _is_negative_action_statement(normalized: str) -> bool:
@@ -2631,7 +2784,7 @@ def _looks_like_action(
     content: str,
     document_context: dict[str, str] | None = None,
 ) -> bool:
-    return parse_review_chat_intent(content, document_context).kind != "explain"
+    return parse_review_chat_intent(content, document_context).kind == "proposal"
 
 
 def _is_work_order_change_request(

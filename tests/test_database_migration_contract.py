@@ -30,11 +30,23 @@ def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(19))
+    assert [migration.version for migration in migrations] == list(range(20))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "018_demo_ai_history_reset_scope.sql"
+    assert migrations[-1].path.name == "019_review_chat_scope_notice.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
+
+
+def test_review_chat_scope_notice_migration_updates_only_message_kind_constraint() -> None:
+    sql = (
+        ROOT / "migrations" / "019_review_chat_scope_notice.sql"
+    ).read_text(encoding="utf-8").lower()
+
+    assert "alter table public.review_chat_messages" in sql
+    assert "drop constraint if exists review_chat_messages_message_kind_check" in sql
+    assert "'scope_notice'" in sql
+    assert "drop table" not in sql
+    assert "review_chat_action_proposals" not in sql
 
 
 def test_production_operations_console_migration_is_repeat_safe_and_append_only() -> None:

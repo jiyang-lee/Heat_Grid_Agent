@@ -384,6 +384,7 @@
 .work-order-chat-log > p { margin: 0; padding: var(--space-2); border-radius: 6px; color: var(--ops-text); background: var(--ops-surface); font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
 .work-order-chat-log > p.operator { margin-left: var(--space-5); border: 1px solid color-mix(in srgb, var(--ops-primary) 30%, var(--ops-border)); }
 .work-order-chat-log > p.assistant { margin-right: var(--space-5); }
+.work-order-chat-log > p.scope-notice { max-width: 78%; padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); color: var(--ops-text-muted); background: var(--ops-surface); }
 .work-order-chat-log strong { display: block; margin-bottom: 3px; color: var(--ops-text-muted); font-size: 12px; }
 .work-order-chat-compose { display: grid; gap: var(--space-2); }
 .work-order-chat-compose > span { color: var(--ops-text-muted); font-size: 13px; font-weight: 700; }
@@ -659,6 +660,7 @@
 .scenario-chat-messages > p { color: var(--ops-text-muted); font-size: 13px; line-height: 1.6; word-break: keep-all; }
 .scenario-chat-messages article { display: grid; max-width: 88%; gap: 3px; padding: var(--space-3); border-radius: 10px; background: var(--ops-surface-muted); }
 .scenario-chat-messages article.operator { justify-self: end; color: var(--ops-text); background: var(--ops-primary-soft); }
+.scenario-chat-messages article.scope-notice { max-width: 78%; padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); color: var(--ops-text-muted); background: var(--ops-surface); }
 .scenario-chat-messages article.system { border: 1px solid color-mix(in srgb, var(--ops-success) 30%, var(--ops-border)); background: color-mix(in srgb, var(--ops-success) 7%, var(--ops-surface)); }
 .scenario-chat-messages article strong { font-size: 11px; }
 .scenario-chat-messages article span { font-size: 13px; line-height: 1.55; word-break: keep-all; }

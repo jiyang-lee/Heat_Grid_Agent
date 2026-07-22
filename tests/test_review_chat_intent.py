@@ -191,6 +191,72 @@ def test_recall_questions_and_negative_sentences_are_not_actions() -> None:
         assert parse_review_chat_intent(content).kind == "explain"
 
 
+def test_off_topic_recommendations_are_out_of_scope() -> None:
+    from review_chat_service import parse_review_chat_intent
+
+    # Given: requests that do not refer to work orders or facility operation.
+    off_topic_requests = (
+        "스시 집 추천",
+        "애플TV 드라마 추천",
+        "오늘 뭐 입지?",
+        "주말 여행지 추천",
+        "연애 상담해 줘",
+        "서울 날씨 알려줘",
+        "파이썬이 뭔지 설명해줘",
+        "오늘 점심 뭐 먹지?",
+        "양자역학이 뭔지 설명해줘",
+        "부산 인구 알려줘",
+        "영어로 번역해줘",
+    )
+
+    # When / Then: each request is blocked before explanation or proposal routing.
+    for content in off_topic_requests:
+        assert parse_review_chat_intent(content).kind == "out_of_scope"
+
+
+def test_work_order_scope_questions_and_recommendations_remain_explanations() -> None:
+    from review_chat_service import parse_review_chat_intent
+
+    document_context = {"document_type": "work_order", "base_version": "1", "current_body": "환수 압력 확인"}
+
+    # Given / When: each input names equipment, evidence, safety, or prior review context.
+    results = [
+        parse_review_chat_intent("왜 환수 압력을 확인해야 해?", document_context),
+        parse_review_chat_intent("이 판단에 외기온이 영향을 줬어?", document_context),
+        parse_review_chat_intent("그 항목은 어떤 근거로 들어갔어?", document_context),
+        parse_review_chat_intent("소음과 진동은 왜 같이 확인해?", document_context),
+        parse_review_chat_intent("아까 내가 수정해 달라고 한 게 뭐였지?", document_context),
+        parse_review_chat_intent("점검 항목을 더 추천해 줘", document_context),
+    ]
+
+    # Then: in-scope questions keep the explanation path and do not become proposals.
+    assert [result.kind for result in results] == ["explain"] * len(results)
+
+
+def test_bare_recommendation_request_is_ambiguous() -> None:
+    from review_chat_service import parse_review_chat_intent
+
+    # Given / When: the request asks for a recommendation without a work-order target.
+    result = parse_review_chat_intent("추천해 줘")
+
+    # Then: the operator gets one scoped clarification instead of an unrelated answer.
+    assert result.kind == "clarify"
+    assert "작업지시서 범위" in result.reason
+
+
+def test_revision_request_still_creates_a_proposal() -> None:
+    from review_chat_service import parse_review_chat_intent
+
+    document_context = {"document_type": "work_order", "base_version": "1", "current_body": "안전 확인\n1. 보호구 착용\n2. 현장 확인"}
+
+    # Given / When: the operator explicitly asks to revise a safety item.
+    result = parse_review_chat_intent("안전 확인 두 번째 항목을 짧게 수정해 줘", document_context)
+
+    # Then: the request remains a work-order revision proposal.
+    assert result.kind == "proposal"
+    assert result.correction is not None
+
+
 def test_scoped_revision_keeps_non_target_lines_byte_equal() -> None:
     from review_chat_service import _apply_scoped_revision
 

@@ -7,7 +7,7 @@ import { useConfirmDialog } from '../ConfirmDialog'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
 import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
-import { detectWorkOrderRevisionTarget, isWorkOrderQuestion, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionTarget, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
+import { classifyWorkOrderChatIntent, detectWorkOrderRevisionTarget, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionTarget, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderChatIntent, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
 
 interface Props {
   readonly item: WorkOrderListItem
@@ -100,6 +100,28 @@ function recallReply(question: string, history: readonly ReviewChatMessageRespon
 
 function chatText(content: string): string {
   return content.replace(/\*\*|__|`/g, '').replace(/^\s{0,3}#{1,6}\s+/gm, '').trim()
+}
+
+function chatMessageClass(message: ReviewChatMessageResponse): string {
+  return message.message_kind === 'scope_notice' ? `${message.role} scope-notice` : message.role
+}
+
+function chatButtonLabel(intent: WorkOrderChatIntent): string {
+  switch (intent) {
+    case 'revision':
+      return '수정 초안 요청'
+    case 'in_scope_question':
+      return '근거 질문 보내기'
+    case 'out_of_scope':
+      return '범위 확인'
+    case 'ambiguous':
+      return '질문 확인'
+    default:
+      {
+        const exhaustive: never = intent
+        return exhaustive
+      }
+  }
 }
 
 function visibleMessageContent(message: ReviewChatMessageResponse): string {
@@ -226,7 +248,8 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const chatHistoryLoading = mode === 'detail' && chatError == null && (threadId == null || reviewMessages.isLoading)
   const rerunsRemaining = Math.max(0, 3 - latestVersion)
   const revisionLimitReached = rerunsRemaining === 0
-  const draftIsRevision = isWorkOrderRevisionRequest(draft)
+  const draftIntent = classifyWorkOrderChatIntent(draft)
+  const draftIsRevision = draftIntent === 'revision'
   const activeReviewRunId = activeRevision?.runId ?? activeRevision?.result.run_id ?? item.run_id
   const activeServerDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === activeVersion)
   const activeIncidentId = activeRevision?.incidentId ?? activeServerDocument?.episode_id ?? threadContext?.incident_id ?? null
@@ -430,7 +453,8 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const sendMessage = async () => {
     const content = draft.trim()
     if (!content || reviewThread.isPending || postMessage.isPending || proposal != null) return
-    const revisionRequest = isWorkOrderRevisionRequest(content)
+    const intent = classifyWorkOrderChatIntent(content)
+    const revisionRequest = intent === 'revision'
     if (revisionRequest && revisionLimitReached) {
       setChatError('v3까지 생성되어 AI 문서 수정은 더 실행할 수 없습니다. 기존 버전에 대한 질문은 계속할 수 있습니다.')
       return
@@ -472,7 +496,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
       }
       let assistantMessage = response.assistant_message
       let nextProposal = response.proposal
-      if (isWorkOrderQuestion(content) && nextProposal != null) {
+      if ((intent === 'in_scope_question' || intent === 'ambiguous' || intent === 'out_of_scope') && nextProposal != null) {
         await cancelProposal.mutateAsync({ proposalId: nextProposal.proposal_id, body: { cancelled_by: 'ops-manager', idempotency_key: requestId(`question-cancel-${nextProposal.proposal_id}`) } })
         const remembered = recallReply(content, messages)
         assistantMessage = {
@@ -699,7 +723,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
     <div className="detail-body work-order-detail-body">
       <div className="detail-title"><StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge><h2>{title}</h2><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p><span>생성 {formatDateTime(item.created_at)}</span></div>
-      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button onClick={() => scrollToSection(documentSectionRef.current)}>문서 본문</Button><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button></nav>}
+      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button onClick={() => scrollToSection(documentSectionRef.current)}>문서 본문</Button><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">작업지시서 AI 검토</Button></nav>}
       <ApiState empty={false} error={result.isError && !resultNotReady} loading={result.isLoading} retry={() => void result.refetch()} />
       {resultNotReady && <p className="activity-empty-note">실행이 완료되면 작업지시서 본문을 준비합니다.</p>}
       {preview && activeResult && <section className="work-order-preview"><h3>조치 요약</h3><ol>{activeResult.actions.slice(0, 3).map((action) => <li key={action.title}><strong>{action.title}</strong><span>{action.detail}</span></li>)}</ol><Button icon="arrow" onClick={onOpenDetail} tone="primary">상세 보기</Button></section>}
@@ -712,14 +736,14 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
           <dl><div><dt>문서번호</dt><dd>{number}</dd></div><div><dt>대상 설비</dt><dd>{facilityName(item.substation_id, item.manufacturer_id)}</dd></div><div><dt>생성 시각</dt><dd>{formatDateTime(activeRevision?.createdAt ?? item.created_at)}</dd></div><div><dt>문서 버전</dt><dd>v{activeVersion}</dd></div></dl>
           <pre className="activity-report-body report-single-body">{body}</pre>
         </article>
-        <section className="work-order-review-chat" aria-label="AI 수정 챗봇" ref={chatSectionRef}>
-          <header><div><h3>AI 문서 검토 챗봇</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 선택한 v{activeVersion}을 문맥으로 사용하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>
-          <div aria-busy={chatHistoryLoading} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 ? <p>AI 검토 대화가 아직 없습니다.</p> : messages.map((chatMessage) => <p className={chatMessage.role} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI' : '시스템'}</strong>{visibleMessageContent(chatMessage)}</p>)}</div>
+        <section className="work-order-review-chat" aria-label="작업지시서 AI 검토" ref={chatSectionRef}>
+          <header><div><h3>작업지시서 AI 검토</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 현재 작업지시서와 관련된 질문만 답변하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>
+          <div aria-busy={chatHistoryLoading} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 ? <p>작업지시서 수정이나 설비·근거 질문을 입력하세요.</p> : messages.map((chatMessage) => <p className={chatMessageClass(chatMessage)} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI 검토' : '시스템'}</strong>{visibleMessageContent(chatMessage)}</p>)}</div>
           {proposal && previewData && <div className="work-order-chat-proposal"><header><div><span>확정 전 수정 초안</span><strong>{pendingTarget?.label ?? '작업지시서 전체'}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? activeVersion} → v{Math.min(3, latestVersion + 1)}</StatusBadge></header><p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? activeVersion}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestVersion + 1)}</dd></div></dl><div><Button disabled={confirmProposal.isPending || revising} onClick={() => void cancel()}>초안 취소</Button><Button disabled={confirmProposal.isPending || revising || revisionLimitReached} icon="check" onClick={() => void confirm()} tone="primary">{revising ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestVersion + 1)} 생성`}</Button></div></div>}
           {executionState !== 'idle' && <p className={`work-order-chat-execution ${executionState}`} role="status">{executionStateLabel[executionState]}</p>}
           {contextNotice && <p className="work-order-chat-context-note">{contextNotice}</p>}
-          {revisionLimitReached && <p className="work-order-chat-context-note">v3 생성이 완료되었습니다. 문서 수정 요청은 마감되었지만 이전 대화 회상과 문서 질문은 계속할 수 있습니다.</p>}
-          <label className="work-order-chat-compose"><span>문서 질문 또는 수정 요청</span><textarea aria-describedby="work-order-chat-input-hint" disabled={reviewThread.isPending || postMessage.isPending || proposal != null || revising} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder={revisionLimitReached ? '예: 내가 요청한 수정 내용이 뭐였지?' : '예: 안전 확인 2번째 항목만 최신 보호구 기준으로 수정해 주세요.'} value={draft} /><small id="work-order-chat-input-hint">Enter 전송 · Shift+Enter 줄바꿈</small><Button disabled={!draft.trim() || reviewThread.isPending || postMessage.isPending || proposal != null || revising || (revisionLimitReached && draftIsRevision)} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? 'AI 검토 중' : draftIsRevision ? '수정 초안 요청' : '질문 보내기'}</Button></label>
+          {revisionLimitReached && <p className="work-order-chat-context-note">v3 생성이 완료되었습니다. 문서 수정 요청은 마감되었지만 이전 요청 회상과 설비·근거 질문은 계속할 수 있습니다.</p>}
+          <label className="work-order-chat-compose"><span>작업지시서 수정·근거 질문</span><textarea aria-describedby="work-order-chat-input-hint" disabled={reviewThread.isPending || postMessage.isPending || proposal != null || revising} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder="작업지시서 수정 또는 설비·근거 질문을 입력하세요" value={draft} /><small id="work-order-chat-input-hint">현재 작업지시서와 관련된 질문만 답변합니다 · Enter 전송 · Shift+Enter 줄바꿈</small><Button disabled={!draft.trim() || reviewThread.isPending || postMessage.isPending || proposal != null || revising || (revisionLimitReached && draftIsRevision)} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? 'AI 검토 중' : chatButtonLabel(draftIntent)}</Button></label>
           {chatError && <p className="form-error" role="alert">{chatError}</p>}
         </section>
       </>}
