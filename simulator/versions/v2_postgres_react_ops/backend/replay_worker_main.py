@@ -32,8 +32,13 @@ class ReplayWorkerProcess:
             if run is None:
                 await asyncio.sleep(0.5)
                 continue
-            await self._apply_commands(run)
-            refreshed = await self._run(str(run["run_id"]))
+            try:
+                await self._apply_commands(run)
+                refreshed = await self._run(str(run["run_id"]))
+            except Exception as error:
+                await self._fail_run(str(run["run_id"]), error)
+                await asyncio.sleep(0.1)
+                continue
             if refreshed is None:
                 await asyncio.sleep(0.1)
             else:
@@ -136,6 +141,21 @@ class ReplayWorkerProcess:
             await connection.execute(
                 text("UPDATE replay_runs SET state = 'completed', completed_at = now(), updated_at = now() WHERE run_id = :run_id"),
                 {"run_id": run_id},
+            )
+
+    async def _fail_run(self, run_id: str, error: Exception) -> None:
+        async with self.engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE replay_runs SET state = 'error', error_code = :error_code, "
+                    "error_detail = :error_detail, lease_owner = NULL, lease_expires_at = NULL, "
+                    "updated_at = now() WHERE run_id = :run_id"
+                ),
+                {
+                    "run_id": run_id,
+                    "error_code": type(error).__name__,
+                    "error_detail": str(error)[:4000],
+                },
             )
 
 

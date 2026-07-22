@@ -411,7 +411,17 @@ async def _open_alert(
             "priority_score, status, enqueue_reason, stream_key, synthetic, replay_run_id, episode_id) "
             "VALUES (:alert_id, :card_id, :evaluation_run_id, :substation_uid, :manufacturer_id, "
             ":substation_id, :priority_rank, :freshness_status, :priority_level, :priority_score, "
-            "'open', :reason, :stream_key, :synthetic, :replay_run_id, :episode_id)"
+            "'open', :reason, :stream_key, :synthetic, :replay_run_id, :episode_id) "
+            "ON CONFLICT (alert_id) DO UPDATE SET card_id = EXCLUDED.card_id, "
+            "evaluation_run_id = EXCLUDED.evaluation_run_id, "
+            "substation_uid = EXCLUDED.substation_uid, "
+            "priority_rank = EXCLUDED.priority_rank, "
+            "freshness_status = EXCLUDED.freshness_status, "
+            "priority_level = EXCLUDED.priority_level, "
+            "priority_score = EXCLUDED.priority_score, status = 'open', "
+            "enqueue_reason = EXCLUDED.enqueue_reason, stream_key = EXCLUDED.stream_key, "
+            "synthetic = EXCLUDED.synthetic, replay_run_id = EXCLUDED.replay_run_id, "
+            "episode_id = EXCLUDED.episode_id"
         ),
         _alert_params(run, row, alert_id, episode_id),
     )
