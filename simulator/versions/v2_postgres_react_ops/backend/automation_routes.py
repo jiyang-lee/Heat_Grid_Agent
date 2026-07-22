@@ -228,7 +228,6 @@ async def _maybe_resume_approved_agent_action(
         run_id=str(uuid4()),
         alert_id=original.alert_id,
         card_id=original.card_id,
-        approved_action_task_id=task.task_id,
     )
     queued, created = await reserve_agent_run(
         engine,

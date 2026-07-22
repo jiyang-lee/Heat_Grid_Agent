@@ -107,7 +107,7 @@ docker compose up -d --wait
 uv sync
 # 로컬 DB 테이블을 초기화하고, 저장된 agent card와 urgent/high 알림을 적재한다.
 uv run python scripts/simulate_predictor_db.py --enqueue-alerts
-uv run uvicorn --app-dir simulator/versions/v2_postgres_react_ops/backend server:app --host 127.0.0.1 --port 8002
+uv run uvicorn --app-dir simulator/versions/v2_postgres_react_ops/backend server:app --host 127.0.0.1 --port 8003 --loop selector_loop:selector_event_loop_factory
 ```
 
 `simulate_predictor_db.py`는 기본적으로 로컬 simulation 테이블을 초기화한다. 기존 로컬 데이터를 보존하려면 `--append` 옵션을 사용한다.
@@ -128,7 +128,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ### 4. 연결 확인
 
 ```bash
-curl http://127.0.0.1:8002/health
+curl http://127.0.0.1:8003/health
 curl http://127.0.0.1:5173/health
 ```
 
@@ -140,10 +140,17 @@ curl http://127.0.0.1:5173/health
 
 | 서비스 | 주소 | 역할 |
 |---|---|---|
-| 백엔드 | `http://127.0.0.1:8002` | FastAPI, PostgreSQL, RAG, agent run |
+| 백엔드 | `http://127.0.0.1:8003` | FastAPI, PostgreSQL, RAG, agent run |
 | 프론트 | `http://127.0.0.1:5173` | Vite 운영 대시보드, API 프록시 |
 
 전체 재현·재학습·테스트 명령은 [실행 Runbook](docs/05_RUNBOOK.md)을 참고한다.
+
+### Agent Foundation 운영 경계
+
+- 새 근거는 ML 결과, Substation·시간 구간으로 고정한 날씨, 내부 RAG, 운영자 수동 근거만 허용한다.
+- 외부 웹 검색, URL·도메인·검색어 조회, `external_search` 승인·실행 task는 생성하지 않는다.
+- 기존 외부 검색 DB row는 historical read-only로만 응답한다.
+- base/predictor 스키마는 `001~003` init SQL과 `scripts/predictor_db_schema.py`, agent task·checkpoint·budget 스키마는 `004_agent_execution.sql`이 소유한다.
 
 ## 주요 기능과 API
 

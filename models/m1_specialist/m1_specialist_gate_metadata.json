@@ -35,12 +35,29 @@
       "high": 75.0,
       "urgent": 90.0
     },
-    "hybrid": {
-      "high": 82.5,
-      "urgent": 95.0
+    "hybrid_v2": {
+      "high": 67.5,
+      "urgent": 82.5
+    },
+    "evidence_v3": {
+      "medium": 90.0,
+      "high": 99.0,
+      "urgent": 99.8
     }
   },
-  "role": "parallel M1 specialist gate/context branch; used by M1 hybrid priority, not a standalone risk/leadtime replacement",
+  "priority_policy": {
+    "policy_version": "m1_evidence_priority_v3",
+    "priority_source": "m1_evidence_gate_pre_event_0.99_or_leadtime_0.97",
+    "policy_type": "label_free_evidence_gate",
+    "pre_event_high_threshold": 0.99,
+    "leadtime_high_threshold": 0.97,
+    "score_formula": "max(pre_event*100, leadtime*100+2)"
+  },
+  "role": "parallel M1 specialist gate/context branch; label-free runtime evidence for the official priority policy",
+  "group_weight_policy": {
+    "value": 0.1,
+    "reason": "fault_label is not available at live inference"
+  },
   "parallel_agent_card_path": "output/agent/m1_specialist_parallel_agent_card.csv",
   "python_executable": ".venv/Scripts/python.exe",
   "sklearn_version": "1.9.0",

@@ -1,13 +1,12 @@
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue as PydanticJsonValue
 
-JsonPrimitive: TypeAlias = str | int | float | bool | None
-JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+JsonValue: TypeAlias = PydanticJsonValue
 JsonObject: TypeAlias = dict[str, Any]
 AlertStatus: TypeAlias = Literal["open", "acked", "resolved"]
-AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed"]
+AgentRunStatus: TypeAlias = Literal["queued", "running", "completed", "failed", "cancelled"]
 PriorityEvaluationStatus: TypeAlias = Literal["running", "completed", "failed"]
 FreshnessStatus: TypeAlias = Literal["fresh", "stale", "missing"]
 ReviewStatus: TypeAlias = Literal["pending", "approved", "rejected", "corrected"]
@@ -152,6 +151,15 @@ class AgentRunCreateRequest(BaseModel):
     reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
+class ScenarioAlertCreateRequest(BaseModel):
+    scenario_alert_id: str = Field(min_length=1, max_length=120)
+    substation_id: int = Field(ge=1)
+    priority_level: Literal["urgent", "high"]
+    priority_score: float = Field(ge=0.0, le=100.0)
+    priority_rank: int = Field(ge=1)
+    reason: str = Field(min_length=1, max_length=500)
+
+
 class AgentReportCreateRequest(BaseModel):
     requested_by: str = Field(min_length=1, max_length=120)
 
@@ -218,6 +226,8 @@ class AgentRunResponse(BaseModel):
     review_status: ReviewStatus = "pending"
     review_task_id: str | None = None
     error: str | None = None
+    # additive: DB agent_runs.created_at (상세 헤더 시작 시간 표시용)
+    created_at: datetime | None = None
 
 
 class AgentRunArtifact(BaseModel):
@@ -226,6 +236,8 @@ class AgentRunArtifact(BaseModel):
     kind: str
     name: str
     uri: str
+    # additive: DB agent_run_artifacts.created_at (보고서 생성 시간 표시용)
+    created_at: datetime | None = None
 
 
 class AgentRunEvent(BaseModel):
@@ -511,6 +523,7 @@ class CardSummary(BaseModel):
 
 class AlertSummary(BaseModel):
     alert_id: str
+    episode_id: str | None = None
     card_id: str
     evaluation_run_id: str | None = None
     as_of_time: str | None = None
@@ -525,6 +538,8 @@ class AlertSummary(BaseModel):
     created_at: str
     acked_at: str | None
     acked_by: str | None
+    read_at: str | None = None
+    read_by: str | None = None
 
 
 class AlertEnqueueResponse(BaseModel):

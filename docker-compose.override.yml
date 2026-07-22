@@ -1,0 +1,32 @@
+services:
+  heatgrid-backend:
+    environment:
+      HEATGRID_REPLAY_ENABLED: "true"
+      HEATGRID_REPLAY_IMPORT_ENABLED: "true"
+      HEATGRID_DEMO_AI_HISTORY_RESET_ENABLED: "true"
+      HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
+    volumes:
+      - ./data/replay:/var/lib/heatgrid/incoming:ro
+      - heatgrid_replay_storage:/var/lib/heatgrid/replay
+
+  # Replay API는 명령과 조회만 담당한다. 실제 Tick·우선순위 평가·synthetic 알림 생성은
+  # 별도 Worker가 맡아야 고장 시나리오가 대체 데이터가 아닌 리플레이 데이터로 진행된다.
+  heatgrid-replay-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["python", "replay_worker_main.py"]
+    environment:
+      HEATGRID_DATABASE_URL: postgresql+asyncpg://heatgrid_app:${HEATGRID_APP_PASSWORD:-heatgrid_app}@heatgrid-pgvector:5432/heatgrid_ops
+      HEATGRID_REPLAY_ENABLED: "true"
+      HEATGRID_REPLAY_STORAGE_ROOT: /var/lib/heatgrid/replay
+      HEATGRID_REPLAY_WORKER_ID: heatgrid-replay-worker
+      LANGGRAPH_STRICT_MSGPACK: "true"
+    depends_on:
+      heatgrid-db-migrate:
+        condition: service_completed_successfully
+    volumes:
+      - heatgrid_replay_storage:/var/lib/heatgrid/replay
+
+volumes:
+  heatgrid_replay_storage:

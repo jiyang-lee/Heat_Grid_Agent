@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 from typing import Final
@@ -13,20 +14,22 @@ BACKEND_DIR: Final = (
 )
 sys.path.insert(0, str(BACKEND_DIR))
 
-from heatgrid_ops.agent.tools import (
+import agent_evidence_adapters  # noqa: E402
+import agent_report_writer_adapter  # noqa: E402
+from agent_evidence_adapters import StructuredExternalDataAdapter  # noqa: E402
+from agent_report_writer_adapter import LocalReportWriterAdapter  # noqa: E402
+from heatgrid_ops.agent.contracts import ReportWriteRequest  # noqa: E402
+from heatgrid_ops.agent.helpers import to_json  # noqa: E402
+from heatgrid_ops.agent.models import JsonValue, OpsAgentOutput  # noqa: E402
+from heatgrid_ops.agent.run_models import ExternalDataRequest  # noqa: E402
+from heatgrid_ops.agent.tools import (  # noqa: E402
     ALL_AGENT_TOOL_NAMES,
-    GRAPH_CONTROLLED_TOOL_NAMES,
-    LLM_SELECTABLE_TOOL_NAMES,
-    make_anomaly_report_tool,
     make_daily_report_tool,
     make_external_context_tool,
-    make_external_search_tool,
     make_operational_tools,
     make_ops_evidence_tool,
-    make_stage_evidence_candidate_tool,
 )
-from heatgrid_ops.agent.external_search import ExternalEvidenceSearchResult
-from schemas import JsonValue
+from heatgrid_rag.search import RagSearcher  # noqa: E402
 
 
 def test_ops_evidence_and_external_context_tools_return_json_payloads() -> None:
@@ -49,45 +52,27 @@ def test_ops_evidence_and_external_context_tools_return_json_payloads() -> None:
     assert context["site"]["apartment_name"] == "테스트 단지"
 
 
-def test_write_anomaly_report_tool_writes_json_artifact(tmp_path: Path) -> None:
-    report_tool = make_anomaly_report_tool(output_root=tmp_path, mock=True)
-    payload = {
-        "run_id": "run-test",
-        "card_id": "card-test",
-        "source_input": fake_source_input(),
-        "external_context": {"status": "unavailable"},
-        "ops_output": {
-            "summary": "테스트 요약",
-            "action_plan": "테스트 조치",
-            "caution": "테스트 주의",
+def test_tool_registry_has_no_generic_network_capability() -> None:
+    tools = make_operational_tools(
+        fake_source_input(),
+        {
+            "status": "available",
+            "site": {"status": "mapped"},
+            "weather": {"status": "available"},
+            "retrieval": {"status": "available", "chunks": []},
         },
-    }
+    )
 
-    result = orjson.loads(report_tool.invoke({"payload_json": to_json(payload)}))
-    artifact_path = tmp_path / "ops_agent" / "reports" / "run-test" / "anomaly_report.json"
-
-    assert result["kind"] == "anomaly_report"
-    assert result["name"] == "anomaly_report.json"
-    assert result["uri"] == "output/ops_agent/reports/run-test/anomaly_report.json"
-    assert artifact_path.exists()
-    assert orjson.loads(artifact_path.read_bytes())["report_metadata"]["report_type"] == "anomaly_report"
-
-
-def test_tool_registry_has_eight_llm_tools_and_four_graph_tools() -> None:
-    source_input = fake_source_input()
-    external_context: dict[str, JsonValue] = {
-        "status": "available",
-        "site": {"status": "mapped"},
-        "weather": {"status": "available"},
-        "retrieval": {"status": "available", "chunks": []},
-    }
-    tools = make_operational_tools(source_input, external_context)
-
-    assert tuple(item.name for item in tools) == LLM_SELECTABLE_TOOL_NAMES
-    assert len(LLM_SELECTABLE_TOOL_NAMES) == 8
-    assert len(GRAPH_CONTROLLED_TOOL_NAMES) == 4
-    assert len(ALL_AGENT_TOOL_NAMES) == 12
-    assert set(LLM_SELECTABLE_TOOL_NAMES).isdisjoint(GRAPH_CONTROLLED_TOOL_NAMES)
+    assert tuple(item.name for item in tools) == ("get_ops_evidence", "get_external_context")
+    assert ALL_AGENT_TOOL_NAMES == (
+        "get_ops_evidence",
+        "get_external_context",
+        "write_anomaly_report",
+        "write_daily_report",
+    )
+    assert not {"search_external_evidence", "stage_evidence_candidate"} & set(
+        ALL_AGENT_TOOL_NAMES
+    )
 
     for item in tools:
         payload = orjson.loads(item.invoke({"card_id": "card-test"}))
@@ -96,29 +81,114 @@ def test_tool_registry_has_eight_llm_tools_and_four_graph_tools() -> None:
 
 
 @pytest.mark.anyio
-async def test_graph_controlled_tools_expose_search_and_staging_boundaries() -> None:
-    async def search(query: str) -> ExternalEvidenceSearchResult:
-        return ExternalEvidenceSearchResult(status="no_match", query=query)
-
-    async def stage(payload: dict[str, JsonValue]) -> dict[str, JsonValue]:
-        return {"candidate_id": "candidate-1", "payload": payload}
-
-    search_tool = make_external_search_tool(search)
-    stage_tool = make_stage_evidence_candidate_tool(stage)
-    graph_tools = (
-        search_tool,
-        stage_tool,
-        make_anomaly_report_tool(mock=True),
-        make_daily_report_tool(mock=True),
+async def test_report_writer_adapter_writes_anomaly_and_daily_artifacts(
+    tmp_path: Path,
+) -> None:
+    writer = LocalReportWriterAdapter(
+        api_key=None,
+        model="test-model",
+        output_root=tmp_path,
+        mock=True,
+    )
+    request = ReportWriteRequest(
+        run_id="run-test",
+        card_id="card-test",
+        source_input=fake_source_input(),
+        evidence_context={"status": "unavailable"},
+        ops_output=OpsAgentOutput(
+            summary="테스트 요약",
+            action_plan="테스트 조치",
+            caution="테스트 주의",
+        ),
     )
 
-    assert tuple(item.name for item in graph_tools) == GRAPH_CONTROLLED_TOOL_NAMES
-    search_result = orjson.loads(await search_tool.ainvoke({"query": "heat grid"}))
-    stage_result = orjson.loads(
-        await stage_tool.ainvoke({"payload_json": to_json({"title": "candidate"})})
+    anomaly = await writer.write_anomaly(request)
+    daily = await writer.write_daily(request)
+
+    assert anomaly.name == "anomaly_report.json"
+    assert daily.name == "daily_report.json"
+    assert (
+        tmp_path / "ops_agent" / "reports" / "run-test" / "anomaly_report.json"
+    ).exists()
+    assert (
+        tmp_path / "ops_agent" / "reports" / "run-test" / "daily_report.json"
+    ).exists()
+
+
+@pytest.mark.anyio
+async def test_report_writer_does_not_mutate_process_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, str | None] = {}
+
+    def capture_environment(*_args: object, **_kwargs: object) -> dict[str, JsonValue]:
+        observed["api_key"] = os.environ.get("OPENAI_API_KEY")
+        observed["model"] = os.environ.get("OPENAI_MODEL")
+        observed["caller_api_key"] = str(_kwargs.get("api_key"))
+        observed["caller_model"] = str(_kwargs.get("model"))
+        return {}
+
+    monkeypatch.setenv("OPENAI_API_KEY", "process-key")
+    monkeypatch.setenv("OPENAI_MODEL", "process-model")
+    monkeypatch.setattr(
+        agent_report_writer_adapter,
+        "write_anomaly_report_json",
+        capture_environment,
     )
-    assert search_result["status"] == "no_match"
-    assert stage_result["candidate_id"] == "candidate-1"
+    writer = LocalReportWriterAdapter(
+        api_key="adapter-key",
+        model="adapter-model",
+        output_root=tmp_path,
+    )
+    request = ReportWriteRequest(
+        run_id="run-test",
+        card_id="card-test",
+        source_input=fake_source_input(),
+        evidence_context={"status": "unavailable"},
+        ops_output=OpsAgentOutput(
+            summary="테스트 요약",
+            action_plan="테스트 조치",
+            caution="테스트 주의",
+        ),
+    )
+
+    await writer.write_anomaly(request)
+
+    assert observed == {
+        "api_key": "process-key",
+        "model": "process-model",
+        "caller_api_key": "adapter-key",
+        "caller_model": "adapter-model",
+    }
+
+
+@pytest.mark.anyio
+async def test_weather_snapshot_failure_keeps_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_snapshot(*_: object) -> object:
+        raise RuntimeError("weather provider unavailable")
+
+    monkeypatch.setattr(agent_evidence_adapters, "_external_snapshot", fail_snapshot)
+    adapter = StructuredExternalDataAdapter(RagSearcher())
+
+    snapshot = await adapter.snapshot(
+        ExternalDataRequest(
+            substation_uid="00000000-0000-0000-0000-000000000031",
+            substation_id=31,
+            window_start="2026-07-14T00:00:00Z",
+            window_end="2026-07-14T01:00:00Z",
+        )
+    )
+
+    assert snapshot.status == "unavailable"
+    assert snapshot.weather["status"] == "unavailable"
+    assert snapshot.weather["window_start"] == "2026-07-14T00:00:00Z"
+    assert snapshot.weather["provenance"] == {
+        "error_type": "RuntimeError",
+        "message": "weather provider unavailable",
+    }
 
 
 def test_write_daily_report_tool_writes_json_artifact(tmp_path: Path) -> None:
@@ -200,7 +270,3 @@ def fake_source_input() -> dict[str, JsonValue]:
             "model_outputs": [],
         },
     }
-
-
-def to_json(payload: dict[str, JsonValue]) -> str:
-    return orjson.dumps(payload).decode("utf-8")

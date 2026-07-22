@@ -11,6 +11,46 @@ M1_MANUFACTURER = os.environ.get("THIRD_MODEL_M1_MANUFACTURER", "manufacturer 1"
 CSV_FLOAT_FORMAT = "%.12g"
 CSV_LINE_TERMINATOR = "\n"
 
+# Official M1 risk/pre-event priority policy. Both inputs are available during
+# same-run inference and the restored Risk threshold was selected on validation
+# under a row FPR <= 0.05 constraint.
+M1_PRIORITY_POLICY_VERSION = "m1_risk_pre_event_priority_v4"
+M1_PRIORITY_SOURCE = "m1_risk_0.78_or_pre_event_0.99_gate_v4"
+M1_RISK_MEDIUM_THRESHOLD = 0.22
+M1_RISK_HIGH_THRESHOLD = 0.78
+M1_RISK_URGENT_THRESHOLD = 0.92
+M1_PRE_EVENT_MEDIUM_THRESHOLD = 0.50
+M1_PRE_EVENT_HIGH_THRESHOLD = 0.99
+M1_PRE_EVENT_URGENT_THRESHOLD = 0.998
+M1_RISK_PRE_EVENT_MEDIUM_THRESHOLD = 90.0
+M1_RISK_PRE_EVENT_HIGH_THRESHOLD = 99.0
+M1_RISK_PRE_EVENT_URGENT_THRESHOLD = 99.8
+
+# Previous v3 remains as a reproducible comparison policy.
+M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD = 0.99
+M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD = 0.97
+M1_EVIDENCE_LEADTIME_SCORE_OFFSET = 2.0
+M1_EVIDENCE_MEDIUM_THRESHOLD = 90.0
+M1_EVIDENCE_HIGH_THRESHOLD = 99.0
+M1_EVIDENCE_URGENT_THRESHOLD = 99.8
+
+# Requested v2 hybrid is retained as a conservative comparison and rollback
+# candidate, not as the official output policy.
+M1_HYBRID_POLICY_VERSION = "m1_hybrid_priority_v2"
+M1_HYBRID_PRIORITY_SOURCE = "m1_hybrid_current_best_0.72_m1_specialist_0.28"
+M1_HYBRID_CURRENT_BEST_WEIGHT = 0.72
+M1_HYBRID_SPECIALIST_WEIGHT = 0.28
+M1_HYBRID_HIGH_THRESHOLD = 67.5
+M1_HYBRID_URGENT_THRESHOLD = 82.5
+
+# Rollback contract retained in metadata and internal score output.
+LEGACY_M1_HYBRID_POLICY_VERSION = "m1_hybrid_priority_v1"
+LEGACY_M1_HYBRID_PRIORITY_SOURCE = "m1_hybrid_current_best_0.65_m1_specialist_0.35"
+LEGACY_M1_HYBRID_CURRENT_BEST_WEIGHT = 0.65
+LEGACY_M1_HYBRID_SPECIALIST_WEIGHT = 0.35
+LEGACY_M1_HYBRID_HIGH_THRESHOLD = 82.5
+LEGACY_M1_HYBRID_URGENT_THRESHOLD = 95.0
+
 def _env_path(name: str) -> Path | None:
     raw = os.environ.get(name)
     if not raw:
@@ -174,6 +214,8 @@ M1_SPECIALIST_SCORES_PATH = OUTPUT_DIR / "m1_specialist_scores.csv"
 M1_SPECIALIST_AGENT_CARD_PATH = OUTPUT_DIR / "agent" / "m1_agent_priority_card.csv"
 M1_SPECIALIST_COMPARISON_PATH = REPORT_DIR / "m1_specialist_vs_current_best_comparison.csv"
 M1_SPECIALIST_REPORT_PATH = REPORT_DIR / "m1_specialist_report.md"
+M1_EVIDENCE_GATE_SWEEP_PATH = REPORT_DIR / "m1_evidence_gate_threshold_sweep.csv"
+M1_RISK_PRE_EVENT_GATE_SWEEP_PATH = REPORT_DIR / "m1_risk_pre_event_gate_threshold_sweep.csv"
 M1_SCOPE_REPORT_PATH = REPORT_DIR / "m1_scope_audit.md"
 AGENT_CARD_COLUMN_DICTIONARY_PATH = OUTPUT_DIR / "agent" / "agent_card_column_dictionary_ko.csv"
 AGENT_CARD_COLUMN_GROUPS_PATH = OUTPUT_DIR / "agent" / "agent_card_column_groups_ko.csv"
@@ -294,11 +336,23 @@ AGENT_OUTPUT_COLUMNS = [
     "priority_score",
     "priority_level",
     "priority_source",
+    "policy_version",
+    "current_best_weight",
+    "m1_specialist_weight",
+    "decision_basis",
     "priority_high_label",
     "m1_specialist_priority_score",
     "m1_specialist_priority_level",
     "m1_hybrid_priority_score",
     "m1_hybrid_priority_level",
+    "m1_evidence_pre_event_score",
+    "m1_evidence_leadtime_score",
+    "m1_evidence_priority_score",
+    "m1_evidence_priority_level",
+    "m1_evidence_trigger",
+    "m1_risk_pre_event_priority_score",
+    "m1_risk_pre_event_priority_level",
+    "m1_risk_pre_event_trigger",
     "m1_priority_agreement",
     "m1_specialist_fault_probability",
     "m1_specialist_task_probability",

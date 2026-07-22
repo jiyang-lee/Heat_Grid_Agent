@@ -1,5 +1,8 @@
 {
-  "model_version": "best_leadtime_lgbm_risk_anomaly_v2_no_risk_horizon_episode",
+  "model_version": "best_leadtime_lgbm_risk_anomaly_v2_restored",
+  "restored_base_model_version": "best_leadtime_lgbm_risk_anomaly_v2_no_risk_horizon_episode",
+  "artifact_sha256": "61794809cbd382f70f1f8e948820e2dc36010cb6ddd9aa597e52f75dd9bf24ae",
+  "artifact_provenance": "validated handoff artifact restored from C:/Project3/m1_specialist_handoff; rescored with restored Risk v2 evidence",
   "model_type": "LightGBM LGBMClassifier multiclass",
   "target_definition": "lead_time_bucket mapped to 0-24h / 1-3d / 3-7d within pre_fault rows only",
   "ablation_selected_variant": "A4_no_risk_horizon_episode",
@@ -846,6 +849,8 @@
   "output_confusion_path": "output/leadtime_confusion_matrix.csv",
   "output_feature_audit_path": "output/leadtime_feature_reliability_audit.csv",
   "output_model_path": "models/leadtime/leadtime_model_best.joblib",
-  "internal_regeneration": true,
+  "internal_regeneration": false,
+  "internal_score_regeneration": true,
+  "model_score_mode": "artifact",
   "internal_regeneration_scope": "m1_specialist"
 }

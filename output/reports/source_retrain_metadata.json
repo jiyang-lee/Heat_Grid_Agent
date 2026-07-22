@@ -1,9 +1,11 @@
 {
   "stage": "retrain_current_best",
   "mode": "internal_m1_package",
-  "source_best_available": false,
+  "source_best_available": true,
   "scope": "m1_specialist",
   "manufacturer_filter": "manufacturer 1",
+  "risk_model_mode": "artifact",
+  "leadtime_model_mode": "artifact",
   "outputs": {
     "risk_scores": "output/risk_scores.csv",
     "leadtime_scores": "output/leadtime_scores.csv",
@@ -17,5 +19,5 @@
     "leadtime_scores": 1252,
     "priority_scores": 1252
   },
-  "note": "Current-best source body regenerated inside this repository from packaged M1 windows and local anomaly output. It does not call THIRD_MODEL_SOURCE_BEST_ROOT."
+  "note": "Current-best scores regenerated inside this repository from packaged M1 windows and local anomaly output. Validated packaged Risk/Leadtime artifacts are reused by default; set the corresponding THIRD_MODEL_*_MODEL_MODE=retrain only for an explicit model replacement experiment."
 }

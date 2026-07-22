@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY migrations ./migrations
+COPY models ./models
+COPY simulator ./simulator
+COPY v0_ops_handoff_package/report_generator_hsj/report_generator ./v0_ops_handoff_package/report_generator_hsj/report_generator
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-nanum libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+# editable 설치가 필요하다: heatgrid_ops.db.migrations가 __file__ 기준(parents[3])으로
+# 마이그레이션 폴더를 찾으므로, site-packages 설치 시 /app/migrations를 못 찾아
+# migrate가 빈 목록(IndexError)으로 실패한다.
+RUN pip install --no-cache-dir -e .
+
+WORKDIR /app/simulator/versions/v2_postgres_react_ops/backend
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8003"]

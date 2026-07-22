@@ -1,16 +1,18 @@
 # 최종 검증 보고서
 
 ## 현재 활성 계약
-- 공식 agent `priority_score`와 `priority_level`은 M1 hybrid priority 산출물이다.
-- Final agent cards `output/agent_priority_card.csv` and `output/agent/m1_agent_priority_card.csv` have 1252 rows / 55 columns.
+- 공식 agent `priority_score`와 `priority_level`은 M1 restored Risk/pre-event gate v4 산출물이다.
+- Final agent cards `output/agent_priority_card.csv` and `output/agent/m1_agent_priority_card.csv` have 1252 rows / 67 columns.
 - `output/agent/m1_specialist_parallel_agent_card.csv` has 1252 rows / 29 columns and is M1-only evidence, not the final hybrid ordering contract.
-- M1 hybrid priority = 0.65 * current-best priority + 0.35 * M1 specialist priority.
-- Hybrid 0.65/0.35는 모든 metric의 절대 최적값이 아니라 운영 선택점이다. 0.72/0.28 및 0.90/0.10 비교는 threshold/weight 근거 notebook에서 확인한다.
+- 공식 Priority v4는 복원 Risk score >= 0.78 또는 pre-event probability >= 0.99인 label-free gate다.
+- 공식 v4 score level은 medium 90, high 99, urgent 99.8이다.
+- 이전 v3, 요청 v2 0.72/0.28, legacy v1 0.65/0.35는 비교·rollback 기준으로 보존한다.
+- 운영 추론에 없는 fault_label 기반 group weight는 공식 점수에서 제외한다.
 - Active anomaly policy는 IsolationForest ratio >= 0.90 AND Mahalanobis ratio >= 1.00이며, criticality 지속성을 함께 본다.
-- 실제 M1 current-best risk level 기준은 medium=0.22, high=0.92, critical=0.92다. high와 critical cutoff가 같으므로 현재 M1 output에는 low/medium/critical row만 존재한다.
+- 복원한 M1 current-best risk level 기준은 medium=0.22, high=0.78, critical=0.92다.
 - 원래 current-best priority는 `current_best_priority_score`, `current_best_priority_level`로 보존한다.
 - `m1_specialist_*` 필드는 active 근거 필드이며 risk/leadtime의 단독 대체 모델이 아니다.
-- `m1_specialist_group_weight`는 현재 fault-label-derived group과 강하게 연결되어 있어 live inference 적용 시 별도 검토가 필요하다.
+- `m1_specialist_group_weight`는 live inference와 동일하게 unknown_review=0.1로 고정한다.
 - M1 gate threshold는 독립 알람 최적값이 아니라 근거 threshold다. task/activity gate는 native label이 없어 독립 성능 claim으로 쓰지 않는다.
 
 ## 출처 추적
@@ -24,11 +26,11 @@
 - [report defense audit] docs/08_MODEL_REPORT_DEFENSE_AUDIT.md에 보고 방어 체크리스트와 재실험/문서 보완 구분 포함
 
 ## 실행 Metadata
-- generated_at_utc: 2026-07-08T00:49:12.987514+00:00
+- generated_at_utc: 2026-07-22T04:16:52.987727+00:00
 - source_best_root: ../HeatGrid_Agent/best
 - metadata_file: output/reports/pipeline_run_metadata.json
 - supporting_artifact_count: 119
-- compare_file_count: 5
+- compare_file_count: 34
 
 ## Row 정합성
 | source_stage | target_stage | source_rows | target_rows | source_duplicate_keys | target_duplicate_keys | missing_from_target | missing_pre_fault | missing_normal | missing_label_distribution | missing_split_distribution |
@@ -59,19 +61,19 @@
 | variant | tp | fp | fn | tn | precision | recall | false_positive_rate |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | official_anomaly_evidence_event | 30 | 43 | 291 | 888 | 0.41095890411 | 0.0934579439252 | 0.046186895811 |
-| risk_high_or_critical | 266 | 120 | 55 | 811 | 0.689119170984 | 0.828660436137 | 0.128893662728 |
-| m1_specialist_high_or_urgent | 116 | 129 | 205 | 802 | 0.473469387755 | 0.361370716511 | 0.138560687433 |
-| priority_high_or_urgent | 105 | 42 | 216 | 889 | 0.714285714286 | 0.327102803738 | 0.0451127819549 |
-| anomaly_or_risk_high | 270 | 125 | 51 | 806 | 0.683544303797 | 0.841121495327 | 0.134264232009 |
+| risk_high_or_critical | 118 | 12 | 203 | 919 | 0.907692307692 | 0.367601246106 | 0.0128893662728 |
+| m1_specialist_high_or_urgent | 75 | 165 | 246 | 766 | 0.3125 | 0.233644859813 | 0.177228786251 |
+| priority_high_or_urgent | 139 | 57 | 182 | 874 | 0.709183673469 | 0.433021806854 | 0.0612244897959 |
+| anomaly_or_risk_high | 119 | 49 | 202 | 882 | 0.708333333333 | 0.370716510903 | 0.0526315789474 |
 
 ## Priority 민감도
 | scenario | w_risk | w_leadtime | w_context | top10_overlap_rate | review_required_in_top10 | mean_top10_score |
 | --- | --- | --- | --- | --- | --- | --- |
-| baseline_best | 0.55 | 0.3 | 0.15 | 0.4 | 8 | 95.393233878 |
-| risk_heavy | 0.7 | 0.2 | 0.1 | 0.4 | 8 | 96.9288225853 |
-| leadtime_heavy | 0.45 | 0.4 | 0.15 | 0.5 | 8 | 95.3299263398 |
-| balanced | 0.5 | 0.3 | 0.2 | 0.4 | 8 | 94.096748773 |
+| baseline_best | 0.55 | 0.3 | 0.15 | 0 | 10 | 92.069754108 |
+| risk_heavy | 0.7 | 0.2 | 0.1 | 0 | 10 | 94.4228283231 |
+| leadtime_heavy | 0.45 | 0.4 | 0.15 | 0 | 10 | 91.6285027924 |
+| balanced | 0.5 | 0.3 | 0.2 | 0 | 10 | 90.6471865177 |
 
 ## Hard Normal Review 건수
 
-125
+49
