@@ -136,6 +136,8 @@ class PostgresIncidentDocumentRepository:
                 raise IncidentDocumentConflictError("document version is no longer current")
             if version != request.expected_version:
                 raise IncidentDocumentConflictError("expected document version is stale")
+            if await has_approval(connection, str(current["document_version_id"])):
+                raise IncidentDocumentConflictError("approved document versions are immutable")
             content = content_from_row(current)
             if not has_content_edit(request):
                 response = await append_note_or_current(connection, current, request, content)

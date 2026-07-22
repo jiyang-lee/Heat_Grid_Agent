@@ -1030,18 +1030,6 @@ export interface IncidentDocumentApproveRequest {
   readonly note: string
 }
 
-export interface IncidentDocumentEditRequest {
-  readonly expected_version: number
-  readonly edited_by: string
-  readonly idempotency_key: string
-  readonly title?: string
-  readonly body?: string
-  readonly actions?: readonly string[]
-  readonly evidence_ids?: readonly string[]
-  readonly safety_notes?: string
-  readonly note?: string
-}
-
 export interface ReviewChatCancelRequest {
   readonly cancelled_by: string
   readonly idempotency_key: string
