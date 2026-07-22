@@ -116,17 +116,20 @@ artifacts/current_best/model_metadata/priority_engine_best_metadata.json
 - `priority_score`
 - `priority_level`
 
-현재 공식:
+현재 공식 v4:
 
 ```text
-priority_score
-= 0.65 * current_best_priority_score
-+ 0.35 * m1_specialist_priority_score
+priority_score = max(
+    band_score(restored_risk_score),
+    band_score(pre_event_probability)
+)
+high if restored_risk_score >= 0.78
+     or pre_event_probability >= 0.99
 ```
 
 의미:
 
-여러 substation 중 먼저 확인해야 할 대상을 정렬하기 위한 최종 점수다. current-best를 기본축으로 유지하면서 M1 specialist gate 근거를 보조 반영한다.
+여러 substation 중 먼저 확인해야 할 대상을 정렬하기 위한 최종 점수다. 운영 시 알 수 없는 label-derived 값을 제외하고 복원 Risk와 pre-event 근거만 사용한다. 이전 v3와 요청 v2 hybrid는 비교·rollback 값으로 보존한다.
 
 current-best priority score의 원본과 ranking 비교 산출물은 `artifacts/current_best/source_score_outputs/priority_scores.csv`, `artifacts/current_best/reports/priority/`, `artifacts/current_best/reports/operational/`에 보존한다.
 

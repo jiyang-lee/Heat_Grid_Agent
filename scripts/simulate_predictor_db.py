@@ -471,9 +471,10 @@ async def load(paths: LoadPaths) -> dict[str, object]:
 
         upsert_windows = (
             "INSERT INTO windows ("
-            "window_id, manufacturer_id, substation_id, window_start, window_end,"
+            "window_id, substation_uid, manufacturer_id, substation_id, window_start, window_end,"
             " source_file, season_bucket, label, fault_event_id"
-            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+            ") VALUES ($1, (SELECT substation_uid FROM substations "
+            "WHERE manufacturer_id = $2 AND substation_id = $3), $2,$3,$4,$5,$6,$7,$8,$9)"
             " ON CONFLICT (window_id) DO NOTHING"
         )
         upsert_substation = (

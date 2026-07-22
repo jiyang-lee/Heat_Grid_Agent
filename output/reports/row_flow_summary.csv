@@ -3,4 +3,4 @@
 2,M1 canonical windows,1252,manufacturer 1 only; anomaly and M1 specialist gate can score this scope
 3,current-best source score rows,2362,risk/leadtime/priority source score rows across both manufacturers
 4,current-best M1 score rows,1226,manufacturer 1 rows available from the current-best score bridge
-5,final M1 agent rows,1226,rows retained after joining M1 canonical windows with current-best score bridge
+5,final M1 agent rows,1252,rows retained after joining M1 canonical windows with current-best score bridge

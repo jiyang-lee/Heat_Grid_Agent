@@ -1,0 +1,26 @@
+{
+  "token_estimator": "ceil(serialized_chars/4)",
+  "cases": {
+    "A_under_limit": {
+      "input_tokens_before": 453,
+      "input_tokens_after": 453,
+      "model_called": true,
+      "fallback_reason": null,
+      "selected_evidence_ids": ["rag-1"]
+    },
+    "B_compactable": {
+      "input_tokens_before": 10575,
+      "input_tokens_after": 2575,
+      "model_called": true,
+      "fallback_reason": null,
+      "selected_evidence_ids": ["rag-a", "rag-b", "rag-c", "rag-d", "rag-e"]
+    },
+    "C_minimum_over_limit": {
+      "input_tokens_before": 5445,
+      "input_tokens_after": 5412,
+      "model_called": false,
+      "fallback_reason": "diagnostic_minimum_input_exceeds_3000_tokens",
+      "selected_evidence_ids": []
+    }
+  }
+}

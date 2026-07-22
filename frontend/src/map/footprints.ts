@@ -12,6 +12,8 @@ import type { PriorityEvaluationResult } from '../api/contracts'
 import { complexes } from '../data/complexes'
 import { priorityDisplayStatus } from '../domain/priority'
 
+type MissingPriorityStatus = 'missing' | 'low'
+
 /** 지도 초기 중심: 단지 좌표 평균 (세종 1생활권) */
 export const SEJONG_CENTER: [number, number] = (() => {
   const n = complexes.length || 1
@@ -43,7 +45,10 @@ function squareFootprint(lng: number, lat: number, halfMeters: number): number[]
   ]
 }
 
-export function buildComplexFootprints(results: PriorityEvaluationResult[]): FeatureCollection<Polygon> {
+export function buildComplexFootprints(
+  results: readonly PriorityEvaluationResult[],
+  missingStatus: MissingPriorityStatus = 'missing',
+): FeatureCollection<Polygon> {
   const byId = new Map(results.map((result) => [result.substation_id, result]))
   return {
   type: 'FeatureCollection',
@@ -62,7 +67,7 @@ export function buildComplexFootprints(results: PriorityEvaluationResult[]): Fea
         id: c.id,
         name: c.name,
         height,
-        status: priorityDisplayStatus(result),
+        status: result == null ? missingStatus : priorityDisplayStatus(result),
         priorityLevel: result?.priority_level ?? null,
         priorityScore: result?.priority_score ?? null,
         priorityRank: result?.priority_rank ?? null,
@@ -73,7 +78,10 @@ export function buildComplexFootprints(results: PriorityEvaluationResult[]): Fea
   }
 }
 
-export function buildComplexMarkers(results: PriorityEvaluationResult[]): FeatureCollection<Point> {
+export function buildComplexMarkers(
+  results: readonly PriorityEvaluationResult[],
+  missingStatus: MissingPriorityStatus = 'missing',
+): FeatureCollection<Point> {
   const byId = new Map(results.map((result) => [result.substation_id, result]))
   return {
     type: 'FeatureCollection',
@@ -85,7 +93,7 @@ export function buildComplexMarkers(results: PriorityEvaluationResult[]): Featur
         properties: {
           id: complex.id,
           name: complex.name,
-          status: priorityDisplayStatus(result),
+          status: result == null ? missingStatus : priorityDisplayStatus(result),
           priorityLevel: result?.priority_level ?? null,
           priorityScore: result?.priority_score ?? null,
           priorityRank: result?.priority_rank ?? null,

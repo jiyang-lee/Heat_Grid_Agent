@@ -16,69 +16,9 @@ from heatgrid_ops.priority.inference import PriorityInferenceRuntime
 
 logger = logging.getLogger(__name__)
 
-PRIORITY_EVALUATION_RUNS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS priority_evaluation_runs (
-    evaluation_run_id uuid PRIMARY KEY,
-    as_of_time timestamptz NOT NULL,
-    stale_after_seconds integer NOT NULL CHECK (stale_after_seconds > 0),
-    model_version text NOT NULL,
-    status text NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
-    is_active boolean NOT NULL DEFAULT false,
-    target_count integer NOT NULL DEFAULT 0,
-    success_count integer NOT NULL DEFAULT 0,
-    stale_count integer NOT NULL DEFAULT 0,
-    missing_count integer NOT NULL DEFAULT 0,
-    ranked_count integer NOT NULL DEFAULT 0,
-    error text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    completed_at timestamptz
-)
-"""
-
-PRIORITY_EVALUATION_RESULTS_DDL: Final = """
-CREATE TABLE IF NOT EXISTS priority_evaluation_results (
-    evaluation_result_id uuid PRIMARY KEY,
-    evaluation_run_id uuid NOT NULL
-        REFERENCES priority_evaluation_runs(evaluation_run_id) ON DELETE CASCADE,
-    manufacturer_id text NOT NULL,
-    substation_id integer NOT NULL,
-    source_window_id uuid,
-    source_window_start timestamptz,
-    source_window_end timestamptz,
-    source_card_id uuid,
-    source_priority_decision_id uuid,
-    priority_score double precision,
-    priority_rank integer,
-    rank_included boolean NOT NULL DEFAULT false,
-    priority_level text,
-    risk_score double precision,
-    anomaly_score double precision,
-    anomaly_label boolean,
-    leadtime_bucket text,
-    leadtime_urgency_score double precision,
-    leadtime_hours double precision,
-    freshness_status text NOT NULL
-        CHECK (freshness_status IN ('fresh', 'stale', 'missing')),
-    data_age_seconds double precision,
-    model_components jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (evaluation_run_id, manufacturer_id, substation_id)
-)
-"""
-
-PRIORITY_EVALUATION_INDEX_DDL: Final = (
-    "CREATE UNIQUE INDEX IF NOT EXISTS priority_evaluation_one_active_idx "
-    "ON priority_evaluation_runs(is_active) WHERE is_active",
-    "CREATE INDEX IF NOT EXISTS priority_evaluation_completed_idx "
-    "ON priority_evaluation_runs(status, as_of_time DESC, completed_at DESC)",
-    "CREATE INDEX IF NOT EXISTS priority_evaluation_result_rank_idx "
-    "ON priority_evaluation_results(evaluation_run_id, rank_included, priority_rank)",
-    "CREATE INDEX IF NOT EXISTS priority_evaluation_result_substation_idx "
-    "ON priority_evaluation_results(manufacturer_id, substation_id, evaluation_run_id)",
-)
-
 LATEST_WINDOW_CANDIDATES_SQL: Final = """
 SELECT
+    s.substation_uid,
     s.manufacturer_id,
     s.substation_id,
     s.configuration_type,
@@ -140,14 +80,14 @@ ORDER BY s.manufacturer_id, s.substation_id
 
 INSERT_RESULT_SQL: Final = """
 INSERT INTO priority_evaluation_results (
-    evaluation_result_id, evaluation_run_id, manufacturer_id, substation_id,
+    evaluation_result_id, evaluation_run_id, substation_uid, manufacturer_id, substation_id,
     source_window_id, source_window_start, source_window_end, source_card_id,
     source_priority_decision_id, priority_score, priority_rank, rank_included,
     priority_level, risk_score, anomaly_score, anomaly_label, leadtime_bucket,
     leadtime_urgency_score, leadtime_hours, freshness_status, data_age_seconds,
     model_components
 ) VALUES (
-    :evaluation_result_id, :evaluation_run_id, :manufacturer_id, :substation_id,
+    :evaluation_result_id, :evaluation_run_id, :substation_uid, :manufacturer_id, :substation_id,
     :source_window_id, :source_window_start, :source_window_end, :source_card_id,
     :source_priority_decision_id, :priority_score, :priority_rank, :rank_included,
     :priority_level, :risk_score, :anomaly_score, :anomaly_label, :leadtime_bucket,
@@ -158,11 +98,7 @@ INSERT INTO priority_evaluation_results (
 
 
 async def ensure_priority_evaluation_tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text(PRIORITY_EVALUATION_RUNS_DDL))
-        await connection.execute(text(PRIORITY_EVALUATION_RESULTS_DDL))
-        for statement in PRIORITY_EVALUATION_INDEX_DDL:
-            await connection.execute(text(statement))
+    del engine
 
 
 async def create_priority_evaluation(
@@ -202,7 +138,7 @@ async def create_priority_evaluation(
                 text(LATEST_WINDOW_CANDIDATES_SQL),
                 {"as_of_time": as_of},
             )
-            candidates = candidate_result.mappings().all()
+            candidates = list(candidate_result.mappings().all())
             target_count = len(candidates)
             if expected_substations is not None and target_count != expected_substations:
                 raise ValueError(
@@ -254,7 +190,9 @@ async def create_priority_evaluation(
             active_result = await connection.execute(
                 text(
                     "SELECT as_of_time FROM priority_evaluation_runs "
-                    "WHERE is_active FOR UPDATE"
+                    "WHERE is_active "
+                    "ORDER BY as_of_time DESC, completed_at DESC, evaluation_run_id "
+                    "LIMIT 1 FOR UPDATE"
                 )
             )
             active_row = active_result.mappings().one_or_none()
@@ -421,7 +359,6 @@ def build_evaluation_results(
     rows: list[dict[str, Any]] = []
     for candidate, inference in zip(candidates, inferences, strict=True):
         source_window_end = candidate.get("source_window_end")
-        raw_card = _json_object(candidate.get("raw_card"))
         priority_score = _float(inference.get("priority_score"))
         source_card_id = candidate.get("source_card_id")
         has_model_result = (
@@ -452,15 +389,16 @@ def build_evaluation_results(
             "feature_set_version": candidate.get("feature_set_version"),
             "feature_coverage": inference.get("feature_coverage", {}),
             "priority_source": inference.get("priority_source"),
+            "policy_version": inference.get("policy_version"),
             "current_best": {
                 "score": _float(inference.get("current_best_priority_score")),
                 "level": inference.get("current_best_priority_level"),
-                "weight": 0.65,
+                "weight": _float(inference.get("current_best_weight")),
             },
             "m1_specialist": {
                 "score": _float(inference.get("m1_specialist_priority_score")),
                 "level": inference.get("m1_specialist_priority_level"),
-                "weight": 0.35,
+                "weight": _float(inference.get("m1_specialist_weight")),
                 "agreement": inference.get("m1_priority_agreement"),
                 **dict(inference.get("components", {}).get("m1_specialist", {})),
             },
@@ -498,6 +436,7 @@ def build_evaluation_results(
             {
                 "evaluation_result_id": str(uuid4()),
                 "evaluation_run_id": evaluation_run_id,
+                "substation_uid": str(candidate["substation_uid"]),
                 "manufacturer_id": str(candidate["manufacturer_id"]),
                 "substation_id": int(candidate["substation_id"]),
                 "source_window_id": _optional_str(candidate.get("source_window_id")),
@@ -627,13 +566,35 @@ async def get_priority_evaluation_result(
     snapshot = await get_priority_evaluation(engine, evaluation_run_id)
     if snapshot is None:
         return None
-    for result in snapshot["results"]:
-        if int(result["substation_id"]) != substation_id:
-            continue
-        if manufacturer_id is not None and result["manufacturer_id"] != manufacturer_id:
-            continue
-        return {"evaluation": snapshot["evaluation"], "result": result}
-    return None
+    result = _resolve_substation_result(
+        snapshot["results"],
+        substation_id=substation_id,
+        manufacturer_id=manufacturer_id,
+    )
+    return None if result is None else {"evaluation": snapshot["evaluation"], "result": result}
+
+
+class AmbiguousSubstationError(ValueError):
+    pass
+
+
+def _resolve_substation_result(
+    results: list[dict[str, Any]],
+    *,
+    substation_id: int,
+    manufacturer_id: str | None,
+) -> dict[str, Any] | None:
+    matches = [
+        result
+        for result in results
+        if int(result["substation_id"]) == substation_id
+        and (manufacturer_id is None or result["manufacturer_id"] == manufacturer_id)
+    ]
+    if manufacturer_id is None and len(matches) > 1:
+        raise AmbiguousSubstationError(
+            "manufacturer_id is required because substation_id is ambiguous"
+        )
+    return matches[0] if matches else None
 
 
 def latest_alert_results(snapshot: dict[str, Any]) -> list[dict[str, Any]]:

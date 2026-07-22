@@ -14,7 +14,9 @@ from alert_repository import (
     get_alert,
     list_alerts,
     resolve_alert,
+    materialize_scenario_alert,
 )
+from alert_episode_repository import list_asset_telemetry, list_preventive_candidates, mark_alert_read
 from heating_agent_routes import register_heating_agent_routes
 from schemas import (
     AlertAckRequest,
@@ -22,6 +24,7 @@ from schemas import (
     AlertEnqueueResponse,
     AlertSummary,
     JsonValue,
+    ScenarioAlertCreateRequest,
 )
 from settings import Settings
 
@@ -47,6 +50,41 @@ def make_alert_router(
             expected_substations=settings.priority_expected_substations,
         )
         return AlertEnqueueResponse.model_validate(result)
+
+    @router.get("/preventive-candidates", include_in_schema=include_in_schema)
+    async def preventive_candidates(stream_key: str = "default") -> list[dict[str, JsonValue]]:
+        return await list_preventive_candidates(engine, stream_key=stream_key)
+
+    @router.get("/asset-telemetry", include_in_schema=include_in_schema)
+    async def asset_telemetry(
+        manufacturer_id: str,
+        substation_id: int,
+        stream_key: str = "default",
+        limit: int = 72,
+    ) -> dict[str, JsonValue]:
+        return await list_asset_telemetry(
+            engine,
+            manufacturer_id=manufacturer_id,
+            substation_id=substation_id,
+            stream_key=stream_key,
+            limit=limit,
+        )
+
+    if prefix == "/api":
+        @router.post("/scenario-alerts", response_model=AlertSummary)
+        async def scenario_alert_create(payload: ScenarioAlertCreateRequest) -> AlertSummary:
+            row = await materialize_scenario_alert(
+                engine,
+                scenario_alert_id=payload.scenario_alert_id,
+                substation_id=payload.substation_id,
+                priority_level=payload.priority_level,
+                priority_score=payload.priority_score,
+                priority_rank=payload.priority_rank,
+                reason=payload.reason,
+            )
+            if row is None:
+                raise HTTPException(status_code=404, detail="해당 기계실의 실제 priority card를 찾을 수 없습니다.")
+            return AlertSummary.model_validate(row)
 
     @router.get(
         "/alerts",
@@ -87,12 +125,27 @@ def make_alert_router(
         return AlertAckResponse.model_validate(row)
 
     @router.post(
+        "/alerts/{alert_id}/read",
+        response_model=AlertAckResponse,
+        include_in_schema=include_in_schema,
+    )
+    async def alert_read(alert_id: str, payload: AlertAckRequest) -> AlertAckResponse:
+        await mark_alert_read(engine, alert_id=alert_id, read_by=payload.acked_by)
+        row = await get_alert(engine, alert_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="alert_id not found")
+        return AlertAckResponse.model_validate(row)
+
+    @router.post(
         "/alerts/{alert_id}/resolve",
         response_model=AlertAckResponse,
         include_in_schema=include_in_schema,
     )
     async def alert_resolve(alert_id: str, payload: AlertAckRequest) -> AlertAckResponse:
-        row = await resolve_alert(engine, alert_id=alert_id, acked_by=payload.acked_by)
+        try:
+            row = await resolve_alert(engine, alert_id=alert_id, acked_by=payload.acked_by)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         if row is None:
             raise HTTPException(status_code=404, detail="alert_id를 찾을 수 없습니다.")
         return AlertAckResponse.model_validate(row)
@@ -105,10 +158,11 @@ def make_alert_router(
 
 async def alert_events(engine: AsyncEngine) -> AsyncIterator[str]:
     rows = await list_alerts(engine, status="open", priority_level=None)
+    alerts_payload: list[JsonValue] = [row for row in rows]
     yield sse(
         "alerts_snapshot",
         "current open alerts loaded",
-        {"alerts": rows},
+        {"alerts": alerts_payload},
     )
 
 

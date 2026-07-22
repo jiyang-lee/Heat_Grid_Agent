@@ -1,5 +1,9 @@
 {
-  "model_version": "best_risk_lgbm_anomaly_ensemble_v1",
+  "model_version": "best_risk_lgbm_anomaly_ensemble_v1_restored_fpr05_v2",
+  "restored_base_model_version": "best_risk_lgbm_anomaly_ensemble_v1",
+  "risk_policy_version": "risk_validation_fpr05_threshold_0p78_v2",
+  "artifact_sha256": "e5dc2a36aab930d85b7dbf98fa203c8f867d97132562636cde170bd250dfb447",
+  "artifact_provenance": "validated handoff artifact restored from C:/Project3/m1_specialist_handoff; copied into package and rescored on canonical M1 windows",
   "model_type": "LightGBM LGBMClassifier",
   "target_definition": "label == pre_fault",
   "primary_split_column": "split_event_regime_based",
@@ -321,33 +325,10 @@
   ],
   "base_thresholds": {
     "medium": 0.22,
-    "high": 0.9199999999999999,
+    "high": 0.78,
     "critical": 0.9199999999999999
   },
-  "group_overrides": [
-    {
-      "manufacturer": "manufacturer 2",
-      "configuration_type": "SH",
-      "applied_thresholds": {
-        "medium": 0.22,
-        "high": 0.36999999999999994,
-        "critical": 0.9199999999999999
-      },
-      "basis": "validation event-level threshold; only lower-than-global overrides are applied",
-      "legacy_floor_not_enforced": 0.78
-    },
-    {
-      "manufacturer": "manufacturer 2",
-      "configuration_type": "SH with buffer tank",
-      "applied_thresholds": {
-        "medium": 0.22,
-        "high": 0.4599999999999999,
-        "critical": 0.9199999999999999
-      },
-      "basis": "validation event-level threshold; only lower-than-global overrides are applied",
-      "legacy_floor_not_enforced": null
-    }
-  ],
+  "group_overrides": [],
   "previous_risk_model_version": "lgbm_risk_06_event_days_v3",
   "new_anomaly_features": [
     "iforest_anomaly_score",
@@ -982,6 +963,16 @@
       "normal_count": 288
     }
   ],
-  "internal_regeneration": true,
-  "internal_regeneration_scope": "m1_specialist"
+  "internal_regeneration": false,
+  "internal_score_regeneration": true,
+  "model_score_mode": "artifact",
+  "internal_regeneration_scope": "m1_specialist",
+  "threshold_selection_current_package": {
+    "split": "validation on split_event_regime_based",
+    "constraint": "row false_positive_rate <= 0.05",
+    "objective": "maximum row F1 under the constraint",
+    "selected_high_threshold": 0.78,
+    "critical_threshold": 0.9199999999999999,
+    "holdout_not_used_for_threshold_selection": true
+  }
 }

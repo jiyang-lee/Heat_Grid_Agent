@@ -1,159 +1,103 @@
-/**
- * 앱 셸 — heating_agent.html의 2뷰 구조 이식.
- *
- * 도시(CITY) 뷰: MapLibre 3D 지도 + 수리 우선순위 사이드.
- * 기계실(ROOM) 뷰: 단지 클릭 시 진입 (Phase D에서 스키매틱/상세 구현).
- */
+import { useCallback, useEffect, useState } from 'react'
+import { AlertsPage } from './console/AlertsPage'
+import { AdminPage } from './console/AdminPage'
+import { AiActivityPage } from './console/ai-activity/AiActivityPage'
+import { AppShell, type ConsolePage } from './console/AppShell'
+import { DashboardPage } from './console/DashboardPage'
+import { OperationsProvider } from './console/OperationsContext'
+import { SettingsPage } from './console/SettingsPage'
+import { AgentAnalysisProgress, type AgentAnalysisQueueEntry } from './console/AgentAnalysisProgress'
+import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
+import { ScenarioProvider } from './scenario/ScenarioContext'
+import { useScenario } from './scenario/useScenario'
+import { useThemePreference } from './console/useThemePreference'
+import { demoAiHistoryApi } from './api/client'
+import './console/operations.css'
+import './scenario/scenario.css'
 
-import { useEffect, useState } from 'react'
-import './theme.css'
-import Header, { type AppView } from './components/Header'
-import MapView from './map/MapView'
-import PriorityAside from './components/PriorityAside'
-import DetailAside from './components/DetailAside'
-import RoomSchematic from './room/RoomSchematic'
-import OpsConsole from './ops/OpsConsole'
-import { complexById } from './domain/model'
-import { useAlerts, usePrioritySnapshot } from './api/hooks'
+const AGENT_QUEUE_STORAGE_KEY = 'heatgrid:agent-analysis-queue'
 
-type View = 'city' | 'room'
-type Theme = 'dark' | 'light'
-
-function App() {
-  const [appView, setAppView] = useState<AppView>('map')
-  const [view, setView] = useState<View>('city')
-  const [selBld, setSelBld] = useState<number | null>(null)
-  const [selMachine, setSelMachine] = useState<string | null>(null)
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') === 'light' ? 'light' : 'dark'))
-  const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
-  const prioritySnapshot = usePrioritySnapshot()
-  const alerts = useAlerts({ status: 'all' })
-  const evaluation = prioritySnapshot.data?.evaluation ?? null
-  const priorityResults = prioritySnapshot.data?.results ?? []
-  const prioritySummary = {
-    urgent: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'urgent').length,
-    high: priorityResults.filter((item) => item.freshness_status === 'fresh' && item.priority_level === 'high').length,
-    unavailable: priorityResults.filter((item) => item.freshness_status !== 'fresh').length,
+function storedAgentQueue(): readonly AgentAnalysisQueueEntry[] {
+  try {
+    const value: unknown = JSON.parse(window.sessionStorage.getItem(AGENT_QUEUE_STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(value)) return []
+    return value.filter((entry): entry is AgentAnalysisQueueEntry => (
+      typeof entry === 'object'
+      && entry != null
+      && typeof entry.runId === 'string'
+      && typeof entry.alertId === 'string'
+      && typeof entry.label === 'string'
+      && typeof entry.requestedAt === 'string'
+    ))
+  } catch {
+    return []
   }
-
-  // 테마를 <html data-theme>에 반영 + localStorage 저장.
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
-
-  const enterBuilding = (id: number) => {
-    setSelBld(id)
-    setSelMachine(null)
-    setView('room')
-  }
-  const selectBuilding = (id: number) => {
-    setSelBld(id)
-    setSelMachine(null)
-  }
-  const openOps = (alertId: string) => {
-    setInitialAlertId(alertId)
-    setAppView('ops')
-  }
-  const backToCity = () => {
-    setSelMachine(null)
-    setView('city')
-  }
-  const selectMachine = (key: string) => setSelMachine((prev) => (prev === key ? null : key))
-
-  const city = view === 'city'
-  const sel = selBld != null ? complexById.get(selBld) ?? null : null
-
-  return (
-    <div className="app">
-      <Header
-        appView={appView}
-        onAppView={setAppView}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        prioritySummary={prioritySummary}
-      />
-      {appView === 'ops' && <OpsConsole initialAlertId={initialAlertId} />}
-      {appView === 'map' && (
-      <div className="wrap">
-        {/* 메인 패널 */}
-        <section className="panel">
-          <div className="panel-head">
-            <span>{city ? '단지 관제 · CITY MAP' : '기계실 관제 · MACHINE ROOM'}</span>
-            <span className="tag">{city ? '31 SITES' : '7 UNITS'}</span>
-            {!city && (
-              <button type="button" className="btn-back" onClick={backToCity}>
-                ← 지도로
-              </button>
-            )}
-          </div>
-          <div className={`stage ${city ? '' : 'room'}`.trim()}>
-            {city ? (
-              <MapView
-                onSelectComplex={selectBuilding}
-                theme={theme}
-                results={priorityResults}
-                loading={prioritySnapshot.isLoading}
-                error={prioritySnapshot.isError}
-              />
-            ) : sel ? (
-              <RoomSchematic complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
-            ) : null}
-          </div>
-          <div className="legend">
-            <span>
-              <i className="dot u" />
-              긴급
-            </span>
-            <span>
-              <i className="dot c" />
-              높음
-            </span>
-            <span>
-              <i className="dot n" />
-              중간·낮음
-            </span>
-            <span>
-              <i className="dot stale" />
-              지연·누락
-            </span>
-            <span className="note">
-              {city
-                ? `· 모델 평가 ${evaluation ? new Date(evaluation.as_of_time).toLocaleString('ko-KR') : '조회 중'} · 위치=정적 메타데이터`
-                : '· 회색=해당 PreDist 센서 미탑재(감시 불가)'}
-            </span>
-          </div>
-        </section>
-
-        {/* 보조 패널 */}
-        <aside className="panel">
-          <div className="panel-head">
-            <span>{city ? '전체 Priority 순위' : '단지 · 설비 상세'}</span>
-            <span className="tag">{city ? 'PRIORITY' : 'DETAIL'}</span>
-          </div>
-          {city ? (
-            <div className="aside-body">
-              <PriorityAside
-                selectedId={selBld}
-                onSelect={selectBuilding}
-                onOpenRoom={enterBuilding}
-                onOpenOps={openOps}
-                evaluation={evaluation}
-                results={priorityResults}
-                alerts={alerts.data ?? []}
-                loading={prioritySnapshot.isLoading}
-                error={prioritySnapshot.isError}
-              />
-            </div>
-          ) : sel ? (
-            <DetailAside complex={sel} selMachine={selMachine} onSelectMachine={selectMachine} />
-          ) : null}
-        </aside>
-      </div>
-      )}
-    </div>
-  )
 }
 
-export default App
+function ConsoleApp() {
+  const scenario = useScenario()
+  const theme = useThemePreference()
+  const [page, setPage] = useState<ConsolePage>('dashboard')
+  const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
+  const [pendingRunId, setPendingRunId] = useState<string | null>(null)
+  const [analysisQueue, setAnalysisQueue] = useState<readonly AgentAnalysisQueueEntry[]>(storedAgentQueue)
+  const [refreshRevision, setRefreshRevision] = useState(0)
+  const mode = scenario.state.mode ?? 'normal'
+  const replay = mode === 'fault'
+
+  useEffect(() => {
+    window.sessionStorage.setItem(AGENT_QUEUE_STORAGE_KEY, JSON.stringify(analysisQueue))
+  }, [analysisQueue])
+
+  const navigate = (next: ConsolePage) => {
+    if (next === 'ai-action') setPendingRunId(null)
+    if (next === 'alerts') setInitialAlertId(null)
+    setPage(next)
+  }
+  const openRun = (runId: string) => {
+    setPendingRunId(runId)
+    setPage('ai-action')
+  }
+  const queueAgentRun = useCallback((entry: AgentAnalysisQueueEntry) => {
+    setAnalysisQueue((current) => current.some((item) => item.runId === entry.runId)
+      ? current
+      : [entry, ...current])
+  }, [])
+  const removeAgentRuns = useCallback((runIds: readonly string[]) => {
+    const targets = new Set(runIds)
+    setAnalysisQueue((current) => current.filter((item) => !targets.has(item.runId)))
+  }, [])
+  const consumePendingRun = useCallback(() => setPendingRunId(null), [])
+  const consumeInitialAlert = useCallback(() => setInitialAlertId(null), [])
+  const openAlerts = (alertId?: string) => {
+    if (replay && alertId != null) scenario.selectAlert(alertId)
+    setInitialAlertId(alertId ?? null)
+    setPage('alerts')
+  }
+  // 새로고침은 F5와 같다: 정상·고장 어느 모드든 서버 AI 기록과 클라이언트 캐시,
+  // 만들어진 모든 산출물을 지우고 해당 모드의 첫 시점으로 되돌린다.
+  const refreshConsole = useCallback(async () => {
+    await demoAiHistoryApi.reset()
+    scenario.restartScenario()
+    setInitialAlertId(null)
+    setPendingRunId(null)
+    setAnalysisQueue([])
+    setRefreshRevision((revision) => revision + 1)
+    setPage('dashboard')
+  }, [scenario])
+
+  return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
+    <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
+      {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
+      {page === 'alerts' && (replay ? <ScenarioAlertsPage analysisQueue={analysisQueue} initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} onRunQueued={queueAgentRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
+      {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
+      {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
+      {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
+    </AppShell>
+    <AgentAnalysisProgress entries={analysisQueue} onOpen={openRun} onRemoveEntries={removeAgentRuns} />
+  </OperationsProvider>
+}
+
+export default function App() {
+  return <ScenarioProvider><ConsoleApp /></ScenarioProvider>
+}

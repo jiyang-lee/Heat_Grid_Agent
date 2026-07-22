@@ -4,18 +4,58 @@ services:
     container_name: heatgrid-pgvector
     environment:
       POSTGRES_DB: heatgrid_ops
-      POSTGRES_USER: heatgrid
-      POSTGRES_PASSWORD: heatgrid
+      POSTGRES_USER: heatgrid_migrator
+      POSTGRES_PASSWORD: ${HEATGRID_MIGRATOR_PASSWORD:-heatgrid_migrator}
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
       - heatgrid_ops_pgdata:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U heatgrid -d heatgrid_ops"]
+      test: ["CMD-SHELL", "pg_isready -U heatgrid_migrator -d heatgrid_ops"]
       interval: 5s
       timeout: 5s
       retries: 20
+
+  heatgrid-db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      HEATGRID_MIGRATION_DATABASE_URL: postgresql://heatgrid_migrator:${HEATGRID_MIGRATOR_PASSWORD:-heatgrid_migrator}@heatgrid-pgvector:5432/heatgrid_ops
+      HEATGRID_APP_PASSWORD: ${HEATGRID_APP_PASSWORD:-heatgrid_app}
+      LANGGRAPH_STRICT_MSGPACK: "true"
+    depends_on:
+      heatgrid-pgvector:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        heatgrid-db-migrate provision-role &&
+        heatgrid-db-migrate migrate &&
+        heatgrid-db-migrate provision-role
+    restart: "no"
+
+  heatgrid-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      HEATGRID_DATABASE_URL: postgresql+asyncpg://heatgrid_app:${HEATGRID_APP_PASSWORD:-heatgrid_app}@heatgrid-pgvector:5432/heatgrid_ops
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      HEATGRID_NATURAL_CHAT_MODEL: ${HEATGRID_NATURAL_CHAT_MODEL:-gpt-5.4-mini}
+      HEATGRID_WORK_ORDER_MODEL: ${HEATGRID_WORK_ORDER_MODEL:-gpt-5.4-nano}
+      HEATGRID_REPORT_MODEL: ${HEATGRID_REPORT_MODEL:-gpt-5.4-nano}
+      HEATGRID_INTEGRATED_AGENT_MODEL: ${HEATGRID_INTEGRATED_AGENT_MODEL:-gpt-5.4-mini}
+      HEATGRID_INDEPENDENT_AGENT_MODEL: ${HEATGRID_INDEPENDENT_AGENT_MODEL:-gpt-5.4-mini}
+      HEATGRID_REJUDGE_MODEL: ${HEATGRID_REJUDGE_MODEL:-gpt-5.4}
+      HEATGRID_ANSWER_QUALITY_ENABLED: "true"
+      LANGGRAPH_STRICT_MSGPACK: "true"
+    depends_on:
+      heatgrid-db-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8003:8003"
 
 volumes:
   heatgrid_ops_pgdata:

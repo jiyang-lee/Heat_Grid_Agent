@@ -17,10 +17,57 @@
     "urgent": 90.0
   },
   "m1_hybrid_thresholds": {
-    "high": 82.5,
-    "urgent": 95.0
+    "high": 67.5,
+    "urgent": 82.5
   },
-  "official_priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+  "policy_version": "m1_risk_pre_event_priority_v4",
+  "official_priority_source": "m1_risk_0.78_or_pre_event_0.99_gate_v4",
+  "official_priority_policy": {
+    "policy_type": "label_free_risk_pre_event_gate",
+    "risk_medium_threshold": 0.22,
+    "risk_high_threshold": 0.78,
+    "risk_urgent_threshold": 0.92,
+    "pre_event_medium_threshold": 0.5,
+    "pre_event_high_threshold": 0.99,
+    "pre_event_urgent_threshold": 0.998,
+    "medium_threshold": 90.0,
+    "high_threshold": 99.0,
+    "urgent_threshold": 99.8,
+    "score_formula": "max(piecewise_band(risk), piecewise_band(pre_event))",
+    "selection_basis": "Risk 0.78 selected on event-regime validation with row FPR <= 0.05; pre-event 0.99 is the preserved high-confidence gate"
+  },
+  "previous_v3_priority_policy": {
+    "pre_event_high_threshold": 0.99,
+    "leadtime_high_threshold": 0.97,
+    "preserved_as": [
+      "m1_evidence_priority_score",
+      "m1_evidence_priority_level"
+    ]
+  },
+  "v2_hybrid_policy": {
+    "policy_version": "m1_hybrid_priority_v2",
+    "priority_source": "m1_hybrid_current_best_0.72_m1_specialist_0.28",
+    "current_best_weight": 0.72,
+    "m1_specialist_weight": 0.28,
+    "high_threshold": 67.5,
+    "urgent_threshold": 82.5,
+    "preserved_as": [
+      "m1_hybrid_priority_score",
+      "m1_hybrid_priority_level"
+    ]
+  },
+  "legacy_priority_policy": {
+    "policy_version": "m1_hybrid_priority_v1",
+    "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+    "current_best_weight": 0.65,
+    "m1_specialist_weight": 0.35,
+    "high_threshold": 82.5,
+    "urgent_threshold": 95.0,
+    "preserved_as": [
+      "legacy_priority_score",
+      "legacy_priority_level"
+    ]
+  },
   "current_best_priority_preserved_as": [
     "current_best_priority_score",
     "current_best_priority_level"
