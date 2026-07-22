@@ -3,6 +3,9 @@ import type { OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatPropos
 import { isWorkOrderStructuredContent } from '../api/contracts'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../api/client'
 import { WorkOrderStructuredPanel } from '../console/ai-activity/WorkOrderStructuredPanel'
+import { WorkOrderSummaryCards } from '../console/ai-activity/WorkOrderSummaryCards'
+import { GeneratedDocumentAccordion } from '../console/ai-activity/GeneratedDocumentAccordion'
+import { WorkOrderActionFooter, type SaveStatus } from '../console/ai-activity/WorkOrderActionFooter'
 import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useEditIncidentWorkOrder, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen } from '../api/hooks'
 import { useConfirmDialog } from '../console/ConfirmDialog'
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
@@ -162,6 +165,8 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMan
   const [editNote, setEditNote] = useState('운영자 직접 편집')
   const [rerunning, setRerunning] = useState(false)
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
+  const [fieldSaveStatus, setFieldSaveStatus] = useState<SaveStatus>('idle')
+  const [fieldSaveError, setFieldSaveError] = useState<string | null>(null)
   const [threadId, setThreadId] = useState<string | null>(null)
   const [threadRunId, setThreadRunId] = useState<string | null>(null)
   const [threadContext, setThreadContext] = useState<ReviewChatThreadResponse | null>(null)
@@ -652,9 +657,13 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMan
       title="작업지시서 상세"
     >
       <div className="scenario-document-toolbar">
-        <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
-          {state.workOrders.map((order) => <button aria-selected={order.version === selectedOrder.version} className={order.version === selectedOrder.version ? 'active' : ''} key={order.version} onClick={() => onSelectVersion(order.version)} role="tab" type="button">v{order.version}{state.acceptedWorkOrderVersion === order.version ? ' · 채택' : ''}</button>)}
-        </div>
+        {state.workOrders.length > 1 ? (
+          <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
+            {state.workOrders.map((order) => <button aria-selected={order.version === selectedOrder.version} className={order.version === selectedOrder.version ? 'active' : ''} key={order.version} onClick={() => onSelectVersion(order.version)} role="tab" type="button">v{order.version}{state.acceptedWorkOrderVersion === order.version ? ' · 채택' : ''}</button>)}
+          </div>
+        ) : (
+          <span className="work-order-version-badge">v{selectedOrder.version}{adopted ? ' · 채택' : ''}</span>
+        )}
         <div className="scenario-document-commands">
           <Button icon="activity" onClick={scrollToChat} tone="primary">AI 수정·질문으로 이동</Button>
           {editing ? <><Button disabled={editIncidentWorkOrder.isPending} onClick={() => { setDraft(displayBody); setEditTitle(selectedOrder.title); setEditing(false) }}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !draft.trim() || !editTitle.trim()} icon="check" onClick={() => void saveEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : selectedServerDocument ? '새 버전으로 저장' : '세션 편집 저장'}</Button></> : <Button disabled={!selectedIsLatest || (selectedServerDocument != null && selectedOrder.version >= 3)} icon="document" onClick={() => { setEditTitle(selectedOrder.title); setDraft(displayBody); setEditNote('운영자 직접 편집'); setEditing(true) }}>직접 수정</Button>}
@@ -663,18 +672,30 @@ export function ScenarioWorkOrderWorkspace({ alert, state, onAccept, onAppendMan
       </div>
       <article className="scenario-order-body" ref={documentBodyRef}>
         <header><div><span>문서번호 {number}</span><h2>{selectedOrder.title}</h2></div><StatusBadge tone={alert.priority === 'urgent' ? 'critical' : 'warning'}>{alert.priority === 'urgent' ? '긴급' : '경고'}</StatusBadge></header>
-        <dl><div><dt>대상 설비</dt><dd>{alert.facility}</dd></div><div><dt>조치 기준</dt><dd>anomaly 우선순위에 따라 즉시 검토</dd></div><div><dt>담당</dt><dd>현장 운전팀</dd></div></dl>
+        <WorkOrderSummaryCards actionCriteria="anomaly 우선순위에 따라 즉시 검토" assignee="현장 운전팀" targetFacility={alert.facility} />
         {editing && <div className="work-order-manual-editor"><p className="work-order-chat-context-note">{selectedServerDocument ? `현재 v${selectedOrder.version}은 그대로 보존되고 저장 시 v${selectedOrder.version + 1} 새 초안이 생성됩니다. 새 버전은 다시 최종 채택해야 합니다.` : '이 편집은 현재 시나리오 세션 버전에 저장됩니다. 저장 후에는 해당 버전을 다시 최종 채택해야 합니다.'}</p><label><span>문서 제목</span><input onChange={(event) => setEditTitle(event.target.value)} value={editTitle} /></label><label><span>작업지시서 본문</span><textarea aria-label="작업지시서 본문 편집" className="scenario-document-editor" onChange={(event) => setDraft(event.target.value)} value={draft} /></label><label><span>수정 사유</span><input onChange={(event) => setEditNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={editNote} /></label></div>}
-        {!editing && <pre className="scenario-document-content">{displayBody}</pre>}
         {!editing && selectedServerDocument != null && isWorkOrderStructuredContent(selectedServerDocument.content) && (
-          <WorkOrderStructuredPanel
-            content={selectedServerDocument.content}
-            incidentId={selectedServerDocument.episode_id}
-            version={selectedServerDocument.version}
-          />
+          <>
+            <GeneratedDocumentAccordion body={displayBody} />
+            <WorkOrderStructuredPanel
+              content={selectedServerDocument.content}
+              incidentId={selectedServerDocument.episode_id}
+              version={selectedServerDocument.version}
+              onSaveStatusChange={(status, detail) => { setFieldSaveStatus(status); setFieldSaveError(detail) }}
+            />
+          </>
         )}
-        {downloadState === 'error' && <p className="scenario-document-error" role="alert">PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
-        <footer className="scenario-order-accept"><span>{adopted ? '이 버전이 보고서 생성 기준입니다.' : state.acceptedWorkOrderVersion != null ? `현재 보고서는 채택된 v${state.acceptedWorkOrderVersion} 기준입니다.` : 'v1-v3 중 현장 조치 기준으로 사용할 버전을 선택하세요.'}</span><div><Button disabled={approveIncidentWorkOrder.isPending} icon="check" onClick={() => void adoptVersion()} tone="primary">{adopted ? '최종 채택됨' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : '선택 버전 최종 채택'}</Button><Button disabled={state.acceptedWorkOrderVersion == null} icon="document" onClick={onCreateReport}>{state.report.status === 'idle' ? '보고서 생성' : '보고서 보기'}</Button></div></footer>
+        {!editing && (selectedServerDocument == null || !isWorkOrderStructuredContent(selectedServerDocument.content)) && (
+          <pre className="scenario-document-content">{displayBody}</pre>
+        )}
+        <WorkOrderActionFooter
+          notice={adopted ? '이 버전이 보고서 생성 기준입니다.' : state.acceptedWorkOrderVersion != null ? `현재 보고서는 채택된 v${state.acceptedWorkOrderVersion} 기준입니다.` : 'v1-v3 중 현장 조치 기준으로 사용할 버전을 선택하세요.'}
+          saveErrorDetail={downloadState === 'error' ? 'PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}
+          saveStatus={downloadState === 'error' ? 'error' : fieldSaveStatus}
+        >
+          <Button disabled={approveIncidentWorkOrder.isPending} icon="check" onClick={() => void adoptVersion()} tone="primary">{adopted ? '최종 채택됨' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : '선택 버전 최종 채택'}</Button>
+          <Button disabled={state.acceptedWorkOrderVersion == null} icon="document" onClick={onCreateReport} title={state.acceptedWorkOrderVersion == null ? '먼저 현장 조치 기준 버전을 최종 채택해야 보고서를 생성할 수 있습니다.' : undefined}>{state.report.status === 'idle' ? '보고서 생성' : '보고서 보기'}</Button>
+        </WorkOrderActionFooter>
       </article>
     </SurfaceCard>
 

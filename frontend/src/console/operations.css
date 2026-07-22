@@ -350,7 +350,9 @@
 .activity-plan-split li strong { color: var(--ops-text); }
 .activity-guide-actions { justify-content: flex-end; margin-top: var(--space-3); }
 .activity-guide-actions .ops-button { min-width: 130px; min-height: 42px; }
-.work-order-document { padding: clamp(18px, 3vw, 34px); border: 1px solid var(--ops-border); border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgb(15 23 42 / 6%); }
+.work-order-document { min-width: 0; padding: clamp(18px, 3vw, 34px); border: 1px solid var(--ops-border); border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgb(15 23 42 / 6%); }
+.detail-body, .scenario-order-body { min-width: 0; }
+.work-order-card, .work-order-structured-panel { min-width: 0; }
 .work-order-document > header { display: flex; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 2px solid var(--ops-text); }
 .work-order-document > header small { color: var(--ops-text-muted); font-size: 13px; font-weight: 700; }
 .work-order-document > header h3 { margin: var(--space-1) 0 0; font-size: 23px; }
@@ -378,19 +380,76 @@
 .work-order-preview li > span { min-width: 0; overflow-wrap: anywhere; }
 .work-order-preview strong { color: var(--ops-text); }
 .work-order-section-nav { position: sticky; z-index: 3; top: 0; display: flex; justify-content: flex-end; gap: var(--space-2); margin: 0 calc(var(--space-4) * -1); padding: var(--space-2) var(--space-4); border-block: 1px solid var(--ops-border); background: color-mix(in srgb, var(--ops-surface) 96%, transparent); backdrop-filter: blur(8px); }
-.work-order-structured-panel { display: grid; gap: var(--space-3); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--ops-border); }
-.work-order-structured-disclaimer { margin: 0; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; background: var(--ops-surface-muted); color: var(--ops-text-muted); font-size: 13px; }
-.work-order-structured-panel h4 { margin: 0 0 var(--space-2); font-size: 15px; }
+/* === 작업지시서 구조화 패널 (섹션 카드 공통) === */
+.work-order-structured-panel { display: grid; gap: 16px; margin-top: var(--space-3); }
+.work-order-card { padding: 16px 20px; border: 1px solid var(--ops-border); border-radius: 10px; background: var(--ops-surface); }
+.work-order-card h4 { margin: 0 0 var(--space-2); color: var(--ops-text); font-size: 15px; font-weight: 700; }
+.work-order-structured-disclaimer { margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); border-radius: 6px; background: var(--ops-surface-muted); color: var(--ops-text-muted); font-size: 13px; }
+.work-order-text-field { width: 100%; min-height: 72px; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; color: var(--ops-text); background: var(--ops-surface); font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+
+/* 위험성 및 근거: 근거 목록을 2열 description list로 */
+.work-order-evidence-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
+.work-order-evidence-list > div { padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); }
+.work-order-evidence-list dt { margin: 0 0 2px; color: var(--ops-text); font-size: 13px; font-weight: 700; }
+.work-order-evidence-list dd { margin: 0; color: var(--ops-text-muted); font-size: 13px; line-height: 1.55; }
+
+/* 작업 및 제한사항: 체크형 목록, 한 줄 전체 클릭 가능 */
 .work-order-boolean-checklist { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
-.work-order-boolean-checklist label { display: flex; align-items: center; gap: var(--space-2); font-size: 14px; }
-.work-order-checklist-table-wrap { overflow-x: auto; }
-.work-order-checklist-table, .work-order-safety-permit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.work-order-checklist-table th, .work-order-checklist-table td,
-.work-order-safety-permit-table th, .work-order-safety-permit-table td { padding: var(--space-1) var(--space-2); border: 1px solid var(--ops-border); text-align: left; vertical-align: middle; }
-.work-order-checklist-table th, .work-order-safety-permit-table th { background: var(--ops-surface-muted); font-weight: 700; white-space: nowrap; }
-.work-order-checklist-table input[type="text"], .work-order-checklist-table select { width: 100%; min-width: 72px; padding: 2px 4px; border: 1px solid var(--ops-border); border-radius: 4px; font-size: 13px; }
-.work-order-permit-banner { margin: 0; padding: var(--space-2); border-radius: 6px; background: color-mix(in srgb, var(--ops-critical) 12%, transparent); color: var(--ops-critical); font-size: 13px; font-weight: 700; }
-.work-order-text-field { width: 100%; min-height: 72px; padding: var(--space-2); border: 1px solid var(--ops-border); border-radius: 6px; font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+.work-order-boolean-checklist label { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border-radius: 6px; font-size: 14px; cursor: pointer; }
+.work-order-boolean-checklist label:hover { background: var(--ops-surface-muted); }
+.work-order-boolean-checklist input[type="checkbox"] { width: 16px; height: 16px; }
+
+/* 현장 확인 항목 표 */
+.table-wrapper { min-width: 0; overflow-x: auto; }
+.work-order-checklist-table { width: 100%; min-width: 1100px; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.work-order-checklist-table th, .work-order-checklist-table td { padding: var(--space-2); border: 1px solid var(--ops-border); vertical-align: middle; }
+.work-order-checklist-table thead th { position: sticky; top: 0; z-index: 1; background: var(--ops-surface-muted); font-weight: 700; white-space: nowrap; }
+.work-order-checklist-table tbody tr { min-height: 64px; }
+.work-order-checklist-table tbody tr:hover, .work-order-checklist-table tbody tr:focus-within { background: var(--ops-surface-muted); }
+.work-order-checklist-table .col-seq { width: 55px; text-align: center; }
+.work-order-checklist-table .col-target { width: 140px; }
+.work-order-checklist-table .col-action { width: 240px; }
+.work-order-checklist-table .col-criteria { width: 240px; }
+.work-order-checklist-table .col-result { width: 110px; text-align: center; }
+.work-order-checklist-table .col-value { width: 120px; }
+.work-order-checklist-table .col-inspector { width: 120px; }
+.work-order-checklist-table .col-note { width: 160px; }
+.work-order-checklist-table .text-cell { text-align: left; white-space: normal; word-break: keep-all; overflow-wrap: break-word; }
+.work-order-checklist-table input[type="text"], .work-order-checklist-table select { width: 100%; min-height: 34px; padding: 4px 6px; border: 1px solid var(--ops-border); border-radius: 4px; color: var(--ops-text); background: var(--ops-surface); font-size: 13px; }
+
+/* 안전작업허가 사전 확인: 2열 카드 그리드 */
+.work-order-permit-banner { margin: 0 0 var(--space-2); padding: var(--space-2); border-radius: 6px; background: color-mix(in srgb, var(--ops-critical) 12%, transparent); color: var(--ops-critical); font-size: 13px; font-weight: 700; }
+.work-order-safety-permit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.work-order-safety-permit-card { display: grid; gap: 4px; padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface); cursor: pointer; }
+.work-order-safety-permit-card.is-applicable { border-color: var(--ops-critical); background: color-mix(in srgb, var(--ops-critical) 6%, var(--ops-surface)); }
+.work-order-safety-permit-card.is-not-applicable { border-color: var(--ops-border); }
+.work-order-safety-permit-card-head { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; font-weight: 700; color: var(--ops-text-muted); }
+.work-order-safety-permit-question { margin: 0; color: var(--ops-text); font-size: 14px; font-weight: 600; line-height: 1.4; }
+.work-order-safety-permit-action { margin: 0; color: var(--ops-text-muted); font-size: 12px; line-height: 1.5; }
+
+/* AI 생성 원문 accordion */
+.work-order-raw-accordion { border: 1px solid var(--ops-border); border-radius: 8px; overflow: hidden; }
+.work-order-raw-accordion-toggle { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: var(--space-2) var(--space-3); border: 0; color: var(--ops-text-muted); background: var(--ops-surface-muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+.work-order-raw-accordion-body { margin: 0; padding: var(--space-3); color: var(--ops-text); background: var(--ops-surface); font-family: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; border-top: 1px solid var(--ops-border); }
+
+/* 작업지시 요약 카드 */
+.work-order-summary-cards { display: grid; grid-template-columns: 40fr 35fr 25fr; gap: var(--space-2); margin: var(--space-2) 0 var(--space-3); }
+.work-order-summary-card { display: grid; gap: 4px; padding: var(--space-2) var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); min-width: 0; }
+.work-order-summary-card > span { color: var(--ops-text-muted); font-size: 12px; font-weight: 700; }
+.work-order-summary-card > strong { color: var(--ops-text); font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: break-word; }
+
+/* 버전 배지(단일 버전일 때) */
+.work-order-version-badge { display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--ops-border); border-radius: 7px; color: var(--ops-text); background: var(--ops-surface); font-size: 13px; font-weight: 700; }
+
+/* 하단 action bar: 저장 상태(좌) / 액션(우) */
+.work-order-action-footer { position: sticky; z-index: 2; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-3); border-top: 1px solid var(--ops-border); background: var(--ops-surface); box-shadow: 0 -8px 20px color-mix(in srgb, var(--ops-text) 6%, transparent); }
+.work-order-action-footer-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; color: var(--ops-text-muted); font-size: 12px; line-height: 1.45; }
+.work-order-action-footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.work-order-save-status { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.work-order-save-status-saving { color: var(--ops-text-muted); background: var(--ops-surface-muted); }
+.work-order-save-status-saved { color: var(--ops-success); background: color-mix(in srgb, var(--ops-success) 14%, transparent); }
+.work-order-save-status-error { color: var(--ops-critical); background: color-mix(in srgb, var(--ops-critical) 14%, transparent); cursor: help; }
+
 .work-order-document, .work-order-review-chat { scroll-margin-top: 64px; }
 .work-order-review-chat { display: grid; gap: var(--space-3); margin-top: var(--space-4); padding: var(--space-3); border: 1px solid var(--ops-border); border-radius: 8px; background: var(--ops-surface-muted); }
 .work-order-review-chat > header p { margin: var(--space-1) 0 0; color: var(--ops-text-muted); font-size: 14px; line-height: 1.55; }
@@ -452,6 +511,17 @@
   .work-order-detail-body .report-single-body { min-height: 0; max-height: none; }
   .activity-detail-footer { display: grid; grid-template-columns: 1fr; }
   .activity-detail-footer .ops-button { width: 100%; }
+  .work-order-summary-cards { grid-template-columns: 1fr; }
+  .work-order-safety-permit-grid { grid-template-columns: 1fr; }
+  .work-order-action-footer { flex-direction: column; align-items: stretch; }
+  .work-order-action-footer-actions { justify-content: stretch; }
+  .work-order-action-footer-actions .ops-button { flex: 1; min-width: 0; }
+}
+
+@media (min-width: 721px) and (max-width: 1023px) {
+  .work-order-summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .work-order-safety-permit-grid { grid-template-columns: 1fr; }
+  .work-order-detail-header-actions { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; } }

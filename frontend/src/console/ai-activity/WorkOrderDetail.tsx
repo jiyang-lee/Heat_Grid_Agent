@@ -10,6 +10,9 @@ import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
 import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
 import { WorkOrderStructuredPanel } from './WorkOrderStructuredPanel'
+import { WorkOrderSummaryCards } from './WorkOrderSummaryCards'
+import { GeneratedDocumentAccordion } from './GeneratedDocumentAccordion'
+import { WorkOrderActionFooter, type SaveStatus } from './WorkOrderActionFooter'
 import { legacyViewOfContent } from './workOrderStructuredView'
 import { detectWorkOrderRevisionTarget, isWorkOrderProposalConfirmation, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionScope, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
 
@@ -185,6 +188,8 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const { confirm: askConfirm, dialog: confirmDialog } = useConfirmDialog()
   const resultNotReady = result.error instanceof ApiError && result.error.status === 409
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
+  const [fieldSaveStatus, setFieldSaveStatus] = useState<SaveStatus>('idle')
+  const [fieldSaveError, setFieldSaveError] = useState<string | null>(null)
   const [reviewDecision, setReviewDecision] = useState<OperatorReviewDecision | null>(null)
   const [threadId, setThreadId] = useState<string | null>(null)
   const [threadContext, setThreadContext] = useState<ReviewChatThreadResponse | null>(null)
@@ -817,20 +822,36 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
     <div className="detail-body work-order-detail-body">
       <div className="detail-title"><StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge><h2>{title}</h2><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p><span>생성 {formatDateTime(item.created_at)}</span></div>
-      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button onClick={() => scrollToSection(documentSectionRef.current)}>문서 본문</Button><Button disabled={manualEditing || !selectedIsLatest || activeIncidentId == null || activeDocumentVersion == null} icon="document" onClick={beginManualEdit}>직접 수정</Button><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button></nav>}
+      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button><Button disabled={manualEditing || !selectedIsLatest || activeIncidentId == null || activeDocumentVersion == null} icon="document" onClick={beginManualEdit}>직접 수정</Button><Button disabled={!body || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 다운로드'}</Button></nav>}
       <ApiState empty={false} error={result.isError && !resultNotReady} loading={result.isLoading} retry={() => void result.refetch()} />
       {resultNotReady && <p className="activity-empty-note">실행이 완료되면 작업지시서 본문을 준비합니다.</p>}
       {preview && activeResult && <section className="work-order-preview"><h3>조치 요약</h3><ol>{previewActions.map((action, index) => <li key={`${index}-${action}`}><b>{index + 1})</b><span>{action}</span></li>)}</ol><Button icon="arrow" onClick={onOpenDetail} tone="primary">상세 보기</Button></section>}
       {!preview && activeResult && <>
         <article className="work-order-document" ref={documentSectionRef}>
           <header><div><small>현장 작업지시서</small><h3>{manualEditing ? manualTitle || '제목 입력 중' : title}</h3></div><StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge></header>
-          {revisions.length > 0 && <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
-            {[1, ...revisions.map((revision) => revision.version)].map((version) => <button aria-selected={version === activeVersion} className={version === activeVersion ? 'active' : ''} key={version} onClick={() => setSelectedVersion(version)} role="tab" type="button">v{version}</button>)}
-          </div>}
-          <dl><div><dt>문서번호</dt><dd>{number}</dd></div><div><dt>대상 설비</dt><dd>{facilityName(item.substation_id, item.manufacturer_id)}</dd></div><div><dt>생성 시각</dt><dd>{formatDateTime(activeRevision?.createdAt ?? item.created_at)}</dd></div><div><dt>문서 버전</dt><dd>v{activeVersion}</dd></div></dl>
-          {manualEditing ? <div className="work-order-manual-editor"><p className="work-order-chat-context-note">현재 v{activeVersion}은 그대로 보존되고, 저장 시 v{activeDocumentVersion == null ? '-' : activeDocumentVersion + 1} 새 초안이 생성됩니다. 새 버전은 AI 검토와 운영자 재승인이 필요합니다.</p><label><span>문서 제목</span><input onChange={(event) => setManualTitle(event.target.value)} value={manualTitle} /></label><label><span>작업지시서 본문</span><textarea className="scenario-document-editor" onChange={(event) => setManualBody(event.target.value)} value={manualBody} /></label><label><span>수정 사유</span><input onChange={(event) => setManualNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={manualNote} /></label><div><Button disabled={editIncidentWorkOrder.isPending} onClick={() => setManualEditing(false)}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !manualTitle.trim() || !manualBody.trim()} icon="check" onClick={() => void saveManualEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : '새 버전으로 저장'}</Button></div></div> : <pre className="activity-report-body report-single-body">{body}</pre>}
-          {!manualEditing && activeStructuredContent && activeIncidentId != null && (
-            <WorkOrderStructuredPanel content={activeStructuredContent} incidentId={activeIncidentId} version={activeVersion} />
+          {revisions.length > 0 ? (
+            <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
+              {[1, ...revisions.map((revision) => revision.version)].map((version) => <button aria-selected={version === activeVersion} className={version === activeVersion ? 'active' : ''} key={version} onClick={() => setSelectedVersion(version)} role="tab" type="button">v{version}</button>)}
+            </div>
+          ) : <span className="work-order-version-badge">v{activeVersion}</span>}
+          <p className="work-order-detail-document-number">문서번호 {number} · 생성 {formatDateTime(activeRevision?.createdAt ?? item.created_at)}</p>
+          <WorkOrderSummaryCards
+            actionCriteria="anomaly 우선순위에 따라 즉시 검토"
+            assignee={activeStructuredContent?.header.assignee ?? '현장 운전팀'}
+            targetFacility={facilityName(item.substation_id, item.manufacturer_id)}
+          />
+          {manualEditing ? <div className="work-order-manual-editor"><p className="work-order-chat-context-note">현재 v{activeVersion}은 그대로 보존되고, 저장 시 v{activeDocumentVersion == null ? '-' : activeDocumentVersion + 1} 새 초안이 생성됩니다. 새 버전은 AI 검토와 운영자 재승인이 필요합니다.</p><label><span>문서 제목</span><input onChange={(event) => setManualTitle(event.target.value)} value={manualTitle} /></label><label><span>작업지시서 본문</span><textarea className="scenario-document-editor" onChange={(event) => setManualBody(event.target.value)} value={manualBody} /></label><label><span>수정 사유</span><input onChange={(event) => setManualNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={manualNote} /></label><div><Button disabled={editIncidentWorkOrder.isPending} onClick={() => setManualEditing(false)}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !manualTitle.trim() || !manualBody.trim()} icon="check" onClick={() => void saveManualEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : '새 버전으로 저장'}</Button></div></div> : (
+            activeStructuredContent && activeIncidentId != null ? (
+              <>
+                <GeneratedDocumentAccordion body={body} />
+                <WorkOrderStructuredPanel
+                  content={activeStructuredContent}
+                  incidentId={activeIncidentId}
+                  version={activeVersion}
+                  onSaveStatusChange={(status, detail) => { setFieldSaveStatus(status); setFieldSaveError(detail) }}
+                />
+              </>
+            ) : <pre className="activity-report-body report-single-body">{body}</pre>
           )}
         </article>
         <section className="work-order-review-chat" aria-label="AI 수정 챗봇" ref={chatSectionRef}>
@@ -844,9 +865,14 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
           {chatError && <p className="form-error" role="alert">{chatError}</p>}
         </section>
       </>}
-      {downloadState === 'error' && <p className="scenario-document-error" role="alert">PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
     </div>
-    {!preview && <div className="activity-detail-footer detail-actions"><Button disabled={!body || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 다운로드'}</Button>{activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}</div>}
+    {!preview && <WorkOrderActionFooter
+      notice={selectedIsLatest ? undefined : '최신 버전에서만 최종 승인할 수 있습니다.'}
+      saveErrorDetail={downloadState === 'error' ? 'PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}
+      saveStatus={downloadState === 'error' ? 'error' : fieldSaveStatus}
+    >
+      {activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}
+    </WorkOrderActionFooter>}
     {reviewDecision && <ReviewActionModal currentOutput={reviewOutput} decision={reviewDecision} onClose={() => setReviewDecision(null)} runId={activeReviewRunId} />}
   </SurfaceCard>
   </>
