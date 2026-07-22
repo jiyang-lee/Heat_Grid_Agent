@@ -7,7 +7,9 @@ import pytest
 from heatgrid_ops.db.migrations import (
     APPLICATION_TABLES_V011,
     CHECKPOINT_PACKAGE_VERSION,
+    MigrationContractError,
     POSTGRESQL_MAJOR,
+    _legacy_work_order_versions,
     _verify_application_catalog,
     load_migrations,
     migration_manifest_hash,
@@ -30,11 +32,31 @@ def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(20))
+    assert [migration.version for migration in migrations] == list(range(23))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "019_review_chat_scope_notice.sql"
+    assert migrations[-1].path.name == "022_demo_building_context.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
+
+
+def test_legacy_work_order_migration_lineage_is_recognized() -> None:
+    rows = [
+        {"version": 19, "name": "work_order_structure", "checksum": "b41f709eb13e73679750c8cadc665ecf8763d427cfde2fe8a42ac24dcc366b44"},
+        {"version": 20, "name": "work_order_equipment_catalog", "checksum": "9264acaaed5b488df3ff569114d5cfd3d7862002199219bb165b205ed882fa9c"},
+        {"version": 21, "name": "demo_building_context", "checksum": "ee5de82fb1372579a45cf76679d95cc196910bfd8b2a31d76a10fa93c719e31c"},
+    ]
+
+    assert _legacy_work_order_versions(rows) == (19, 20, 21)
+
+
+def test_unknown_legacy_work_order_checksum_is_rejected() -> None:
+    rows = [{"version": 19, "name": "work_order_structure", "checksum": "0" * 64}]
+
+    with pytest.raises(
+        MigrationContractError,
+        match="unsupported legacy work-order migration",
+    ):
+        _legacy_work_order_versions(rows)
 
 
 def test_review_chat_scope_notice_migration_updates_only_message_kind_constraint() -> None:

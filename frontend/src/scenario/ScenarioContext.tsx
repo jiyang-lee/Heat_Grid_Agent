@@ -500,6 +500,23 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     const order = documentContent?.trim() ? { ...generatedOrder, content: documentContent.trim() } : generatedOrder
     return syncActiveDocumentGroup({ ...current, workOrders: [...current.workOrders, order], selectedWorkOrderVersion: version, workOrderRerunCount: current.workOrderRerunCount + 1, proposal: null })
   }), [])
+  const appendManualWorkOrderRevision = useCallback((version: 2 | 3, baseVersion: 1 | 2 | 3, title: string, content: string, instruction: string, sourceRunId: string) => setState((current) => {
+    const base = current.workOrders.find((order) => order.version === baseVersion)
+    const latest = current.workOrders.at(-1)
+    if (base == null || latest == null || latest.version >= version || current.workOrders.some((order) => order.version === version)) return current
+    const order = {
+      ...base,
+      version,
+      title,
+      content,
+      createdAt: new Date().toISOString(),
+      changeSummary: `운영자 직접 편집 · ${instruction}`,
+      revisionInstruction: instruction,
+      baseVersion,
+      sourceRunId,
+    }
+    return syncActiveDocumentGroup({ ...current, workOrders: [...current.workOrders, order], selectedWorkOrderVersion: version, proposal: null })
+  }), [])
   const appendWorkOrderMessages = useCallback((messages: readonly ScenarioChatMessage[]) => setState((current) => {
     if (current.activeDocumentGroupId == null || current.workOrders.length === 0) return current
     const existingIds = new Set(current.messages.map((message) => message.id))
@@ -507,11 +524,11 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     return additions.length === 0 ? current : syncActiveDocumentGroup({ ...current, messages: [...current.messages, ...additions] })
   }), [])
   const selectWorkOrderVersion = useCallback((selectedWorkOrderVersion: 1 | 2 | 3) => setState((current) => current.workOrders.some((order) => order.version === selectedWorkOrderVersion) ? syncActiveDocumentGroup({ ...current, selectedWorkOrderVersion }) : current), [])
-  const updateWorkOrderContent = useCallback((version: 1 | 2 | 3, content: string) => setState((current) => {
+  const updateWorkOrderContent = useCallback((version: 1 | 2 | 3, content: string, title?: string) => setState((current) => {
     const editedAcceptedVersion = current.acceptedWorkOrderVersion === version
     return syncActiveDocumentGroup({
       ...current,
-      workOrders: current.workOrders.map((order) => order.version === version ? { ...order, content, changeSummary: '운영자 직접 편집' } : order),
+      workOrders: current.workOrders.map((order) => order.version === version ? { ...order, ...(title?.trim() ? { title: title.trim() } : {}), content, changeSummary: '운영자 직접 편집' } : order),
       acceptedWorkOrderVersion: editedAcceptedVersion ? null : current.acceptedWorkOrderVersion,
       report: editedAcceptedVersion ? emptyReport() : current.report,
       reportMessages: editedAcceptedVersion ? [] : current.reportMessages,
@@ -552,8 +569,8 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => syncActiveDocumentGroup({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, clearAiHistory, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, selectDocumentGroup, appendWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
-  }), [acceptWorkOrder, alertHistory, alerts, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, clearAiHistory, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectDocumentGroup, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, clearAiHistory, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, selectDocumentGroup, appendWorkOrderRevision, appendManualWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, appendManualWorkOrderRevision, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, clearAiHistory, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectDocumentGroup, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }

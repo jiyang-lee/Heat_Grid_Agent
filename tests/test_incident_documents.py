@@ -68,6 +68,28 @@ async def test_incident_document_review_edit_approve_and_conflict_flow() -> None
             assert first["status"] == "draft"
             assert first["content"]["evidence"][0]["citation_id"] == f"episode:{episode_id}"
 
+            report = await client.post(
+                f"/api/incidents/{episode_id}/documents/incident_report/generate",
+                json={
+                    "created_by": "operator",
+                    "idempotency_key": f"report-{uuid4()}",
+                    "evidence_ids": [f"episode:{episode_id}"],
+                    "content": {
+                        "title": "열교환기 이상 분석 보고서",
+                        "body": "공급온도 저하와 유량 변동을 현장 측정값으로 확인합니다.",
+                        "actions": ["열교환기 입출구 온도를 기록합니다."],
+                        "evidence": [],
+                        "safety_notes": "운전 설정값은 변경하지 않습니다.",
+                    },
+                },
+            )
+
+            assert report.status_code == 201
+            report_v1 = report.json()
+            assert report_v1["version"] == 1
+            assert report_v1["content"]["title"] == "열교환기 이상 분석 보고서"
+            assert report_v1["content"]["body"] == "공급온도 저하와 유량 변동을 현장 측정값으로 확인합니다."
+
             # When: content fields are edited.
             edited = await client.put(
                 f"/api/incidents/{episode_id}/documents/work_order/versions/1",

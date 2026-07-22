@@ -170,6 +170,13 @@ export function classifyWorkOrderChatIntent(instruction: string): WorkOrderChatI
   return 'out_of_scope'
 }
 
+export function isWorkOrderProposalConfirmation(instruction: string): boolean {
+  const normalized = instruction.toLocaleLowerCase('ko-KR').replace(/[.!?]/g, '').replace(/\s+/g, ' ').trim()
+  return /^(?:고고|좋아\s*(?:진행|반영|확정)?|이대로|그대로|수정안\s*)?(?:확정|반영|적용|진행)(?:해|해줘|해주세요|할게)?$/.test(normalized)
+    || /^(?:이대로|그대로)(?:\s*(?:해|가|진행해|반영해|확정해))?(?:줘|주세요)?$/.test(normalized)
+    || normalized === '고고'
+}
+
 function isClearOutOfScopeRequest(normalized: string): boolean {
   const offTopicDomains = /레시피|요리법|조리법|김치\s*볶음밥|볶음밥|라면|스시|초밥|맛집|식당|여행|여행지|드라마|영화|애플tv|넷플릭스|연애|데이트|쇼핑|옷|뭐 입지|패션|게임|주식|코인|서울 날씨|날씨|파이썬|python|프로그래밍|코딩|자바스크립트|javascript|점심|저녁|메뉴|뭐 먹/
   const offTopicActions = /추천|상담|골라|알려|입지|설명|뭔지|무엇|어때|먹지|먹을/

@@ -82,11 +82,18 @@ import type {
   OperationsPolicyUpdate,
   CurrentShiftMemo,
   IncidentDocumentApproveRequest,
+  IncidentDocumentGenerateRequest,
+  IncidentDocumentEditRequest,
   IncidentDocumentPage,
   IncidentDocumentResponse,
+  WorkOrderFieldPatchRequest,
   OperationsReportPage,
   OperationsReportPeriod,
   OperationsReportVersion,
+  AnomalyReportArtifact,
+  ReportDocumentRequest,
+  ReportReviewRequest,
+  ReportReviewResponse,
 } from './contracts'
 
 export const API_BASE = '/api'
@@ -141,6 +148,23 @@ export async function rawText(path: string, init?: RequestInit): Promise<string>
     throw new ApiError(res.status, url, body || res.statusText)
   }
   return res.text()
+}
+
+async function downloadFile(path: string, fileName: string, init?: RequestInit): Promise<void> {
+  const url = `${API_BASE}${path}`
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new ApiError(response.status, url, body || response.statusText)
+  }
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
 }
 
 function toQueryString(
@@ -325,6 +349,33 @@ export const incidentDocumentsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  generateReport: (incidentId: string, body: IncidentDocumentGenerateRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/incident_report/generate`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  approveReport: (incidentId: string, body: IncidentDocumentApproveRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/incident_report/approve`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  editReport: (incidentId: string, version: number, body: IncidentDocumentEditRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/incident_report/versions/${version}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  editWorkOrder: (incidentId: string, version: number, body: IncidentDocumentEditRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/versions/${version}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  patchWorkOrderField: (incidentId: string, version: number, body: WorkOrderFieldPatchRequest) =>
+    apiFetch<IncidentDocumentResponse>(`/incidents/${incidentId}/documents/work_order/versions/${version}/field`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  downloadWorkOrderXlsx: (incidentId: string, version: number, fileName: string) =>
+    downloadFile(`/incidents/${incidentId}/documents/work_order/versions/${version}/xlsx`, fileName),
 }
 
 export const replayApi = {
@@ -393,6 +444,24 @@ export const agentReportsApi = {
     apiFetch<AgentReportListPage>(
       `/agent-reports${toQueryString(query as Record<string, string | number | undefined> | undefined)}`,
     ),
+  content: (runId: string, artifactId: string) =>
+    apiFetch<AnomalyReportArtifact>(`/agent-runs/${runId}/artifacts/${artifactId}/content`),
+  downloadDocx: (runId: string, artifactId: string, fileName: string) =>
+    downloadFile(`/agent-runs/${runId}/artifacts/${artifactId}/report.docx`, fileName),
+}
+
+export const reportDocumentsApi = {
+  download: (body: ReportDocumentRequest, fileName: string) =>
+    downloadFile('/report-documents/docx', fileName, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  review: (body: ReportReviewRequest) =>
+    apiFetch<ReportReviewResponse>('/report-review/chat', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }
 
 /* ===== v3-02 신규 계약 (docs/report/06_agent_v3_backend_completion_ko.md) ===== */

@@ -766,9 +766,9 @@ export type ReviewChatMessageKind =
   | 'explanation'
   | 'action_request'
   | 'action_proposal'
-  | 'scope_notice'
   | 'confirmation'
   | 'execution_result'
+  | 'scope_notice'
   | 'error'
 
 export type ReviewChatProposalStatus =
@@ -1003,16 +1003,102 @@ export interface IncidentDocumentContent {
   readonly safety_notes: string
 }
 
+export type WorkOrderKind = 'site_check' | 'maintenance'
+export type ChecklistResult = 'pass' | 'fail' | 'not_applicable' | 'pending'
+export type DocumentStatus = 'draft' | 'ai_reviewed' | 'approved' | 'failed'
+
+export interface WorkOrderHeader {
+  readonly document_number: string
+  readonly issued_at: string
+  readonly priority: string
+  readonly assignee: string | null
+  readonly target_building: string
+  readonly mechanical_room: string | null
+  readonly equipment_type: string
+  readonly work_type: string
+  readonly issue_reason?: string
+  readonly status?: string
+}
+
+export interface WorkOrderChecklistItem {
+  readonly seq: number
+  readonly instrument_or_target: string
+  readonly check_or_task_action: string
+  readonly pass_fail_criteria: string | null
+  readonly parts_or_tools: string | null
+  readonly completion_condition: string | null
+  readonly result: ChecklistResult
+  readonly measured_before: string | null
+  readonly measured_after: string | null
+  readonly checked_by: string | null
+  readonly signature: string | null
+  readonly note: string | null
+}
+
+export interface BooleanChecklistItem {
+  readonly label: string
+  readonly checked: boolean
+}
+
+export interface SafetyPermitQuestion {
+  readonly question: string
+  readonly applicable: boolean
+  readonly required_action: string | null
+}
+
+export interface SafetyPermitPrecheck {
+  readonly questions: readonly SafetyPermitQuestion[]
+  readonly permit_required: boolean
+}
+
+export interface WorkOrderStructuredContent {
+  readonly work_order_kind: WorkOrderKind
+  readonly header: WorkOrderHeader
+  readonly purpose: string
+  readonly risk_and_evidence: string
+  readonly restriction_or_prep_checklist: readonly BooleanChecklistItem[]
+  readonly checklist: readonly WorkOrderChecklistItem[]
+  readonly commissioning_checklist: readonly WorkOrderChecklistItem[]
+  readonly outcome_and_followup: string
+  readonly safety_permit_precheck: SafetyPermitPrecheck
+  readonly disclaimer: string
+}
+
+export type WorkOrderPatchSection =
+  | 'purpose'
+  | 'risk_and_evidence'
+  | 'restriction_or_prep_checklist'
+  | 'checklist'
+  | 'commissioning_checklist'
+  | 'outcome_and_followup'
+  | 'safety_permit_precheck'
+
+export interface WorkOrderFieldPatchRequest {
+  readonly expected_version: number
+  readonly edited_by: string
+  readonly idempotency_key: string
+  readonly target_section: WorkOrderPatchSection
+  readonly target_seq: number
+  readonly target_field: string
+  readonly new_value: string
+}
+
+export function isWorkOrderStructuredContent(
+  content: IncidentDocumentContent | WorkOrderStructuredContent,
+): content is WorkOrderStructuredContent {
+  return 'work_order_kind' in content
+}
+
 export interface IncidentDocumentResponse {
   readonly document_version_id: string
   readonly episode_id: string
   readonly document_type: 'work_order' | 'incident_report'
   readonly version: number
   readonly parent_document_version_id: string | null
-  readonly status: 'draft' | 'ai_reviewed' | 'approved' | 'failed'
+  readonly status: DocumentStatus
   readonly review_state: 'none' | 'pending_ai_review' | 'operator_noted' | 'approved' | 'failed'
   readonly retryable: boolean
-  readonly content: IncidentDocumentContent
+  readonly content: IncidentDocumentContent | WorkOrderStructuredContent
   readonly content_hash: string
   readonly created_by: string
   readonly created_at: string
@@ -1029,6 +1115,30 @@ export interface IncidentDocumentApproveRequest {
   readonly approved_by: string
   readonly idempotency_key: string
   readonly note: string
+}
+
+export interface IncidentDocumentGenerateRequest {
+  readonly created_by: string
+  readonly idempotency_key: string
+  readonly evidence_ids?: readonly string[]
+  readonly content?: {
+    readonly title: string
+    readonly body: string
+    readonly actions: readonly string[]
+    readonly safety_notes: string
+  }
+}
+
+export interface IncidentDocumentEditRequest {
+  readonly expected_version: number
+  readonly edited_by: string
+  readonly idempotency_key: string
+  readonly title?: string
+  readonly body?: string
+  readonly actions?: readonly string[]
+  readonly evidence_ids?: readonly string[]
+  readonly safety_notes?: string
+  readonly note?: string
 }
 
 export interface ReviewChatCancelRequest {
@@ -1217,6 +1327,46 @@ export interface AgentReportListPage {
   readonly items: readonly AgentReportListItem[]
   readonly next_cursor: string | null
   readonly total_count: number | null
+}
+
+export type AnomalyReportSection = Readonly<Record<string, unknown>>
+
+export interface AnomalyReportArtifact {
+  readonly report_metadata?: AnomalyReportSection
+  readonly target_asset?: AnomalyReportSection
+  readonly priority_summary?: AnomalyReportSection
+  readonly situation_summary?: AnomalyReportSection
+  readonly key_evidence?: readonly AnomalyReportSection[]
+  readonly risk_analysis?: AnomalyReportSection
+  readonly suspected_causes?: readonly AnomalyReportSection[]
+  readonly recommended_actions?: readonly AnomalyReportSection[]
+  readonly evidence_references?: readonly AnomalyReportSection[]
+  readonly operator_note?: AnomalyReportSection
+  readonly [key: string]: unknown
+}
+
+export interface ReportReviewMessage {
+  readonly role: 'operator' | 'assistant'
+  readonly content: string
+}
+
+export interface ReportReviewRequest {
+  readonly message: string
+  readonly report_context: AnomalyReportArtifact | string
+  readonly history: readonly ReportReviewMessage[]
+}
+
+export interface ReportReviewResponse {
+  readonly answer: string
+}
+
+export interface ReportDocumentRequest {
+  readonly report_context: AnomalyReportArtifact
+  readonly alert_id?: string | null
+  readonly building_name: string
+  readonly machine_room: string
+  readonly status_label: string
+  readonly document_version: number
 }
 
 // ---------------------------------------------------------------------------

@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { OperatorReviewDecision, OpsAgentOutput, OpsAgentResultV4, ReviewChatConfirmationResponse, ReviewChatMessageResponse, ReviewChatProposalResponse, ReviewChatThreadResponse, WorkOrderListItem } from '../../api/contracts'
+import { isWorkOrderStructuredContent } from '../../api/contracts'
+import { displayAlertReason } from '../../domain/alertReason'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../../api/client'
-import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen, useAgentRunResult } from '../../api/hooks'
-import { downloadDocumentPdf } from '../../scenario/documentPdf'
+import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useEditIncidentWorkOrder, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen, useAgentRunResult } from '../../api/hooks'
 import { useConfirmDialog } from '../ConfirmDialog'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
-import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
+import { facilityName, formatDateTime, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
-import { classifyWorkOrderChatIntent, detectWorkOrderRevisionTarget, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionTarget, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderChatIntent, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
+import { WorkOrderExcelPreview } from './WorkOrderExcelPreview'
+import { WorkOrderActionFooter, type SaveStatus } from './WorkOrderActionFooter'
+import { legacyViewOfContent } from './workOrderStructuredView'
+import { classifyWorkOrderChatIntent, detectWorkOrderRevisionTarget, isWorkOrderProposalConfirmation, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionScope, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderChatIntent, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
 
 interface Props {
   readonly item: WorkOrderListItem
@@ -32,7 +36,10 @@ function chatErrorMessage(error: unknown): string {
     if (/document version is stale|문서 버전/i.test(error.message)) return '선택한 문서 버전이 최신 상태와 다릅니다. 버전을 다시 선택한 뒤 요청해 주세요.'
     return '다른 검토 변경과 충돌했습니다. 최신 대화와 문서를 불러온 뒤 다시 시도해 주세요.'
   }
-  if (error instanceof ApiError && error.status === 422) return '수정 요청 내용을 확인한 뒤 다시 보내 주세요.'
+  if (error instanceof ApiError && error.status === 422) {
+    if (/부적절한 내용/.test(error.message)) return '부적절한 내용이 포함되어 있어 처리할 수 없습니다.'
+    return '수정 요청 내용을 확인한 뒤 다시 보내 주세요.'
+  }
   if (error instanceof ApiError && error.status === 404) return '이 작업지시서의 대화 또는 문서 연결을 찾지 못했습니다.'
   if (error instanceof Error && /시간이 초과/.test(error.message)) return `${error.message} 서버 작업은 계속될 수 있으니 AI 분석 목록에서 상태를 확인해 주세요.`
   if (error instanceof Error && error.message.trim()) return error.message
@@ -87,19 +94,13 @@ function canonicalDocument(value: unknown): { readonly title: string | null; rea
   return { title, body }
 }
 
-function recallReply(question: string, history: readonly ReviewChatMessageResponse[]): string | null {
-  if (!/(?:기억|뭐였지|무엇이었|요청한\s*(?:내용|사항)|말한\s*(?:내용|사항))/.test(question)) return null
-  const requests = history
-    .filter((message) => message.role === 'operator')
-    .map(visibleMessageContent)
-    .filter((content) => isWorkOrderRevisionRequest(content))
-    .slice(-5)
-  if (requests.length === 0) return '이 대화에서 앞서 확인되는 문서 수정 요청이 없습니다.'
-  return `최근 문서 수정 요청은 다음과 같습니다.\n${requests.map((request, index) => `${index + 1}. ${request}`).join('\n')}`
-}
-
 function chatText(content: string): string {
   return content.replace(/\*\*|__|`/g, '').replace(/^\s{0,3}#{1,6}\s+/gm, '').trim()
+}
+
+function visibleMessageContent(message: ReviewChatMessageResponse): string {
+  const content = chatText(message.content)
+  return message.role === 'operator' ? visibleReviewChatContent(content) : content
 }
 
 function chatMessageClass(message: ReviewChatMessageResponse): string {
@@ -108,29 +109,15 @@ function chatMessageClass(message: ReviewChatMessageResponse): string {
 
 function chatButtonLabel(intent: WorkOrderChatIntent): string {
   switch (intent) {
-    case 'revision':
-      return '수정 초안 요청'
-    case 'in_scope_question':
-      return '근거 질문 보내기'
-    case 'out_of_scope':
-      return '범위 확인'
-    case 'ambiguous':
-      return '질문 확인'
-    default:
-      {
-        const exhaustive: never = intent
-        return exhaustive
-      }
+    case 'revision': return '수정 초안 요청'
+    case 'in_scope_question': return '근거 질문 보내기'
+    case 'out_of_scope': return '범위 확인'
+    case 'ambiguous': return '질문 확인'
   }
 }
 
-function visibleMessageContent(message: ReviewChatMessageResponse): string {
-  const content = chatText(message.content)
-  return message.role === 'operator' ? visibleReviewChatContent(content) : content
-}
-
 interface StoredRevision {
-  readonly version: 2 | 3
+  readonly version: number
   readonly title: string
   readonly result: OpsAgentResultV4
   readonly content?: string
@@ -156,23 +143,23 @@ function loadRevisions(runId: string): readonly StoredRevision[] {
     if (!Array.isArray(parsed)) return []
     return parsed.filter((item): item is StoredRevision => (
       typeof item === 'object' && item != null &&
-      'version' in item && (item.version === 2 || item.version === 3) &&
+      'version' in item && typeof item.version === 'number' && Number.isInteger(item.version) && item.version >= 2 &&
       'title' in item && typeof item.title === 'string' &&
       'instruction' in item && typeof item.instruction === 'string' &&
       'createdAt' in item && typeof item.createdAt === 'string' &&
       'result' in item && typeof item.result === 'object' && item.result != null &&
       'schema_version' in item.result && item.result.schema_version === 'ops_agent_result.v4' &&
       'target' in item && typeof item.target === 'object' && item.target != null
-    )).sort((left, right) => left.version - right.version).slice(0, 2)
+    )).sort((left, right) => left.version - right.version)
   } catch {
     return []
   }
 }
 
 function mergeRevisions(...groups: readonly (readonly StoredRevision[])[]): readonly StoredRevision[] {
-  const versions = new Map<2 | 3, StoredRevision>()
+  const versions = new Map<number, StoredRevision>()
   for (const group of groups) for (const revision of group) versions.set(revision.version, revision)
-  return [...versions.values()].sort((left, right) => left.version - right.version).slice(0, 2)
+  return [...versions.values()].sort((left, right) => left.version - right.version)
 }
 
 function storeRevisions(runId: string, revisions: readonly StoredRevision[]): void {
@@ -192,16 +179,33 @@ function bodyFromResult(title: string, result: OpsAgentResultV4): string {
   ].join('\n')
 }
 
+function numberedActionSteps(detail: string): readonly string[] {
+  return [...detail.matchAll(/(?:^|\s)\d+\)\s*([\s\S]*?)(?=\s+\d+\)\s|$)/gu)]
+    .map((match) => match[1]?.trim() ?? '')
+    .filter(Boolean)
+}
+
+function workOrderSummaryLines(actions: OpsAgentResultV4['actions']): readonly string[] {
+  return actions.flatMap((action) => {
+    const steps = numberedActionSteps(action.detail)
+    if (steps.length > 0) return steps
+    return [`${action.title}${action.detail ? ` · ${action.detail}` : ''}`]
+  }).filter(Boolean).slice(0, 3)
+}
+
 export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }: Props) {
   const result = useAgentRunResult(item.run_id)
   const { confirm: askConfirm, dialog: confirmDialog } = useConfirmDialog()
   const resultNotReady = result.error instanceof ApiError && result.error.status === 409
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
+  const fieldSaveStatus: SaveStatus = 'idle'
+  const fieldSaveError: string | null = null
   const [reviewDecision, setReviewDecision] = useState<OperatorReviewDecision | null>(null)
   const [threadId, setThreadId] = useState<string | null>(null)
   const [threadContext, setThreadContext] = useState<ReviewChatThreadResponse | null>(null)
   const [draft, setDraft] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
+  const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
   const [proposal, setProposal] = useState<ReviewChatProposalResponse | null>(null)
   const [localMessages, setLocalMessages] = useState<readonly ReviewChatMessageResponse[]>([])
   const [revisions, setRevisions] = useState<readonly StoredRevision[]>(() => loadRevisions(item.run_id))
@@ -213,6 +217,10 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const [revising, setRevising] = useState(false)
   const [executionState, setExecutionState] = useState<'idle' | 'confirming' | 'queued' | 'running' | 'completed' | 'blocked' | 'failed'>('idle')
   const [contextNotice, setContextNotice] = useState<string | null>(null)
+  const [manualEditing, setManualEditing] = useState(false)
+  const [manualTitle, setManualTitle] = useState('')
+  const [manualBody, setManualBody] = useState('')
+  const [manualNote, setManualNote] = useState('운영자 직접 편집')
   const documentSectionRef = useRef<HTMLElement>(null)
   const chatSectionRef = useRef<HTMLElement>(null)
   const chatLogRef = useRef<HTMLDivElement>(null)
@@ -221,24 +229,29 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const confirmProposal = useConfirmReviewChatProposal()
   const cancelProposal = useCancelReviewChatProposal()
   const approveIncidentWorkOrder = useApproveIncidentWorkOrder()
+  const editIncidentWorkOrder = useEditIncidentWorkOrder()
   const reviewMessages = useReviewChatMessages(threadId)
   const pendingProposalQuery = useReviewChatPendingProposal(threadId)
   const storageRunId = threadContext?.run_id ?? item.run_id
   const knownIncidentId = threadContext?.incident_id ?? revisions.find((revision) => revision.incidentId)?.incidentId ?? null
   const incidentDocuments = useIncidentDocuments(knownIncidentId)
-  const baseTitle = item.alert_reason ?? `${facilityName(item.substation_id, item.manufacturer_id)} 이상 대응 작업지시서`
+  const alertReason = displayAlertReason(item.alert_reason)
+  const baseTitle = alertReason === '-' ? `${facilityName(item.substation_id, item.manufacturer_id)} 이상 대응 작업지시서` : alertReason
   const latestRevision = revisions.at(-1)
   const latestVersion = latestRevision?.version ?? 1
   const activeVersion = selectedVersion ?? latestRevision?.version ?? 1
   const activeRevision = revisions.find((revision) => revision.version === activeVersion)
   const activeResult = activeRevision?.result ?? result.data ?? null
   const baseServerDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === 1)
+  const baseServerContentView = baseServerDocument ? legacyViewOfContent(baseServerDocument.content) : null
+  const structuredContent = baseServerDocument && isWorkOrderStructuredContent(baseServerDocument.content) ? baseServerDocument.content : null
   const threadDocument = canonicalDocument(threadContext?.document_content)
   const activeThreadDocument = (threadContext?.document_version ?? 1) === activeVersion ? threadDocument : { title: null, body: null }
-  const title = activeRevision?.title ?? baseServerDocument?.content.title ?? activeThreadDocument.title ?? baseTitle
+  const title = activeRevision?.title ?? baseServerContentView?.title ?? activeThreadDocument.title ?? baseTitle
   const number = `HG-${compactDate(item.created_at)}-${item.substation_id ?? 'NA'}-v${activeVersion}`
-  const body = activeRevision?.content ?? baseServerDocument?.content.body ?? activeThreadDocument.body ?? (activeResult == null ? '' : bodyFromResult(title, activeResult))
+  const body = activeRevision?.content ?? baseServerContentView?.body ?? activeThreadDocument.body ?? (activeResult == null ? '' : bodyFromResult(title, activeResult))
   const reviewOutput: OpsAgentOutput | null = activeResult == null ? null : { summary: activeResult.situation, action_plan: activeResult.actions.map((action) => `${action.title}: ${action.detail}`).join('\n'), caution: activeResult.cautions.join('\n') }
+  const previewActions = activeResult == null ? [] : workOrderSummaryLines(activeResult.actions)
   const messages = useMemo(() => {
     const merged = new Map<string, ReviewChatMessageResponse>()
     for (const message of reviewMessages.data?.items ?? []) merged.set(message.message_id, message)
@@ -252,12 +265,15 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const draftIsRevision = draftIntent === 'revision'
   const activeReviewRunId = activeRevision?.runId ?? activeRevision?.result.run_id ?? item.run_id
   const activeServerDocument = incidentDocuments.data?.items.find((document) => document.document_type === 'work_order' && document.version === activeVersion)
+  const activeStructuredContent = activeServerDocument && isWorkOrderStructuredContent(activeServerDocument.content) ? activeServerDocument.content : structuredContent
   const activeIncidentId = activeRevision?.incidentId ?? activeServerDocument?.episode_id ?? threadContext?.incident_id ?? null
   const activeDocumentVersion = activeRevision?.documentVersion ?? activeServerDocument?.version ?? (activeVersion === 1 ? threadContext?.document_version ?? null : null)
   const activeDocumentVersionId = activeRevision?.documentVersionId ?? activeServerDocument?.document_version_id ?? (activeVersion === 1 ? threadContext?.document_version_id ?? null : null)
   const activeDocumentApproved = activeRevision?.approved ?? activeServerDocument?.status === 'approved'
   const latestCanonicalVersion = Math.max(latestVersion, ...(incidentDocuments.data?.items.filter((document) => document.document_type === 'work_order').map((document) => document.version) ?? [1]))
   const selectedIsLatest = activeVersion === latestCanonicalVersion
+  const draftConfirmsProposal = proposal != null && isWorkOrderProposalConfirmation(draft)
+  const pendingRequirements = pendingInstruction?.split('\n').map((item) => item.trim()).filter(Boolean) ?? []
   const previewData = proposal && pendingTarget
     ? workOrderProposalPreview(proposal, pendingTarget, pendingBeforeContent || body, pendingInstruction ?? proposal.reason)
     : null
@@ -292,6 +308,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     setPendingBeforeContent(storedProposal?.beforeContent ?? '')
     setExecutionState('idle')
     setContextNotice(null)
+    setManualEditing(false)
   }, [item.run_id])
 
   useEffect(() => {
@@ -384,7 +401,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     const version = context?.document_version
     const document = canonicalDocument(context?.document_content)
     const baseResult = result.data
-    if (context == null || (version !== 2 && version !== 3) || document.body == null || baseResult == null) return
+    if (context == null || version == null || version < 2 || document.body == null || baseResult == null) return
     setRevisions((current) => {
       const existing = current.find((revision) => revision.version === version)
       const restored: StoredRevision = {
@@ -411,17 +428,18 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   useEffect(() => {
     const baseResult = result.data
     const documents = incidentDocuments.data?.items
-      .filter((document) => document.document_type === 'work_order' && (document.version === 2 || document.version === 3))
+      .filter((document) => document.document_type === 'work_order' && document.version >= 2)
       .sort((left, right) => left.version - right.version)
     if (baseResult == null || documents == null || documents.length === 0) return
     setRevisions((current) => {
       const next = documents.map((document): StoredRevision => {
         const existing = current.find((revision) => revision.version === document.version)
+        const contentView = legacyViewOfContent(document.content)
         return {
-          version: document.version as 2 | 3,
-          title: document.content.title,
+          version: document.version,
+          title: contentView.title,
           result: existing?.result ?? baseResult,
-          content: document.content.body,
+          content: contentView.body,
           runId: existing?.runId,
           documentVersionId: document.document_version_id,
           documentVersion: document.version,
@@ -439,10 +457,14 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   }, [incidentDocuments.data?.items, result.data, storageRunId])
 
   const download = async () => {
-    if (!body) return
+    if (activeIncidentId == null || activeDocumentVersion == null) return
     setDownloadState('working')
     try {
-      await downloadDocumentPdf({ title: `작업지시서 v${activeVersion}`, fileName: `heatgrid-work-order-${number}-v${activeVersion}.pdf`, metadata: [`문서번호 ${number}`, `대상 설비 ${facilityName(item.substation_id, item.manufacturer_id)}`, `생성 ${formatDateTime(activeRevision?.createdAt ?? item.created_at)}`], content: body })
+      await incidentDocumentsApi.downloadWorkOrderXlsx(
+        activeIncidentId,
+        activeDocumentVersion,
+        `heatgrid-work-order-${number}-v${activeVersion}.xlsx`,
+      )
       setDownloadState('idle')
     } catch (error: unknown) {
       setDownloadState('error')
@@ -452,7 +474,12 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
 
   const sendMessage = async () => {
     const content = draft.trim()
-    if (!content || reviewThread.isPending || postMessage.isPending || proposal != null) return
+    if (!content || reviewThread.isPending || postMessage.isPending || revising) return
+    if (proposal != null && isWorkOrderProposalConfirmation(content)) {
+      setDraft('')
+      await confirm()
+      return
+    }
     const intent = classifyWorkOrderChatIntent(content)
     const revisionRequest = intent === 'revision'
     if (revisionRequest && revisionLimitReached) {
@@ -461,7 +488,12 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     }
     setChatError(null)
     setContextNotice(null)
+    setPendingChatMessage(content)
+    setDraft('')
     try {
+      const previousProposal = proposal
+      const previousInstruction = pendingInstruction
+      const previousTarget = pendingTarget
       let activeThreadId = threadId
       if (activeThreadId == null) {
         const thread = await reviewThread.mutateAsync({ runId: item.run_id, created_by: 'ops-manager', idempotency_key: requestId(`thread-${item.run_id}`) })
@@ -469,11 +501,18 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
         setThreadId(activeThreadId)
         setThreadContext(thread)
       }
-      const target = resolveWorkOrderRevisionTarget(
+      const scope = resolveWorkOrderRevisionScope(
         content,
         messages.filter((chatMessage) => chatMessage.role === 'operator').map(visibleMessageContent),
+        body,
       )
-      const messageContent = reviewChatRequest(content, target)
+      const target = scope.target ?? previousTarget
+      if (revisionRequest && target == null) {
+        setChatError(scope.clarification ?? '수정할 문서 범위를 확인해 주세요.')
+        return
+      }
+      const requestTarget = target ?? detectWorkOrderRevisionTarget(content)
+      const messageContent = reviewChatRequest(content, requestTarget)
       const idempotencyKey = requestId(`message-${item.run_id}`)
       const baseRequest = { content: messageContent, created_by: 'ops-manager', idempotency_key: idempotencyKey }
       let response
@@ -495,33 +534,37 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
         setContextNotice(`서버 문서 버전 연결을 찾지 못해 화면의 v${activeVersion} 내용과 대화 이력을 기준으로 요청했습니다.`)
       }
       let assistantMessage = response.assistant_message
-      let nextProposal = response.proposal
-      if ((intent === 'in_scope_question' || intent === 'ambiguous' || intent === 'out_of_scope') && nextProposal != null) {
-        await cancelProposal.mutateAsync({ proposalId: nextProposal.proposal_id, body: { cancelled_by: 'ops-manager', idempotency_key: requestId(`question-cancel-${nextProposal.proposal_id}`) } })
-        const remembered = recallReply(content, messages)
-        assistantMessage = {
-          ...assistantMessage,
-          message_kind: 'explanation',
-          content: remembered ?? '질문을 문서 수정 실행으로 잘못 분류한 제안은 안전하게 취소했습니다. 문서 내용은 변경되지 않았습니다.',
-        }
-        nextProposal = null
+      let nextProposal = response.proposal ?? previousProposal
+      if (intent !== 'revision' && response.proposal != null) {
+        await cancelProposal.mutateAsync({ proposalId: response.proposal.proposal_id, body: { cancelled_by: 'ops-manager', idempotency_key: requestId(`question-cancel-${response.proposal.proposal_id}`) } })
+        assistantMessage = { ...assistantMessage, message_kind: 'explanation', content: '질문을 문서 수정으로 잘못 분류한 초안은 취소했습니다. 문서 내용은 변경되지 않았습니다.' }
+        nextProposal = previousProposal
       }
       setLocalMessages((current) => [...current, { ...response.operator_message, content }, assistantMessage])
       setProposal(nextProposal)
-      setPendingInstruction(nextProposal == null ? null : content)
-      setPendingTarget(nextProposal == null ? null : target)
-      setPendingBaseVersion(nextProposal == null ? null : activeVersion)
-      setPendingBeforeContent(nextProposal == null ? '' : body)
+      const combinedInstruction = previousProposal != null && previousInstruction
+        ? `${previousInstruction}\n추가 요구: ${content}`
+        : content
+      const acceptedProposal = response.proposal != null && intent === 'revision'
+      const nextInstruction = acceptedProposal ? combinedInstruction : previousInstruction
+      const nextTarget = acceptedProposal ? requestTarget : previousTarget
+      const nextBaseVersion = acceptedProposal ? activeVersion : pendingBaseVersion
+      const nextBeforeContent = acceptedProposal ? body : pendingBeforeContent
+      setPendingInstruction(nextProposal == null ? null : nextInstruction)
+      setPendingTarget(nextProposal == null ? null : nextTarget)
+      setPendingBaseVersion(nextProposal == null ? null : nextBaseVersion)
+      setPendingBeforeContent(nextProposal == null ? '' : nextBeforeContent)
       if (nextProposal != null) {
-        storeReviewChatProposal(storageRunId, { proposal: nextProposal, instruction: content, target, baseVersion: activeVersion, beforeContent: body, storedAt: new Date().toISOString() })
+        storeReviewChatProposal(storageRunId, { proposal: nextProposal, instruction: nextInstruction ?? nextProposal.reason, target: nextTarget ?? requestTarget, baseVersion: nextBaseVersion ?? activeVersion, beforeContent: nextBeforeContent, storedAt: new Date().toISOString() })
       } else {
         storeReviewChatProposal(storageRunId, null)
       }
-      setDraft((current) => current.trim() === content ? '' : current)
       void reviewMessages.refetch()
       void pendingProposalQuery.refetch()
     } catch (error: unknown) {
       setChatError(chatErrorMessage(error))
+    } finally {
+      setPendingChatMessage(null)
     }
   }
 
@@ -622,7 +665,7 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
       if (revisionResult != null) {
         if (nextVersionValue !== 2 && nextVersionValue !== 3) throw new Error('서버가 지원 범위를 벗어난 문서 버전을 반환했습니다.')
         const mergedResult = canonical.body == null ? mergeOpsAgentResult(baseResult, revisionResult, target) : revisionResult
-        const baseRevisionTitle = baseRevision?.title ?? baseServerDocument?.content.title ?? threadDocument.title ?? baseTitle
+        const baseRevisionTitle = baseRevision?.title ?? baseServerContentView?.title ?? threadDocument.title ?? baseTitle
         const nextTitle = canonical.title ?? (target.section === 'title' ? revisionResult.headline : baseRevisionTitle)
         const nextRevision: StoredRevision = {
           version: nextVersionValue,
@@ -692,6 +735,89 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     }
   }
 
+  const beginManualEdit = () => {
+    if (!selectedIsLatest) {
+      setChatError('직접 편집은 최신 문서 버전에서만 시작할 수 있습니다.')
+      return
+    }
+    if (activeIncidentId == null || activeDocumentVersion == null) {
+      setChatError('서버 작업지시서 연결을 찾지 못해 직접 편집을 시작할 수 없습니다.')
+      return
+    }
+    setChatError(null)
+    setManualTitle(title)
+    setManualBody(body)
+    setManualNote('운영자 직접 편집')
+    setManualEditing(true)
+    scrollToSection(documentSectionRef.current)
+  }
+
+  const saveManualEdit = async () => {
+    if (activeIncidentId == null || activeDocumentVersion == null || activeResult == null || !selectedIsLatest) return
+    const nextTitle = manualTitle.trim()
+    const nextBody = manualBody.trim()
+    if (!nextTitle || !nextBody) {
+      setChatError('제목과 본문을 모두 입력해 주세요.')
+      return
+    }
+    if (activeDocumentApproved && !await askConfirm(`승인된 v${activeVersion}은 그대로 보존하고, 편집 내용을 새 초안 버전으로 만들까요?\n새 버전은 다시 승인해야 하며 기존 보고서가 있다면 재생성이 필요합니다.`)) return
+    setChatError(null)
+    try {
+      if (proposal != null) {
+        await cancelProposal.mutateAsync({ proposalId: proposal.proposal_id, body: { cancelled_by: 'ops-manager', idempotency_key: requestId(`manual-edit-cancel-${proposal.proposal_id}`) } })
+        setProposal(null)
+        setPendingInstruction(null)
+        setPendingTarget(null)
+        setPendingBaseVersion(null)
+        setPendingBeforeContent('')
+        storeReviewChatProposal(storageRunId, null)
+      }
+      const document = await editIncidentWorkOrder.mutateAsync({
+        incidentId: activeIncidentId,
+        version: activeDocumentVersion,
+        body: {
+          expected_version: activeDocumentVersion,
+          edited_by: 'ops-manager',
+          idempotency_key: requestId(`manual-edit-${activeDocumentVersionId ?? activeDocumentVersion}`),
+          title: nextTitle,
+          body: nextBody,
+          note: manualNote.trim() || '운영자 직접 편집',
+        },
+      })
+      const editedContentView = legacyViewOfContent(document.content)
+      const nextRevision: StoredRevision = {
+        version: document.version,
+        title: editedContentView.title,
+        result: activeResult,
+        content: editedContentView.body,
+        documentVersionId: document.document_version_id,
+        documentVersion: document.version,
+        incidentId: document.episode_id,
+        approved: false,
+        instruction: manualNote.trim() || '운영자 직접 편집',
+        target: detectWorkOrderRevisionTarget('작업지시서 전체 수정'),
+        createdAt: document.created_at,
+      }
+      const nextRevisions = [...revisions.filter((revision) => revision.version !== document.version), nextRevision]
+        .sort((left, right) => left.version - right.version)
+      storeRevisions(storageRunId, nextRevisions)
+      setRevisions(nextRevisions)
+      setSelectedVersion(document.version)
+      setThreadContext((current) => current == null ? current : {
+        ...current,
+        incident_id: document.episode_id,
+        document_version: document.version,
+        document_version_id: document.document_version_id,
+        document_content: { title: editedContentView.title, body: editedContentView.body, actions: [...editedContentView.actions], evidence: [...editedContentView.evidence], safety_notes: editedContentView.safety_notes },
+      })
+      setManualEditing(false)
+      setContextNotice(`운영자 편집본을 v${document.version} 새 초안으로 저장했습니다. AI 검토 후 운영자 재승인이 필요합니다.`)
+      void incidentDocuments.refetch()
+    } catch (error: unknown) {
+      setChatError(chatErrorMessage(error))
+    }
+  }
+
   const approveSelectedDocument = async () => {
     if (activeIncidentId == null || activeDocumentVersion == null) return
     if (!await askConfirm(`작업지시서 v${activeVersion}을 현장 조치 기준 문서로 최종 승인할까요?`)) return
@@ -723,33 +849,42 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
     <div className="detail-body work-order-detail-body">
       <div className="detail-title"><StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge><h2>{title}</h2><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p><span>생성 {formatDateTime(item.created_at)}</span></div>
-      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button onClick={() => scrollToSection(documentSectionRef.current)}>문서 본문</Button><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">작업지시서 AI 검토</Button></nav>}
+      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button><Button disabled={manualEditing || !selectedIsLatest || activeIncidentId == null || activeDocumentVersion == null} icon="document" onClick={beginManualEdit}>직접 수정</Button><Button disabled={activeIncidentId == null || activeDocumentVersion == null || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'Excel 생성 중' : 'Excel 다운로드'}</Button></nav>}
       <ApiState empty={false} error={result.isError && !resultNotReady} loading={result.isLoading} retry={() => void result.refetch()} />
       {resultNotReady && <p className="activity-empty-note">실행이 완료되면 작업지시서 본문을 준비합니다.</p>}
-      {preview && activeResult && <section className="work-order-preview"><h3>조치 요약</h3><ol>{activeResult.actions.slice(0, 3).map((action) => <li key={action.title}><strong>{action.title}</strong><span>{action.detail}</span></li>)}</ol><Button icon="arrow" onClick={onOpenDetail} tone="primary">상세 보기</Button></section>}
-      {!preview && activeResult && <>
+      {preview && activeResult && <section className="work-order-preview"><h3>조치 요약</h3><ol>{previewActions.map((action, index) => <li key={`${index}-${action}`}><b>{index + 1})</b><span>{action}</span></li>)}</ol><Button icon="arrow" onClick={onOpenDetail} tone="primary">상세 보기</Button></section>}
+      {!preview && activeResult && <div className="work-order-detail-split">
         <article className="work-order-document" ref={documentSectionRef}>
-          <header><div><small>현장 작업지시서</small><h3>{title}</h3></div><StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge></header>
-          {revisions.length > 0 && <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
-            {[1, ...revisions.map((revision) => revision.version)].map((version) => <button aria-selected={version === activeVersion} className={version === activeVersion ? 'active' : ''} key={version} onClick={() => setSelectedVersion(version)} role="tab" type="button">v{version}</button>)}
-          </div>}
-          <dl><div><dt>문서번호</dt><dd>{number}</dd></div><div><dt>대상 설비</dt><dd>{facilityName(item.substation_id, item.manufacturer_id)}</dd></div><div><dt>생성 시각</dt><dd>{formatDateTime(activeRevision?.createdAt ?? item.created_at)}</dd></div><div><dt>문서 버전</dt><dd>v{activeVersion}</dd></div></dl>
-          <pre className="activity-report-body report-single-body">{body}</pre>
+          {revisions.length > 0 ? (
+            <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
+              {[1, ...revisions.map((revision) => revision.version)].map((version) => <button aria-selected={version === activeVersion} className={version === activeVersion ? 'active' : ''} key={version} onClick={() => setSelectedVersion(version)} role="tab" type="button">v{version}</button>)}
+            </div>
+          ) : <span className="work-order-version-badge">v{activeVersion}</span>}
+          {manualEditing ? <div className="work-order-manual-editor"><p className="work-order-chat-context-note">현재 v{activeVersion}은 그대로 보존되고, 저장 시 v{activeDocumentVersion == null ? '-' : activeDocumentVersion + 1} 새 초안이 생성됩니다. 새 버전은 AI 검토와 운영자 재승인이 필요합니다.</p><label><span>문서 제목</span><input onChange={(event) => setManualTitle(event.target.value)} value={manualTitle} /></label><label><span>작업지시서 본문</span><textarea className="scenario-document-editor" onChange={(event) => setManualBody(event.target.value)} value={manualBody} /></label><label><span>수정 사유</span><input onChange={(event) => setManualNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={manualNote} /></label><div><Button disabled={editIncidentWorkOrder.isPending} onClick={() => setManualEditing(false)}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !manualTitle.trim() || !manualBody.trim()} icon="check" onClick={() => void saveManualEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : '새 버전으로 저장'}</Button></div></div> : (
+            activeStructuredContent && activeIncidentId != null
+              ? <WorkOrderExcelPreview content={activeStructuredContent} status={activeServerDocument?.status} version={activeVersion} />
+              : <p className="activity-empty-note">작업지시서를 준비하고 있습니다.</p>
+          )}
         </article>
-        <section className="work-order-review-chat" aria-label="작업지시서 AI 검토" ref={chatSectionRef}>
-          <header><div><h3>작업지시서 AI 검토</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 현재 작업지시서와 관련된 질문만 답변하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>
-          <div aria-busy={chatHistoryLoading} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 ? <p>작업지시서 수정이나 설비·근거 질문을 입력하세요.</p> : messages.map((chatMessage) => <p className={chatMessageClass(chatMessage)} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI 검토' : '시스템'}</strong>{visibleMessageContent(chatMessage)}</p>)}</div>
-          {proposal && previewData && <div className="work-order-chat-proposal"><header><div><span>확정 전 수정 초안</span><strong>{pendingTarget?.label ?? '작업지시서 전체'}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? activeVersion} → v{Math.min(3, latestVersion + 1)}</StatusBadge></header><p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? activeVersion}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestVersion + 1)}</dd></div></dl><div><Button disabled={confirmProposal.isPending || revising} onClick={() => void cancel()}>초안 취소</Button><Button disabled={confirmProposal.isPending || revising || revisionLimitReached} icon="check" onClick={() => void confirm()} tone="primary">{revising ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestVersion + 1)} 생성`}</Button></div></div>}
+        <section className="work-order-review-chat" aria-label="AI 수정 챗봇" ref={chatSectionRef}>
+          <header><div><h3>AI 문서 검토 챗봇</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 선택한 v{activeVersion}을 문맥으로 사용하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>
+          <div aria-busy={chatHistoryLoading || pendingChatMessage != null} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 && pendingChatMessage == null ? <p>AI 검토 대화가 아직 없습니다.</p> : messages.map((chatMessage) => <article className={`work-order-chat-message ${chatMessageClass(chatMessage)}`} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI 검토' : '시스템'}</strong><span>{visibleMessageContent(chatMessage)}</span></article>)}{pendingChatMessage != null && <><article className="work-order-chat-message operator is-pending"><strong>운영자</strong><span>{pendingChatMessage}</span></article><article aria-label="AI가 답변을 준비 중" className="work-order-chat-message assistant is-thinking"><strong>AI 검토</strong><span className="work-order-thinking-dots"><i /><i /><i /></span><small>문서와 대화 맥락을 확인하고 있습니다.</small></article></>}</div>
+          {proposal && previewData && <div className="work-order-chat-proposal"><header><div><span>확정 전 수정 초안</span><strong>{pendingTarget?.label ?? '작업지시서 전체'}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? activeVersion} → v{Math.min(3, latestVersion + 1)}</StatusBadge></header>{pendingRequirements.length > 0 && <section className="work-order-proposal-requirements"><b>현재 반영할 요구사항</b><ol>{pendingRequirements.map((requirement, index) => <li key={`${index}-${requirement}`}>{requirement.replace(/^추가 요구:\s*/, '')}</li>)}</ol></section>}<p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? activeVersion}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestVersion + 1)}</dd></div></dl><div><Button disabled={confirmProposal.isPending || revising} onClick={() => void cancel()}>초안 취소</Button><Button disabled={confirmProposal.isPending || revising || revisionLimitReached} icon="check" onClick={() => void confirm()} tone="primary">{revising ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestVersion + 1)} 생성`}</Button></div></div>}
           {executionState !== 'idle' && <p className={`work-order-chat-execution ${executionState}`} role="status">{executionStateLabel[executionState]}</p>}
           {contextNotice && <p className="work-order-chat-context-note">{contextNotice}</p>}
-          {revisionLimitReached && <p className="work-order-chat-context-note">v3 생성이 완료되었습니다. 문서 수정 요청은 마감되었지만 이전 요청 회상과 설비·근거 질문은 계속할 수 있습니다.</p>}
-          <label className="work-order-chat-compose"><span>작업지시서 수정·근거 질문</span><textarea aria-describedby="work-order-chat-input-hint" disabled={reviewThread.isPending || postMessage.isPending || proposal != null || revising} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder="작업지시서 수정 또는 설비·근거 질문을 입력하세요" value={draft} /><small id="work-order-chat-input-hint">현재 작업지시서와 관련된 질문만 답변합니다 · Enter 전송 · Shift+Enter 줄바꿈</small><Button disabled={!draft.trim() || reviewThread.isPending || postMessage.isPending || proposal != null || revising || (revisionLimitReached && draftIsRevision)} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? 'AI 검토 중' : chatButtonLabel(draftIntent)}</Button></label>
+          {revisionLimitReached && <p className="work-order-chat-context-note">v3 생성이 완료되었습니다. 문서 수정 요청은 마감되었지만 이전 대화 회상과 문서 질문은 계속할 수 있습니다.</p>}
+          <label className="work-order-chat-compose"><span>{proposal ? '추가 요구 또는 수정안 확정' : '작업지시서 수정·근거 질문'}</span><textarea aria-describedby="work-order-chat-input-hint" disabled={reviewThread.isPending || postMessage.isPending || revising} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder={proposal ? "예: 더 강하게 경고해줘 / 둘 다 반영해줘 / 이대로 확정" : revisionLimitReached ? '예: 내가 요청한 수정 내용이 뭐였지?' : '작업지시서 수정 또는 설비·근거 질문을 입력하세요'} value={draft} /><small id="work-order-chat-input-hint">{proposal ? '추가 요구를 보내면 기존 초안을 대체하며, “이대로 확정”으로 실행할 수 있습니다.' : '현재 작업지시서와 관련된 질문만 답변합니다 · Enter 전송 · Shift+Enter 줄바꿈'}</small><Button disabled={!draft.trim() || reviewThread.isPending || postMessage.isPending || revising || (revisionLimitReached && draftIsRevision && proposal == null)} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? 'AI 검토 중' : draftConfirmsProposal ? '수정안 확정' : proposal ? '추가 요구 반영' : chatButtonLabel(draftIntent)}</Button></label>
           {chatError && <p className="form-error" role="alert">{chatError}</p>}
         </section>
-      </>}
-      {downloadState === 'error' && <p className="scenario-document-error" role="alert">PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
+      </div>}
     </div>
-    {!preview && <div className="activity-detail-footer detail-actions"><Button disabled={!body || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 다운로드'}</Button>{activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}</div>}
+    {!preview && <WorkOrderActionFooter
+      notice={selectedIsLatest ? undefined : '최신 버전에서만 최종 승인할 수 있습니다.'}
+      saveErrorDetail={downloadState === 'error' ? 'Excel 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}
+      saveStatus={downloadState === 'error' ? 'error' : fieldSaveStatus}
+    >
+      {activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}
+    </WorkOrderActionFooter>}
     {reviewDecision && <ReviewActionModal currentOutput={reviewOutput} decision={reviewDecision} onClose={() => setReviewDecision(null)} runId={activeReviewRunId} />}
   </SurfaceCard>
   </>

@@ -9,7 +9,7 @@ async function startFaultScenario(page: Page) {
   await openEntry(page)
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('button', { name: '관리자 화면 열기' }).click()
-  await page.getByRole('button', { name: '재생 훈련 시작' }).click()
+  await page.getByRole('button', { name: '시뮬레이션 시작', exact: true }).click()
 }
 
 async function expectNoPageScroll(page: Page) {
@@ -28,7 +28,7 @@ function axisLabelsFromTopbar(timeText: string | null): readonly string[] {
 
 async function waitForIncident(page: Page) {
   await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
+  await expect(page.getByRole('button', { name: /환수온도 저하 및 열교환 효율 이상/ })).toBeVisible({ timeout: 30_000 })
 }
 
 async function dismissIncidentToasts(page: Page) {
@@ -200,19 +200,21 @@ test('switching settings tabs always opens the new tab at its top', async ({ pag
 
 test('normal report tab lists every generated report and allows re-entry', async ({ page }) => {
   const createdAt = '2026-07-20T03:00:00.000Z'
-  const result = (runId: string, title: string, content: string, substationId: number) => ({
-    schema_version: 'ops_agent_result.v4', run_id: runId, card_id: `card-${runId}`, evaluation_run_id: null,
-    manufacturer_id: 'm1', substation_id: substationId, headline: title, situation: `${title} 상황`,
-    evidence: [], actions: [{ priority: 1, title: '현장 확인', detail: '현장 상태를 확인합니다.' }], cautions: ['안전 절차 확인'],
-    report: { title, format: 'markdown', content },
+  const reportArtifact = (title: string, content: string) => ({
+    report_metadata: { report_id: `report-${title}`, generated_at: createdAt },
+    target_asset: { asset_label: title, configuration_type: '열교환 계통', window_start: createdAt, window_end: createdAt },
+    priority_summary: { priority_level: 'high', priority_score: 88, urgency: '현장 확인 필요', priority_reason: '운전 데이터 이상이 감지됨' },
+    situation_summary: { headline: title, summary: content, current_status: '운영자 검토 중', impact_summary: content },
+    key_evidence: [], recommended_actions: [{ action: '현장 상태를 확인합니다.', urgency: '즉시', owner_hint: '현장 운영팀' }],
+    evidence_references: [], operator_note: { note: content, review_reasons: [] }, rendering_hints: { display_title: title },
   })
 
   await page.route('**/api/agent-reports*', (route) => route.fulfill({ json: { items: [
     { artifact_id: 'artifact-report-a', run_id: 'run-report-a', kind: 'anomaly_report', name: 'report-a.md', uri: 'memory://report-a', priority: 'urgent', manufacturer_id: 'm1', substation_id: 28, substation_uid: 'substation-28', operator_review_status: 'approved', created_at: createdAt },
     { artifact_id: 'artifact-report-b', run_id: 'run-report-b', kind: 'anomaly_report', name: 'report-b.md', uri: 'memory://report-b', priority: 'high', manufacturer_id: 'm1', substation_id: 31, substation_uid: 'substation-31', operator_review_status: 'pending', created_at: createdAt },
   ], next_cursor: null, total_count: 2 } }))
-  await page.route('**/api/agent-runs/run-report-a/result', (route) => route.fulfill({ json: result('run-report-a', '기계실 28 조치 보고서', '기계실 28 보고서 본문', 28) }))
-  await page.route('**/api/agent-runs/run-report-b/result', (route) => route.fulfill({ json: result('run-report-b', '기계실 31 조치 보고서', '기계실 31 보고서 본문', 31) }))
+  await page.route('**/api/agent-runs/run-report-a/artifacts/artifact-report-a/content', (route) => route.fulfill({ json: reportArtifact('기계실 28 조치 보고서', '기계실 28 보고서 본문') }))
+  await page.route('**/api/agent-runs/run-report-b/artifacts/artifact-report-b/content', (route) => route.fulfill({ json: reportArtifact('기계실 31 조치 보고서', '기계실 31 보고서 본문') }))
 
   await openEntry(page)
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
@@ -221,7 +223,8 @@ test('normal report tab lists every generated report and allows re-entry', async
   await expect(page.locator('.activity-list-card tbody tr')).toHaveCount(2)
   await page.getByRole('row', { name: /기계실 31/ }).click()
   await expect(page.getByRole('heading', { level: 2, name: '기계실 31 조치 보고서' })).toBeVisible()
-  await expect(page.locator('.report-single-body')).toContainText('기계실 31 보고서 본문')
+  await expect(page.locator('.report-docx-pages')).toContainText('기계실 31 보고서 본문')
+  await expect(page.getByRole('heading', { name: 'AI 보고서 검토 챗봇' })).toBeVisible()
 
   await page.getByRole('button', { name: '홈', exact: true }).click()
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
@@ -709,7 +712,7 @@ test('fault AI analysis creation appends a new work order and report group', asy
   await expect(page.locator('.scenario-report-list .scenario-version-entry')).toHaveCount(2)
 })
 
-test('fault work orders and reports remain grouped by root run and can be reopened', async ({ page }) => {
+test('fault work orders and reports remain grouped by root run and can be reopened', async ({ page }, testInfo) => {
   const createdAt = '2026-07-20T04:00:00.000Z'
   const workOrder = (runId: string, room: number, marker: string) => ({
     version: 1, createdAt, title: `기계실 ${room} 작업지시서 v1`, changeSummary: 'AI 초안 생성', sourceRunId: runId,
@@ -728,32 +731,70 @@ test('fault work orders and reports remain grouped by root run and can be reopen
     report: { status: 'completed', createdAt, savedAt: createdAt, completedAt: createdAt, content: `${marker} 보고서 본문` },
     reportMessages: [],
   })
-  const first = group('run-group-28', 'scenario-alert-pump-28', 28, '첫 번째')
-  const second = group('run-group-31', 'scenario-alert-leak-31', 31, '두 번째')
+  const first = group('run-group-1', 'scenario-alert-prefault-drift-1', 1, '첫 번째')
+  const second = group('run-group-10', 'scenario-alert-flow-drop-10', 10, '두 번째')
 
+  await page.route(/\/api\/agent-runs\/run-group-(?:1|10)\/review-chat\/threads$/, async (route) => {
+    const runId = route.request().url().includes('run-group-10') ? 'run-group-10' : 'run-group-1'
+    await route.fulfill({ json: { thread_id: `thread-${runId}`, run_id: runId, status: 'open', context_hash: 'test', base_review_version: 1, created_at: createdAt, incident_id: '9314d923-a4b7-4e37-8a2b-1189896fb059' } })
+  })
+  await page.route('**/api/incidents/9314d923-a4b7-4e37-8a2b-1189896fb059/documents', (route) => route.fulfill({ json: { items: [] } }))
   await page.addInitScript((session) => window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session)), {
-    mode: 'fault', entryStep: 'console', selectedAlertId: first.alertId, selectedSubstationId: 28,
-    incidentState: 'incident-active', documentGroups: [first, second], activeDocumentGroupId: first.id,
+    mode: 'fault', entryStep: 'console', scenarioId: 'pre-fault-drift-2023-03-12-substation-1', selectedAlertId: first.alertId, selectedSubstationId: 1,
+    incidentState: 'incident-active', analyzedAlertIds: [], documentGroups: [first, second], activeDocumentGroupId: first.id, documentAlertId: first.alertId,
   })
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
 
   await expect(page.getByRole('tab', { name: '작업지시서', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.scenario-version-entry')).toHaveCount(2)
-  await page.getByRole('button', { name: '기계실 31 작업지시서 v1 상세 열기' }).click()
-  await expect(page.locator('.scenario-document-content')).toContainText('두 번째 작업지시서 본문')
+  const secondWorkOrderButton = page.getByRole('button', { name: '기계실 10 작업지시서 v1 상세 열기' })
+  await secondWorkOrderButton.evaluate((element: HTMLButtonElement) => element.click())
+  await expect(secondWorkOrderButton).toHaveAttribute('aria-pressed', 'true')
 
   await page.getByRole('tab', { name: '보고서', exact: true }).click()
   await expect(page.locator('.scenario-report-list .scenario-version-entry')).toHaveCount(2)
-  await expect(page.locator('.scenario-report-content')).toContainText('두 번째 보고서 본문')
-  await page.getByRole('button', { name: '기계실 28 작업지시서 v1 보고서 상세 열기' }).click()
-  await expect(page.locator('.scenario-report-content')).toContainText('첫 번째 보고서 본문')
+  await expect(page.locator('.report-docx-pages')).toContainText('두 번째 보고서 본문')
+  const reportHeader = page.locator('.report-docx-panel .surface-heading')
+  const reportToolbar = page.locator('.report-docx-panel .scenario-document-toolbar')
+  const reportViewerToolbar = page.locator('.report-docx-panel .work-order-viewer-toolbar')
+  await expect(page.locator('.report-docx-panel .work-order-version-badge')).toContainText('v1')
+  await expect(page.getByRole('button', { name: 'AI 수정·질문으로 이동' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '직접 수정', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'DOCX 다운로드' })).toBeVisible()
+  await expect.poll(async () => {
+    const header = await reportHeader.boundingBox()
+    const toolbar = await reportToolbar.boundingBox()
+    const viewer = await reportViewerToolbar.boundingBox()
+    return header != null && toolbar != null && viewer != null
+      && header.y + header.height <= toolbar.y
+      && toolbar.y + toolbar.height <= viewer.y
+  }).toBe(true)
+  await page.screenshot({ path: 'test-results/report-toolbar-desktop.png' })
+  await page.getByRole('button', { name: '직접 수정', exact: true }).click()
+  await expect(page.getByRole('button', { name: '보고서 저장', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '취소', exact: true }).click()
+  if (testInfo.project.name !== 'mobile-375') {
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    await expect.poll(async () => {
+      const version = await page.locator('.report-docx-panel .work-order-version-badge').boundingBox()
+      const commands = await page.locator('.report-docx-panel .scenario-document-commands').boundingBox()
+      return version != null && commands != null && Math.abs(version.y - commands.y) <= 1
+    }).toBe(true)
+    await page.screenshot({ path: 'test-results/report-toolbar-1920.png' })
+    await page.locator('.report-docx-panel').screenshot({ path: 'test-results/report-panel-1920.png' })
+    await page.setViewportSize({ width: 1966, height: 1080 })
+    const reportPanelBox = await page.locator('.report-docx-panel').boundingBox()
+    if (reportPanelBox != null) await page.screenshot({ path: 'test-results/report-panel-header.png', clip: { x: reportPanelBox.x, y: reportPanelBox.y, width: 771, height: 224 } })
+  }
+  await page.getByRole('button', { name: '기계실 1 작업지시서 v1 보고서 상세 열기' }).evaluate((element: HTMLButtonElement) => element.click())
+  await expect(page.locator('.report-docx-pages')).toContainText('첫 번째 보고서 본문')
 
   await page.getByRole('button', { name: '홈', exact: true }).click()
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
   await page.getByRole('tab', { name: '보고서', exact: true }).click()
   await expect(page.locator('.scenario-report-list .scenario-version-entry')).toHaveCount(2)
-  await expect(page.locator('.scenario-report-content')).toContainText('첫 번째 보고서 본문')
+  await expect(page.locator('.report-docx-pages')).toContainText('첫 번째 보고서 본문')
 
   await page.reload()
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
@@ -816,7 +857,7 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expect(page.locator('.alerts-table tbody tr')).toHaveCount(2)
   await page.getByRole('combobox', { name: '우선순위' }).selectOption('all')
 
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
   const evidenceChart = page.getByRole('region', { name: '환수온도 이상 시계열' })
   await expect(evidenceChart).toBeVisible()
@@ -825,7 +866,7 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expect(page.getByRole('heading', { name: '환수온도 이상 감지' })).toBeVisible()
   await page.getByRole('button', { name: '상세 정보 닫기' }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toHaveCount(0)
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await page.getByRole('button', { name: 'AI 조치 생성' }).click()
   const taskTray = page.getByRole('button', { name: /AI 조치 1건/ })
   await expect(taskTray).toBeVisible()
@@ -861,59 +902,60 @@ test('refresh resets the fault scenario and returns to the initial dashboard', a
   await expect(page.locator('.topbar-page-context')).toContainText('홈')
   await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
   await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
-  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toHaveCount(0)
+  await expect(page.getByRole('row', { name: /환수온도 저하 및 열교환 효율 이상/ })).toHaveCount(0)
 })
 
 test('fault-mode work-order tab keeps the scenario document workspace after navigation', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify({
-      mode: 'fault',
-      entryStep: 'console',
-      scenarioId: 'return-temperature-2020-01-13',
-      selectedAlertId: 'scenario-alert-pump-28',
-      selectedSubstationId: 28,
-      incidentState: 'incident-active',
-      analyzedAlertIds: ['scenario-alert-pump-28'],
-      dismissedIncidentAlertIds: [],
-      resolvedAlertTimes: {},
-      alertSensorSnapshots: {},
-      documentAlertId: 'scenario-alert-pump-28',
-      workOrders: [{ version: 1, createdAt: '2020-01-13T15:10:00+09:00', changeSummary: 'AI 초안 생성', content: '초기 작업지시서' }],
-      selectedWorkOrderVersion: 1,
-      acceptedWorkOrderVersion: null,
-      workOrderRerunCount: 0,
-      messages: [],
-      evaluationCategory: null,
-      report: { status: 'idle', createdAt: null, savedAt: null, completedAt: null, content: '' },
-      reportMessages: [],
-    }))
+  const createdAt = '2026-07-20T04:00:00.000Z'
+  const group = {
+    id: 'run-group-10', rootRunId: 'run-group-10', alertId: 'scenario-alert-flow-drop-10', substationId: 10, createdAt,
+    workOrders: [{
+      version: 1, createdAt, title: '기계실 10 작업지시서 v1', changeSummary: 'AI 초안 생성', sourceRunId: 'run-group-10',
+      revisionInstruction: null, baseVersion: null,
+      sections: [
+        { title: '위험성 및 근거', items: ['순환 유량 급감'] },
+        { title: '작업 절차', items: ['순환펌프 상태를 확인합니다.'] },
+        { title: '안전 확인', items: ['보호구를 착용합니다.'] },
+      ],
+      content: '기계실 10 순환펌프 작업지시서',
+    }],
+    selectedWorkOrderVersion: 1, acceptedWorkOrderVersion: 1, workOrderRerunCount: 0,
+    messages: [], proposal: null, evaluationRequired: false, improvementCandidate: null,
+    report: { status: 'completed', createdAt, savedAt: createdAt, completedAt: createdAt, content: '완료 보고서 본문' },
+    reportMessages: [],
+  }
+  await page.addInitScript((session) => window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session)), {
+    mode: 'fault', entryStep: 'console', selectedAlertId: group.alertId, selectedSubstationId: 10,
+    scenarioId: 'fault-scenario-2023-03-12', incidentState: 'incident-active', analyzedAlertIds: [],
+    documentGroups: [group], activeDocumentGroupId: group.id, documentAlertId: group.alertId,
   })
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
   await page.getByRole('tab', { name: '작업지시서' }).click()
 
   await expect(page.locator('.scenario-order-layout')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'AI 수정 챗봇' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Excel 양식 미리보기' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'AI 문서 검토 챗봇' })).toBeVisible()
 })
 
-test('incident document flow supports edits, two AI reruns, adoption, report completion and PDF names', async ({ page }, testInfo) => {
+test('incident document flow supports edits, Excel download, two AI reruns, adoption and report completion', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-375', '전체 문서 편집 흐름은 데스크톱에서 검증')
   test.setTimeout(240_000)
   await startFaultScenario(page)
   await waitForIncident(page)
   await dismissIncidentToasts(page)
   await page.getByRole('button', { name: '자세히 보기', exact: true }).click()
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await page.getByRole('button', { name: 'AI 조치 생성' }).click()
   const taskTray = page.getByRole('button', { name: /AI 조치 1건/ })
   await taskTray.click()
   await page.getByRole('button', { name: '결과 보기' }).click({ timeout: 75_000 })
+  if (await page.locator('.scenario-analysis-progress.is-expanded').count()) await taskTray.click()
 
   await expect(page.getByRole('heading', { name: '계획서 상세' })).toBeVisible()
   await page.getByRole('button', { name: '작업지시서 생성' }).click()
-  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'v1' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Excel 양식 미리보기' })).toBeVisible()
+  await expect(page.locator('.work-order-version-badge')).toContainText('v1')
   const orderHeader = page.locator('.scenario-order-document .surface-heading')
   const documentToolbar = page.locator('.scenario-document-toolbar')
   await expect(orderHeader).toBeVisible()
@@ -924,20 +966,12 @@ test('incident document flow supports edits, two AI reruns, adoption, report com
     return header != null && toolbar != null && header.y + header.height <= toolbar.y
   }).toBe(true)
 
-  const directEditButton = page.getByRole('button', { name: '세션 본문 직접 편집', exact: true })
-  if (await directEditButton.count()) {
-    await directEditButton.click()
-    const orderEditor = page.getByRole('textbox', { name: '작업지시서 본문 편집' })
-    await orderEditor.fill(`${await orderEditor.inputValue()}\n운영자 직접 수정 문장`)
-    await page.getByRole('button', { name: '세션 편집 저장', exact: true }).click()
-    await expect(page.getByText('운영자 직접 수정 문장')).toBeVisible()
-  } else {
-    await expect(page.getByRole('button', { name: '서버 정본은 AI 수정 사용', exact: true })).toBeVisible()
-  }
+  const directEditButton = page.getByRole('button', { name: '직접 수정', exact: true })
+  await expect(directEditButton).toBeVisible()
 
   const orderDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'PDF 다운로드' }).click()
-  await expect((await orderDownload).suggestedFilename()).toMatch(/^heatgrid-work-order-HG-\d{8}-\d+-v1-v1\.pdf$/)
+  await page.getByRole('button', { name: 'Excel 다운로드' }).click()
+  await expect((await orderDownload).suggestedFilename()).toMatch(/^heatgrid-work-order-.+-v1\.xlsx$/)
 
   const chat = page.getByRole('textbox', { name: '문서 질문 또는 수정 요청' })
   await chat.fill('최신 RAG 문서로 안전 절차를 다시 작성해줘')
@@ -966,20 +1000,43 @@ test('incident document flow supports edits, two AI reruns, adoption, report com
   await page.getByRole('button', { name: '선택 버전 최종 채택', exact: true }).click()
   await expect(page.getByText('이 버전이 보고서 생성 기준입니다.')).toBeVisible()
   await page.getByRole('button', { name: '보고서 생성' }).click()
-  await expect(page.getByRole('heading', { name: '보고서 상세' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'DOCX 양식 미리보기' })).toBeVisible()
+  const reportHeader = page.locator('.report-docx-panel .surface-heading')
+  const reportToolbar = page.locator('.report-docx-panel .scenario-document-toolbar')
+  const reportViewerToolbar = page.locator('.report-docx-panel .work-order-viewer-toolbar')
+  await expect(reportToolbar).toBeVisible()
+  await expect(page.locator('.report-docx-panel .work-order-version-badge')).toContainText('v1')
+  await expect(page.getByRole('button', { name: 'AI 수정·질문으로 이동' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '직접 수정', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'DOCX 다운로드' })).toBeVisible()
+  await expect.poll(async () => {
+    const header = await reportHeader.boundingBox()
+    const toolbar = await reportToolbar.boundingBox()
+    const viewer = await reportViewerToolbar.boundingBox()
+    return header != null && toolbar != null && viewer != null
+      && header.y + header.height <= toolbar.y
+      && toolbar.y + toolbar.height <= viewer.y
+  }).toBe(true)
 
-  const reportChat = page.getByRole('textbox', { name: '검토 메모' })
+  await page.route('**/api/report-review/chat', (route) => route.fulfill({ json: { answer: '현장 인계 전 센서 측정값과 조치 결과를 확인하세요.' } }))
+  const reportChat = page.getByRole('textbox', { name: '보고서 질문 또는 검토 요청' })
   await reportChat.fill('현장 인계 전에 빠진 확인 항목을 검토해줘')
-  await page.getByRole('button', { name: '메모 저장', exact: true }).click()
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click()
   await expect(page.getByText('현장 인계 전에 빠진 확인 항목을 검토해줘')).toBeVisible()
 
+  await page.getByRole('button', { name: '직접 수정', exact: true }).click()
   const reportEditor = page.getByRole('textbox', { name: '보고서 본문 편집' })
   await reportEditor.fill(`${await reportEditor.inputValue()}\n운영자 최종 확인 완료`)
-  await page.getByRole('button', { name: '임시 저장' }).click()
+  await page.getByRole('button', { name: /보고서 저장|새 버전 저장/ }).click()
   page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: '완료', exact: true }).click()
-  await expect(page.getByText('운영자 최종 확인 완료')).toBeVisible()
+  await page.getByRole('button', { name: '선택 버전 최종 승인', exact: true }).click()
+  await expect(page.locator('.report-docx-pages')).toContainText('운영자 최종 확인 완료')
+  await page.route('**/api/report-documents/docx', (route) => route.fulfill({
+    body: 'mock-docx',
+    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    headers: { 'content-disposition': 'attachment; filename="heatgrid-ai-report-1-2026-07-20.docx"' },
+  }))
   const reportDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'PDF 저장' }).click()
-  await expect((await reportDownload).suggestedFilename()).toMatch(/^heatgrid-report-.+-\d{4}-\d{2}-\d{2}\.pdf$/)
+  await page.getByRole('button', { name: 'DOCX 다운로드' }).click()
+  await expect((await reportDownload).suggestedFilename()).toMatch(/^heatgrid-ai-report-.+-v\d+-\d{4}-\d{2}-\d{2}\.docx$/)
 })

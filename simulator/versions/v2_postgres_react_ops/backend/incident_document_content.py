@@ -5,19 +5,39 @@ from hashlib import sha256
 import orjson
 from sqlalchemy.engine import RowMapping
 
+from pydantic import ValidationError
+
 from incident_document_api_models import (
     DocumentStatus,
     DocumentType,
     IncidentDocumentContent,
     IncidentDocumentEditRequest,
     IncidentEvidenceCitation,
+    WorkOrderStructuredContent,
 )
 from incident_document_repository_errors import IncidentDocumentConflictError
 
 
-def content_from_row(row: RowMapping) -> IncidentDocumentContent:
+_WORK_ORDER_FIELD_DEFAULTS: dict[str, object] = {
+    # 스키마가 진화하면서 새로 추가된 필드는, 이전에 저장된 문서를 위해
+    # 안전한 기본값으로 채워 넣은 뒤 검증한다 (신규 생성 문서는 항상 값을 채워서 저장함).
+    "risk_and_evidence": "구체적인 근거 데이터가 확보되지 않았습니다.",
+}
+
+
+def content_from_row(row: RowMapping) -> IncidentDocumentContent | WorkOrderStructuredContent:
     value = row["content"]
     payload = orjson.loads(value) if isinstance(value, str) else value
+    if row["document_type"] == "work_order":
+        try:
+            return WorkOrderStructuredContent.model_validate(payload)
+        except ValidationError:
+            if isinstance(payload, dict) and "work_order_kind" in payload:
+                backfilled = {**_WORK_ORDER_FIELD_DEFAULTS, **payload}
+                try:
+                    return WorkOrderStructuredContent.model_validate(backfilled)
+                except ValidationError:
+                    pass
     return IncidentDocumentContent.model_validate(payload)
 
 

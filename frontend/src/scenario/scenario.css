@@ -149,6 +149,8 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-plan-evidence li:last-child { border-bottom: 0; }
 .scenario-plan-evidence span { color: var(--ops-text-muted); }
 .scenario-order-layout { grid-template-columns: minmax(160px, .24fr) minmax(360px, 1.08fr) minmax(320px, .68fr); align-items: stretch; height: 100%; min-height: 0; }
+.scenario-order-layout.work-order-unified-layout { grid-template-columns: 40px repeat(2, minmax(0, 1fr)); }
+.report-unified-layout > .report-docx-panel, .report-unified-layout > .report-review-chat { min-width: 0; min-height: 0; height: 100%; }
 .scenario-report-list-layout { display: grid; grid-template-columns: minmax(180px, .25fr) minmax(0, 1.75fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
 .scenario-report-list-layout > .ops-surface, .scenario-report-list-layout > .scenario-document-workspace { min-width: 0; min-height: 0; }
 .scenario-document-workspace { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(340px, .72fr); gap: var(--space-3); width: 100%; height: 100%; min-height: 0; }
@@ -190,6 +192,9 @@ html, body, #root { height: 100%; overflow: hidden; }
 .scenario-list-empty { margin: 0; padding: var(--space-4); color: var(--ops-text-muted); font-size: 13px; line-height: 1.6; text-align: center; }
 .scenario-order-body dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
 .scenario-order-body dl div { padding: var(--space-2); }
+.scenario-order-body .work-order-excel-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.scenario-order-body .work-order-excel-meta div { padding: 0; }
+.scenario-order-body .work-order-excel-preview section { padding: 0; border: 1px solid #b9c7d4; }
 .scenario-lead-time { white-space: nowrap; }
 .scenario-chat-messages > p { word-break: keep-all; }
 .scenario-chat-messages article span { white-space: pre-wrap; }
@@ -337,6 +342,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   .ops-sidebar { width: 220px; }
   .ops-content-shell { width: calc(100% - 220px); margin-left: 220px; }
   .scenario-alert-workspace.has-detail, .scenario-order-layout, .scenario-report-list-layout, .scenario-document-workspace { grid-template-columns: 1fr; }
+  .scenario-order-layout.work-order-unified-layout { grid-template-columns: minmax(0, 1fr); }
   .scenario-order-layout, .scenario-report-list-layout { align-content: start; height: 100%; overflow: auto; }
   .scenario-document-workspace { height: auto; overflow: auto; }
   .scenario-document-workspace > .ops-surface { max-height: none; }
@@ -437,11 +443,19 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-action-toast > div:last-child { display: grid; grid-template-columns: 1fr; }
   .scenario-ai-page { overflow: hidden; }
   .scenario-action-grid, .scenario-report-layout, .scenario-order-layout { overflow: auto; }
+  .scenario-order-layout.work-order-unified-layout { height: auto; grid-auto-rows: max-content; align-content: start; }
+  .scenario-order-layout.work-order-unified-layout > .work-order-excel-panel { height: min(760px, calc(100dvh - 96px)); min-height: 600px; }
+  .scenario-order-layout.work-order-unified-layout > .work-order-chat-panel { height: min(680px, calc(100dvh - 96px)); min-height: 520px; }
+  .scenario-order-layout.work-order-unified-layout > .report-docx-panel { height: min(760px, calc(100dvh - 96px)); min-height: 600px; }
+  .scenario-order-layout.work-order-unified-layout > .report-review-chat { height: min(680px, calc(100dvh - 96px)); min-height: 520px; }
   .scenario-document-workspace { gap: var(--space-2); padding-bottom: 56px; }
   .scenario-document-toolbar { grid-template-columns: 1fr; align-items: stretch; }
   .scenario-version-switch { width: 100%; }
   .scenario-version-switch button { flex: 1; min-width: 0; padding-inline: var(--space-2); }
   .scenario-document-commands { justify-content: flex-end; }
+  .scenario-chat-source { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .scenario-chat-source > span:nth-of-type(2) { grid-column: 1 / -1; grid-row: 2; }
+  .scenario-chat-source > .ops-button { grid-column: 2; grid-row: 1; }
   .scenario-order-accept { align-items: stretch; flex-direction: column; }
   .scenario-order-accept > div { justify-content: flex-end; }
   .scenario-report-meta { grid-template-columns: 1fr; }
@@ -456,6 +470,10 @@ html, body, #root { height: 100%; overflow: hidden; }
   .scenario-action-grid { grid-template-columns: 1fr; }
   .scenario-order-body dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scenario-order-body dl div:last-child { grid-column: span 2; }
+  .scenario-order-body .work-order-excel-meta { grid-template-columns: minmax(0, 1fr); }
+  .scenario-order-body .work-order-excel-meta div { grid-column: auto; border-right: 0; }
+  .scenario-order-body .work-order-excel-meta div:last-child { grid-column: auto; }
+  .scenario-order-body .work-order-excel-safety { grid-template-columns: minmax(0, 1fr); }
   .scenario-order-layout > .ops-surface { max-height: none; }
   .settings-tabbar { align-items: stretch; flex-direction: column-reverse; gap: var(--space-2); }
   .settings-actions { justify-content: flex-end; padding-bottom: 0; }

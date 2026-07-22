@@ -43,6 +43,7 @@ from agent_run_routes import make_agent_run_router
 from agent_review_routes import make_agent_review_router
 from agent_quality_routes import make_agent_quality_router
 from review_chat_routes import make_review_chat_router
+from report_review_routes import make_report_review_router
 from automation_routes import make_automation_router
 from alert_repository import ensure_alert_queue, get_alert
 from alert_routes import make_alert_router
@@ -345,6 +346,7 @@ def sse(kind: str, message: str, payload: JsonValue | None = None) -> str:
 app.include_router(make_agent_run_router(engine, runtime=agent_runtime))
 app.include_router(make_agent_review_router(engine, settings, agent_runtime, _agent_graph))
 app.include_router(make_review_chat_router(engine, settings, agent_runtime, _agent_graph))
+app.include_router(make_report_review_router(settings))
 app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))

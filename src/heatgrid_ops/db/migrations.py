@@ -30,6 +30,20 @@ CHECKPOINT_INDEXES: Final = frozenset(
         "checkpoint_writes_thread_id_idx",
     }
 )
+LEGACY_WORK_ORDER_MIGRATION_LINEAGE: Final = {
+    19: (
+        "work_order_structure",
+        "b41f709eb13e73679750c8cadc665ecf8763d427cfde2fe8a42ac24dcc366b44",
+    ),
+    20: (
+        "work_order_equipment_catalog",
+        "9264acaaed5b488df3ff569114d5cfd3d7862002199219bb165b205ed882fa9c",
+    ),
+    21: (
+        "demo_building_context",
+        "ee5de82fb1372579a45cf76679d95cc196910bfd8b2a31d76a10fa93c719e31c",
+    ),
+}
 APPLICATION_TABLES_V011: Final = frozenset(
     {
         "agent_budget_ledger",
@@ -100,6 +114,11 @@ APPLICATION_TABLES_V016: Final = APPLICATION_TABLES_V011 | frozenset(
         "operations_shift_handover_memos",
         "operations_shift_schedule",
         "preventive_projections",
+    }
+)
+APPLICATION_TABLES_V020: Final = APPLICATION_TABLES_V016 | frozenset(
+    {
+        "work_order_checklist_catalog",
     }
 )
 APPEND_ONLY_TABLES_V016: Final = (
@@ -221,6 +240,11 @@ async def migrate_database(
                     migrations[0],
                     manifest_hash=manifest_hash,
                     apply_mode="executed",
+                )
+                await _reconcile_legacy_work_order_migration_lineage(
+                    connection,
+                    migrations,
+                    manifest_hash,
                 )
                 await _assert_applied_checksums(connection, migrations)
                 if existing_schema and allow_baseline:
@@ -576,6 +600,70 @@ async def _assert_applied_checksums(
             raise MigrationContractError(f"migration checksum mismatch: {version:03d}")
 
 
+def _legacy_work_order_versions(rows: list[DictRow]) -> tuple[int, ...]:
+    if not rows:
+        return ()
+    first = rows[0]
+    if int(first["version"]) != 19 or first["name"] != "work_order_structure":
+        return ()
+    versions: list[int] = []
+    for row in rows:
+        version = int(row["version"])
+        expected = LEGACY_WORK_ORDER_MIGRATION_LINEAGE.get(version)
+        if expected is None or (row["name"], row["checksum"]) != expected:
+            raise MigrationContractError(
+                f"unsupported legacy work-order migration: {version:03d}"
+            )
+        versions.append(version)
+    expected_versions = list(range(19, max(versions) + 1))
+    if versions != expected_versions:
+        raise MigrationContractError(
+            "legacy work-order migration versions must be contiguous from 019"
+        )
+    return tuple(versions)
+
+
+async def _reconcile_legacy_work_order_migration_lineage(
+    connection: AsyncConnection[DictRow],
+    migrations: tuple[Migration, ...],
+    manifest_hash: str,
+) -> None:
+    result = await connection.execute(
+        "SELECT version, name, checksum FROM public.schema_migrations "
+        "WHERE version BETWEEN 19 AND 21 ORDER BY version"
+    )
+    rows = list(await result.fetchall())
+    legacy_versions = _legacy_work_order_versions(rows)
+    if not legacy_versions:
+        return
+
+    by_version = {migration.version: migration for migration in migrations}
+    review_chat_migration = by_version[19]
+    async with connection.transaction():
+        await connection.execute(review_chat_migration.path.read_bytes(), prepare=False)
+        await connection.execute(
+            "DELETE FROM public.schema_migrations WHERE version BETWEEN 19 AND 21"
+        )
+        await _insert_ledger(
+            connection,
+            review_chat_migration,
+            apply_mode="executed",
+            manifest_hash=manifest_hash,
+            application_signature=None,
+            checkpoint_signature=None,
+        )
+        for legacy_version in legacy_versions:
+            canonical = by_version[legacy_version + 1]
+            await _insert_ledger(
+                connection,
+                canonical,
+                apply_mode="executed",
+                manifest_hash=manifest_hash,
+                application_signature=None,
+                checkpoint_signature=None,
+            )
+
+
 async def _assert_runtime_versions(connection: AsyncConnection[DictRow]) -> None:
     result = await connection.execute("SHOW server_version_num")
     row = await result.fetchone()
@@ -644,7 +732,12 @@ async def _verify_application_catalog(
         (list(CHECKPOINT_TABLES),),
     )
     actual = {str(row["tablename"]) for row in await result.fetchall()}
-    expected = APPLICATION_TABLES_V016 if version >= 16 else APPLICATION_TABLES_V011
+    if version >= 20:
+        expected = APPLICATION_TABLES_V020
+    elif version >= 16:
+        expected = APPLICATION_TABLES_V016
+    else:
+        expected = APPLICATION_TABLES_V011
     if actual != expected:
         raise MigrationContractError(
             "application tables mismatch: "
