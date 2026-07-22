@@ -246,7 +246,6 @@ test('failed history reset keeps the selected full work-order detail open', asyn
   await openNormalAiAction(page)
   await page.getByRole('tab', { name: '작업지시서', exact: true }).click()
   await page.getByRole('row', { name: /순환펌프 진동 증가/ }).click()
-  await page.getByRole('button', { name: '상세 보기', exact: true }).click()
   await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
 
   page.once('dialog', (dialog) => dialog.accept())
@@ -263,7 +262,6 @@ test('active analysis blocks history reset without clearing the work-order list 
   await openNormalAiAction(page)
   await page.getByRole('tab', { name: '작업지시서', exact: true }).click()
   await page.getByRole('row', { name: /순환펌프 진동 증가/ }).click()
-  await page.getByRole('button', { name: '상세 보기', exact: true }).click()
   await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
 
   page.once('dialog', (dialog) => dialog.accept())
@@ -281,17 +279,15 @@ test('full work-order detail exposes document and AI shortcuts with an always-ac
   await openNormalAiAction(page)
   await page.getByRole('tab', { name: '작업지시서', exact: true }).click()
   await page.getByRole('row', { name: /순환펌프 진동 증가/ }).click()
-  await page.getByRole('button', { name: '상세 보기', exact: true }).click()
 
   const shortcuts = page.getByRole('navigation', { name: '작업지시서 상세 바로가기' })
-  await expect(shortcuts.getByRole('button', { name: '문서 본문', exact: true })).toBeVisible()
   await expect(shortcuts.getByRole('button', { name: 'AI 수정·질문', exact: true })).toBeVisible()
+  await expect(shortcuts.getByRole('button', { name: 'Excel 다운로드', exact: true })).toBeVisible()
   await shortcuts.getByRole('button', { name: 'AI 수정·질문', exact: true }).click()
   await expect(page.getByRole('region', { name: 'AI 수정 챗봇' })).toBeInViewport()
 
-  const footer = page.locator('.activity-detail-footer')
+  const footer = page.locator('.work-order-action-footer')
   await expect(footer).toBeVisible()
-  await expect(footer.getByRole('button', { name: 'PDF 다운로드', exact: true })).toBeVisible()
   await expect(footer.getByRole('button', { name: 'v1 실행 검토 승인', exact: true })).toBeVisible()
 })
 

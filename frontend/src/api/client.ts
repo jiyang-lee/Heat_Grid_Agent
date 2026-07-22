@@ -145,6 +145,23 @@ export async function rawText(path: string, init?: RequestInit): Promise<string>
   return res.text()
 }
 
+async function downloadFile(path: string, fileName: string): Promise<void> {
+  const url = `${API_BASE}${path}`
+  const response = await fetch(url)
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new ApiError(response.status, url, body || response.statusText)
+  }
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
+}
+
 function toQueryString(
   query?: Record<string, string | number | undefined>,
 ): string {
@@ -337,6 +354,8 @@ export const incidentDocumentsApi = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
+  downloadWorkOrderXlsx: (incidentId: string, version: number, fileName: string) =>
+    downloadFile(`/incidents/${incidentId}/documents/work_order/versions/${version}/xlsx`, fileName),
 }
 
 export const replayApi = {

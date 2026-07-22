@@ -1004,6 +1004,7 @@ export interface IncidentDocumentContent {
 
 export type WorkOrderKind = 'site_check' | 'maintenance'
 export type ChecklistResult = 'pass' | 'fail' | 'not_applicable' | 'pending'
+export type DocumentStatus = 'draft' | 'ai_reviewed' | 'approved' | 'failed'
 
 export interface WorkOrderHeader {
   readonly document_number: string
@@ -1014,6 +1015,8 @@ export interface WorkOrderHeader {
   readonly mechanical_room: string | null
   readonly equipment_type: string
   readonly work_type: string
+  readonly issue_reason?: string
+  readonly status?: string
 }
 
 export interface WorkOrderChecklistItem {
@@ -1091,7 +1094,7 @@ export interface IncidentDocumentResponse {
   readonly document_type: 'work_order' | 'incident_report'
   readonly version: number
   readonly parent_document_version_id: string | null
-  readonly status: 'draft' | 'ai_reviewed' | 'approved' | 'failed'
+  readonly status: DocumentStatus
   readonly review_state: 'none' | 'pending_ai_review' | 'operator_noted' | 'approved' | 'failed'
   readonly retryable: boolean
   readonly content: IncidentDocumentContent | WorkOrderStructuredContent

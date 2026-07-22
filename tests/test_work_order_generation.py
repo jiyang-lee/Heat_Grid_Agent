@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -30,14 +31,38 @@ def test_equipment_type_from_text_detects_known_keywords() -> None:
 
     assert _equipment_type_from_text("순환펌프 이상 소음 발생") == "순환펌프"
     assert _equipment_type_from_text("열교환기 온도차 이상") == "열교환기"
-    assert _equipment_type_from_text("알 수 없는 설비") == "순환펌프"
+    assert _equipment_type_from_text("공급온도 저하 및 공급·순환 계통 점검") == "순환펌프"
+    assert _equipment_type_from_text("기계실 30 환수온도 저하 및 열교환 효율 이상") == "열교환기"
+    assert _equipment_type_from_text("알 수 없는 설비") == "대상 계통"
 
 
 def test_forbidden_internal_terms_are_stripped() -> None:
     from work_order_generation import _strip_forbidden_terms
 
     assert _strip_forbidden_terms("RAG 검색 결과가 부족합니다") == "상황 정보가 확보되지 않았습니다."
+    assert _strip_forbidden_terms("모델 간 불일치로 신뢰도가 낮습니다") == "상황 정보가 확보되지 않았습니다."
     assert _strip_forbidden_terms("공급 온도가 기준보다 낮습니다") == "공급 온도가 기준보다 낮습니다"
+
+
+def test_generation_sanitizes_internal_alert_reason_fallback() -> None:
+    from work_order_generation import generate_structured_work_order
+
+    content = asyncio.run(
+        generate_structured_work_order(
+            None,  # type: ignore[arg-type]
+            episode_id="adversarial-alert-reason",
+            ops_output={"summary": "모델 간 불일치로 신뢰도가 낮습니다"},
+            manufacturer_id=None,
+            substation_id=30,
+            priority_level="high",
+            api_key=None,
+            alert_reason="모델 간 불일치로 신뢰도가 낮습니다",
+        )
+    )
+
+    rendered = " ".join((content.purpose, content.risk_and_evidence, content.outcome_and_followup))
+    assert "모델" not in rendered
+    assert "신뢰도" not in rendered
 
 
 def test_render_work_order_markdown_includes_expected_headings() -> None:

@@ -33,16 +33,21 @@ WORK_ORDER_MARKDOWN_HEADINGS = (
     "안전 확인",
 )
 
-_DEFAULT_EQUIPMENT_TYPE = "순환펌프"
+_UNKNOWN_EQUIPMENT_TYPE = "대상 계통"
 _EQUIPMENT_TYPE_KEYWORDS: tuple[tuple[str, str], ...] = (
     ("열교환", "열교환기"),
     ("펌프", "순환펌프"),
+    ("순환 유량", "순환펌프"),
+    ("공급·순환 계통", "순환펌프"),
 )
 
 _SITE_CHECK_PREP_ITEMS: tuple[str, ...] = (
-    "설비 분해를 하지 않는다",
-    "제어·설정값을 변경하지 않는다",
-    "이상 발견 시 즉시 현장 관리자에게 보고한다",
+    "설비 정지·분해 금지",
+    "밸브 및 제어 설정값 임의 변경 금지",
+    "센서 탈거·전기반 개방 금지",
+    "고온 배관·회전체 직접 접촉 금지",
+    "누수·이상음·과도한 진동 발견 시 즉시 작업 중지",
+    "이상 발견 시 현장 관리자에게 보고",
 )
 _MAINTENANCE_PREP_ITEMS: tuple[str, ...] = (
     "도면·정비 매뉴얼을 확인했다",
@@ -57,7 +62,9 @@ _MAINTENANCE_PREP_ITEMS: tuple[str, ...] = (
 # 노출하지 않는다 (참고 자료의 "중요한 제한" 원칙).
 _FORBIDDEN_INTERNAL_TERMS: tuple[str, ...] = (
     "rag", "pgvector", "priority card", "priority_card",
-    "검색 계층", "모델 스냅샷", "fallback", "임베딩",
+    "검색 계층", "모델 스냅샷", "fallback", "임베딩", "캘리브레이션",
+    "신뢰도", "모델 간", "전문가 모델", "예측 스냅샷", "재검증",
+    "m1_priority", "partial",
 )
 
 
@@ -234,7 +241,7 @@ def _equipment_type_from_text(*texts: str) -> str:
     for keyword, equipment_type in _EQUIPMENT_TYPE_KEYWORDS:
         if keyword in joined:
             return equipment_type
-    return _DEFAULT_EQUIPMENT_TYPE
+    return _UNKNOWN_EQUIPMENT_TYPE
 
 
 async def _catalog_items(
@@ -309,7 +316,7 @@ def _evidence_lines(ops_output: dict[str, object]) -> list[str]:
 
 def _default_risk_and_evidence(evidence_lines: list[str]) -> str:
     if not evidence_lines:
-        return "구체적인 근거 데이터가 확보되지 않아 현장에서 직접 계기값과 운전 상태를 확인해야 합니다."
+        return "현장에서 대상 계기의 표시값과 설비 운전 상태를 확인하고 결과를 기록합니다."
     return " ".join(f"{line}." for line in evidence_lines)
 
 
@@ -325,11 +332,47 @@ def _default_outcome_and_followup(work_order_kind: WorkOrderKind) -> str:
     )
 
 
+def _default_purpose(
+    *,
+    equipment_type: str,
+    situation: str,
+    checklist: tuple[WorkOrderChecklistItem, ...],
+) -> str:
+    target = equipment_type if equipment_type != _UNKNOWN_EQUIPMENT_TYPE else "대상 설비"
+    actions = " ".join(item.check_or_task_action.rstrip(".。") + "." for item in checklist[:3])
+    instruction = actions or "관련 계기 표시값과 설비 외관, 운전 상태를 확인합니다."
+    return (
+        f"{situation.rstrip('.。')}에 따라 {target}의 현재 운전 상태와 관련 측정값을 현장에서 확인해 주십시오. "
+        f"{instruction} 알림에 포함된 현상이 현장에서도 지속되는지 확인하고, 각 점검 결과에 측정값과 이상 여부를 함께 기록해 주십시오. "
+        "확인한 내용은 현재 운전 상태와 후속 정비 필요 여부를 판단할 수 있도록 구체적으로 남겨 주십시오."
+    )
+
+
+async def _target_building(connection: AsyncConnection | None, substation_id: int | None) -> str:
+    if connection is None or substation_id is None:
+        return "미확인 건물"
+    building = await connection.scalar(
+        text(
+            "SELECT apartment_name FROM public.substation_building_context "
+            "WHERE substation_id = :substation_id"
+        ),
+        {"substation_id": substation_id},
+    )
+    return str(building).strip() if building is not None and str(building).strip() else "미확인 건물"
+
+
 def _strip_forbidden_terms(text_value: str) -> str:
     lowered = text_value.lower()
     if any(term in lowered for term in _FORBIDDEN_INTERNAL_TERMS):
         return "상황 정보가 확보되지 않았습니다."
     return text_value
+
+
+def _field_facing_source(text_value: str, *, fallback: str) -> str:
+    normalized = text_value.strip()
+    if not normalized or _strip_forbidden_terms(normalized) != normalized:
+        return fallback
+    return normalized
 
 
 class _NarrativeFields(BaseModel):
@@ -343,6 +386,7 @@ async def _llm_narrative(
     api_key: str | None,
     model: str,
     work_order_kind: WorkOrderKind,
+    equipment_type: str,
     situation: str,
     evidence_lines: list[str],
     has_approved_procedure: bool,
@@ -352,6 +396,7 @@ async def _llm_narrative(
     prompt = orjson.dumps(
         {
             "work_order_kind": work_order_kind,
+            "equipment_type": equipment_type,
             "situation": situation,
             "evidence": evidence_lines,
             "has_approved_procedure": has_approved_procedure,
@@ -360,19 +405,24 @@ async def _llm_narrative(
     instructions = (
         "Write three Korean fields for a field-technician work order, grounded strictly "
         "in the supplied situation/evidence (do not invent numbers or facts not present):\n"
-        "'purpose' (1 short paragraph — why this check/maintenance is being issued).\n"
-        "'risk_and_evidence' (2-4 sentences, the most detailed field — explain concretely "
+        "'purpose' (3-4 detailed field-facing sentences — describe the predicted fault situation, "
+        "why this work order is issued, which equipment/readings must be checked, the exact field "
+        "actions to take, and what must be recorded).\n"
+        "'risk_and_evidence' (5-7 sentences, the most detailed field — explain concretely "
         "which readings/conditions triggered this work order, how they deviate from normal, "
         "and why that matters operationally. Use the specific evidence items given; if an "
         "evidence item has a metric or trend, state it plainly. This is the field technician's "
         "main justification for why the check is needed, so it must be substantive, not generic.).\n"
-        "'outcome_and_followup' (1 paragraph — what to do based on the check/maintenance result).\n"
+        "'outcome_and_followup' (3-4 sentences — what to record, report, or hand off based "
+        "on the check/maintenance result).\n"
         "Never mention AI internals, model names, confidence/agreement scores, search/retrieval "
         "systems, or developer diagnostics (e.g. do not say things like 'unknown', 'partial', "
         "'snapshot', 'RAG', 'fallback'). Never write as if revising or critiquing a previous "
         "answer (no phrases like '재작성합니다', '표현을 완화해', '기존 답변'); write directly "
-        "as the final field instruction itself. Every instruction must be phrased as "
-        "'대상 + 행동 + 판정기준 + 결과' where relevant. "
+        "as the final field instruction itself. Write each instruction as a natural Korean "
+        "sentence that makes the target, action, decision criterion, and result clear where "
+        "relevant. Do not print labels or formula-like phrases such as '대상 + 행동 + "
+        "판정기준 + 결과'. "
         "Only include detailed teardown/adjustment/replacement steps if "
         "has_approved_procedure is true; otherwise keep it observation-only. "
         "Return only the three fields as JSON matching the schema.\n\n" + prompt
@@ -412,57 +462,93 @@ async def generate_structured_work_order(
     priority_level: str | None,
     api_key: str | None,
     model: str = "gpt-5.4-mini",
+    alert_reason: str | None = None,
 ) -> WorkOrderStructuredContent:
-    situation = _situation_text(ops_output)
-    evidence_lines = _evidence_lines(ops_output)
-    equipment_type = _equipment_type_from_text(situation, *evidence_lines)
-    work_order_kind = determine_work_order_kind(
+    safe_source_fallback = "대상 설비의 운전 상태와 계기 표시값을 현장에서 확인합니다."
+    analysis_situation = _field_facing_source(
+        _situation_text(ops_output),
+        fallback=safe_source_fallback,
+    )
+    safe_alert_reason = _field_facing_source(
+        alert_reason or "",
+        fallback="",
+    )
+    situation = safe_alert_reason or analysis_situation
+    evidence_lines = [
+        line for line in _evidence_lines(ops_output)
+        if _strip_forbidden_terms(line) == line
+    ]
+    if safe_alert_reason:
+        evidence_lines = [f"알림 사유: {safe_alert_reason}", *evidence_lines]
+    action_plan = str(ops_output.get("action_plan") or "")
+    equipment_type = _equipment_type_from_text(
+        alert_reason or "",
+        situation,
+        action_plan,
+        *evidence_lines,
+    )
+    suggested_work_order_kind = determine_work_order_kind(
         priority_level=priority_level,
         has_evidence=bool(evidence_lines),
     )
-    catalog_rows = await _catalog_items(
-        connection,
-        work_order_kind=work_order_kind,
-        equipment_type=equipment_type,
+    has_approved_procedure = False  # RAG 승인 절차서 연결은 향후 단계에서 배선한다.
+    work_order_kind: WorkOrderKind = (
+        suggested_work_order_kind if has_approved_procedure else "site_check"
     )
-    if not catalog_rows and equipment_type != _DEFAULT_EQUIPMENT_TYPE:
-        catalog_rows = await _catalog_items(
+    catalog_rows = (
+        []
+        if equipment_type == _UNKNOWN_EQUIPMENT_TYPE
+        else await _catalog_items(
             connection,
             work_order_kind=work_order_kind,
-            equipment_type=_DEFAULT_EQUIPMENT_TYPE,
+            equipment_type=equipment_type,
         )
+    )
     checklist = _checklist_from_catalog(catalog_rows)
-    if not checklist:
+    if not checklist and equipment_type != _UNKNOWN_EQUIPMENT_TYPE:
         raise WorkOrderGenerationError(
             f"no checklist catalog entries for {work_order_kind}/{equipment_type}"
         )
-    has_approved_procedure = False  # RAG 승인 절차서 연결은 향후 단계에서 배선한다.
     narrative = await _llm_narrative(
         api_key=api_key,
         model=model,
         work_order_kind=work_order_kind,
+        equipment_type=equipment_type,
         situation=situation,
         evidence_lines=evidence_lines,
         has_approved_procedure=has_approved_procedure,
     )
-    purpose = _strip_forbidden_terms(narrative.purpose if narrative else situation)
+    purpose_fallback = _default_purpose(
+        equipment_type=equipment_type,
+        situation=situation,
+        checklist=checklist,
+    )
+    risk_fallback = _default_risk_and_evidence(evidence_lines)
+    outcome_fallback = _default_outcome_and_followup(work_order_kind)
+    purpose = _strip_forbidden_terms(narrative.purpose if narrative else purpose_fallback)
     risk_and_evidence = _strip_forbidden_terms(
-        narrative.risk_and_evidence if narrative else _default_risk_and_evidence(evidence_lines)
+        narrative.risk_and_evidence if narrative else risk_fallback
     )
-    outcome_and_followup = (
-        _strip_forbidden_terms(narrative.outcome_and_followup)
-        if narrative
-        else _default_outcome_and_followup(work_order_kind)
+    outcome_and_followup = _strip_forbidden_terms(
+        narrative.outcome_and_followup if narrative else outcome_fallback
     )
+    if purpose == "상황 정보가 확보되지 않았습니다.":
+        purpose = purpose_fallback
+    if risk_and_evidence == "상황 정보가 확보되지 않았습니다.":
+        risk_and_evidence = risk_fallback
+    if outcome_and_followup == "상황 정보가 확보되지 않았습니다.":
+        outcome_and_followup = outcome_fallback
     header = WorkOrderHeader(
         document_number=f"WO-{episode_id[:8]}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
         issued_at=datetime.now(UTC),
         priority=priority_level or "medium",
         assignee=None,
-        target_building=str(manufacturer_id or "미확인 건물"),
+        target_building=await _target_building(connection, substation_id),
         mechanical_room=str(substation_id) if substation_id is not None else None,
         equipment_type=equipment_type,
         work_type="현장 확인" if work_order_kind == "site_check" else "정비",
+        issue_reason=safe_alert_reason or situation,
+        status="검토 중",
     )
     return WorkOrderStructuredContent(
         work_order_kind=work_order_kind,

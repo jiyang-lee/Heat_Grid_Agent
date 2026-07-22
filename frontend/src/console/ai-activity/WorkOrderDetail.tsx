@@ -4,14 +4,11 @@ import { isWorkOrderStructuredContent } from '../../api/contracts'
 import { displayAlertReason } from '../../domain/alertReason'
 import { ApiError, incidentDocumentsApi, reviewChatApi } from '../../api/client'
 import { useApproveIncidentWorkOrder, useCancelReviewChatProposal, useConfirmReviewChatProposal, useEditIncidentWorkOrder, useIncidentDocuments, usePostReviewChatMessage, useReviewChatMessages, useReviewChatPendingProposal, useReviewChatThreadOpen, useAgentRunResult } from '../../api/hooks'
-import { downloadDocumentPdf } from '../../scenario/documentPdf'
 import { useConfirmDialog } from '../ConfirmDialog'
 import { ApiState, Button, StatusBadge, SurfaceCard } from '../ui'
-import { facilityName, formatDateTime, priorityLabel, priorityTone, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
+import { facilityName, formatDateTime, reviewStatusTone, workOrderStatusLabel } from './activityMappers'
 import { ReviewActionModal } from './ReviewActionModal'
-import { WorkOrderStructuredPanel } from './WorkOrderStructuredPanel'
-import { WorkOrderSummaryCards } from './WorkOrderSummaryCards'
-import { GeneratedDocumentAccordion } from './GeneratedDocumentAccordion'
+import { WorkOrderExcelPreview } from './WorkOrderExcelPreview'
 import { WorkOrderActionFooter, type SaveStatus } from './WorkOrderActionFooter'
 import { legacyViewOfContent } from './workOrderStructuredView'
 import { detectWorkOrderRevisionTarget, isWorkOrderProposalConfirmation, isWorkOrderRevisionRequest, loadStoredReviewChatProposal, mergeOpsAgentResult, resolveWorkOrderRevisionScope, reviewChatRequest, storeReviewChatProposal, visibleReviewChatContent, workOrderProposalPreview, type WorkOrderRevisionTarget } from '../../scenario/workOrderRevision'
@@ -188,13 +185,14 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   const { confirm: askConfirm, dialog: confirmDialog } = useConfirmDialog()
   const resultNotReady = result.error instanceof ApiError && result.error.status === 409
   const [downloadState, setDownloadState] = useState<'idle' | 'working' | 'error'>('idle')
-  const [fieldSaveStatus, setFieldSaveStatus] = useState<SaveStatus>('idle')
-  const [fieldSaveError, setFieldSaveError] = useState<string | null>(null)
+  const fieldSaveStatus: SaveStatus = 'idle'
+  const fieldSaveError: string | null = null
   const [reviewDecision, setReviewDecision] = useState<OperatorReviewDecision | null>(null)
   const [threadId, setThreadId] = useState<string | null>(null)
   const [threadContext, setThreadContext] = useState<ReviewChatThreadResponse | null>(null)
   const [draft, setDraft] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
+  const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
   const [proposal, setProposal] = useState<ReviewChatProposalResponse | null>(null)
   const [localMessages, setLocalMessages] = useState<readonly ReviewChatMessageResponse[]>([])
   const [revisions, setRevisions] = useState<readonly StoredRevision[]>(() => loadRevisions(item.run_id))
@@ -445,10 +443,14 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   }, [incidentDocuments.data?.items, result.data, storageRunId])
 
   const download = async () => {
-    if (!body) return
+    if (activeIncidentId == null || activeDocumentVersion == null) return
     setDownloadState('working')
     try {
-      await downloadDocumentPdf({ title: `작업지시서 v${activeVersion}`, fileName: `heatgrid-work-order-${number}-v${activeVersion}.pdf`, metadata: [`문서번호 ${number}`, `대상 설비 ${facilityName(item.substation_id, item.manufacturer_id)}`, `생성 ${formatDateTime(activeRevision?.createdAt ?? item.created_at)}`], content: body })
+      await incidentDocumentsApi.downloadWorkOrderXlsx(
+        activeIncidentId,
+        activeDocumentVersion,
+        `heatgrid-work-order-${number}-v${activeVersion}.xlsx`,
+      )
       setDownloadState('idle')
     } catch (error: unknown) {
       setDownloadState('error')
@@ -471,6 +473,8 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
     }
     setChatError(null)
     setContextNotice(null)
+    setPendingChatMessage(content)
+    setDraft('')
     try {
       const previousProposal = proposal
       const previousInstruction = pendingInstruction
@@ -533,11 +537,12 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
       } else {
         storeReviewChatProposal(storageRunId, null)
       }
-      setDraft((current) => current.trim() === content ? '' : current)
       void reviewMessages.refetch()
       void pendingProposalQuery.refetch()
     } catch (error: unknown) {
       setChatError(chatErrorMessage(error))
+    } finally {
+      setPendingChatMessage(null)
     }
   }
 
@@ -822,41 +827,26 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
   <SurfaceCard action={<Button aria-label={preview ? '미리보기 닫기' : '상세 닫기'} icon="x" onClick={onClose} />} className={`activity-detail${preview ? '' : ' activity-detail-with-footer'}`} title={preview ? '작업지시서 미리보기' : '작업지시서 상세'}>
     <div className="detail-body work-order-detail-body">
       <div className="detail-title"><StatusBadge tone={reviewStatusTone(item.operator_review_status)}>{workOrderStatusLabel(item.operator_review_status)}</StatusBadge><h2>{title}</h2><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'}</p><span>생성 {formatDateTime(item.created_at)}</span></div>
-      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button><Button disabled={manualEditing || !selectedIsLatest || activeIncidentId == null || activeDocumentVersion == null} icon="document" onClick={beginManualEdit}>직접 수정</Button><Button disabled={!body || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'PDF 생성 중' : 'PDF 다운로드'}</Button></nav>}
+      {!preview && activeResult && <nav aria-label="작업지시서 상세 바로가기" className="work-order-section-nav"><Button icon="activity" onClick={() => scrollToSection(chatSectionRef.current)} tone="primary">AI 수정·질문</Button><Button disabled={manualEditing || !selectedIsLatest || activeIncidentId == null || activeDocumentVersion == null} icon="document" onClick={beginManualEdit}>직접 수정</Button><Button disabled={activeIncidentId == null || activeDocumentVersion == null || downloadState === 'working'} icon="download" onClick={() => void download()}>{downloadState === 'working' ? 'Excel 생성 중' : 'Excel 다운로드'}</Button></nav>}
       <ApiState empty={false} error={result.isError && !resultNotReady} loading={result.isLoading} retry={() => void result.refetch()} />
       {resultNotReady && <p className="activity-empty-note">실행이 완료되면 작업지시서 본문을 준비합니다.</p>}
       {preview && activeResult && <section className="work-order-preview"><h3>조치 요약</h3><ol>{previewActions.map((action, index) => <li key={`${index}-${action}`}><b>{index + 1})</b><span>{action}</span></li>)}</ol><Button icon="arrow" onClick={onOpenDetail} tone="primary">상세 보기</Button></section>}
-      {!preview && activeResult && <>
+      {!preview && activeResult && <div className="work-order-detail-split">
         <article className="work-order-document" ref={documentSectionRef}>
-          <header><div><small>현장 작업지시서</small><h3>{manualEditing ? manualTitle || '제목 입력 중' : title}</h3></div><StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge></header>
           {revisions.length > 0 ? (
             <div aria-label="작업지시서 버전" className="scenario-version-switch" role="tablist">
               {[1, ...revisions.map((revision) => revision.version)].map((version) => <button aria-selected={version === activeVersion} className={version === activeVersion ? 'active' : ''} key={version} onClick={() => setSelectedVersion(version)} role="tab" type="button">v{version}</button>)}
             </div>
           ) : <span className="work-order-version-badge">v{activeVersion}</span>}
-          <p className="work-order-detail-document-number">문서번호 {number} · 생성 {formatDateTime(activeRevision?.createdAt ?? item.created_at)}</p>
-          <WorkOrderSummaryCards
-            actionCriteria="anomaly 우선순위에 따라 즉시 검토"
-            assignee={activeStructuredContent?.header.assignee ?? '현장 운전팀'}
-            targetFacility={facilityName(item.substation_id, item.manufacturer_id)}
-          />
           {manualEditing ? <div className="work-order-manual-editor"><p className="work-order-chat-context-note">현재 v{activeVersion}은 그대로 보존되고, 저장 시 v{activeDocumentVersion == null ? '-' : activeDocumentVersion + 1} 새 초안이 생성됩니다. 새 버전은 AI 검토와 운영자 재승인이 필요합니다.</p><label><span>문서 제목</span><input onChange={(event) => setManualTitle(event.target.value)} value={manualTitle} /></label><label><span>작업지시서 본문</span><textarea className="scenario-document-editor" onChange={(event) => setManualBody(event.target.value)} value={manualBody} /></label><label><span>수정 사유</span><input onChange={(event) => setManualNote(event.target.value)} placeholder="예: 현장 점검 결과 반영" value={manualNote} /></label><div><Button disabled={editIncidentWorkOrder.isPending} onClick={() => setManualEditing(false)}>취소</Button><Button disabled={editIncidentWorkOrder.isPending || !manualTitle.trim() || !manualBody.trim()} icon="check" onClick={() => void saveManualEdit()} tone="primary">{editIncidentWorkOrder.isPending ? '새 버전 저장 중' : '새 버전으로 저장'}</Button></div></div> : (
-            activeStructuredContent && activeIncidentId != null ? (
-              <>
-                <GeneratedDocumentAccordion body={body} />
-                <WorkOrderStructuredPanel
-                  content={activeStructuredContent}
-                  incidentId={activeIncidentId}
-                  version={activeVersion}
-                  onSaveStatusChange={(status, detail) => { setFieldSaveStatus(status); setFieldSaveError(detail) }}
-                />
-              </>
-            ) : <pre className="activity-report-body report-single-body">{body}</pre>
+            activeStructuredContent && activeIncidentId != null
+              ? <WorkOrderExcelPreview content={activeStructuredContent} status={activeServerDocument?.status} version={activeVersion} />
+              : <p className="activity-empty-note">작업지시서를 준비하고 있습니다.</p>
           )}
         </article>
         <section className="work-order-review-chat" aria-label="AI 수정 챗봇" ref={chatSectionRef}>
           <header><div><h3>AI 문서 검토 챗봇</h3><p>{facilityName(item.substation_id, item.manufacturer_id)} · 기계실 {item.substation_id ?? '-'} 작업지시서 전용 대화입니다. 선택한 v{activeVersion}을 문맥으로 사용하며 문서 수정은 v3까지 가능합니다.</p></div><StatusBadge tone={revisionLimitReached ? 'neutral' : 'primary'}>수정 {rerunsRemaining}회 남음</StatusBadge></header>
-          <div aria-busy={chatHistoryLoading} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 ? <p>AI 검토 대화가 아직 없습니다.</p> : messages.map((chatMessage) => <p className={chatMessage.role} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI' : '시스템'}</strong>{visibleMessageContent(chatMessage)}</p>)}</div>
+          <div aria-busy={chatHistoryLoading || pendingChatMessage != null} aria-live="polite" className="work-order-chat-log" ref={chatLogRef}>{chatHistoryLoading ? <p>이 작업지시서의 대화 기록을 불러오는 중입니다.</p> : messages.length === 0 && pendingChatMessage == null ? <p>AI 검토 대화가 아직 없습니다.</p> : messages.map((chatMessage) => <article className={`work-order-chat-message ${chatMessage.role}`} key={chatMessage.message_id}><strong>{chatMessage.role === 'operator' ? '운영자' : chatMessage.role === 'assistant' ? 'AI 검토' : '시스템'}</strong><span>{visibleMessageContent(chatMessage)}</span></article>)}{pendingChatMessage != null && <><article className="work-order-chat-message operator is-pending"><strong>운영자</strong><span>{pendingChatMessage}</span></article><article aria-label="AI가 답변을 준비 중" className="work-order-chat-message assistant is-thinking"><strong>AI 검토</strong><span className="work-order-thinking-dots"><i /><i /><i /></span><small>문서와 대화 맥락을 확인하고 있습니다.</small></article></>}</div>
           {proposal && previewData && <div className="work-order-chat-proposal"><header><div><span>확정 전 수정 초안</span><strong>{pendingTarget?.label ?? '작업지시서 전체'}</strong></div><StatusBadge tone="warning">v{pendingBaseVersion ?? activeVersion} → v{Math.min(3, latestVersion + 1)}</StatusBadge></header>{pendingRequirements.length > 0 && <section className="work-order-proposal-requirements"><b>현재 반영할 요구사항</b><ol>{pendingRequirements.map((requirement, index) => <li key={`${index}-${requirement}`}>{requirement.replace(/^추가 요구:\s*/, '')}</li>)}</ol></section>}<p>{previewData.changeSummary}</p><div className="work-order-proposal-diff"><section><b>수정 전</b><pre>{previewData.before || '비교할 기존 문구가 없습니다.'}</pre></section>{previewData.after && <section><b>{previewData.afterLabel}</b><pre>{previewData.after}</pre></section>}</div>{!previewData.after && <p className="work-order-proposal-note">서버가 문안 초안을 제공하지 않아 변경 요약만 표시합니다. 확정 시 선택한 버전을 기준으로 새 문서를 생성합니다.</p>}<dl><div><dt>기준 버전</dt><dd>v{pendingBaseVersion ?? activeVersion}</dd></div><div><dt>유지 범위</dt><dd>{pendingTarget?.section === 'document' ? '전체 문서 재작성' : '지정 부분 외 유지'}</dd></div><div><dt>생성 버전</dt><dd>v{Math.min(3, latestVersion + 1)}</dd></div></dl><div><Button disabled={confirmProposal.isPending || revising} onClick={() => void cancel()}>초안 취소</Button><Button disabled={confirmProposal.isPending || revising || revisionLimitReached} icon="check" onClick={() => void confirm()} tone="primary">{revising ? '새 버전 생성 중' : `초안 확정 · v${Math.min(3, latestVersion + 1)} 생성`}</Button></div></div>}
           {executionState !== 'idle' && <p className={`work-order-chat-execution ${executionState}`} role="status">{executionStateLabel[executionState]}</p>}
           {contextNotice && <p className="work-order-chat-context-note">{contextNotice}</p>}
@@ -864,11 +854,11 @@ export function WorkOrderDetail({ item, mode = 'detail', onClose, onOpenDetail }
           <label className="work-order-chat-compose"><span>{proposal ? '추가 요구 또는 수정안 확정' : '문서 질문 또는 수정 요청'}</span><textarea aria-describedby="work-order-chat-input-hint" disabled={reviewThread.isPending || postMessage.isPending || revising} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder={proposal ? "예: 더 강하게 경고해줘 / 둘 다 반영해줘 / 이대로 확정" : revisionLimitReached ? '예: 내가 요청한 수정 내용이 뭐였지?' : '예: 안전 확인 2번째 항목만 최신 보호구 기준으로 수정해 주세요.'} value={draft} /><small id="work-order-chat-input-hint">{proposal ? '추가 요구를 보내면 기존 초안을 대체하며, “이대로 확정”으로 실행할 수 있습니다.' : 'Enter 전송 · Shift+Enter 줄바꿈'}</small><Button disabled={!draft.trim() || reviewThread.isPending || postMessage.isPending || revising || (revisionLimitReached && draftIsRevision && proposal == null)} onClick={() => void sendMessage()} tone="primary">{reviewThread.isPending || postMessage.isPending ? 'AI 검토 중' : draftConfirmsProposal ? '수정안 확정' : proposal ? '추가 요구 반영' : draftIsRevision ? '수정 초안 요청' : '질문 보내기'}</Button></label>
           {chatError && <p className="form-error" role="alert">{chatError}</p>}
         </section>
-      </>}
+      </div>}
     </div>
     {!preview && <WorkOrderActionFooter
       notice={selectedIsLatest ? undefined : '최신 버전에서만 최종 승인할 수 있습니다.'}
-      saveErrorDetail={downloadState === 'error' ? 'PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}
+      saveErrorDetail={downloadState === 'error' ? 'Excel 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.' : fieldSaveError}
       saveStatus={downloadState === 'error' ? 'error' : fieldSaveStatus}
     >
       {activeResult && <>{activeIncidentId != null && activeDocumentVersion != null ? <Button disabled={activeDocumentApproved || !selectedIsLatest || approveIncidentWorkOrder.isPending} icon="check" onClick={() => void approveSelectedDocument()} tone="primary">{activeDocumentApproved ? `v${activeVersion} 최종 승인됨` : !selectedIsLatest ? '최신 버전만 최종 승인 가능' : approveIncidentWorkOrder.isPending ? '문서 승인 중' : `v${activeVersion} 문서 최종 승인`}</Button> : <><Button onClick={() => setReviewDecision('correct')}>실행 교정 기록</Button><Button icon="check" onClick={() => setReviewDecision('approve')} tone="primary">v{activeVersion} 실행 검토 승인</Button></>}</>}

@@ -9,7 +9,7 @@ async function startFaultScenario(page: Page) {
   await openEntry(page)
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('button', { name: '관리자 화면 열기' }).click()
-  await page.getByRole('button', { name: '재생 훈련 시작' }).click()
+  await page.getByRole('button', { name: '시뮬레이션 시작', exact: true }).click()
 }
 
 async function expectNoPageScroll(page: Page) {
@@ -28,7 +28,7 @@ function axisLabelsFromTopbar(timeText: string | null): readonly string[] {
 
 async function waitForIncident(page: Page) {
   await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toBeVisible({ timeout: 12_000 })
+  await expect(page.getByRole('button', { name: /환수온도 저하 및 열교환 효율 이상/ })).toBeVisible({ timeout: 30_000 })
 }
 
 async function dismissIncidentToasts(page: Page) {
@@ -816,7 +816,7 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expect(page.locator('.alerts-table tbody tr')).toHaveCount(2)
   await page.getByRole('combobox', { name: '우선순위' }).selectOption('all')
 
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await expect(page.getByRole('heading', { name: '상세 정보' })).toBeVisible()
   const evidenceChart = page.getByRole('region', { name: '환수온도 이상 시계열' })
   await expect(evidenceChart).toBeVisible()
@@ -825,7 +825,7 @@ test('alerts start as a list and analysis completion offers an AI action shortcu
   await expect(page.getByRole('heading', { name: '환수온도 이상 감지' })).toBeVisible()
   await page.getByRole('button', { name: '상세 정보 닫기' }).click()
   await expect(page.getByRole('heading', { name: '상세 정보' })).toHaveCount(0)
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await page.getByRole('button', { name: 'AI 조치 생성' }).click()
   const taskTray = page.getByRole('button', { name: /AI 조치 1건/ })
   await expect(taskTray).toBeVisible()
@@ -861,59 +861,60 @@ test('refresh resets the fault scenario and returns to the initial dashboard', a
   await expect(page.locator('.topbar-page-context')).toContainText('홈')
   await expect(page.locator('.topbar-clock strong')).toHaveText('14:50')
   await expect(page.getByText('현재 주요 알림 없음', { exact: true })).toBeVisible()
-  await expect(page.getByRole('row', { name: /환수온도 급락 및 난방 순환펌프 이상/ })).toHaveCount(0)
+  await expect(page.getByRole('row', { name: /환수온도 저하 및 열교환 효율 이상/ })).toHaveCount(0)
 })
 
 test('fault-mode work-order tab keeps the scenario document workspace after navigation', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify({
-      mode: 'fault',
-      entryStep: 'console',
-      scenarioId: 'return-temperature-2020-01-13',
-      selectedAlertId: 'scenario-alert-pump-28',
-      selectedSubstationId: 28,
-      incidentState: 'incident-active',
-      analyzedAlertIds: ['scenario-alert-pump-28'],
-      dismissedIncidentAlertIds: [],
-      resolvedAlertTimes: {},
-      alertSensorSnapshots: {},
-      documentAlertId: 'scenario-alert-pump-28',
-      workOrders: [{ version: 1, createdAt: '2020-01-13T15:10:00+09:00', changeSummary: 'AI 초안 생성', content: '초기 작업지시서' }],
-      selectedWorkOrderVersion: 1,
-      acceptedWorkOrderVersion: null,
-      workOrderRerunCount: 0,
-      messages: [],
-      evaluationCategory: null,
-      report: { status: 'idle', createdAt: null, savedAt: null, completedAt: null, content: '' },
-      reportMessages: [],
-    }))
+  const createdAt = '2026-07-20T04:00:00.000Z'
+  const group = {
+    id: 'run-group-10', rootRunId: 'run-group-10', alertId: 'scenario-alert-flow-drop-10', substationId: 10, createdAt,
+    workOrders: [{
+      version: 1, createdAt, title: '기계실 10 작업지시서 v1', changeSummary: 'AI 초안 생성', sourceRunId: 'run-group-10',
+      revisionInstruction: null, baseVersion: null,
+      sections: [
+        { title: '위험성 및 근거', items: ['순환 유량 급감'] },
+        { title: '작업 절차', items: ['순환펌프 상태를 확인합니다.'] },
+        { title: '안전 확인', items: ['보호구를 착용합니다.'] },
+      ],
+      content: '기계실 10 순환펌프 작업지시서',
+    }],
+    selectedWorkOrderVersion: 1, acceptedWorkOrderVersion: 1, workOrderRerunCount: 0,
+    messages: [], proposal: null, evaluationRequired: false, improvementCandidate: null,
+    report: { status: 'completed', createdAt, savedAt: createdAt, completedAt: createdAt, content: '완료 보고서 본문' },
+    reportMessages: [],
+  }
+  await page.addInitScript((session) => window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session)), {
+    mode: 'fault', entryStep: 'console', selectedAlertId: group.alertId, selectedSubstationId: 10,
+    scenarioId: 'fault-scenario-2023-03-12', incidentState: 'incident-active', analyzedAlertIds: [],
+    documentGroups: [group], activeDocumentGroupId: group.id, documentAlertId: group.alertId,
   })
   await page.goto('/?devtools=0')
   await page.getByRole('button', { name: 'AI 조치', exact: true }).click()
   await page.getByRole('tab', { name: '작업지시서' }).click()
 
   await expect(page.locator('.scenario-order-layout')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'AI 수정 챗봇' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Excel 양식 미리보기' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'AI 문서 검토 챗봇' })).toBeVisible()
 })
 
-test('incident document flow supports edits, two AI reruns, adoption, report completion and PDF names', async ({ page }, testInfo) => {
+test('incident document flow supports edits, Excel download, two AI reruns, adoption and report completion', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-375', '전체 문서 편집 흐름은 데스크톱에서 검증')
   test.setTimeout(240_000)
   await startFaultScenario(page)
   await waitForIncident(page)
   await dismissIncidentToasts(page)
   await page.getByRole('button', { name: '자세히 보기', exact: true }).click()
-  await openAlertDetail(page, /환수온도 급락 및 난방 순환펌프 이상/)
+  await openAlertDetail(page, /환수온도 저하 및 열교환 효율 이상/)
   await page.getByRole('button', { name: 'AI 조치 생성' }).click()
   const taskTray = page.getByRole('button', { name: /AI 조치 1건/ })
   await taskTray.click()
   await page.getByRole('button', { name: '결과 보기' }).click({ timeout: 75_000 })
+  if (await page.locator('.scenario-analysis-progress.is-expanded').count()) await taskTray.click()
 
   await expect(page.getByRole('heading', { name: '계획서 상세' })).toBeVisible()
   await page.getByRole('button', { name: '작업지시서 생성' }).click()
-  await expect(page.getByRole('heading', { name: '작업지시서 상세' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'v1' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Excel 양식 미리보기' })).toBeVisible()
+  await expect(page.locator('.work-order-version-badge')).toContainText('v1')
   const orderHeader = page.locator('.scenario-order-document .surface-heading')
   const documentToolbar = page.locator('.scenario-document-toolbar')
   await expect(orderHeader).toBeVisible()
@@ -924,20 +925,12 @@ test('incident document flow supports edits, two AI reruns, adoption, report com
     return header != null && toolbar != null && header.y + header.height <= toolbar.y
   }).toBe(true)
 
-  const directEditButton = page.getByRole('button', { name: '세션 본문 직접 편집', exact: true })
-  if (await directEditButton.count()) {
-    await directEditButton.click()
-    const orderEditor = page.getByRole('textbox', { name: '작업지시서 본문 편집' })
-    await orderEditor.fill(`${await orderEditor.inputValue()}\n운영자 직접 수정 문장`)
-    await page.getByRole('button', { name: '세션 편집 저장', exact: true }).click()
-    await expect(page.getByText('운영자 직접 수정 문장')).toBeVisible()
-  } else {
-    await expect(page.getByRole('button', { name: '서버 정본은 AI 수정 사용', exact: true })).toBeVisible()
-  }
+  const directEditButton = page.getByRole('button', { name: '직접 수정', exact: true })
+  await expect(directEditButton).toBeVisible()
 
   const orderDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'PDF 다운로드' }).click()
-  await expect((await orderDownload).suggestedFilename()).toMatch(/^heatgrid-work-order-HG-\d{8}-\d+-v1-v1\.pdf$/)
+  await page.getByRole('button', { name: 'Excel 다운로드' }).click()
+  await expect((await orderDownload).suggestedFilename()).toMatch(/^heatgrid-work-order-.+-v1\.xlsx$/)
 
   const chat = page.getByRole('textbox', { name: '문서 질문 또는 수정 요청' })
   await chat.fill('최신 RAG 문서로 안전 절차를 다시 작성해줘')

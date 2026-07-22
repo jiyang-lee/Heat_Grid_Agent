@@ -46,6 +46,8 @@ class WorkOrderHeader(FrozenIncidentDocumentModel):
     mechanical_room: str | None = Field(default=None, max_length=200)
     equipment_type: str = Field(min_length=1, max_length=120)
     work_type: str = Field(min_length=1, max_length=120)
+    issue_reason: str = Field(default="현장 확인 필요", min_length=1, max_length=1000)
+    status: str = Field(default="검토 중", min_length=1, max_length=40)
 
 
 class WorkOrderChecklistItem(FrozenIncidentDocumentModel):

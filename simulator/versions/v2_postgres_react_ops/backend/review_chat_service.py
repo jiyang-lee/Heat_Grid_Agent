@@ -1764,7 +1764,8 @@ async def _ensure_run_work_order_document(
             "SELECT r.alert_id::text AS alert_id, "
             "COALESCE(r.manufacturer_id, q.manufacturer_id) AS manufacturer_id, "
             "COALESCE(r.substation_id, q.substation_id) AS substation_id, "
-            "q.priority_level, q.episode_id::text AS episode_id, "
+            "q.priority_level, q.enqueue_reason AS alert_reason, "
+            "q.episode_id::text AS episode_id, "
             "CAST(COALESCE(r.ops_output, '{}'::jsonb) AS text) AS ops_output "
             "FROM agent_runs r JOIN ops_alert_queue q ON q.alert_id = r.alert_id "
             "WHERE r.run_id = :run_id FOR UPDATE OF q"
@@ -1836,6 +1837,7 @@ async def _ensure_run_work_order_document(
                     priority_level=row["priority_level"],
                     api_key=api_key,
                     model=model,
+                    alert_reason=None if row["alert_reason"] is None else str(row["alert_reason"]),
                 )
             )
         except WorkOrderGenerationError:
