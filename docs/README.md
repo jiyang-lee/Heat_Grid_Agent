@@ -109,7 +109,8 @@ contracts/ops_agent_result_v4.md
 ## 문서 작성 원칙
 
 - 현재 검증 범위는 M1로 명시한다.
-- `0.65 / 0.35` hybrid를 metric-best라고 단정하지 않는다.
+- 공식 priority v4는 `restored Risk >= 0.78 OR pre-event >= 0.99`인 label-free gate다.
+- 이전 v3, 요청 v2 `0.72/0.28`, legacy v1 `0.65/0.35`는 비교·rollback 기준으로 보존한다.
 - threshold와 level 값은 비교 실험 산출물에 근거해 설명한다.
 - final card와 M1 parallel evidence card를 섞어 말하지 않는다.
 - raw에서 canonical window까지 완전히 닫힌 재생성 범위와, current-best source가 담당하는 범위를 구분한다.

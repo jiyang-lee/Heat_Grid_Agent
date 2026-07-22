@@ -1,6 +1,6 @@
 ﻿artifact,source_rows,target_rows,missing_from_target,missing_pre_fault,missing_normal,missing_split_distribution,missing_fault_events
-risk_scores,1252,1226,26,26,0,train=23; validation=3,5
-leadtime_scores,1252,1226,26,26,0,train=23; validation=3,5
-priority_scores,1252,1226,26,26,0,train=23; validation=3,5
-m1_specialist_scores,1252,1226,26,26,0,train=23; validation=3,5
-priority_cards,1252,1226,26,26,0,train=23; validation=3,5
+risk_scores,1252,1252,0,0,0,,0
+leadtime_scores,1252,1252,0,0,0,,0
+priority_scores,1252,1252,0,0,0,,0
+m1_specialist_scores,1252,1252,0,0,0,,0
+priority_cards,1252,1252,0,0,0,,0

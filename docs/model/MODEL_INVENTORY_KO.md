@@ -88,23 +88,24 @@ m1_specialist_priority_score
 = 100 * (
     0.55 * pre_event_probability
   + 0.30 * leadtime_urgency
-  + 0.15 * fault_group_weight
+  + 0.15 * 0.1
 )
 ```
 
-최종 hybrid priority:
+최종 Risk/pre-event gate priority:
 
 ```text
-m1_hybrid_priority_score
-= 0.65 * current_best_priority_score
- + 0.35 * m1_specialist_priority_score
+m1_risk_pre_event_priority_score = max(
+    band_score(restored_risk_score),
+    band_score(pre_event_probability)
+)
 ```
 
-`0.65 / 0.35`는 metric-only best가 아니라 운영 선택점이다. 비교 근거는 다음 파일에 있다.
+공식 정책 v4는 restored Risk `0.78` 또는 pre-event `0.99`를 high Gate로 사용한다. 운영 시 알 수 없는 `fault_label` 기반 group weight는 제거했으며 이전 v3, 요청 v2, legacy v1은 비교·rollback 값으로 남긴다.
 
 ```text
-output/reports/hybrid_selected_weight_comparison.csv
-output/reports/hybrid_weight_sweep.csv
+output/reports/m1_risk_pre_event_gate_threshold_sweep.csv
+output/reports/m1_specialist_vs_current_best_comparison.csv
 compare/m1_threshold_weight_rationale_report.ipynb
 ```
 

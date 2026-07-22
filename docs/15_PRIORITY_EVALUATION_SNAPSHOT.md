@@ -31,7 +31,7 @@ flowchart TD
 1. 기본 `as_of_time`은 DB에 저장된 완료 창 중 가장 큰 `window_end`다.
 2. 각 `(manufacturer_id, substation_id)`에서 `window_end <= as_of_time`인 최신 창 하나만 선택한다.
 3. 선택 순서는 `window_end`, `window_start`, `window_id` 내림차순으로 고정한다.
-4. 선택된 창의 공식 모델 산출물인 risk, anomaly, leadtime, current-best Priority, M1 specialist Priority와 `0.65 / 0.35` hybrid 최종 Priority를 스냅샷에 보존한다.
+4. 선택된 창의 risk, anomaly, leadtime, current-best Priority, M1 specialist Priority와 공식 v4 label-free Risk/pre-event gate 최종 Priority를 스냅샷에 보존한다. 이전 v3와 요청 v2 hybrid는 비교값으로 함께 남긴다.
 5. 기본 허용 지연은 720시간이며 `HEATGRID_PRIORITY_STALE_AFTER_HOURS`로 조절한다.
 6. 창 또는 공식 Priority 결과가 없으면 `missing`, 허용 지연을 넘으면 `stale`이다.
 7. `fresh`이면서 Priority 점수가 있는 결과만 전체 순위와 알림 생성에 포함한다.
