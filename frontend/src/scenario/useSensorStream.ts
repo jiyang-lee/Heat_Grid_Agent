@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { replayApi } from '../api/backend'
 import type { ReplayReading } from '../api/contracts'
-import { fallbackSensorPoint, hasFaultScenarioProfile, initialSensorPoints, SCENARIO_INCIDENT_AT, SCENARIO_START_AT } from './scenarioData'
+import { fallbackSensorPoint, FINAL_TEST_SCENARIO_ID, hasFaultScenarioProfile, initialSensorPoints, SCENARIO_INCIDENT_AT, SCENARIO_START_AT } from './scenarioData'
 import type { EntryMode, ScenarioIncidentState, SensorPoint, SensorStreamState } from './types'
 
 const POLL_MS = 1_500
@@ -22,10 +22,11 @@ function pointFromReading(reading: ReplayReading): SensorPoint | null {
   return { at: reading.simulated_at, supply, returnTemperature, flow, quality: reading.quality == null ? 'unknown' : 'validated', sequence: reading.sequence }
 }
 
-function seedState(mode: EntryMode, substationId: number, incidentState: ScenarioIncidentState, endAt?: string): SensorStreamState {
+function seedState(mode: EntryMode, substationId: number, incidentState: ScenarioIncidentState, scenarioId: string | null, endAt?: string): SensorStreamState {
   // Reopening a saved fault session must keep its active incident visible.
   // Without this anchor it restarted at the scenario's pre-fault beginning,
   // making the already-active alert disappear until simulated time caught up.
+  const scenarioStartAt = mode === 'fault' && scenarioId === FINAL_TEST_SCENARIO_ID ? SCENARIO_INCIDENT_AT : SCENARIO_START_AT
   const seedEndAt = endAt ?? (mode === 'fault' && incidentState === 'incident-active' ? SCENARIO_INCIDENT_AT : undefined)
   const points = initialSensorPoints(mode, substationId, seedEndAt)
   const latest = points.at(-1)
@@ -36,7 +37,7 @@ function seedState(mode: EntryMode, substationId: number, incidentState: Scenari
     status: 'connecting',
     source: 'scenario-fallback',
     points: incidentPoint ? [...points.slice(0, -1), incidentPoint] : points,
-    simulatedAt: incidentPoint?.at ?? latest?.at ?? SCENARIO_START_AT,
+    simulatedAt: incidentPoint?.at ?? latest?.at ?? scenarioStartAt,
     receivedAt: null,
     nextReceiveSeconds: 3,
     paused: false,
@@ -46,9 +47,9 @@ function seedState(mode: EntryMode, substationId: number, incidentState: Scenari
   }
 }
 
-export function useSensorStream(mode: EntryMode | null, enabled: boolean, substationId: number, incidentState: ScenarioIncidentState) {
+export function useSensorStream(mode: EntryMode | null, enabled: boolean, substationId: number, incidentState: ScenarioIncidentState, scenarioId: string | null) {
   const activeMode = mode ?? 'normal'
-  const [state, setState] = useState<SensorStreamState>(() => seedState(activeMode, substationId, incidentState))
+  const [state, setState] = useState<SensorStreamState>(() => seedState(activeMode, substationId, incidentState, scenarioId))
   const [resetKey, setResetKey] = useState(0)
   const pausedRef = useRef(false)
   const speedRef = useRef(1)
@@ -56,6 +57,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const manualRefreshRef = useRef<() => void>(() => {})
   const restartAtScenarioStartRef = useRef(false)
   const activeModeRef = useRef(activeMode)
+  const scenarioIdRef = useRef(scenarioId)
   const incidentActiveRef = useRef(activeMode === 'fault' && incidentState === 'incident-active')
 
   useEffect(() => {
@@ -76,8 +78,10 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     let faultSequence = -1
     let failures = 0
     const modeChanged = activeModeRef.current !== activeMode
+    const scenarioChanged = scenarioIdRef.current !== scenarioId
     const pollMs = activeMode === 'fault' ? FAULT_POLL_MS : POLL_MS
     activeModeRef.current = activeMode
+    scenarioIdRef.current = scenarioId
 
     const appendPoint = (point: SensorPoint, source: SensorStreamState['source'], message: string) => {
       if (cancelled) return
@@ -128,9 +132,10 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
     }
 
     const connect = async () => {
-      const replayStartAt = restartAtScenarioStartRef.current || modeChanged ? SCENARIO_START_AT : simulatedAtRef.current
+      const scenarioStartAt = activeMode === 'fault' && scenarioId === FINAL_TEST_SCENARIO_ID ? SCENARIO_INCIDENT_AT : SCENARIO_START_AT
+      const replayStartAt = restartAtScenarioStartRef.current || modeChanged || scenarioChanged ? scenarioStartAt : simulatedAtRef.current
       restartAtScenarioStartRef.current = false
-      setState(seedState(activeMode, substationId, incidentActiveRef.current ? 'incident-active' : 'monitoring', replayStartAt))
+      setState(seedState(activeMode, substationId, incidentActiveRef.current ? 'incident-active' : 'monitoring', scenarioId, replayStartAt))
       if (activeMode === 'fault' && hasFaultScenarioProfile(substationId)) {
         startFallback('동시다발 고장 시나리오 검증 데이터를 재생 중입니다.')
         return
@@ -185,7 +190,7 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
       manualRefreshRef.current = () => {}
       if (timer != null) window.clearInterval(timer)
     }
-  }, [activeMode, enabled, mode, resetKey, substationId])
+  }, [activeMode, enabled, mode, resetKey, scenarioId, substationId])
 
   const togglePaused = useCallback(() => setState((current) => ({
     ...current,
@@ -197,9 +202,11 @@ export function useSensorStream(mode: EntryMode | null, enabled: boolean, substa
   const reset = useCallback(() => {
     restartAtScenarioStartRef.current = true
     simulatedAtRef.current = SCENARIO_START_AT
-    setState(seedState(activeMode, substationId, 'monitoring', SCENARIO_START_AT))
+    const scenarioStartAt = activeMode === 'fault' && scenarioId === FINAL_TEST_SCENARIO_ID ? SCENARIO_INCIDENT_AT : SCENARIO_START_AT
+    const resetIncidentState = activeMode === 'fault' && scenarioId === FINAL_TEST_SCENARIO_ID ? 'incident-active' : 'monitoring'
+    setState(seedState(activeMode, substationId, resetIncidentState, scenarioId, scenarioStartAt))
     setResetKey((current) => current + 1)
-  }, [activeMode, substationId])
+  }, [activeMode, scenarioId, substationId])
   const refresh = useCallback(() => manualRefreshRef.current(), [])
 
   return { state, togglePaused, setSpeed, reset, refresh }

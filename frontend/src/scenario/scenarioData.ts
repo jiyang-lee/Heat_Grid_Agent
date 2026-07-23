@@ -3,6 +3,7 @@ import type { EvaluationCategory, ScenarioAlert, ScenarioTimelineAlert, SensorPo
 
 /** scenario_manifest.csv의 검증된 고장 프로필을 같은 시점에 배치한 동시다발 고장 사례 */
 export const ACTIVE_SCENARIO_ID = 'simultaneous-fault-2023-03-12-substations-1-10-30'
+export const FINAL_TEST_SCENARIO_ID = 'final_test'
 export const ACTIVE_SCENARIO_DATASET_VERSION = 'predist-synthetic-replay-v3'
 export const SCENARIO_START_AT = '2023-03-12T10:00:00+09:00'
 export const SCENARIO_INCIDENT_AT = '2023-03-12T12:00:00+09:00'

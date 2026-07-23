@@ -12,6 +12,7 @@ export interface ScenarioContextValue {
   readonly selectMode: (mode: EntryMode) => void
   readonly backToModeSelection: () => void
   readonly startFaultScenario: () => void
+  readonly startDemoScenario: () => void
   readonly restartScenario: () => void
   readonly clearAiHistory: () => void
   readonly exitConsole: () => void

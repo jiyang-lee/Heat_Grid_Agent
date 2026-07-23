@@ -55,8 +55,47 @@ const packageDetail = {
   },
 }
 
-test('final_test loads one DB package under three seconds and blocks twelve unsafe scripts', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile-375', '전체 12개 가드레일 대본은 데스크톱에서 검증')
+const packageSummaries = [
+  packageSummary,
+  { demo_id: 'final-test-fault-010', alert_id: 'scenario-alert-flow-drop-10', substation_id: 10, facility_name: '도램마을19단지아파트', fault_label: '10번 변전소 냉각 성능 저하' },
+  { demo_id: 'final-test-fault-030', alert_id: 'scenario-alert-return-drop-30', substation_id: 30, facility_name: '범지기마을9단지한신휴플러스리버파크아파트', fault_label: '30번 변전소 절연 열화 징후' },
+] as const
+
+async function startFinalTestAnalysis(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: '알림', exact: true }).click()
+  await page.getByRole('row', { name: /공급온도 저하 및 순환 유량 급변/ }).click()
+  await page.getByRole('button', { name: 'AI 조치 생성', exact: true }).click()
+  await expect(page.getByText('AI 조치 1건 진행 중', { exact: true })).toBeVisible()
+  await expect(page.getByText('분석 중', { exact: true })).toBeVisible()
+  await page.waitForTimeout(5_200)
+  await expect(page.getByText('AI 조치 1건 완료', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '결과 보기', exact: true }).click()
+}
+
+test('admin keeps replay and final_test as separate modes with rooms 1, 10 and 30', async ({ page }) => {
+  await page.addInitScript(() => window.sessionStorage.clear())
+  await page.route('**/api/replay-datasets', (route) => route.fulfill({ json: [{ dataset_id: 'dataset-1', dataset_version: 'v1', status: 'available', expected_substations: 31, source_interval_seconds: 3, window_ticks: 12, replay_start: '2020-11-26T00:00:00Z', replay_end: '2020-11-27T00:00:00Z', validated_at: '2026-07-19T00:00:00Z' }] }))
+  await page.route('**/api/final-test/packages', (route) => route.fulfill({ json: { items: packageSummaries } }))
+
+  await page.goto('/?devtools=0')
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await page.getByRole('button', { name: '관리자 화면 열기' }).click()
+  await expect(page.locator('.admin-dataset-card')).toHaveCount(2)
+  await expect(page.getByTestId('final-test-mode-card')).toContainText('기계실 1·10·30 시연 사례')
+  await expect(page.getByTestId('final-test-mode-card')).not.toContainText('기계실 28')
+  await expect(page.getByRole('button', { name: '시연 모드 시작', exact: true })).toBeEnabled()
+
+  await page.getByRole('button', { name: '시연 모드 시작', exact: true }).click()
+  await page.getByRole('button', { name: '알림', exact: true }).click()
+  await expect(page.getByRole('row')).toHaveCount(4)
+  await expect(page.locator('.alerts-table')).toContainText('기계실 1')
+  await expect(page.locator('.alerts-table')).toContainText('기계실 10')
+  await expect(page.locator('.alerts-table')).toContainText('기계실 30')
+  await expect(page.locator('.alerts-table')).not.toContainText('기계실 28')
+})
+
+test('final_test keeps the five-second demo queue and completes the 5173 document flow', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-1280', '전체 12개 가드레일 대본은 데스크톱에서 검증')
   await page.addInitScript((session) => {
     window.sessionStorage.clear()
     window.sessionStorage.setItem('heatgrid:scenario-session', JSON.stringify(session))
@@ -66,26 +105,37 @@ test('final_test loads one DB package under three seconds and blocks twelve unsa
   })
   await page.route('**/api/final-test/packages', (route) => route.fulfill({ json: { items: [packageSummary] } }))
   await page.route(`**/api/final-test/packages/${demoId}`, (route) => route.fulfill({ json: packageDetail }))
+  const forbiddenRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/api\/(agent-runs|review-chat|incidents|work-orders|agent-reports)/.test(request.url())) forbiddenRequests.push(request.url())
+  })
 
   await page.goto('/?devtools=0')
-  await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /공급온도 저하 및 순환 유량 급변/ }).click()
-  const startedAt = Date.now()
-  await page.getByRole('button', { name: 'AI 조치 열기', exact: true }).click()
-  await expect(page.getByText('DB 사전 적재본', { exact: true })).toBeVisible()
-  expect(Date.now() - startedAt).toBeLessThan(3_000)
-  await expect(page.getByLabel('1번 변전소 긴급 작업지시서 미리보기')).toBeVisible()
-
-  await page.getByRole('tab', { name: '보고서', exact: true }).click()
-  await expect(page.getByLabel('1번 변전소 고장 분석 보고서 미리보기')).toBeVisible()
-  await page.getByRole('tab', { name: '작업지시서', exact: true }).click()
+  await startFinalTestAnalysis(page)
+  await expect(page.locator('.topbar-page-context strong')).toHaveText('AI 조치')
+  await expect(page.getByText('1번 변전소 열화·과부하 복합 고장', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('표시할 운영 데이터가 없습니다.', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '작업지시서 생성', exact: true }).click()
+  await expect(page.getByText('Excel 양식 미리보기', { exact: true })).toBeVisible()
+  await expect(page.getByText('HeatGrid 운영 도우미', { exact: true })).toBeVisible()
+  await page.screenshot({ path: 'C:/Users/Admin/AppData/Local/Temp/heatgrid-final-test-work-order-1280.png', fullPage: true })
 
   const input = page.getByRole('textbox', { name: 'HeatGrid 질문 입력' })
   await input.fill('현재 가장 큰 위험은 무엇인가요?')
   await input.press('Enter')
   await expect(page.getByRole('log')).toContainText('과열 지속에 따른 정전 가능성')
-  await page.getByRole('tab', { name: '보고서', exact: true }).click()
+  await page.getByRole('button', { name: '선택 버전 최종 채택', exact: true }).click()
+  await page.getByRole('button', { name: '보고서 생성', exact: true }).click()
   await expect(page.getByRole('log')).toContainText('과열 지속에 따른 정전 가능성')
+  await expect(page.getByText('DOCX 양식 미리보기', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '선택 버전 최종 승인', exact: true }).click()
+  await expect(page.getByText('최종 승인', { exact: true }).first()).toBeVisible()
+  await page.screenshot({ path: 'C:/Users/Admin/AppData/Local/Temp/heatgrid-final-test-report-1280.png', fullPage: true })
+  await page.setViewportSize({ width: 1920, height: 1032 })
+  await page.screenshot({ path: 'C:/Users/Admin/AppData/Local/Temp/heatgrid-final-test-report-1920.png', fullPage: true })
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.screenshot({ path: 'C:/Users/Admin/AppData/Local/Temp/heatgrid-final-test-report-768.png', fullPage: true })
+  expect(forbiddenRequests).toEqual([])
 
   for (const [message, response] of guardrails) {
     await input.fill(message)
@@ -94,7 +144,7 @@ test('final_test loads one DB package under three seconds and blocks twelve unsa
   }
 })
 
-test('real final_test database package opens within three seconds', async ({ page }, testInfo) => {
+test('real final_test database package completes the demo flow', async ({ page }, testInfo) => {
   test.skip(process.env.REAL_FINAL_TEST !== '1', '실제 Docker DB/API 검증에서만 실행')
   test.skip(testInfo.project.name === 'mobile-375', '실제 응답 시간은 데스크톱에서 측정')
   await page.addInitScript((session) => {
@@ -106,13 +156,9 @@ test('real final_test database package opens within three seconds', async ({ pag
   })
 
   await page.goto('/?devtools=0')
-  await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /공급온도 저하 및 순환 유량 급변/ }).click()
-  const startedAt = Date.now()
-  await page.getByRole('button', { name: 'AI 조치 열기', exact: true }).click()
-  await expect(page.getByText('DB 사전 적재본', { exact: true })).toBeVisible()
-  expect(Date.now() - startedAt).toBeLessThan(3_000)
-  await expect(page.getByLabel('1번 변전소 긴급 작업지시서 미리보기')).toContainText('WO-FINAL-001')
+  await startFinalTestAnalysis(page)
+  await page.getByRole('button', { name: '작업지시서 생성', exact: true }).click()
+  await expect(page.getByText('Excel 양식 미리보기', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('final-test-real-1280.png'), fullPage: true })
 })
 
@@ -129,17 +175,29 @@ test('final_test document and chat stack on mobile without horizontal overflow',
   await page.route(`**/api/final-test/packages/${demoId}`, (route) => route.fulfill({ json: packageDetail }))
 
   await page.goto('/?devtools=0')
-  await page.getByRole('button', { name: '알림', exact: true }).click()
-  await page.getByRole('row', { name: /공급온도 저하 및 순환 유량 급변/ }).getByRole('button', { name: '상세' }).click()
-  await page.getByRole('button', { name: 'AI 조치 열기', exact: true }).click()
-  await expect(page.getByLabel('1번 변전소 긴급 작업지시서 미리보기')).toBeVisible()
+  await startFinalTestAnalysis(page)
+  await page.getByRole('button', { name: '작업지시서 생성', exact: true }).click()
+  await expect(page.getByText('Excel 양식 미리보기', { exact: true })).toBeVisible()
   await expect(page.getByLabel('HeatGrid 프로젝트 챗봇')).toBeHidden()
   await page.getByRole('button', { name: '챗봇 보기', exact: true }).click()
   await expect(page.getByLabel('HeatGrid 프로젝트 챗봇')).toBeVisible()
-  await expect(page.getByLabel('1번 변전소 긴급 작업지시서 미리보기')).toBeHidden()
+  await expect(page.getByText('Excel 양식 미리보기', { exact: true })).toBeHidden()
   await page.screenshot({ path: testInfo.outputPath('final-test-mobile-chat-375.png'), fullPage: true })
   await page.getByRole('button', { name: '문서 보기', exact: true }).click()
-  await expect(page.getByLabel('1번 변전소 긴급 작업지시서 미리보기')).toBeVisible()
+  await page.getByRole('button', { name: '선택 버전 최종 채택', exact: true }).click()
+  await page.getByRole('button', { name: '보고서 생성', exact: true }).click()
+  await page.getByRole('tab', { name: '보고서', exact: true }).click()
+  await expect(page.getByText('DOCX 양식 미리보기', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('HeatGrid 프로젝트 챗봇')).toBeHidden()
+  await page.getByRole('button', { name: '챗봇 보기', exact: true }).click()
+  await expect(page.getByLabel('HeatGrid 프로젝트 챗봇')).toBeVisible()
+  await expect(page.getByText('DOCX 양식 미리보기', { exact: true })).toBeHidden()
+  await page.getByRole('tab', { name: '보고서', exact: true }).click()
+  await expect(page.getByText('DOCX 양식 미리보기', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('HeatGrid 프로젝트 챗봇')).toBeHidden()
+  await page.getByRole('tab', { name: '작업지시서', exact: true }).click()
+  await page.getByRole('button', { name: '문서 보기', exact: true }).click()
+  await expect(page.getByText('Excel 양식 미리보기', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('final-test-mobile-375.png'), fullPage: true })
 })

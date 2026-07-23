@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ActivityProjectionQuery, AgentRunListQuery, OpsAgentResultV4 } from '../../api/contracts'
+import type { AgentAnalysisQueueEntry } from '../AgentAnalysisProgress'
 import { useAgentReports, useAgentRuns, useWorkOrderRunMetadata, useWorkOrders } from '../../api/hooks'
 import { FinalTestDemoWorkspace } from '../../final-test/FinalTestDemoWorkspace'
 import { ScenarioReportWorkspace } from '../../scenario/ScenarioReportWorkspace'
 import { ScenarioWorkOrderWorkspace } from '../../scenario/ScenarioWorkOrderWorkspace'
-import { SCENARIO_ALERTS } from '../../scenario/scenarioData'
+import { FINAL_TEST_SCENARIO_ID, SCENARIO_ALERTS } from '../../scenario/scenarioData'
 import type { EntryMode } from '../../scenario/types'
 import { useScenario } from '../../scenario/useScenario'
 import { ApiState, SurfaceCard } from '../ui'
@@ -42,17 +43,19 @@ interface TabFilterState {
 const initialFilters: TabFilterState = { period: '7d', facilityId: null, status: 'all', searchInput: '', search: '' }
 
 interface Props {
+  readonly analysisQueue?: readonly AgentAnalysisQueueEntry[]
   readonly entryMode: EntryMode | null
   readonly incidentAlertId: string | null
   readonly initialRunId: string | null
   readonly onConsumeInitialRun: () => void
 }
 
-export function AiActivityPage({ entryMode, incidentAlertId, initialRunId, onConsumeInitialRun }: Props) {
-  if (entryMode === 'fault' && initialRunId?.startsWith('final-test-fault-')) {
-    return <FinalTestDemoWorkspace demoId={initialRunId} />
+export function AiActivityPage({ analysisQueue = [], entryMode, incidentAlertId, initialRunId, onConsumeInitialRun }: Props) {
+  const scenario = useScenario()
+  if (entryMode === 'fault' && scenario.state.scenarioId === FINAL_TEST_SCENARIO_ID) {
+    return <FinalTestDemoWorkspace entries={analysisQueue} initialDemoId={initialRunId?.startsWith('final-test-fault-') ? initialRunId : null} onConsumeInitialRun={onConsumeInitialRun} />
   }
-  return <LegacyAiActivityPage entryMode={entryMode} incidentAlertId={incidentAlertId} initialRunId={initialRunId} onConsumeInitialRun={onConsumeInitialRun} />
+  return <LegacyAiActivityPage analysisQueue={analysisQueue} entryMode={entryMode} incidentAlertId={incidentAlertId} initialRunId={initialRunId} onConsumeInitialRun={onConsumeInitialRun} />
 }
 
 function LegacyAiActivityPage({ entryMode, incidentAlertId, initialRunId, onConsumeInitialRun }: Props) {

@@ -8,6 +8,10 @@ export interface AgentAnalysisQueueEntry {
   readonly alertId: string
   readonly label: string
   readonly requestedAt: string
+  /** 이전 저장 데이터는 source가 없으므로 agent-run으로 호환한다. */
+  readonly source?: 'agent-run' | 'final-test'
+  readonly readyAt?: string
+  readonly toastDismissed?: boolean
 }
 
 interface RunProgress {
@@ -16,10 +20,14 @@ interface RunProgress {
   readonly elapsedMs: number
 }
 
+function isFinalTestEntry(entry: AgentAnalysisQueueEntry): boolean {
+  return entry.source === 'final-test' || entry.runId.startsWith('final-test-')
+}
+
 const TERMINAL_STATUSES: readonly AgentRunStatus[] = ['completed', 'failed', 'cancelled']
 
 function formatElapsed(elapsedMs: number): string {
-  const totalSeconds = Math.max(0, Math.round(elapsedMs / 1000))
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000))
   if (totalSeconds < 60) return `${totalSeconds}초`
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -49,14 +57,16 @@ function statusTone(status: AgentRunStatus): 'critical' | 'neutral' | 'success' 
 
 function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly<Record<string, RunProgress>> {
   const [progress, setProgress] = useState<Readonly<Record<string, RunProgress>>>({})
-  const runIds = useMemo(() => entries.map((entry) => entry.runId), [entries])
-  const runKey = runIds.join('|')
+  const [clock, setClock] = useState(() => Date.now())
+  const serverRunIds = useMemo(() => entries.filter((entry) => !isFinalTestEntry(entry)).map((entry) => entry.runId), [entries])
+  const demoEntries = useMemo(() => entries.filter(isFinalTestEntry), [entries])
+  const runKey = serverRunIds.join('|')
   const entriesRef = useRef(entries)
   entriesRef.current = entries
 
   useEffect(() => {
-    if (runIds.length === 0) {
-      setProgress({})
+    if (serverRunIds.length === 0) {
+      setProgress((current) => Object.fromEntries(Object.entries(current).filter(([runId]) => demoEntries.some((entry) => entry.runId === runId))))
       return undefined
     }
 
@@ -65,7 +75,7 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
     const refresh = async () => {
       if (refreshing) return
       refreshing = true
-      const snapshots = await Promise.all(runIds.map(async (runId) => {
+      const snapshots = await Promise.all(serverRunIds.map(async (runId) => {
         try {
           const run = await agentRunsApi.get(runId)
           return [runId, { status: run.status, error: run.error }] as const
@@ -89,7 +99,31 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
       disposed = true
       window.clearInterval(timer)
     }
-  }, [runKey, runIds])
+  }, [runKey, serverRunIds, demoEntries])
+
+  useEffect(() => {
+    if (demoEntries.length === 0) return undefined
+    const timer = window.setInterval(() => setClock(Date.now()), 250)
+    return () => window.clearInterval(timer)
+  }, [demoEntries.length])
+
+  useEffect(() => {
+    if (demoEntries.length === 0) return
+    setProgress((current) => {
+      const next = { ...current }
+      demoEntries.forEach((entry) => {
+        const requestedAt = Date.parse(entry.requestedAt)
+        const readyAt = Date.parse(entry.readyAt ?? '') || requestedAt + 5_000
+        const completed = clock >= readyAt
+        next[entry.runId] = {
+          status: completed ? 'completed' : 'running',
+          error: null,
+          elapsedMs: Math.max(0, Math.min(clock - requestedAt, readyAt - requestedAt)),
+        }
+      })
+      return next
+    })
+  }, [clock, demoEntries])
 
   return progress
 }
@@ -100,12 +134,21 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
  */
 export function AgentAnalysisProgress({ entries, onRemoveEntries, onOpen }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [autoOpenedKey, setAutoOpenedKey] = useState('')
   const [cancellingRunIds, setCancellingRunIds] = useState<readonly string[]>([])
   const [cancelErrors, setCancelErrors] = useState<Readonly<Record<string, string>>>({})
   const progress = useQueueProgress(entries)
+  const finalTestEntryKey = entries.filter(isFinalTestEntry).map((entry) => entry.runId).join('|')
+  useEffect(() => {
+    if (finalTestEntryKey !== '') {
+      setExpanded(true)
+      setAutoOpenedKey(finalTestEntryKey)
+    }
+  }, [finalTestEntryKey])
+  const visibleExpanded = expanded || (finalTestEntryKey !== '' && autoOpenedKey !== finalTestEntryKey)
   const items = entries.map((entry) => ({
     ...entry,
-    progress: progress[entry.runId] ?? { status: 'queued' as const, error: null, elapsedMs: Date.now() - Date.parse(entry.requestedAt) },
+    progress: progress[entry.runId] ?? { status: isFinalTestEntry(entry) ? 'running' as const : 'queued' as const, error: null, elapsedMs: Math.max(0, Date.now() - Date.parse(entry.requestedAt)) },
   }))
   const active = items.filter((item) => item.progress.status === 'queued' || item.progress.status === 'running')
   const completed = items.filter((item) => item.progress.status === 'completed')
@@ -138,13 +181,13 @@ export function AgentAnalysisProgress({ entries, onRemoveEntries, onOpen }: Prop
     }
   }
 
-  return <aside aria-live="polite" className={`scenario-analysis-progress ${expanded ? 'is-expanded' : ''}`.trim()}>
-    <button aria-expanded={expanded} aria-label={summary} className="scenario-analysis-progress-trigger" onClick={() => setExpanded((value) => !value)} type="button">
+  return <aside aria-live="polite" className={`scenario-analysis-progress ${visibleExpanded ? 'is-expanded' : ''}`.trim()}>
+    <button aria-expanded={visibleExpanded} aria-label={summary} className="scenario-analysis-progress-trigger" onClick={() => setExpanded(!visibleExpanded)} type="button">
       <span aria-hidden="true" className="scenario-analysis-progress-indicator" />
       <strong>{summary}</strong>
-      <span>{expanded ? '접기' : '펼치기'}</span>
+      <span>{visibleExpanded ? '접기' : '펼치기'}</span>
     </button>
-    {expanded && <section aria-label="AI 작업 현황" className="scenario-analysis-progress-panel">
+    {visibleExpanded && <section aria-label="AI 작업 현황" className="scenario-analysis-progress-panel">
       <header>
         <div><strong>AI 작업 현황</strong><span>동시 2건까지 분석하고, 나머지는 순서대로 시작합니다.</span></div>
         {finished.length > 0 && <button className="scenario-analysis-clear" onClick={() => onRemoveEntries(finished.map((item) => item.runId))} type="button">완료 항목 지우기</button>}
@@ -152,7 +195,7 @@ export function AgentAnalysisProgress({ entries, onRemoveEntries, onOpen }: Prop
       <ul>
         {items.map((item) => <li key={item.runId}>
           <div><strong>{item.label}</strong><span>{cancelErrors[item.runId] ?? item.progress.error ?? `${statusLabel(item.progress.status)} · ${formatElapsed(item.progress.elapsedMs)}`}</span></div>
-          <div className="scenario-analysis-progress-actions"><StatusBadge tone={statusTone(item.progress.status)}>{statusLabel(item.progress.status)}</StatusBadge>{item.progress.status === 'queued' && <button className="scenario-analysis-cancel" disabled={cancellingRunIds.includes(item.runId)} onClick={() => void cancelQueuedRun(item.runId)} type="button">{cancellingRunIds.includes(item.runId) ? '취소 중' : '대기 취소'}</button>}<Button icon="arrow" onClick={() => onOpen(item.runId)} tone="ghost">{item.progress.status === 'completed' ? '결과 보기' : '진행 보기'}</Button></div>
+          <div className="scenario-analysis-progress-actions"><StatusBadge tone={statusTone(item.progress.status)}>{statusLabel(item.progress.status)}</StatusBadge>{!isFinalTestEntry(item) && item.progress.status === 'queued' && <button className="scenario-analysis-cancel" disabled={cancellingRunIds.includes(item.runId)} onClick={() => void cancelQueuedRun(item.runId)} type="button">{cancellingRunIds.includes(item.runId) ? '취소 중' : '대기 취소'}</button>}<Button icon="arrow" onClick={() => onOpen(item.runId)} tone="ghost">{item.progress.status === 'completed' ? '결과 보기' : '진행 보기'}</Button></div>
         </li>)}
       </ul>
     </section>}

@@ -1119,6 +1119,8 @@
 .admin-dataset-card small { color: var(--ops-text-muted); font-size: 12px; }
 .admin-dataset-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .admin-dataset-tags li { padding: 2px var(--space-2); border-radius: 99px; color: var(--ops-primary); background: var(--ops-primary-soft); font-size: 12px; font-weight: 600; }
+.admin-dataset-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.admin-demo-card { border-color: var(--ops-primary); background: var(--ops-primary-soft); }
 .admin-operations-panel { display: grid; gap: var(--space-4); }
 .admin-metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: var(--space-4); }
 .admin-metric-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: var(--space-4); }

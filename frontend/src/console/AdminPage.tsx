@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, replayApi } from '../api/client'
 import type { AutomationMode, PolicyCandidate, ReplayDataset } from '../api/contracts'
 import { useAutomationPolicy, useDecidePolicyCandidate, useHealth, useOperationsMetrics, usePolicyCandidates, useUpdateAutomationPolicy } from '../api/hooks'
+import { useFinalTestPackages } from '../final-test/hooks'
 import { ACTIVE_SCENARIO_DATASET_VERSION, SCENARIO_ALERTS, SCENARIO_START_AT } from '../scenario/scenarioData'
 import { useScenario } from '../scenario/useScenario'
 import { Button, MetricCard, StatusBadge, SurfaceCard, type Tone } from './ui'
@@ -13,6 +14,7 @@ interface Props {
 
 const TABS = ['시뮬레이션', '운영 지표', '정책 관리'] as const
 type AdminTab = (typeof TABS)[number]
+const FINAL_TEST_SUBSTATIONS = [1, 10, 30] as const
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return '다른 관리자가 먼저 저장했습니다. 최신 정책을 다시 불러오세요.'
@@ -72,6 +74,10 @@ function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('ko-KR')
 }
 
+function hasExpectedFinalTestPackages(items: readonly { readonly substation_id: number }[]): boolean {
+  return items.length === FINAL_TEST_SUBSTATIONS.length && FINAL_TEST_SUBSTATIONS.every((id) => items.some((item) => item.substation_id === id))
+}
+
 function healthTone(value: string | undefined): Tone {
   if (value == null) return 'neutral'
   return /connected|configured|ready|ok/i.test(value) ? 'success' : 'critical'
@@ -86,7 +92,10 @@ interface SimulationPanelProps {
 
 function SimulationPanel({ datasets, error, onModeChanged, onRetry }: SimulationPanelProps) {
   const scenario = useScenario()
+  const finalTestPackages = useFinalTestPackages()
   const usableDatasetCount = datasets.filter((item) => item.status === 'available' || item.status === 'imported').length
+  const finalTestItems = finalTestPackages.data?.items ?? []
+  const finalTestReady = hasExpectedFinalTestPackages(finalTestItems)
 
   const enterReplay = () => {
     scenario.startFaultScenario()
@@ -98,8 +107,13 @@ function SimulationPanel({ datasets, error, onModeChanged, onRetry }: Simulation
     onModeChanged()
   }
 
+  const enterFinalTest = () => {
+    scenario.startDemoScenario()
+    onModeChanged()
+  }
+
   return <SurfaceCard
-    action={scenario.state.mode === 'fault' ? <Button onClick={returnToNormal}>정상 운영으로 복귀</Button> : <Button disabled={usableDatasetCount === 0} onClick={enterReplay} tone="primary">시뮬레이션 시작</Button>}
+    action={scenario.state.mode === 'fault' ? <Button onClick={returnToNormal}>정상 운영으로 복귀</Button> : undefined}
     title="시뮬레이션"
   >
     <div className="admin-dataset-list">
@@ -115,8 +129,20 @@ function SimulationPanel({ datasets, error, onModeChanged, onRetry }: Simulation
           <p>{summary.description}</p>
           {summary.tags.length > 0 && <ul className="admin-dataset-tags">{summary.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>}
           <small>시나리오 날짜 {datasetStoryDate(dataset)}</small>
+          <div className="admin-dataset-actions"><Button disabled={usableDatasetCount === 0 || scenario.state.mode === 'fault'} onClick={enterReplay} tone="primary">시뮬레이션 시작</Button></div>
         </article>
       })}
+      <article className="admin-dataset-card admin-demo-card" data-testid="final-test-mode-card">
+        <header>
+          <StatusBadge tone={finalTestPackages.isError ? 'critical' : finalTestReady ? 'success' : 'neutral'}>{finalTestPackages.isLoading ? '확인 중' : finalTestPackages.isError ? '연결 오류' : finalTestReady ? '사용 가능' : '자료 확인 필요'}</StatusBadge>
+          <span>시연 모드</span>
+        </header>
+        <strong>기계실 1·10·30 시연 사례</strong>
+        <p>DB에 사전 적재된 세 가지 고장 사례를 열고, 5173 산출물과 프로젝트 전용 챗봇을 함께 확인합니다.</p>
+        <ul className="admin-dataset-tags">{FINAL_TEST_SUBSTATIONS.map((id) => <li key={id}>기계실 {id}</li>)}</ul>
+        <small>{finalTestPackages.isLoading ? '시연 자료를 불러오는 중입니다.' : finalTestPackages.isError ? '시연 자료를 확인하지 못했습니다.' : finalTestReady ? '모델 호출 없이 사전 승인본을 표시합니다.' : `기계실 1·10·30 자료가 필요합니다. 현재 ${finalTestItems.length}건`}</small>
+        <div className="admin-dataset-actions"><Button disabled={!finalTestReady || scenario.state.mode === 'fault'} onClick={enterFinalTest} tone="primary">시연 모드 시작</Button>{finalTestPackages.isError && <Button onClick={() => void finalTestPackages.refetch()}>다시 불러오기</Button>}</div>
+      </article>
     </div>
     {error && <p className="form-error">{error} <button onClick={onRetry} type="button">다시 불러오기</button></p>}
   </SurfaceCard>

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../console/icons'
 import type { FinalTestChatRule, FinalTestChatScript } from './contracts'
+import { FINAL_TEST_CHAT_STORAGE_KEY } from './session'
 
 interface Props {
   readonly script: FinalTestChatScript
+  readonly sessionKey?: string
 }
 
 interface ChatMessage {
@@ -24,12 +26,45 @@ function scriptedReply(message: string, script: FinalTestChatScript): { readonly
   return { content: response?.response ?? script.fallback_response, guarded: false }
 }
 
-export function FinalTestProjectChat({ script }: Props) {
-  const [messages, setMessages] = useState<readonly ChatMessage[]>([{ id: 1, role: 'assistant', content: script.greeting }])
+function loadMessages(sessionKey: string, greeting: string): readonly ChatMessage[] {
+  try {
+    const stored: unknown = JSON.parse(window.sessionStorage.getItem(FINAL_TEST_CHAT_STORAGE_KEY) ?? '{}')
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return [{ id: 1, role: 'assistant', content: greeting }]
+    const messages = (stored as Record<string, unknown>)[sessionKey]
+    if (!Array.isArray(messages) || messages.length === 0) return [{ id: 1, role: 'assistant', content: greeting }]
+    return messages.filter((message): message is ChatMessage => (
+      typeof message === 'object'
+      && message != null
+      && typeof (message as ChatMessage).id === 'number'
+      && (message as ChatMessage).role !== undefined
+      && ['assistant', 'operator', 'guardrail'].includes((message as ChatMessage).role)
+      && typeof (message as ChatMessage).content === 'string'
+    ))
+  } catch {
+    return [{ id: 1, role: 'assistant', content: greeting }]
+  }
+}
+
+function persistMessages(sessionKey: string, messages: readonly ChatMessage[]): void {
+  try {
+    const stored: unknown = JSON.parse(window.sessionStorage.getItem(FINAL_TEST_CHAT_STORAGE_KEY) ?? '{}')
+    const next = stored && typeof stored === 'object' && !Array.isArray(stored) ? { ...(stored as Record<string, unknown>), [sessionKey]: messages } : { [sessionKey]: messages }
+    window.sessionStorage.setItem(FINAL_TEST_CHAT_STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    // Chat remains usable when sessionStorage is unavailable.
+  }
+}
+
+export function FinalTestProjectChat({ script, sessionKey = 'default' }: Props) {
+  const [messages, setMessages] = useState<readonly ChatMessage[]>(() => loadMessages(sessionKey, script.greeting))
   const [draft, setDraft] = useState('')
   const [composing, setComposing] = useState(false)
-  const nextId = useRef(2)
+  const nextId = useRef(Math.max(1, ...messages.map((message) => message.id)) + 1)
   const transcript = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    persistMessages(sessionKey, messages)
+  }, [messages, sessionKey])
 
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches

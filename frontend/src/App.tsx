@@ -9,9 +9,11 @@ import { SettingsPage } from './console/SettingsPage'
 import { AgentAnalysisProgress, type AgentAnalysisQueueEntry } from './console/AgentAnalysisProgress'
 import { ScenarioAlertsPage } from './scenario/ScenarioAlertsPage'
 import { ScenarioProvider } from './scenario/ScenarioContext'
+import { FINAL_TEST_SCENARIO_ID } from './scenario/scenarioData'
 import { useScenario } from './scenario/useScenario'
 import { useThemePreference } from './console/useThemePreference'
 import { demoAiHistoryApi } from './api/client'
+import { clearFinalTestSession } from './final-test/session'
 import './console/operations.css'
 import './scenario/scenario.css'
 
@@ -28,7 +30,10 @@ function storedAgentQueue(): readonly AgentAnalysisQueueEntry[] {
       && typeof entry.alertId === 'string'
       && typeof entry.label === 'string'
       && typeof entry.requestedAt === 'string'
-    ))
+    )).map((entry) => ({
+      ...entry,
+      source: entry.source === 'final-test' ? 'final-test' : 'agent-run',
+    }))
   } catch {
     return []
   }
@@ -50,6 +55,11 @@ function ConsoleApp() {
   }, [analysisQueue])
 
   const navigate = (next: ConsolePage) => {
+    if (next === 'ai-action' && replay && scenario.state.scenarioId === FINAL_TEST_SCENARIO_ID && !analysisQueue.some((entry) => entry.source === 'final-test' || entry.runId.startsWith('final-test-'))) {
+      setInitialAlertId(scenario.state.selectedAlertId)
+      setPage('alerts')
+      return
+    }
     if (next === 'ai-action') setPendingRunId(null)
     if (next === 'alerts') setInitialAlertId(null)
     setPage(next)
@@ -59,13 +69,20 @@ function ConsoleApp() {
     setPage('ai-action')
   }
   const queueAgentRun = useCallback((entry: AgentAnalysisQueueEntry) => {
-    setAnalysisQueue((current) => current.some((item) => item.runId === entry.runId)
+    const requestedAtMs = Date.parse(entry.requestedAt)
+    const normalizedEntry: AgentAnalysisQueueEntry = scenario.state.scenarioId === FINAL_TEST_SCENARIO_ID
+      ? { ...entry, source: 'final-test', readyAt: entry.readyAt ?? new Date(requestedAtMs + 5_000).toISOString() }
+      : { ...entry, source: entry.source ?? 'agent-run' }
+    setAnalysisQueue((current) => current.some((item) => item.runId === normalizedEntry.runId)
       ? current
-      : [entry, ...current])
-  }, [])
+      : [normalizedEntry, ...current])
+  }, [scenario.state.scenarioId])
   const removeAgentRuns = useCallback((runIds: readonly string[]) => {
     const targets = new Set(runIds)
-    setAnalysisQueue((current) => current.filter((item) => !targets.has(item.runId)))
+    setAnalysisQueue((current) => current.flatMap((item) => {
+      if (!targets.has(item.runId)) return [item]
+      return item.source === 'final-test' ? [{ ...item, toastDismissed: true }] : []
+    }))
   }, [])
   const consumePendingRun = useCallback(() => setPendingRunId(null), [])
   const consumeInitialAlert = useCallback(() => setInitialAlertId(null), [])
@@ -77,7 +94,8 @@ function ConsoleApp() {
   // 새로고침은 F5와 같다: 정상·고장 어느 모드든 서버 AI 기록과 클라이언트 캐시,
   // 만들어진 모든 산출물을 지우고 해당 모드의 첫 시점으로 되돌린다.
   const refreshConsole = useCallback(async () => {
-    await demoAiHistoryApi.reset()
+    if (scenario.state.scenarioId !== FINAL_TEST_SCENARIO_ID) await demoAiHistoryApi.reset()
+    clearFinalTestSession()
     scenario.restartScenario()
     setInitialAlertId(null)
     setPendingRunId(null)
@@ -89,12 +107,12 @@ function ConsoleApp() {
   return <OperationsProvider initialSubstationId={scenario.state.selectedSubstationId} mode={mode} referenceTime={replay ? scenario.sensor.state.simulatedAt : null}>
     <AppShell alertCount={replay && scenario.state.incidentState === 'incident-active' ? scenario.alerts.length : 0} onPageChange={navigate} onRefresh={refreshConsole} page={page} simulatedAt={replay ? scenario.sensor.state.simulatedAt : null}>
       {page === 'dashboard' && <DashboardPage onOpenAlerts={openAlerts} theme={theme.resolvedTheme} />}
-      {page === 'alerts' && (replay ? <ScenarioAlertsPage initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
-      {page === 'ai-action' && <AiActivityPage entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
+      {page === 'alerts' && (replay ? <ScenarioAlertsPage analysisQueue={analysisQueue} initialAlertId={initialAlertId} key={scenario.state.incidentState} onConsumeInitialAlert={consumeInitialAlert} onOpenAiAction={openRun} onRunQueued={queueAgentRun} /> : <AlertsPage analysisQueue={analysisQueue} onOpenAiAction={openRun} onRunCreated={queueAgentRun} />)}
+      {page === 'ai-action' && <AiActivityPage analysisQueue={analysisQueue} entryMode={mode} incidentAlertId={replay && pendingRunId != null ? scenario.state.selectedAlertId : null} initialRunId={pendingRunId} onConsumeInitialRun={consumePendingRun} />}
       {page === 'settings' && <SettingsPage onOpenAdmin={() => setPage('admin')} onThemePreferenceChange={theme.setPreference} themePreference={theme.preference} />}
       {page === 'admin' && <AdminPage onModeChanged={() => setPage('dashboard')} refreshRevision={refreshRevision} />}
     </AppShell>
-    <AgentAnalysisProgress entries={analysisQueue} onOpen={openRun} onRemoveEntries={removeAgentRuns} />
+    <AgentAnalysisProgress entries={analysisQueue.filter((entry) => !entry.toastDismissed)} onOpen={openRun} onRemoveEntries={removeAgentRuns} />
   </OperationsProvider>
 }
 

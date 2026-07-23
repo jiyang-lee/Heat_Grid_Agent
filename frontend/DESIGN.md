@@ -95,14 +95,16 @@ Base unit: 4px. Use `--space-1` through `--space-8` (4–32px). Desktop uses a 2
 - Behavior: version selection changes the central document only; review history stays visible and uses compact operator, AI-review and execution-result rows.
 - Input: Enter submits a review; Shift+Enter inserts a line break; IME composition is never submitted early.
 
-### FinalTestDocumentChatWorkspace
+### FinalTestActivityWorkspace
 
-- Structure: one preloaded `demo_id` owns the normal snapshot, fault snapshot, work order, report and chat script. The document preview and conversation are separate bordered surfaces inside one resizable split workspace.
-- Conversation anatomy: compact domain header, scrollable message transcript, DB-backed suggested prompts and a bottom composer. Operator messages align right; assistant and safety responses align left without copying another product's branding.
-- Ratio controls: desktop supports 60:40, 50:50 and 40:60 document-to-chat ratios. At 960px and below the surfaces stack and each keeps its own internal scroll.
-- States: loading skeleton, read error with retry, work-order preview, report preview, assistant response, fixed domain fallback and safety refusal.
-- Safety and determinism: the demo never calls a model. Guardrails are matched before domain scripts, and all text comes from the selected DB package.
-- Accessibility: tab and ratio controls expose selected state, the transcript is a polite live log, Enter submits, Shift+Enter creates a new line and IME composition never submits early.
+- Structure: final_test uses the 5173 operations console shell. Generated demo entries are adapted into the existing AI analysis list/detail layout; the blank operating-data state is never rendered.
+- Queue motion: a new `final-test` entry auto-expands the screenshot-4 progress toast. `requestedAt <= now < readyAt` is `분석 중`; `readyAt` is at least five seconds after request and then becomes `완료` without blocking the main thread.
+- Document flow: the screenshot-5 analysis detail opens the screenshot-6 work-order shell after completion. Version v1 is read-only, local session acceptance unlocks report generation, and the screenshot-7 report shell uses local session approval only.
+- 5173/5174 composition: document preview, version rail and action footer belong to the 5173 operations shell. Only the right-side chatbot surface follows the 5174 `HeatGrid 운영 도우미` contract.
+- Conversation anatomy: one `demo_id` owns its session transcript in `sessionStorage`; the compact domain header, scrollable log, suggested prompts, guarded scripted replies and composer survive work-order/report tab changes.
+- Safety and determinism: final_test makes only package list/detail reads. It never calls agent-run, review-chat, incident document mutation or model APIs. Guardrails are matched before domain scripts.
+- Responsive behavior: desktop uses document/chat columns, 960px and below stack their internal scroll regions, and 720px and below exposes `문서 보기`/`챗봇 보기` to show one surface at a time.
+- Accessibility: workflow tabs expose selected/disabled state, the transcript is an `aria-live="polite"` log, Enter submits, Shift+Enter creates a new line and IME composition never submits early.
 
 ## 6. Motion & Interaction
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ACTIVE_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, SCENARIO_INCIDENT_AT, scenarioAlertsAt, workOrderVersion } from './scenarioData'
+import { ACTIVE_SCENARIO_ID, FINAL_TEST_SCENARIO_ID, IMPROVEMENT_LABELS, SCENARIO_ALERTS, SCENARIO_INCIDENT_AT, scenarioAlertsAt, workOrderVersion } from './scenarioData'
 import { ScenarioContext, type ScenarioContextValue } from './ScenarioContextDefinition'
 import type {
   EntryMode,
@@ -323,7 +323,7 @@ function loadSession(): ScenarioState {
       ...initialState,
       mode,
       entryStep: 'console',
-      scenarioId: mode === 'fault' ? ACTIVE_SCENARIO_ID : null,
+      scenarioId: mode === 'fault' && value.scenarioId === FINAL_TEST_SCENARIO_ID ? FINAL_TEST_SCENARIO_ID : mode === 'fault' ? ACTIVE_SCENARIO_ID : null,
       selectedAlertId,
       selectedSubstationId: typeof value.selectedSubstationId === 'number' ? value.selectedSubstationId : alertFor(selectedAlertId).substationId,
       incidentState: value.incidentState === 'incident-active' ? 'incident-active' : 'monitoring',
@@ -382,7 +382,7 @@ function persist(state: ScenarioState): void {
 
 export function ScenarioProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<ScenarioState>(loadSession)
-  const sensor = useSensorStream(state.mode, state.entryStep === 'console', state.selectedSubstationId, state.incidentState)
+  const sensor = useSensorStream(state.mode, state.entryStep === 'console', state.selectedSubstationId, state.incidentState, state.scenarioId)
   const alertTimeline = useMemo(() => scenarioAlertsAt(sensor.state.simulatedAt, state.resolvedAlertTimes), [sensor.state.simulatedAt, state.resolvedAlertTimes])
   const { alerts, alertHistory } = useMemo(() => state.mode === 'fault' && state.incidentState === 'incident-active'
     ? { alerts: alertTimeline.active, alertHistory: alertTimeline.history }
@@ -421,6 +421,7 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   }, [])
   const backToModeSelection = useCallback(() => { clearScenarioSession(); setState(initialState) }, [])
   const startFaultScenario = useCallback(() => update({ ...initialState, mode: 'fault', entryStep: 'console', scenarioId: ACTIVE_SCENARIO_ID }), [update])
+  const startDemoScenario = useCallback(() => update({ ...initialState, mode: 'fault', entryStep: 'console', scenarioId: FINAL_TEST_SCENARIO_ID, incidentState: 'incident-active' }), [update])
   const restartScenario = useCallback(() => {
     if (state.mode == null) return
     // 새로고침(F5)은 고장 첫 시점으로 되돌린다. 만들었던 문서와 관련 클라이언트 캐시(작업지시서 개정본,
@@ -429,8 +430,9 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
     window.localStorage.removeItem('heatgrid:last-agent-run')
     clearStoredAiDocumentDrafts()
     sensor.reset()
-    update({ ...initialState, mode: state.mode, entryStep: 'console', scenarioId: state.mode === 'fault' ? ACTIVE_SCENARIO_ID : null })
-  }, [sensor, state.mode, update])
+    const isDemo = state.mode === 'fault' && state.scenarioId === FINAL_TEST_SCENARIO_ID
+    update({ ...initialState, mode: state.mode, entryStep: 'console', scenarioId: state.mode === 'fault' ? (isDemo ? FINAL_TEST_SCENARIO_ID : ACTIVE_SCENARIO_ID) : null, incidentState: isDemo ? 'incident-active' : 'monitoring' })
+  }, [sensor, state.mode, state.scenarioId, update])
   const clearAiHistory = useCallback(() => {
     window.sessionStorage.removeItem(SESSION_KEY)
     window.localStorage.removeItem('heatgrid:last-agent-run')
@@ -569,8 +571,8 @@ export function ScenarioProvider({ children }: { readonly children: ReactNode })
   const submitEvaluation = useCallback((category: EvaluationCategory) => setState((current) => syncActiveDocumentGroup({ ...current, improvementCandidate: { category, label: IMPROVEMENT_LABELS[category], status: 'approval-pending', createdAt: new Date().toISOString() } })), [])
 
   const value = useMemo<ScenarioContextValue>(() => ({
-    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, restartScenario, clearAiHistory, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, selectDocumentGroup, appendWorkOrderRevision, appendManualWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
-  }), [acceptWorkOrder, alertHistory, alerts, appendManualWorkOrderRevision, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, clearAiHistory, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectDocumentGroup, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
+    state, sensor, alerts, alertHistory, selectMode, backToModeSelection, startFaultScenario, startDemoScenario, restartScenario, clearAiHistory, exitConsole, selectAlert, selectSubstation, startAnalysis, completeAnalysis, failAnalysis, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, resolveAlert, setAiEntry, createWorkOrder, selectDocumentGroup, appendWorkOrderRevision, appendManualWorkOrderRevision, appendWorkOrderMessages, selectWorkOrderVersion, updateWorkOrderContent, acceptWorkOrder, createReportDraft, saveReportDraft, completeReport, postReportMessage, submitEvaluation,
+  }), [acceptWorkOrder, alertHistory, alerts, appendManualWorkOrderRevision, appendWorkOrderMessages, appendWorkOrderRevision, backToModeSelection, clearAiHistory, completeAnalysis, completeReport, createReportDraft, createWorkOrder, dismissAnalysisToast, dismissIncidentAlert, dismissIncidentPopup, exitConsole, failAnalysis, postReportMessage, resolveAlert, restartScenario, saveReportDraft, selectAlert, selectDocumentGroup, selectMode, selectSubstation, selectWorkOrderVersion, sensor, setAiEntry, startAnalysis, startDemoScenario, startFaultScenario, state, submitEvaluation, updateWorkOrderContent])
 
   return <ScenarioContext.Provider value={value}>{children}</ScenarioContext.Provider>
 }
