@@ -1,6 +1,7 @@
 import type { AgentRunListItem, AnomalyReportArtifact, WorkOrderStructuredContent } from '../api/contracts'
 import type { AgentAnalysisQueueEntry } from '../console/AgentAnalysisProgress'
-import type { FinalTestDemoPackage, FinalTestDemoPackageSummary } from './contracts'
+import type { FinalTestDemoPackage, FinalTestDemoPackageSummary, FinalTestDocument } from './contracts'
+import { finalTestCompletionAt, finalTestPriorityForRoom, normalizeFinalTestDisplayText, withFinalTestDisplayText, withFinalTestReportDisplayText } from './policy'
 
 function roomLabel(substationId: number): string {
   return `기계실 ${substationId}`
@@ -21,22 +22,21 @@ function dateLabel(value: string | undefined): string {
   return normalizedDate(value) ?? '확인 필요'
 }
 
-function workOrderReason(pkg: FinalTestDemoPackage): string {
-  return pkg.work_order_document.summary ?? `${pkg.fault_label} 현장 점검이 필요합니다.`
+function workOrderReason(pkg: FinalTestDemoPackage, document: FinalTestDocument): string {
+  return document.summary ?? `${pkg.fault_label} 현장 점검이 필요합니다.`
 }
 
-export function workOrderContentFor(pkg: FinalTestDemoPackage): WorkOrderStructuredContent {
-  const document = pkg.work_order_document
+export function workOrderContentFor(pkg: FinalTestDemoPackage, document = pkg.work_order_document): WorkOrderStructuredContent {
   const steps = document.steps ?? []
   const safety = document.safety ?? []
   const criteria = document.completion_criteria ?? []
-  const issueReason = workOrderReason(pkg)
-  return {
+  const issueReason = workOrderReason(pkg, document)
+  return withFinalTestDisplayText({
     work_order_kind: 'site_check',
     header: {
       document_number: document.header?.work_order_number ?? `WO-FINAL-${String(pkg.substation_id).padStart(3, '0')}`,
       issued_at: dateValue(document.header?.issued_at, pkg.fault_payload.captured_at),
-      priority: document.header?.priority ?? '긴급',
+      priority: finalTestPriorityForRoom(pkg.substation_id).label,
       assignee: document.approval?.approved_by ?? null,
       target_building: pkg.facility_name,
       mechanical_room: String(pkg.substation_id),
@@ -68,44 +68,44 @@ export function workOrderContentFor(pkg: FinalTestDemoPackage): WorkOrderStructu
       questions: safety.map((item) => ({ question: item, applicable: true, required_action: item })),
       permit_required: true,
     },
-    disclaimer: '본 시연 산출물은 운영자 검토와 현장 승인 전제의 사전 승인본입니다.',
-  }
+      disclaimer: '본 산출물은 운영자 검토와 현장 승인 전제의 사전 승인본입니다.',
+  })
 }
 
-export function reportArtifactFor(pkg: FinalTestDemoPackage): AnomalyReportArtifact {
-  const document = pkg.report_document
+export function reportArtifactFor(pkg: FinalTestDemoPackage, document = pkg.report_document): AnomalyReportArtifact {
   const sections = document.sections ?? []
   const sensors = pkg.fault_payload.sensors
+  const priority = finalTestPriorityForRoom(pkg.substation_id)
   const actions = sections.map((item) => ({
-    action: item.body,
-    urgency: '즉시',
+    action: normalizeFinalTestDisplayText(item.body),
+    urgency: priority.label,
     owner_hint: '현장 운영자',
   }))
-  return {
+  return withFinalTestReportDisplayText({
     report_metadata: {
       report_id: document.header?.report_number ?? document.document_id,
       generated_at: dateLabel(pkg.fault_payload.captured_at),
       source_card_id: pkg.alert_id,
     },
     target_asset: {
-      asset_label: pkg.fault_label,
+      asset_label: normalizeFinalTestDisplayText(pkg.fault_label),
       configuration_type: '열원·순환 계통',
       window_start: dateLabel(pkg.normal_payload.captured_at),
       window_end: dateLabel(pkg.fault_payload.captured_at),
     },
     priority_summary: {
-      priority_level: pkg.fault_payload.priority.level,
+      priority_level: priority.level,
       priority_score: pkg.fault_payload.priority.score,
       priority_reason: pkg.fault_payload.priority.reason,
-      urgency: '즉시',
+      urgency: priority.label,
       operator_review: document.status === 'approved' ? '승인 완료' : '검토 필요',
       confidence: '사전 검증 데이터',
     },
     situation_summary: {
-      current_status: pkg.fault_label,
-      headline: document.executive_summary ?? pkg.fault_label,
-      summary: document.executive_summary ?? pkg.fault_label,
-      impact_summary: document.conclusion ?? '완료 기준 확인 전까지 긴급 상태를 유지합니다.',
+      current_status: normalizeFinalTestDisplayText(pkg.fault_label),
+      headline: normalizeFinalTestDisplayText(document.executive_summary ?? pkg.fault_label),
+      summary: normalizeFinalTestDisplayText(document.executive_summary ?? pkg.fault_label),
+      impact_summary: normalizeFinalTestDisplayText(document.conclusion ?? `${priority.label} 상태를 유지하며 완료 기준을 확인합니다.`),
     },
     key_evidence: sensors.map((sensor) => ({
       label: sensor.label,
@@ -113,15 +113,15 @@ export function reportArtifactFor(pkg: FinalTestDemoPackage): AnomalyReportArtif
       value: sensor.value,
       data_status: sensor.status === 'critical' ? '임계 초과' : sensor.status === 'warning' ? '주의' : '정상',
       judgement: sensor.status === 'critical' ? '즉시 점검' : '추세 확인',
-      interpretation: `${sensor.label} ${sensor.value}${sensor.unit}가 시연 고장 묶음에 기록되었습니다.`,
+      interpretation: `${normalizeFinalTestDisplayText(sensor.label)} ${sensor.value}${sensor.unit}가 고장 분석 근거에 기록되었습니다.`,
     })),
     risk_analysis: {
-      risk_level: pkg.fault_payload.priority.level,
-      risk_summary: pkg.fault_payload.priority.reason,
+      risk_level: priority.level,
+      risk_summary: normalizeFinalTestDisplayText(pkg.fault_payload.priority.reason),
     },
     recommended_actions: actions,
-    conclusion: document.conclusion,
-  }
+    conclusion: document.conclusion == null ? undefined : normalizeFinalTestDisplayText(document.conclusion),
+  })
 }
 
 export function demoMachineRoom(pkg: FinalTestDemoPackage): string {
@@ -129,8 +129,7 @@ export function demoMachineRoom(pkg: FinalTestDemoPackage): string {
 }
 
 export function finalTestRunItem(summary: FinalTestDemoPackageSummary, entry: AgentAnalysisQueueEntry, now = Date.now()): AgentRunListItem {
-  const requestedAt = Date.parse(entry.requestedAt)
-  const readyAt = Date.parse(entry.readyAt ?? '') || requestedAt + 5_000
+  const readyAt = finalTestCompletionAt(entry.requestedAt)
   const completed = now >= readyAt
   const status = completed ? 'completed' : 'running'
   return {
@@ -138,7 +137,7 @@ export function finalTestRunItem(summary: FinalTestDemoPackageSummary, entry: Ag
     status,
     alert_id: summary.alert_id,
     card_id: summary.demo_id,
-    priority: 'high',
+    priority: finalTestPriorityForRoom(summary.substation_id).level,
     operator_review_status: 'pending',
     worker_status: completed ? 'completed' : 'running',
     review_snapshot_status: completed ? 'available' : 'pending',
@@ -147,7 +146,7 @@ export function finalTestRunItem(summary: FinalTestDemoPackageSummary, entry: Ag
     manufacturer_id: null,
     substation_id: summary.substation_id,
     substation_uid: `final-test-${summary.substation_id}`,
-    alert_reason: summary.fault_label,
+    alert_reason: normalizeFinalTestDisplayText(summary.fault_label),
     current_stage: completed ? null : 'fault_analysis',
     has_result: completed,
     report_artifact_count: completed ? 1 : 0,

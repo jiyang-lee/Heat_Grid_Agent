@@ -38,7 +38,7 @@ class PostgresFinalTestDemoRepository:
                 text(
                     "SELECT demo_id, scenario_id, alert_id, substation_id, facility_name, "
                     "fault_label, normal_payload, fault_payload, work_order_document, "
-                    "report_document, chat_script "
+                    "report_document, work_order_versions, report_versions, chat_script "
                     "FROM public.final_test_demo_packages WHERE demo_id = :demo_id"
                 ),
                 {"demo_id": demo_id},

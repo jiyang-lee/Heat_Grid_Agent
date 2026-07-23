@@ -11,6 +11,7 @@ import { finalTestDemoApi } from '../final-test/api'
 import { useFinalTestPackages } from '../final-test/hooks'
 import { ScenarioSensorEvidenceChart } from './ScenarioSensorEvidenceChart'
 import { FINAL_TEST_SCENARIO_ID } from './scenarioData'
+import { finalTestCompletionAt, finalTestReadyAt } from '../final-test/policy'
 import type { ScenarioAlert, ScenarioTimelineAlert, SensorPoint } from './types'
 import { useScenario } from './useScenario'
 
@@ -151,7 +152,7 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
     if (!demoPackage) {
       setAnalysisErrors((current) => ({
         ...current,
-        [alert.id]: demoPackages.isError ? '시연 DB를 불러오지 못했습니다. 다시 시도해 주세요.' : '시연 자료를 준비하는 중입니다.',
+        [alert.id]: demoPackages.isError ? 'AI 조치 자료를 불러오지 못했습니다. 다시 시도해 주세요.' : 'AI 조치 자료를 준비하고 있습니다.',
       }))
       if (demoPackages.isError) void demoPackages.refetch()
       return
@@ -178,18 +179,18 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
         alertId: alert.id,
         label: `기계실 ${demoPackage.substation_id}`,
         requestedAt,
-        readyAt: new Date(Date.parse(requestedAt) + 5_000).toISOString(),
+        readyAt: finalTestReadyAt(requestedAt),
         source: 'final-test',
         toastDismissed: false,
       })
     } catch {
-      setAnalysisErrors((current) => ({ ...current, [alert.id]: '시연 자료를 불러오지 못했습니다. 다시 시도해 주세요.' }))
+      setAnalysisErrors((current) => ({ ...current, [alert.id]: 'AI 조치 자료를 불러오지 못했습니다. 다시 시도해 주세요.' }))
     } finally {
       setStartingAlertIds((current) => current.filter((id) => id !== alert.id))
     }
   }
   const demoEntryForAlert = selected == null ? undefined : finalTestQueue.find((entry) => entry.alertId === selected.id)
-  const demoReadyAt = demoEntryForAlert == null ? null : Date.parse(demoEntryForAlert.readyAt ?? '') || Date.parse(demoEntryForAlert.requestedAt) + 5_000
+  const demoReadyAt = demoEntryForAlert == null ? null : finalTestCompletionAt(demoEntryForAlert.requestedAt)
   const demoComplete = demoReadyAt != null && demoNow >= demoReadyAt
   return <div className="page-stack alert-page scenario-alert-page">
     <div className={`alerts-workspace ${selected ? 'has-detail' : ''}`.trim()}>
@@ -208,7 +209,7 @@ export function ScenarioAlertsPage({ analysisQueue, initialAlertId, onConsumeIni
           <div className="scenario-sensor-facts"><div><span>이상 센서</span><strong>{metricLabel(selected)}</strong></div><div><span>현재값</span><strong>{sensorEvidence(selected, selectedPoints)[0]}</strong></div><div><span>비교 기준</span><strong>{sensorEvidence(selected, selectedPoints)[1]}</strong></div><div><span>변화량</span><strong className="critical-text">{sensorEvidence(selected, selectedPoints)[2]}</strong></div></div>
           <ScenarioSensorEvidenceChart alert={selected} points={selectedPoints} />
           <section className="scenario-model-result"><h3>머신러닝 결과</h3><div><span>이상 점수</span><strong>{Math.round(selected.modelResult.anomalyScore * 100)}%</strong></div><div><span>위험 점수</span><strong>{Math.round(selected.modelResult.riskScore * 100)}%</strong></div><div><span>우선순위</span><strong>{selected.modelResult.priorityScore.toFixed(0)}점</strong></div><div><span>대응 긴급도</span><strong>{Math.round(selected.modelResult.leadtimeUrgencyScore * 100)}%</strong></div><p>{selected.modelResult.rationale}</p></section>
-            <section className="scenario-reasoning-card"><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>{selected.modelResult.rationale}</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '공급온도 설정과 열원·순환 계통의 운전 안정성에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol>{analysisErrors[selected.id] && <p className="scenario-analysis-error" role="alert">{analysisErrors[selected.id]}</p>}<div className="scenario-detail-actions">{selected.status === 'active' && (isFinalTest ? <Button disabled={demoPackages.isLoading || startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void openFinalTestPackage(selected)} tone="primary">{demoPackages.isLoading || startingAlertIds.includes(selected.id) ? '시연 자료 불러오는 중' : analysisErrors[selected.id] ? '시연 자료 다시 불러오기' : demoEntryForAlert == null ? 'AI 조치 생성' : demoComplete ? 'AI 조치 결과 보기' : 'AI 조치 진행 보기'}</Button> : <Button disabled={startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisQueue.some((entry) => entry.alertId === selected.id) ? 'AI 조치 진행 보기' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : 'AI 조치 생성'}</Button>)}</div></section>
+            <section className="scenario-reasoning-card"><h3>판단 근거</h3><p>{selected.summary}</p><ol className="scenario-reasoning"><li><strong>이상 감지</strong><span>{selected.evidence[0]}로 정상 범위 이탈이 확인되었습니다.</span></li><li><strong>모델 판단</strong><span>{selected.modelResult.rationale}</span></li><li><strong>현장 영향</strong><span>{selected.affectedMetric === 'flow' ? '열교환 성능 저하와 누수 확산 가능성을 확인해야 합니다.' : selected.affectedMetric === 'supply' ? '공급온도 설정과 열원·순환 계통의 운전 안정성에 영향을 줄 수 있습니다.' : '난방 순환 효율 저하와 세대 난방 불균형으로 확산될 수 있습니다.'}</span></li></ol>{analysisErrors[selected.id] && <p className="scenario-analysis-error" role="alert">{analysisErrors[selected.id]}</p>}<div className="scenario-detail-actions">{selected.status === 'active' && (isFinalTest ? <Button aria-busy={demoPackages.isLoading || startingAlertIds.includes(selected.id)} disabled={demoPackages.isLoading || startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void openFinalTestPackage(selected)} tone="primary">{demoPackages.isLoading || startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : demoEntryForAlert == null ? 'AI 조치 생성' : demoComplete ? 'AI 조치 결과 보기' : 'AI 조치 진행 보기'}</Button> : <Button disabled={startingAlertIds.includes(selected.id) || sensor.state.status === 'offline'} icon="activity" onClick={() => void runAnalysis(selected)} tone="primary">{startingAlertIds.includes(selected.id) ? 'AI 조치 준비 중' : analysisQueue.some((entry) => entry.alertId === selected.id) ? 'AI 조치 진행 보기' : analysisErrors[selected.id] ? 'AI 조치 다시 시도' : 'AI 조치 생성'}</Button>)}</div></section>
         </div>
       </SurfaceCard>}
     </div>

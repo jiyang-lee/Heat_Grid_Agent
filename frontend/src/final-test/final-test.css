@@ -6,6 +6,9 @@
 .final-test-activity-page .activity-detail { min-height: 0; overflow: hidden; }
 .final-test-activity-page .activity-list-card > .table-scroll { min-height: 0; overflow: auto; }
 .final-test-analysis-wait p { margin: 0; color: var(--ops-text-muted); line-height: 1.6; }
+.final-test-priority { display: inline-flex; width: fit-content; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+.final-test-priority.critical { background: var(--ops-critical-soft); color: var(--ops-critical); }
+.final-test-priority.warning { background: var(--ops-warning-soft); color: var(--ops-warning); }
 .final-test-document-layout { min-height: 0; height: 100%; }
 .final-test-mobile-surface { min-height: 0; height: 100%; overflow: hidden; }
 .final-test-document-layout .work-order-excel-panel { min-height: 0; overflow: hidden; }
@@ -19,6 +22,13 @@
 .final-test-demo-chat-panel .final-test-chat { height: 100%; min-height: 0; }
 .final-test-mobile-switch { display: none; }
 .final-test-selected-case { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.final-test-document-editor { display: grid; gap: 12px; padding: 16px; }
+.final-test-document-editor label { display: grid; gap: 6px; color: var(--ops-text-muted); font-size: 13px; font-weight: 700; }
+.final-test-document-editor input,
+.final-test-document-editor textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--ops-border); border-radius: 6px; background: var(--ops-surface); color: var(--ops-text); font: inherit; line-height: 1.55; }
+.final-test-document-editor input { min-height: 38px; padding: 8px 10px; }
+.final-test-document-editor textarea { min-height: 92px; padding: 10px; resize: vertical; }
+.final-test-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .final-test-chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--ops-surface); color: var(--ops-text); }
 .final-test-chat-header { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 10px 14px; border-bottom: 1px solid var(--ops-border); }
@@ -42,6 +52,12 @@
 .final-test-message p { margin: 0; padding: 10px 12px; border-radius: 4px 13px 13px 13px; background: var(--ops-surface-muted); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .final-test-message.operator p { border-radius: 13px 4px 13px 13px; background: var(--ops-primary); color: white; }
 .final-test-message.guardrail p { background: var(--ops-warning-soft); border: 1px solid color-mix(in srgb, var(--ops-warning) 25%, var(--ops-border)); }
+.final-test-message.is-pending p { color: var(--ops-text-muted); }
+.final-test-action-confirmation { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.final-test-action-confirmation button { min-height: 32px; padding: 5px 10px; border: 1px solid var(--ops-primary); border-radius: 6px; background: var(--ops-primary); color: white; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.final-test-action-confirmation button + button { background: var(--ops-surface); color: var(--ops-text-muted); }
+.final-test-action-status { display: inline-block; margin-top: 6px; color: var(--ops-text-muted); font-size: 12px; }
+.final-test-action-status.is-applied { color: var(--ops-success); font-weight: 700; }
 .final-test-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; overflow: hidden; }
 .final-test-suggestions button { flex: 0 1 auto; max-width: 100%; padding: 7px 9px; border: 1px solid var(--ops-border); border-radius: 999px; background: var(--ops-surface); color: var(--ops-text-muted); font: inherit; font-size: 12px; line-height: 1.35; text-align: left; cursor: pointer; }
 .final-test-composer { position: relative; margin: 10px 12px 12px; padding: 9px 44px 21px 11px; border: 1px solid var(--ops-border); border-radius: 13px; background: var(--ops-surface); }

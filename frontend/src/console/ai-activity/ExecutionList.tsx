@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import type { AgentRunListItem } from '../../api/contracts'
-import { StatusBadge } from '../ui'
+import { StatusBadge, type Tone } from '../ui'
 import {
   executionStatus,
   executionStatusTone,
@@ -13,6 +13,7 @@ interface Props {
   readonly items: readonly AgentRunListItem[]
   readonly selectedId: string | null
   readonly onSelect: (runId: string) => void
+  readonly priorityDisplay?: (item: AgentRunListItem) => { readonly label: string; readonly tone: Tone }
 }
 
 function rowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, select: () => void) {
@@ -22,7 +23,7 @@ function rowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, select: () => voi
   }
 }
 
-export function ExecutionList({ items, selectedId, onSelect }: Props) {
+export function ExecutionList({ items, selectedId, onSelect, priorityDisplay }: Props) {
   return (
     <div className="table-scroll">
       <table className="ops-table activity-table execution-activity-table">
@@ -33,6 +34,7 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
           {items.map((item) => {
             const status = executionStatus(item)
             const selected = item.run_id === selectedId
+            const priority = priorityDisplay?.(item) ?? { label: priorityLabel(item.priority), tone: priorityTone(item.priority) }
             return (
               <tr
                 aria-selected={selected}
@@ -47,7 +49,7 @@ export function ExecutionList({ items, selectedId, onSelect }: Props) {
                   <small>기계실 {item.substation_id ?? '-'}</small>
                 </td>
                 <td className="activity-alert-cell">
-                  <StatusBadge tone={priorityTone(item.priority)}>{priorityLabel(item.priority)}</StatusBadge>
+                  <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge>
                   <span className="activity-alert-reason" title={item.alert_reason ?? undefined}>{item.alert_reason ?? '-'}</span>
                 </td>
                 <td><StatusBadge tone={executionStatusTone(status)}>{status}</StatusBadge></td>

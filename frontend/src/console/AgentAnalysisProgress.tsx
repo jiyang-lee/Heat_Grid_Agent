@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentRunStatus } from '../api/contracts'
 import { agentRunsApi } from '../api/client'
 import { Button, StatusBadge } from './ui'
+import { finalTestCompletionAt } from '../final-test/policy'
 
 export interface AgentAnalysisQueueEntry {
   readonly runId: string
@@ -113,7 +114,7 @@ function useQueueProgress(entries: readonly AgentAnalysisQueueEntry[]): Readonly
       const next = { ...current }
       demoEntries.forEach((entry) => {
         const requestedAt = Date.parse(entry.requestedAt)
-        const readyAt = Date.parse(entry.readyAt ?? '') || requestedAt + 5_000
+        const readyAt = finalTestCompletionAt(entry.requestedAt)
         const completed = clock >= readyAt
         next[entry.runId] = {
           status: completed ? 'completed' : 'running',

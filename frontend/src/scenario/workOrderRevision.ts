@@ -96,6 +96,20 @@ function guardrailSkeleton(value: string): string {
   return Array.from(compactGuardrailText(value), (character) => confusables[character] ?? character).join('')
 }
 
+export interface WorkOrderChatNormalizationForms {
+  readonly normalized: string
+  readonly compact: string
+  readonly skeleton: string
+}
+
+export function workOrderChatNormalizationForms(value: string): WorkOrderChatNormalizationForms {
+  return {
+    normalized: normalizeGuardrailText(value),
+    compact: compactGuardrailText(value),
+    skeleton: guardrailSkeleton(value),
+  }
+}
+
 function containsNonOperationalRevisionContent(value: string): boolean {
   const compact = compactGuardrailText(value)
   return NON_OPERATIONAL_REVISION_TERMS.some((term) => compact.includes(compactGuardrailText(term)))
@@ -114,6 +128,20 @@ function containsDisallowedMarkup(value: string): boolean {
   return /<\s*\/?\s*[a-z][^>]*>/i.test(normalized)
     || /(?:javascript\s*:|on[a-z]+\s*=|data\s*:\s*text\/html)/i.test(normalized)
     || value.includes('```')
+}
+
+function containsUnsafeOperationalRequest(value: string): boolean {
+  const normalized = normalizeGuardrailText(value)
+  return /(?:안전|보호구|잠금|표찰|loto|무전압|승인).{0,12}(?:삭제|제거|생략|우회|없이|건너뛰)/.test(normalized)
+    || /(?:차단|밸브|전원).{0,12}(?:하지\s*않|안\s*하|없이).{0,8}(?:작업|진행|실행)/.test(normalized)
+    || /(?:승인|확인).{0,8}(?:없이|생략|건너뛰).{0,8}(?:실행|진행|조작)/.test(normalized)
+}
+
+export function isUnsafeWorkOrderChatInput(value: string): boolean {
+  return containsPromptAttack(value)
+    || containsDisallowedMarkup(value)
+    || containsNonOperationalRevisionContent(value)
+    || containsUnsafeOperationalRequest(value)
 }
 
 function revisionPayload(value: string): string {
@@ -136,7 +164,7 @@ function hasSupportedRevisionSemantics(value: string): boolean {
 }
 
 function violatesRevisionGuardrail(value: string): boolean {
-  if (containsPromptAttack(value) || containsDisallowedMarkup(value) || containsNonOperationalRevisionContent(value)) return true
+  if (isUnsafeWorkOrderChatInput(value)) return true
   return isWorkOrderRevisionRequest(value) && !hasSupportedRevisionSemantics(value)
 }
 

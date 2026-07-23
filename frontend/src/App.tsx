@@ -14,6 +14,7 @@ import { useScenario } from './scenario/useScenario'
 import { useThemePreference } from './console/useThemePreference'
 import { demoAiHistoryApi } from './api/client'
 import { clearFinalTestSession } from './final-test/session'
+import { finalTestReadyAt } from './final-test/policy'
 import './console/operations.css'
 import './scenario/scenario.css'
 
@@ -30,10 +31,14 @@ function storedAgentQueue(): readonly AgentAnalysisQueueEntry[] {
       && typeof entry.alertId === 'string'
       && typeof entry.label === 'string'
       && typeof entry.requestedAt === 'string'
-    )).map((entry) => ({
-      ...entry,
-      source: entry.source === 'final-test' ? 'final-test' : 'agent-run',
-    }))
+    )).map((entry) => {
+      const source = entry.source === 'final-test' || entry.runId.startsWith('final-test-') ? 'final-test' : 'agent-run'
+      return {
+        ...entry,
+        source,
+        readyAt: source === 'final-test' ? finalTestReadyAt(entry.requestedAt) : entry.readyAt,
+      }
+    })
   } catch {
     return []
   }
@@ -42,10 +47,10 @@ function storedAgentQueue(): readonly AgentAnalysisQueueEntry[] {
 function ConsoleApp() {
   const scenario = useScenario()
   const theme = useThemePreference()
-  const [page, setPage] = useState<ConsolePage>('dashboard')
+  const [analysisQueue, setAnalysisQueue] = useState<readonly AgentAnalysisQueueEntry[]>(storedAgentQueue)
+  const [page, setPage] = useState<ConsolePage>(() => storedAgentQueue().some((entry) => entry.source === 'final-test' || entry.runId.startsWith('final-test-')) ? 'ai-action' : 'dashboard')
   const [initialAlertId, setInitialAlertId] = useState<string | null>(null)
   const [pendingRunId, setPendingRunId] = useState<string | null>(null)
-  const [analysisQueue, setAnalysisQueue] = useState<readonly AgentAnalysisQueueEntry[]>(storedAgentQueue)
   const [refreshRevision, setRefreshRevision] = useState(0)
   const mode = scenario.state.mode ?? 'normal'
   const replay = mode === 'fault'
@@ -69,9 +74,8 @@ function ConsoleApp() {
     setPage('ai-action')
   }
   const queueAgentRun = useCallback((entry: AgentAnalysisQueueEntry) => {
-    const requestedAtMs = Date.parse(entry.requestedAt)
     const normalizedEntry: AgentAnalysisQueueEntry = scenario.state.scenarioId === FINAL_TEST_SCENARIO_ID
-      ? { ...entry, source: 'final-test', readyAt: entry.readyAt ?? new Date(requestedAtMs + 5_000).toISOString() }
+      ? { ...entry, source: 'final-test', readyAt: finalTestReadyAt(entry.requestedAt) }
       : { ...entry, source: entry.source ?? 'agent-run' }
     setAnalysisQueue((current) => current.some((item) => item.runId === normalizedEntry.runId)
       ? current
