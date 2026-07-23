@@ -32,9 +32,9 @@ def _catalog_connection(tables: set[str] | frozenset[str]) -> AsyncMock:
 def test_migration_manifest_is_contiguous_and_stable() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == list(range(24))
+    assert [migration.version for migration in migrations] == list(range(25))
     assert migrations[0].path.name == "000_schema_migrations.sql"
-    assert migrations[-1].path.name == "023_final_test_demo_packages.sql"
+    assert migrations[-1].path.name == "024_final_test_document_versions.sql"
     assert migrations[-1].hook_path is None
     assert len(migration_manifest_hash(migrations)) == 64
 

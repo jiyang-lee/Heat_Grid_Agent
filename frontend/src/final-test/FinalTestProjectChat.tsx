@@ -13,7 +13,6 @@ import type {
   FinalTestChatScript,
   FinalTestDocumentType,
 } from './contracts'
-import { normalizeFinalTestChatText } from './policy'
 import { FINAL_TEST_CHAT_STORAGE_KEY } from './session'
 
 interface Props {
@@ -69,10 +68,6 @@ function presentationText(value: string): string {
     .replaceAll('시연', '운영')
 }
 
-function displayText(value: string): string {
-  return normalizeFinalTestChatText(presentationText(value))
-}
-
 function isChatAction(value: unknown): value is FinalTestChatAction {
   if (value == null || typeof value !== 'object') return false
   const action = value as Partial<FinalTestChatAction>
@@ -102,7 +97,8 @@ function scriptedReply(message: string, script: FinalTestChatScript): ScriptedRe
   const guardrail = matchesRule(message, script.guardrails)
   if (guardrail) return { content: guardrail.response, guarded: true }
 
-  if (isUnsafeWorkOrderChatInput(message)) {
+  const unsafe = isUnsafeWorkOrderChatInput(message)
+  if (unsafe) {
     return {
       content: '안전 절차 우회, 업무 외 내용 변경, 프롬프트 공격 또는 실행 코드가 포함된 요청은 처리할 수 없습니다.',
       guarded: true,
@@ -122,7 +118,7 @@ function scriptedReply(message: string, script: FinalTestChatScript): ScriptedRe
 }
 
 function defaultMessages(greeting: string): readonly ChatMessage[] {
-  return [{ id: 1, role: 'assistant', content: displayText(greeting) }]
+  return [{ id: 1, role: 'assistant', content: presentationText(greeting) }]
 }
 
 function loadMessages(sessionKey: string, greeting: string): readonly ChatMessage[] {
@@ -140,10 +136,9 @@ function loadMessages(sessionKey: string, greeting: string): readonly ChatMessag
       return candidate.actionStatus == null || ['pending', 'applied', 'cancelled'].includes(candidate.actionStatus)
     })
     if (valid.length === 0) return defaultMessages(greeting)
-    return valid.map((message, index) => ({
-      ...message,
-      content: displayText(index === 0 && message.role !== 'operator' ? greeting : message.content),
-    }))
+    return valid.map((message, index) => message.role === 'operator'
+      ? message
+      : { ...message, content: presentationText(index === 0 ? greeting : message.content) })
   } catch {
     return defaultMessages(greeting)
   }
@@ -185,7 +180,6 @@ export function FinalTestProjectChat({
   const [pending, setPending] = useState(false)
   const nextId = useRef(Math.max(1, ...messages.map((message) => message.id)) + 1)
   const transcript = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     persistMessages(sessionKey, messages)
   }, [messages, sessionKey])
@@ -203,7 +197,7 @@ export function FinalTestProjectChat({
     setDraft('')
 
     if (reply == null) {
-      setMessages((current) => [...current, { id: operatorId, role: 'operator', content: displayText(value) }])
+      setMessages((current) => [...current, { id: operatorId, role: 'operator', content: value }])
       setPending(true)
       try {
         const history = messages
@@ -211,22 +205,22 @@ export function FinalTestProjectChat({
           .slice(-12)
           .map((message) => ({
             role: message.role === 'operator' ? 'operator' as const : 'assistant' as const,
-            content: displayText(message.content),
+            content: message.content,
           }))
         const response = await finalTestDemoApi.chat(demoId, {
-          message: displayText(value),
+          message: value,
           document_type: documentType,
           current_version: currentVersion,
           history,
         })
         setMessages((current) => [
           ...current,
-          { id: nextId.current++, role: 'assistant', content: displayText(response.answer || script.fallback_response) },
+          { id: nextId.current++, role: 'assistant', content: presentationText(response.answer || script.fallback_response) },
         ])
       } catch {
         setMessages((current) => [
           ...current,
-          { id: nextId.current++, role: 'assistant', content: displayText(script.fallback_response) },
+          { id: nextId.current++, role: 'assistant', content: presentationText(script.fallback_response) },
         ])
       } finally {
         setPending(false)
@@ -252,11 +246,11 @@ export function FinalTestProjectChat({
     if (pendingAction != null) onPreviewVersion(pendingAction.target_version)
     setMessages((current) => [
       ...current,
-      { id: operatorId, role: 'operator', content: displayText(value) },
+      { id: operatorId, role: 'operator', content: value },
       {
         id: assistantId,
         role: reply.guarded ? 'guardrail' : 'assistant',
-        content: displayText(pendingAction == null ? replyContent : actionPreviewMessage(pendingAction.document_type)),
+        content: presentationText(pendingAction == null ? replyContent : actionPreviewMessage(pendingAction.document_type)),
         action: pendingAction,
         actionStatus: pendingAction == null ? undefined : 'pending',
       },
@@ -265,7 +259,7 @@ export function FinalTestProjectChat({
 
   const decideAction = (message: ChatMessage, apply: boolean) => {
     if (message.action == null || message.actionStatus !== 'pending') return
-    const response = displayText(apply ? message.action.applied_response : message.action.cancelled_response)
+    const response = presentationText(apply ? message.action.applied_response : message.action.cancelled_response)
     if (apply) onApplyVersion(message.action.target_version)
     else onCancelPreview()
     setMessages((current) => [
@@ -279,7 +273,8 @@ export function FinalTestProjectChat({
   return <section className="final-test-chat" aria-label="HeatGrid 프로젝트 챗봇">
     <header className="final-test-chat-header">
       <div className="final-test-chat-avatar"><Icon name="activity" /></div>
-      <div><strong>HeatGrid 운영 도우미</strong></div>
+      <div><strong>HeatGrid 운영 도우미</strong><span><i /> 운영 자료 연계 · AI 답변</span></div>
+      <span className="final-test-domain-badge">현재 기계실</span>
     </header>
     <div className="final-test-chat-log" ref={transcript} role="log" aria-live="polite">
       {messages.map((message) => <div className={`final-test-message ${message.role}`} key={message.id}>
@@ -300,7 +295,6 @@ export function FinalTestProjectChat({
         <div><small>HeatGrid AI</small><p>현재 기계실 자료에서 답변을 확인하고 있습니다.</p></div>
       </div>}
     </div>
-    <div className="final-test-suggestions" aria-label="추천 질문">{script.suggested_prompts.map((prompt) => { const normalizedPrompt = displayText(prompt); return <button key={normalizedPrompt} onClick={() => void submit(normalizedPrompt)} type="button">{normalizedPrompt}</button> })}</div>
     <div className="final-test-composer">
       <textarea
         aria-label="HeatGrid 질문 입력"
@@ -318,7 +312,7 @@ export function FinalTestProjectChat({
         value={draft}
       />
       <button aria-label="질문 보내기" disabled={!draft.trim() || pending} onClick={() => void submit()} type="button"><Icon name="arrow" /></button>
-      <p>Enter 전송 · Shift+Enter 줄바꿈</p>
+      <p>현재 기계실 운영 자료만 답변합니다. Enter 전송 · Shift+Enter 줄바꿈</p>
     </div>
   </section>
 }

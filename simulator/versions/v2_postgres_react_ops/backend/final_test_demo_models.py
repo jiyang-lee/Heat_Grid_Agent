@@ -28,8 +28,8 @@ class FinalTestDemoPackage(BaseModel):
     fault_payload: dict[str, Any]
     work_order_document: dict[str, Any]
     report_document: dict[str, Any]
-    work_order_versions: list[dict[str, Any]] = Field(default_factory=list)
-    report_versions: list[dict[str, Any]] = Field(default_factory=list)
+    work_order_versions: list[dict[str, Any]]
+    report_versions: list[dict[str, Any]]
     chat_script: dict[str, Any]
 
 
@@ -42,7 +42,7 @@ class FinalTestDemoPackagePage(BaseModel):
 class FinalTestChatHistoryItem(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    role: Literal['operator', 'assistant']
+    role: Literal["operator", "assistant"]
     content: str = Field(min_length=1, max_length=8_000)
 
 
@@ -50,7 +50,7 @@ class FinalTestChatRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     message: str = Field(min_length=1, max_length=4_000)
-    document_type: Literal['work_order', 'report']
+    document_type: Literal["work_order", "report"]
     current_version: int = Field(ge=1, le=3)
     history: tuple[FinalTestChatHistoryItem, ...] = Field(default=(), max_length=20)
 
