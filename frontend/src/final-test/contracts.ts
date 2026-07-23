@@ -45,11 +45,30 @@ export interface FinalTestDocument {
   readonly approval?: Readonly<Record<string, string>>
 }
 
+export interface FinalTestDocumentVersion {
+  readonly version: number
+  readonly change_summary: string
+  readonly document: FinalTestDocument
+}
+
+export type FinalTestDocumentType = 'work_order' | 'report'
+
+export interface FinalTestChatAction {
+  readonly type: 'preview_document_version'
+  readonly document_type: FinalTestDocumentType
+  readonly source_version: number
+  readonly target_version: number
+  readonly confirmation_message: string
+  readonly applied_response: string
+  readonly cancelled_response: string
+}
+
 export interface FinalTestChatRule {
   readonly intent?: string
   readonly category?: string
   readonly patterns: readonly string[]
   readonly response: string
+  readonly action?: FinalTestChatAction
 }
 
 export interface FinalTestChatScript {
@@ -66,9 +85,27 @@ export interface FinalTestDemoPackage extends FinalTestDemoPackageSummary {
   readonly fault_payload: FinalTestSnapshot
   readonly work_order_document: FinalTestDocument
   readonly report_document: FinalTestDocument
+  readonly work_order_versions: readonly FinalTestDocumentVersion[]
+  readonly report_versions: readonly FinalTestDocumentVersion[]
   readonly chat_script: FinalTestChatScript
 }
 
 export interface FinalTestDemoPackagePage {
   readonly items: readonly FinalTestDemoPackageSummary[]
+}
+
+export interface FinalTestChatHistoryItem {
+  readonly role: 'operator' | 'assistant'
+  readonly content: string
+}
+
+export interface FinalTestChatRequest {
+  readonly message: string
+  readonly document_type: FinalTestDocumentType
+  readonly current_version: number
+  readonly history: readonly FinalTestChatHistoryItem[]
+}
+
+export interface FinalTestChatResponse {
+  readonly answer: string
 }

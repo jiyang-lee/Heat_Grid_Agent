@@ -20,7 +20,7 @@
 .final-test-mobile-switch { display: none; }
 .final-test-selected-case { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.final-test-chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--ops-surface); color: var(--ops-text); }
+.final-test-chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--ops-surface); color: var(--ops-text); }
 .final-test-chat-header { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 10px 14px; border-bottom: 1px solid var(--ops-border); }
 .final-test-chat-avatar,
 .final-test-message-avatar { display: grid; place-items: center; border-radius: 9px; background: var(--ops-primary); color: white; }
@@ -42,8 +42,12 @@
 .final-test-message p { margin: 0; padding: 10px 12px; border-radius: 4px 13px 13px 13px; background: var(--ops-surface-muted); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .final-test-message.operator p { border-radius: 13px 4px 13px 13px; background: var(--ops-primary); color: white; }
 .final-test-message.guardrail p { background: var(--ops-warning-soft); border: 1px solid color-mix(in srgb, var(--ops-warning) 25%, var(--ops-border)); }
-.final-test-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; overflow: hidden; }
-.final-test-suggestions button { flex: 0 1 auto; max-width: 100%; padding: 7px 9px; border: 1px solid var(--ops-border); border-radius: 999px; background: var(--ops-surface); color: var(--ops-text-muted); font: inherit; font-size: 12px; line-height: 1.35; text-align: left; cursor: pointer; }
+.final-test-message.is-pending p { color: var(--ops-text-muted); }
+.final-test-action-confirmation { display: flex; gap: 6px; margin-top: 8px; }
+.final-test-action-confirmation button { min-height: 34px; padding: 6px 10px; border: 1px solid var(--ops-border); border-radius: 7px; background: var(--ops-surface); color: var(--ops-text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.final-test-action-confirmation button:first-child { border-color: var(--ops-primary); background: var(--ops-primary); color: white; }
+.final-test-action-status { display: inline-flex; margin-top: 7px; padding: 3px 7px; border-radius: 999px; background: var(--ops-surface-muted); color: var(--ops-text-muted); font-size: 11px; font-weight: 700; }
+.final-test-action-status.is-applied { background: color-mix(in srgb, var(--ops-success) 14%, var(--ops-surface)); color: var(--ops-success); }
 .final-test-composer { position: relative; margin: 10px 12px 12px; padding: 9px 44px 21px 11px; border: 1px solid var(--ops-border); border-radius: 13px; background: var(--ops-surface); }
 .final-test-composer:focus-within { border-color: var(--ops-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-primary) 14%, transparent); }
 .final-test-composer textarea { width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--ops-text); font: inherit; font-size: 13px; }

@@ -96,6 +96,21 @@ function guardrailSkeleton(value: string): string {
   return Array.from(compactGuardrailText(value), (character) => confusables[character] ?? character).join('')
 }
 
+export interface WorkOrderChatNormalizationForms {
+  readonly normalized: string
+  readonly compact: string
+  readonly skeleton: string
+}
+
+/** 시연 챗봇을 포함한 프론트 대화 화면에서 같은 우회 방지 정규화를 재사용한다. */
+export function workOrderChatNormalizationForms(value: string): WorkOrderChatNormalizationForms {
+  return {
+    normalized: normalizeGuardrailText(value),
+    compact: compactGuardrailText(value),
+    skeleton: guardrailSkeleton(value),
+  }
+}
+
 function containsNonOperationalRevisionContent(value: string): boolean {
   const compact = compactGuardrailText(value)
   return NON_OPERATIONAL_REVISION_TERMS.some((term) => compact.includes(compactGuardrailText(term)))
@@ -114,6 +129,20 @@ function containsDisallowedMarkup(value: string): boolean {
   return /<\s*\/?\s*[a-z][^>]*>/i.test(normalized)
     || /(?:javascript\s*:|on[a-z]+\s*=|data\s*:\s*text\/html)/i.test(normalized)
     || value.includes('```')
+}
+
+function containsUnsafeOperationalRequest(value: string): boolean {
+  const normalized = normalizeGuardrailText(value)
+  return /(?:안전|보호구|잠금|표찰|loto|무전압|승인).{0,12}(?:삭제|제거|생략|우회|없이|건너뛰)/.test(normalized)
+    || /(?:차단|밸브|전원).{0,12}(?:하지\s*않|안\s*하|없이).{0,8}(?:작업|진행|실행)/.test(normalized)
+    || /(?:승인|확인).{0,8}(?:없이|생략|건너뛰).{0,8}(?:실행|진행|조작)/.test(normalized)
+}
+
+export function isUnsafeWorkOrderChatInput(value: string): boolean {
+  return containsPromptAttack(value)
+    || containsDisallowedMarkup(value)
+    || containsNonOperationalRevisionContent(value)
+    || containsUnsafeOperationalRequest(value)
 }
 
 function revisionPayload(value: string): string {
@@ -136,7 +165,7 @@ function hasSupportedRevisionSemantics(value: string): boolean {
 }
 
 function violatesRevisionGuardrail(value: string): boolean {
-  if (containsPromptAttack(value) || containsDisallowedMarkup(value) || containsNonOperationalRevisionContent(value)) return true
+  if (isUnsafeWorkOrderChatInput(value)) return true
   return isWorkOrderRevisionRequest(value) && !hasSupportedRevisionSemantics(value)
 }
 
@@ -188,7 +217,7 @@ function isAmbiguousScopeRequest(normalized: string): boolean {
 }
 
 function hasWorkOrderScopeMarker(normalized: string): boolean {
-  return /작업\s*지시서|문서|설비|기계실|지역난방|난방|센서|온도|압력|환수|공급|유량|진동|소음|열교환|펌프|순환펌프|이상\s*탐지|우선순위|근거|출처|작업\s*절차|점검|안전|보호구|항목|그\s*항목|그\s*부분|이\s*판단|외기온|대화|수정\s*요청|승인|거절|검토|긴급|분류|모델|예측|rag|검색|기억|뭐였|뭐라고/.test(normalized)
+  return /작업\s*지시서|보고서|문서|결론|조치\s*결과|설비|기계실|지역난방|난방|센서|온도|압력|환수|공급|유량|진동|소음|열교환|펌프|순환펌프|이상\s*탐지|우선순위|근거|출처|작업\s*절차|점검|안전|보호구|항목|그\s*항목|그\s*부분|이\s*판단|외기온|대화|수정\s*요청|승인|거절|검토|긴급|분류|모델|예측|rag|검색|기억|뭐였|뭐라고/.test(normalized)
 }
 
 function itemIndexFromInstruction(instruction: string): number | null {

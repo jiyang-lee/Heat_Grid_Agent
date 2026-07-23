@@ -1,6 +1,6 @@
 import type { AgentRunListItem, AnomalyReportArtifact, WorkOrderStructuredContent } from '../api/contracts'
 import type { AgentAnalysisQueueEntry } from '../console/AgentAnalysisProgress'
-import type { FinalTestDemoPackage, FinalTestDemoPackageSummary } from './contracts'
+import type { FinalTestDemoPackage, FinalTestDemoPackageSummary, FinalTestDocument } from './contracts'
 
 function roomLabel(substationId: number): string {
   return `기계실 ${substationId}`
@@ -21,16 +21,15 @@ function dateLabel(value: string | undefined): string {
   return normalizedDate(value) ?? '확인 필요'
 }
 
-function workOrderReason(pkg: FinalTestDemoPackage): string {
-  return pkg.work_order_document.summary ?? `${pkg.fault_label} 현장 점검이 필요합니다.`
+function workOrderReason(pkg: FinalTestDemoPackage, document: FinalTestDocument): string {
+  return document.summary ?? `${pkg.fault_label} 현장 점검이 필요합니다.`
 }
 
-export function workOrderContentFor(pkg: FinalTestDemoPackage): WorkOrderStructuredContent {
-  const document = pkg.work_order_document
+export function workOrderContentFor(pkg: FinalTestDemoPackage, document = pkg.work_order_document): WorkOrderStructuredContent {
   const steps = document.steps ?? []
   const safety = document.safety ?? []
   const criteria = document.completion_criteria ?? []
-  const issueReason = workOrderReason(pkg)
+  const issueReason = workOrderReason(pkg, document)
   return {
     work_order_kind: 'site_check',
     header: {
@@ -72,8 +71,7 @@ export function workOrderContentFor(pkg: FinalTestDemoPackage): WorkOrderStructu
   }
 }
 
-export function reportArtifactFor(pkg: FinalTestDemoPackage): AnomalyReportArtifact {
-  const document = pkg.report_document
+export function reportArtifactFor(pkg: FinalTestDemoPackage, document = pkg.report_document): AnomalyReportArtifact {
   const sections = document.sections ?? []
   const sensors = pkg.fault_payload.sensors
   const actions = sections.map((item) => ({

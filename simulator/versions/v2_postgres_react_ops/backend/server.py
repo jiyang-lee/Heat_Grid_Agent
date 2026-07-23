@@ -354,7 +354,7 @@ app.include_router(make_agent_quality_router(engine))
 app.include_router(make_automation_router(engine, settings))
 app.include_router(make_retrain_router(engine))
 app.include_router(make_demo_ai_history_router(engine, enabled=settings.demo_ai_history_reset_enabled))
-app.include_router(make_final_test_demo_router(final_test_demo_repository))
+app.include_router(make_final_test_demo_router(final_test_demo_repository, settings))
 
 
 if __name__ == "__main__":

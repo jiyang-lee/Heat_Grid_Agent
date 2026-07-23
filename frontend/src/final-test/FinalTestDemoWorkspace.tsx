@@ -11,7 +11,7 @@ import { EXECUTION_STATUS_FILTERS, executionStatus, executionStatusTone, facilit
 import { Button, StatusBadge, SurfaceCard } from '../console/ui'
 import { FinalTestProjectChat } from './FinalTestProjectChat'
 import { demoMachineRoom, finalTestRunItem, reportArtifactFor, workOrderContentFor } from './adapters'
-import type { FinalTestDemoPackage, FinalTestDemoPackageSummary } from './contracts'
+import type { FinalTestDemoPackage, FinalTestDemoPackageSummary, FinalTestDocument, FinalTestDocumentType, FinalTestDocumentVersion } from './contracts'
 import { useFinalTestPackage, useFinalTestPackages } from './hooks'
 import { FINAL_TEST_PRESENTATION_STORAGE_KEY } from './session'
 import './final-test.css'
@@ -21,8 +21,14 @@ type MobileSurface = 'document' | 'chat'
 
 interface PresentationState {
   readonly workOrderAccepted: boolean
+  readonly acceptedWorkOrderVersion: number | null
+  readonly currentWorkOrderVersion: number
+  readonly selectedWorkOrderVersion: number
   readonly reportReady: boolean
   readonly reportApproved: boolean
+  readonly approvedReportVersion: number | null
+  readonly currentReportVersion: number
+  readonly selectedReportVersion: number
 }
 
 interface Props {
@@ -31,16 +37,41 @@ interface Props {
   readonly onConsumeInitialRun: () => void
 }
 
-const EMPTY_PRESENTATION: PresentationState = { workOrderAccepted: false, reportReady: false, reportApproved: false }
+const EMPTY_PRESENTATION: PresentationState = {
+  workOrderAccepted: false,
+  acceptedWorkOrderVersion: null,
+  currentWorkOrderVersion: 1,
+  selectedWorkOrderVersion: 1,
+  reportReady: false,
+  reportApproved: false,
+  approvedReportVersion: null,
+  currentReportVersion: 1,
+  selectedReportVersion: 1,
+}
+
+function presentationState(value: Partial<PresentationState> | undefined): PresentationState {
+  return { ...EMPTY_PRESENTATION, ...value }
+}
 
 function loadPresentation(): Readonly<Record<string, PresentationState>> {
   try {
     const parsed: unknown = JSON.parse(window.sessionStorage.getItem(FINAL_TEST_PRESENTATION_STORAGE_KEY) ?? '{}')
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    return parsed as Readonly<Record<string, PresentationState>>
+    return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [
+      key,
+      presentationState(value && typeof value === 'object' && !Array.isArray(value) ? value as Partial<PresentationState> : undefined),
+    ]))
   } catch {
     return {}
   }
+}
+
+function documentVersions(versions: readonly FinalTestDocumentVersion[], fallback: FinalTestDocument): readonly FinalTestDocumentVersion[] {
+  return versions.length > 0 ? versions : [{ version: 1, change_summary: '최초 사전 승인본', document: fallback }]
+}
+
+function selectedDocument(versions: readonly FinalTestDocumentVersion[], version: number): FinalTestDocumentVersion {
+  return versions.find((item) => item.version === version) ?? versions[0]!
 }
 
 function savePresentation(value: Readonly<Record<string, PresentationState>>): void {
@@ -78,33 +109,78 @@ function FinalTestExecutionDetail({ item, pkg, onOpenWorkOrder }: { readonly ite
   </SurfaceCard>
 }
 
-function FinalTestVersionRail({ label }: { readonly label: string }) {
-  return <WorkOrderHoverRail label={label}><div className="final-test-version-rail"><button aria-selected="true" className="active" role="tab" type="button">v1</button></div></WorkOrderHoverRail>
+function FinalTestVersionRail({ label, versions, selectedVersion, visibleThrough, onSelect }: {
+  readonly label: string
+  readonly versions: readonly FinalTestDocumentVersion[]
+  readonly selectedVersion: number
+  readonly visibleThrough: number
+  readonly onSelect: (version: number) => void
+}) {
+  const visible = versions.filter((item) => item.version <= visibleThrough)
+  return <WorkOrderHoverRail label={label}><div className="final-test-version-rail">{visible.map((item) => <button aria-label={`v${item.version} · ${item.change_summary}`} aria-selected={selectedVersion === item.version} className={selectedVersion === item.version ? 'active' : ''} key={item.version} onClick={() => onSelect(item.version)} role="tab" title={item.change_summary} type="button">v{item.version}</button>)}</div></WorkOrderHoverRail>
 }
 
-function FinalTestChatPanel({ pkg, demoId }: { readonly pkg: FinalTestDemoPackage; readonly demoId: string }) {
-  return <section className="ops-surface work-order-chat-panel final-test-demo-chat-panel"><FinalTestProjectChat key={demoId} script={pkg.chat_script} sessionKey={demoId} /></section>
+function FinalTestChatPanel({ pkg, demoId, documentType, currentVersion, onPreviewVersion, onApplyVersion, onCancelPreview }: {
+  readonly pkg: FinalTestDemoPackage
+  readonly demoId: string
+  readonly documentType: FinalTestDocumentType
+  readonly currentVersion: number
+  readonly onPreviewVersion: (version: number) => void
+  readonly onApplyVersion: (version: number) => void
+  readonly onCancelPreview: () => void
+}) {
+  return <section className="ops-surface work-order-chat-panel final-test-demo-chat-panel"><FinalTestProjectChat currentVersion={currentVersion} demoId={demoId} documentType={documentType} key={demoId} onApplyVersion={onApplyVersion} onCancelPreview={onCancelPreview} onPreviewVersion={onPreviewVersion} script={pkg.chat_script} sessionKey={demoId} /></section>
 }
 
-function FinalTestWorkOrder({ pkg, state, onAccept, onCreateReport, onMobileSurface }: { readonly pkg: FinalTestDemoPackage; readonly state: PresentationState; readonly onAccept: () => void; readonly onCreateReport: () => void; readonly onMobileSurface: (surface: MobileSurface) => void }) {
+function FinalTestWorkOrder({ pkg, state, onUpdate, onCreateReport, onMobileSurface }: {
+  readonly pkg: FinalTestDemoPackage
+  readonly state: PresentationState
+  readonly onUpdate: (patch: Partial<PresentationState>) => void
+  readonly onCreateReport: () => void
+  readonly onMobileSurface: (surface: MobileSurface) => void
+}) {
+  const versions = documentVersions(pkg.work_order_versions, pkg.work_order_document)
+  const selected = selectedDocument(versions, state.selectedWorkOrderVersion)
+  const previewPending = selected.version > state.currentWorkOrderVersion
+  const accepted = state.workOrderAccepted && state.acceptedWorkOrderVersion === selected.version
+  const visibleThrough = Math.max(state.currentWorkOrderVersion, selected.version)
+  const applyVersion = (version: number) => onUpdate({
+    currentWorkOrderVersion: version,
+    selectedWorkOrderVersion: version,
+    workOrderAccepted: false,
+    acceptedWorkOrderVersion: null,
+    reportReady: false,
+    reportApproved: false,
+    approvedReportVersion: null,
+  })
   return <div className="scenario-order-layout work-order-unified-layout final-test-document-layout">
-    <FinalTestVersionRail label="작업지시서 목록" />
-    <SurfaceCard action={<StatusBadge tone={state.workOrderAccepted ? 'success' : 'warning'}>{state.workOrderAccepted ? '최종 채택' : '검토 중'}</StatusBadge>} className="scenario-order-document work-order-excel-panel" title="Excel 양식 미리보기">
-      <div className="scenario-document-toolbar"><span className="work-order-version-badge">v1{state.workOrderAccepted ? ' · 채택' : ''}</span><div className="scenario-document-commands"><Button icon="activity" onClick={() => onMobileSurface('chat')} tone="primary">AI 수정·질문으로 이동</Button><Button disabled title="시연 사전 적재본은 직접 수정할 수 없습니다.">직접 수정</Button><Button disabled icon="download" title="시연 문서는 다운로드 대상이 아닙니다.">Excel 다운로드</Button></div></div>
-      <article className="scenario-order-body"><WorkOrderExcelPreview content={workOrderContentFor(pkg)} status={state.workOrderAccepted ? 'approved' : 'draft'} version={1} /><WorkOrderActionFooter notice={state.workOrderAccepted ? '이 버전이 보고서 생성 기준입니다.' : '사전 적재된 v1을 검토한 뒤 최종 채택하세요.'} saveStatus="idle"><Button icon="check" onClick={onAccept} tone="primary">{state.workOrderAccepted ? '최종 채택됨' : '선택 버전 최종 채택'}</Button><Button disabled={!state.workOrderAccepted} icon="document" onClick={onCreateReport} title={!state.workOrderAccepted ? '먼저 작업지시서를 최종 채택해야 보고서를 생성할 수 있습니다.' : undefined}>{state.workOrderAccepted ? '보고서 생성' : '보고서 생성 잠김'}</Button></WorkOrderActionFooter></article>
+    <FinalTestVersionRail label="작업지시서 목록" onSelect={(version) => onUpdate({ selectedWorkOrderVersion: version })} selectedVersion={selected.version} versions={versions} visibleThrough={visibleThrough} />
+    <SurfaceCard action={<StatusBadge tone={accepted ? 'success' : 'warning'}>{accepted ? '최종 채택' : previewPending ? '변경안 확인' : '검토 중'}</StatusBadge>} className="scenario-order-document work-order-excel-panel" title="Excel 양식 미리보기">
+      <div className="scenario-document-toolbar"><span className="work-order-version-badge">v{selected.version}{accepted ? ' · 채택' : previewPending ? ' · 변경안' : ''}</span><div className="scenario-document-commands"><Button icon="activity" onClick={() => onMobileSurface('chat')} tone="primary">AI 수정·질문으로 이동</Button><Button disabled title="시연 사전 적재본은 직접 수정할 수 없습니다.">직접 수정</Button><Button disabled icon="download" title="시연 문서는 다운로드 대상이 아닙니다.">Excel 다운로드</Button></div></div>
+      <article className="scenario-order-body"><WorkOrderExcelPreview content={workOrderContentFor(pkg, selected.document)} status={accepted ? 'approved' : 'draft'} version={selected.version} /><WorkOrderActionFooter notice={accepted ? '이 버전이 보고서 생성 기준입니다.' : previewPending ? '챗봇에서 변경 적용 여부를 확인해 주세요.' : `${selected.change_summary}을 검토한 뒤 최종 채택하세요.`} saveStatus="idle"><Button disabled={previewPending || accepted} icon="check" onClick={() => onUpdate({ workOrderAccepted: true, acceptedWorkOrderVersion: selected.version })} tone="primary">{accepted ? '최종 채택됨' : '선택 버전 최종 채택'}</Button><Button disabled={!accepted} icon="document" onClick={onCreateReport} title={!accepted ? '먼저 작업지시서를 최종 채택해야 보고서를 생성할 수 있습니다.' : undefined}>{accepted ? '보고서 생성' : '보고서 생성 잠김'}</Button></WorkOrderActionFooter></article>
     </SurfaceCard>
-    <FinalTestChatPanel demoId={pkg.demo_id} pkg={pkg} />
+    <FinalTestChatPanel currentVersion={state.currentWorkOrderVersion} demoId={pkg.demo_id} documentType="work_order" onApplyVersion={applyVersion} onCancelPreview={() => onUpdate({ selectedWorkOrderVersion: state.currentWorkOrderVersion })} onPreviewVersion={(version) => onUpdate({ selectedWorkOrderVersion: version, workOrderAccepted: false, acceptedWorkOrderVersion: null })} pkg={pkg} />
   </div>
 }
 
-function FinalTestReport({ pkg, state, onApprove, onMobileSurface }: { readonly pkg: FinalTestDemoPackage; readonly state: PresentationState; readonly onApprove: () => void; readonly onMobileSurface: (surface: MobileSurface) => void }) {
+function FinalTestReport({ pkg, state, onUpdate, onMobileSurface }: {
+  readonly pkg: FinalTestDemoPackage
+  readonly state: PresentationState
+  readonly onUpdate: (patch: Partial<PresentationState>) => void
+  readonly onMobileSurface: (surface: MobileSurface) => void
+}) {
+  const versions = documentVersions(pkg.report_versions, pkg.report_document)
+  const selected = selectedDocument(versions, state.selectedReportVersion)
+  const previewPending = selected.version > state.currentReportVersion
+  const approved = state.reportApproved && state.approvedReportVersion === selected.version
+  const visibleThrough = Math.max(state.currentReportVersion, selected.version)
   return <div className="scenario-order-layout work-order-unified-layout report-unified-layout final-test-document-layout">
-    <FinalTestVersionRail label="보고서 목록" />
-    <SurfaceCard action={<StatusBadge tone={state.reportApproved ? 'success' : 'warning'}>{state.reportApproved ? '최종 승인' : '검토 중'}</StatusBadge>} className="work-order-excel-panel report-docx-panel" title="DOCX 양식 미리보기">
-      <div className="scenario-document-toolbar"><span className="work-order-version-badge">v1{state.reportApproved ? ' · 승인' : ''}</span><div className="scenario-document-commands"><Button icon="activity" onClick={() => onMobileSurface('chat')} tone="primary">AI 수정·질문으로 이동</Button><Button disabled title="시연 사전 적재본은 직접 수정할 수 없습니다.">직접 수정</Button><Button disabled icon="download" title="시연 문서는 다운로드 대상이 아닙니다.">DOCX 다운로드</Button></div></div>
-      <div className="report-document-body"><ReportDocxPreview buildingName={pkg.facility_name} machineRoom={demoMachineRoom(pkg)} report={reportArtifactFor(pkg)} statusLabel={state.reportApproved ? '최종 승인' : '검토 중'} version={1} /><WorkOrderActionFooter notice={state.reportApproved ? '시연 세션에서 최종 승인된 보고서입니다.' : '최신 버전을 최종 승인하면 운영 보고서로 확정됩니다.'} saveStatus="idle"><Button disabled={state.reportApproved} icon="check" onClick={onApprove} tone="primary">{state.reportApproved ? '최종 승인됨' : '선택 버전 최종 승인'}</Button></WorkOrderActionFooter></div>
+    <FinalTestVersionRail label="보고서 목록" onSelect={(version) => onUpdate({ selectedReportVersion: version })} selectedVersion={selected.version} versions={versions} visibleThrough={visibleThrough} />
+    <SurfaceCard action={<StatusBadge tone={approved ? 'success' : 'warning'}>{approved ? '최종 승인' : previewPending ? '변경안 확인' : '검토 중'}</StatusBadge>} className="work-order-excel-panel report-docx-panel" title="DOCX 양식 미리보기">
+      <div className="scenario-document-toolbar"><span className="work-order-version-badge">v{selected.version}{approved ? ' · 승인' : previewPending ? ' · 변경안' : ''}</span><div className="scenario-document-commands"><Button icon="activity" onClick={() => onMobileSurface('chat')} tone="primary">AI 수정·질문으로 이동</Button><Button disabled title="시연 사전 적재본은 직접 수정할 수 없습니다.">직접 수정</Button><Button disabled icon="download" title="시연 문서는 다운로드 대상이 아닙니다.">DOCX 다운로드</Button></div></div>
+      <div className="report-document-body"><ReportDocxPreview buildingName={pkg.facility_name} machineRoom={demoMachineRoom(pkg)} report={reportArtifactFor(pkg, selected.document)} statusLabel={approved ? '최종 승인' : '검토 중'} version={selected.version} /><WorkOrderActionFooter notice={approved ? '시연 세션에서 최종 승인된 보고서입니다.' : previewPending ? '챗봇에서 변경 적용 여부를 확인해 주세요.' : `${selected.change_summary}을 검토한 뒤 최종 승인하세요.`} saveStatus="idle"><Button disabled={previewPending || approved} icon="check" onClick={() => onUpdate({ reportApproved: true, approvedReportVersion: selected.version })} tone="primary">{approved ? '최종 승인됨' : '선택 버전 최종 승인'}</Button></WorkOrderActionFooter></div>
     </SurfaceCard>
-    <FinalTestChatPanel demoId={pkg.demo_id} pkg={pkg} />
+    <FinalTestChatPanel currentVersion={state.currentReportVersion} demoId={pkg.demo_id} documentType="report" onApplyVersion={(version) => onUpdate({ currentReportVersion: version, selectedReportVersion: version, reportApproved: false, approvedReportVersion: null })} onCancelPreview={() => onUpdate({ selectedReportVersion: state.currentReportVersion })} onPreviewVersion={(version) => onUpdate({ selectedReportVersion: version, reportApproved: false, approvedReportVersion: null })} pkg={pkg} />
   </div>
 }
 
@@ -151,11 +227,11 @@ export function FinalTestDemoWorkspace({ entries, initialDemoId, onConsumeInitia
   }), [facilityId, generated, now, search, status])
   const selectedRow = rows.find((item) => item.run_id === selectedDemoId) ?? rows[0] ?? null
   const selectedPackageData = selectedPackage.data ?? null
-  const selectedState = selectedDemoId == null ? EMPTY_PRESENTATION : presentation[selectedDemoId] ?? EMPTY_PRESENTATION
+  const selectedState = selectedDemoId == null ? EMPTY_PRESENTATION : presentationState(presentation[selectedDemoId])
   const facilities = [...new Map(generated.map(({ summary }) => [summary.substation_id, { substationId: summary.substation_id, name: summary.facility_name }])).values()]
   const updateState = (patch: Partial<PresentationState>) => {
     if (selectedDemoId == null) return
-    setPresentation((current) => ({ ...current, [selectedDemoId]: { ...(current[selectedDemoId] ?? EMPTY_PRESENTATION), ...patch } }))
+    setPresentation((current) => ({ ...current, [selectedDemoId]: { ...presentationState(current[selectedDemoId]), ...patch } }))
   }
   const openWorkOrder = () => {
     if (selectedRow?.status !== 'completed' || selectedPackageData == null) return
@@ -185,7 +261,7 @@ export function FinalTestDemoWorkspace({ entries, initialDemoId, onConsumeInitia
   return <div className="activity-page final-test-activity-page">
     <nav aria-label="AI 조치 단계" className="activity-tabs"><button aria-selected={tab === 'execution'} className={tab === 'execution' ? 'active' : ''} onClick={() => changeTab('execution')} role="tab" type="button">AI 분석 목록</button><button aria-selected={tab === 'orders'} className={tab === 'orders' ? 'active' : ''} disabled={workOrderLocked} onClick={() => changeTab('orders')} role="tab" title={workOrderLocked ? 'AI 조치 분석이 완료되면 열립니다.' : undefined} type="button">작업지시서</button><button aria-selected={tab === 'reports'} className={tab === 'reports' ? 'active' : ''} disabled={reportLocked} onClick={() => changeTab('reports')} role="tab" title={reportLocked ? '작업지시서를 최종 채택하면 열립니다.' : undefined} type="button">보고서</button></nav>
     {tab === 'execution' && <div className="final-test-execution-content"><ActivityFilters facilities={facilities} facilityId={facilityId} onFacilityChange={setFacilityId} onPeriodChange={setPeriod} onSearchChange={setSearch} onStatusChange={setStatus} period={period} search={search} status={status} statusOptions={EXECUTION_STATUS_FILTERS} totalCount={rows.length} /><div className={`activity-workspace ${selectedRow ? 'split' : ''}`.trim()}><SurfaceCard className="activity-list-card" title="AI 분석 목록"><ExecutionList items={rows} onSelect={setSelectedDemoId} selectedId={selectedDemoId} /></SurfaceCard>{selectedRow && <FinalTestExecutionDetail item={selectedRow} onOpenWorkOrder={openWorkOrder} pkg={selectedPackageData} />}</div></div>}
-    {tab !== 'execution' && <div className={`final-test-mobile-surface mobile-${mobileSurface}`}><div className="final-test-mobile-switch" aria-label="문서와 챗봇 보기"><button aria-pressed={mobileSurface === 'document'} onClick={() => setMobileSurface('document')} type="button">문서 보기</button><button aria-pressed={mobileSurface === 'chat'} onClick={() => setMobileSurface('chat')} type="button">챗봇 보기</button></div>{selectedPackageData == null ? <SurfaceCard title="시연 자료"><p className="activity-empty-note">시연 산출물을 불러오는 중입니다.</p></SurfaceCard> : tab === 'orders' ? <FinalTestWorkOrder onAccept={() => updateState({ workOrderAccepted: true })} onCreateReport={createReport} onMobileSurface={setMobileSurface} pkg={selectedPackageData} state={selectedState} /> : <FinalTestReport onApprove={() => updateState({ reportApproved: true })} onMobileSurface={setMobileSurface} pkg={selectedPackageData} state={selectedState} />}</div>}
+    {tab !== 'execution' && <div className={`final-test-mobile-surface mobile-${mobileSurface}`}><div className="final-test-mobile-switch" aria-label="문서와 챗봇 보기"><button aria-pressed={mobileSurface === 'document'} onClick={() => setMobileSurface('document')} type="button">문서 보기</button><button aria-pressed={mobileSurface === 'chat'} onClick={() => setMobileSurface('chat')} type="button">챗봇 보기</button></div>{selectedPackageData == null ? <SurfaceCard title="시연 자료"><p className="activity-empty-note">시연 산출물을 불러오는 중입니다.</p></SurfaceCard> : tab === 'orders' ? <FinalTestWorkOrder onCreateReport={createReport} onMobileSurface={setMobileSurface} onUpdate={updateState} pkg={selectedPackageData} state={selectedState} /> : <FinalTestReport onMobileSurface={setMobileSurface} onUpdate={updateState} pkg={selectedPackageData} state={selectedState} />}</div>}
     <span className="final-test-selected-case" aria-hidden="true">{selectedSummary.facility_name} · 기계실 {selectedSummary.substation_id}</span>
   </div>
 }
