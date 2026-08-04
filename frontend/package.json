@@ -7,22 +7,30 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:e2e": "playwright test",
     "typecheck": "tsc -b --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
+    "@fontsource/noto-sans-kr": "^5.2.9",
     "@tanstack/react-query": "^5.90.2",
+    "jspdf": "^4.2.1",
     "maplibre-gl": "^5.24.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.2.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
+    "react-doctor": "^0.7.8",
+    "react-grab": "^0.1.48",
+    "react-scan": "^0.5.7",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }

@@ -24,7 +24,6 @@
 
 **데이터 연동**
 - `ModelProvider`: `GET /api/alerts`(open) + `GET /cards`(card_id→substation_id)로 **단지 tier** 산출(urgent→긴급, high→주의). 건물명 enrichment=`useBuildingName`.
-- **mock↔real 스위치** = `VITE_USE_MOCK`(`.env`). mock이면 백엔드 없이 전체 화면 동작(단지 tier는 관리비 단가 대리지표).
 
 **인프라/설정**
 - 지도 키 `.env`의 `VITE_MAP_STYLE_URL`(gitignore). LAN 공유(`vite.config` `server.host`). Vercel 배포 설정(`vercel.json`) + README 가이드. dev proxy 대상 8002. 에이전트 토큰 사용량 기록 수정. MapTiler 예시 키 스크럽(레포에 실제 키 없음).
@@ -34,14 +33,14 @@
 2. 기계실 "어느 설비 고장"은 **합성값**(`domain/model.ts` `stById`, 단지 tier를 대표 설비에 배정) → 백엔드가 설비단위 신호를 주면 그 부분만 교체.
 3. 지도 3D 건물 도형은 **합성 프록시**(`map/footprints.ts`, 정사각형+세대수 비례 높이) → 실 GIS 확보 시 교체.
 4. 설비 이미지 리사이즈/WebP 최적화(배포 전, 현재 ~6MB).
-5. 공개 배포 시 백엔드 공개 호스팅 + `/api` 연결(또는 mock 모드).
+5. 공개 배포 시 백엔드 공개 호스팅 + `/api` 연결.
 
 ## 3. 실행 / 환경
 **프론트**
 ```bash
 cd frontend
 npm install
-cp .env.example .env     # VITE_MAP_STYLE_URL=<MapTiler 키>, VITE_USE_MOCK=true(백엔드 없이) / false(실백엔드)
+cp .env.example .env     # VITE_MAP_STYLE_URL=<MapTiler 키>, VITE_BACKEND_URL=<백엔드 주소>
 npm run dev              # http://localhost:5173
 ```
 **백엔드(실데이터용)**
