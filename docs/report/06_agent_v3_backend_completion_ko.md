@@ -1,7 +1,7 @@
 # HeatGrid Agent v3 백엔드 마무리 보고서
 
-작성일: 2026-07-14  
-작업 브랜치: `codex/agent-v3-backend-finish`  
+작성일: 2026-07-14
+작업 브랜치: `codex/agent-v3-backend-finish`
 기준: `origin/develop2` `053c8b6`
 
 ## 결론
