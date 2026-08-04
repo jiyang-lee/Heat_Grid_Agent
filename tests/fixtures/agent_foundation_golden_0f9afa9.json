@@ -1,0 +1,47 @@
+{
+  "baseline_sha": "0f9afa9",
+  "execution": {
+    "adapter": "deterministic_no_external_keys",
+    "database_seed": "agent_foundation_v2_fixed",
+    "captured_tests": [
+      "test_model_disagreement_reruns_model_once",
+      "test_internal_then_external_evidence_routes_are_bounded",
+      "test_sufficient_evidence_finalizes_and_bad_output_requests_revision"
+    ]
+  },
+  "api_required_fields": [
+    "run_id",
+    "status",
+    "input_source",
+    "alert_id",
+    "card_id",
+    "agent_mode",
+    "ops_output",
+    "token_usage",
+    "loop_summary",
+    "review_status",
+    "review_task_id",
+    "error"
+  ],
+  "output_required_fields": ["summary", "action_plan", "caution"],
+  "scenarios": {
+    "normal_high": {
+      "decision_order": ["finalize"],
+      "loop_count": 1,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"]
+    },
+    "model_mismatch_urgent": {
+      "decision_order": ["rerun_model", "request_human"],
+      "loop_count": 2,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"]
+    },
+    "review_required_insufficient_evidence": {
+      "decision_order": ["expand_internal", "search_external", "request_human"],
+      "loop_count": 3,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"]
+    }
+  }
+}

@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     requested_by text,
     trigger_reason text,
     approved_action_task_id uuid,
-    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed')),
+    status text NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled')),
     agent_mode text CHECK (agent_mode IN ('llm', 'fallback')),
     ops_output jsonb,
     token_usage jsonb,
@@ -68,10 +68,14 @@ DROP_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
 ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_status_check
 """
 
+ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = (
+    "ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check "
+    "CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled'))"
+)
+
 ADD_AGENT_RUN_STATUS_CONSTRAINT_DDL: Final = """
-ALTER TABLE agent_runs
-ADD CONSTRAINT agent_runs_status_check
-CHECK (status IN ('queued', 'running', 'completed', 'failed'))
+ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_status_check
+CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled'))
 """
 
 AGENT_RUN_SELECT: Final = (
@@ -136,7 +140,7 @@ async def reserve_agent_run(
             text(
                 f"{AGENT_RUN_SELECT}"
                 "WHERE alert_id = :alert_id AND status <> 'failed' "
-                "ORDER BY updated_at DESC LIMIT 1"
+                "ORDER BY created_at DESC, lineage_depth DESC, updated_at DESC LIMIT 1"
             ),
             {"alert_id": alert_id},
         )
@@ -156,16 +160,30 @@ async def reserve_agent_run(
                 ),
             )
             return _run_from_row(existing_row), False
+        parent_run_id = None if existing_row is None else str(existing_row["run_id"])
+        lineage_rollover = False
+        if force_new and parent_run_id is not None:
+            lineage_depth = await connection.scalar(
+                text("SELECT lineage_depth FROM agent_runs WHERE run_id = :run_id"),
+                {"run_id": parent_run_id},
+            )
+            if lineage_depth is not None and int(lineage_depth) >= 2:
+                parent_run_id = None
+                lineage_rollover = True
         run_row = await _insert_queued_agent_run(
             connection,
             run_id=run_id,
             alert_id=alert_id,
             card_id=card_id,
-            parent_run_id=None
-            if existing_row is None
-            else str(existing_row["run_id"]),
+            parent_run_id=parent_run_id,
             trigger_type=trigger_type
-            or ("manual_rerun" if force_new else "alert"),
+            or (
+                "manual_rerun_rollover"
+                if lineage_rollover
+                else "manual_rerun"
+                if force_new
+                else "alert"
+            ),
             requested_by=requested_by,
             trigger_reason=reason,
             approved_action_task_id=approved_action_task_id,
@@ -187,15 +205,20 @@ async def _insert_queued_agent_run(
 ) -> RowMapping:
     query = text(
         "INSERT INTO agent_runs ("
-        "run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
-        "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+        "run_id, alert_id, card_id, evaluation_run_id, substation_uid, manufacturer_id, "
+        "substation_id, parent_run_id, root_run_id, lineage_depth, "
+        "trigger_type, requested_by, trigger_reason, "
         "approved_action_task_id, status"
         ") VALUES ("
         ":run_id, :alert_id, :card_id, "
         "(SELECT evaluation_run_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
+        "(SELECT substation_uid FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT manufacturer_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
         "(SELECT substation_id FROM ops_alert_queue WHERE alert_id = :alert_id), "
-        ":parent_run_id, :trigger_type, :requested_by, :trigger_reason, "
+        ":parent_run_id, "
+        "COALESCE((SELECT root_run_id FROM agent_runs WHERE run_id = :parent_run_id), :run_id), "
+        "COALESCE((SELECT lineage_depth + 1 FROM agent_runs WHERE run_id = :parent_run_id), 0), "
+        ":trigger_type, :requested_by, :trigger_reason, "
         ":approved_action_task_id, 'queued'"
         ") "
         "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
@@ -452,6 +475,38 @@ async def get_agent_run(engine: AsyncEngine, run_id: str) -> AgentRunResponse | 
     return None if row is None else _run_from_row(row)
 
 
+async def cancel_queued_agent_run(
+    engine: AsyncEngine,
+    run_id: str,
+) -> AgentRunResponse | None:
+    query = text(
+        "UPDATE agent_runs SET status = 'cancelled', error = NULL, updated_at = now() "
+        "WHERE run_id = :run_id AND status = 'queued' "
+        "RETURNING run_id, alert_id, card_id, evaluation_run_id, manufacturer_id, "
+        "substation_id, parent_run_id, trigger_type, requested_by, trigger_reason, "
+        "approved_action_task_id, status, agent_mode, "
+        "CAST(ops_output AS text) AS ops_output, "
+        "CAST(token_usage AS text) AS token_usage, "
+        "CAST(loop_summary AS text) AS loop_summary, "
+        "review_status, review_task_id, error"
+    )
+    async with engine.begin() as connection:
+        result = await connection.execute(query, {"run_id": run_id})
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        await insert_agent_run_event(
+            connection,
+            AgentRunEventRecord(
+                run_id=run_id,
+                event_type="status_changed",
+                message="agent run cancelled before execution",
+                payload={"status": "cancelled"},
+            ),
+        )
+    return _run_from_row(row)
+
+
 async def _set_agent_run_status(
     engine: AsyncEngine,
     event: AgentRunEventRecord,
@@ -516,4 +571,6 @@ def _run_from_row(row: RowMapping) -> AgentRunResponse:
         if row["review_task_id"] is None
         else str(row["review_task_id"]),
         error=row["error"],
+        # 일부 RETURNING 경로에는 created_at이 없어 .get으로 안전 처리(additive).
+        created_at=row.get("created_at"),
     )

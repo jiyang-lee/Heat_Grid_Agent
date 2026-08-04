@@ -65,6 +65,9 @@ CREATE TABLE IF NOT EXISTS human_review_tasks (
     resolution jsonb NOT NULL DEFAULT '{}'::jsonb,
     assigned_to text,
     reviewed_by text,
+    operation_key text,
+    subject_type text NOT NULL,
+    subject_key text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     reviewed_at timestamptz
 )
@@ -112,6 +115,8 @@ ON CONFLICT (policy_id) DO NOTHING
 AUTOMATION_INDEX_DDL: Final = (
     "CREATE INDEX IF NOT EXISTS evidence_candidates_status_idx ON evidence_candidates(status, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_tasks_status_idx ON human_review_tasks(status, created_at DESC)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS human_review_tasks_operation_key_uidx "
+    "ON human_review_tasks(operation_key) WHERE operation_key IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS training_feedback_created_idx ON training_feedback(created_at DESC)",
 )
 
@@ -356,18 +361,29 @@ async def create_review_task(
     assigned_to: str | None = None,
     reviewed_by: str | None = None,
     task_id: str | None = None,
+    operation_key: str | None = None,
 ) -> HumanReviewTask:
     await ensure_review_tables(engine)
     task_id = task_id or str(uuid4())
+    subject_type, subject_key = _review_subject(
+        task_id=task_id,
+        run_id=run_id,
+        candidate_id=candidate_id,
+        retrain_job_id=retrain_job_id,
+        model_candidate_id=model_candidate_id,
+    )
     query = text(
         "INSERT INTO human_review_tasks ("
         "task_id, task_type, status, risk_level, title, run_id, candidate_id, "
-        "retrain_job_id, model_candidate_id, payload, assigned_to, reviewed_by, reviewed_at"
+        "retrain_job_id, model_candidate_id, payload, assigned_to, reviewed_by, reviewed_at, "
+        "operation_key, subject_type, subject_key"
         ") VALUES ("
         ":task_id, :task_type, :status, :risk_level, :title, :run_id, :candidate_id, "
         ":retrain_job_id, :model_candidate_id, CAST(:payload AS jsonb), :assigned_to, "
-        ":reviewed_by, :reviewed_at"
-        ") RETURNING " + _review_select_columns()
+        ":reviewed_by, :reviewed_at, :operation_key, :subject_type, :subject_key"
+        ") ON CONFLICT (operation_key) WHERE operation_key IS NOT NULL "
+        "DO UPDATE SET operation_key = EXCLUDED.operation_key RETURNING "
+        + _review_select_columns()
     )
     async with engine.begin() as connection:
         result = await connection.execute(
@@ -388,9 +404,31 @@ async def create_review_task(
                 "reviewed_at": None
                 if reviewed_by is None
                 else datetime.now(timezone.utc),
+                "operation_key": operation_key,
+                "subject_type": subject_type,
+                "subject_key": subject_key,
             },
         )
     return _review_from_row(result.mappings().one())
+
+
+def _review_subject(
+    *,
+    task_id: str,
+    run_id: str | None,
+    candidate_id: str | None,
+    retrain_job_id: str | None,
+    model_candidate_id: str | None,
+) -> tuple[str, str]:
+    if run_id is not None:
+        return "agent_run", run_id
+    if candidate_id is not None:
+        return "evidence_candidate", candidate_id
+    if retrain_job_id is not None:
+        return "retrain_job", retrain_job_id
+    if model_candidate_id is not None:
+        return "model_candidate", model_candidate_id
+    return "review_task", task_id
 
 
 async def list_review_tasks(

@@ -20,8 +20,14 @@ def _markdown_table(frame: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def _level(score: pd.Series, high_threshold: float, urgent_threshold: float) -> pd.Series:
-    medium_threshold = max(20.0, high_threshold * 0.60)
+def _level(
+    score: pd.Series,
+    high_threshold: float,
+    urgent_threshold: float,
+    medium_threshold: float | None = None,
+) -> pd.Series:
+    if medium_threshold is None:
+        medium_threshold = max(20.0, high_threshold * 0.60)
     return pd.Series(
         np.select(
             [score.ge(urgent_threshold), score.ge(high_threshold), score.ge(medium_threshold)],
@@ -124,6 +130,149 @@ def _add_policy(frame: pd.DataFrame, score_column: str, prefix: str) -> tuple[pd
     return result, high_threshold, urgent_threshold
 
 
+def _add_fixed_policy(
+    frame: pd.DataFrame,
+    score_column: str,
+    prefix: str,
+    *,
+    high_threshold: float,
+    urgent_threshold: float,
+    medium_threshold: float | None = None,
+) -> pd.DataFrame:
+    result = frame.copy()
+    score = pd.to_numeric(result[score_column], errors="coerce").fillna(0.0)
+    level_column = f"{prefix}_level"
+    label_column = f"{prefix}_high_label"
+    result[level_column] = _level(
+        score,
+        high_threshold,
+        urgent_threshold,
+        medium_threshold,
+    )
+    result[label_column] = result[level_column].isin(["high", "urgent"]).astype("int8")
+    return result
+
+
+def _evidence_gate_sweep(frame: pd.DataFrame) -> pd.DataFrame:
+    """Evaluate label-free pre-event/leadtime OR gates on the fixed splits."""
+    work = frame.copy()
+    pre_event = pd.to_numeric(
+        work["m1_specialist_pre_event_probability"], errors="coerce"
+    ).fillna(0.0)
+    leadtime = pd.to_numeric(
+        work["m1_specialist_leadtime_urgency"], errors="coerce"
+    ).fillna(0.0)
+    rows: list[dict[str, object]] = []
+    pre_thresholds = np.round(np.arange(0.95, 0.996, 0.005), 3)
+    lead_thresholds = np.round(np.arange(0.94, 0.991, 0.005), 3)
+    for pre_threshold in pre_thresholds:
+        for lead_threshold in lead_thresholds:
+            work["_evidence_gate_pred"] = (
+                pre_event.ge(float(pre_threshold))
+                | leadtime.ge(float(lead_threshold))
+            ).astype("int8")
+            work["_evidence_gate_score"] = np.maximum(
+                100.0 * pre_event,
+                100.0 * leadtime
+                + 100.0 * (float(pre_threshold) - float(lead_threshold)),
+            ).clip(upper=100.0)
+            policy = f"pre_{pre_threshold:.3f}_or_lead_{lead_threshold:.3f}"
+            for split in ["train", "validation", "holdout"]:
+                row = _row_metrics(
+                    work,
+                    "_evidence_gate_pred",
+                    "_evidence_gate_score",
+                    split,
+                    policy,
+                )
+                event = _fault_event_metrics(
+                    work,
+                    "_evidence_gate_pred",
+                    split,
+                    policy,
+                )
+                row.update(
+                    {
+                        "pre_event_threshold": float(pre_threshold),
+                        "leadtime_threshold": float(lead_threshold),
+                        "fault_events": event["fault_events"],
+                        "detected_fault_events": event["detected_fault_events"],
+                        "fault_event_recall": event["fault_event_recall"],
+                        "selected_official_v3": bool(
+                            np.isclose(pre_threshold, config.M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD)
+                            and np.isclose(lead_threshold, config.M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD)
+                        ),
+                    }
+                )
+                precision = float(row["precision"])
+                recall = float(row["recall"])
+                row["f1"] = 2.0 * precision * recall / max(1e-12, precision + recall)
+                rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def _band_evidence_score(
+    values: pd.Series,
+    medium_input: float,
+    high_input: float,
+    urgent_input: float,
+) -> pd.Series:
+    """Map a probability-like input into monotonic low/medium/high/urgent bands."""
+    value = pd.to_numeric(values, errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    low = 90.0 * value / max(medium_input, 1e-12)
+    medium = 90.0 + 9.0 * (value - medium_input) / max(high_input - medium_input, 1e-12)
+    high = 99.0 + 0.8 * (value - high_input) / max(urgent_input - high_input, 1e-12)
+    urgent = 99.8 + 0.2 * (value - urgent_input) / max(1.0 - urgent_input, 1e-12)
+    return pd.Series(
+        np.select(
+            [value.ge(urgent_input), value.ge(high_input), value.ge(medium_input)],
+            [urgent, high, medium],
+            default=low,
+        ),
+        index=value.index,
+    ).clip(0.0, 100.0)
+
+
+def _risk_pre_event_gate_sweep(frame: pd.DataFrame) -> pd.DataFrame:
+    """Evaluate the official v4 label-free Risk/pre-event OR gate."""
+    work = frame.copy()
+    risk = pd.to_numeric(work["risk_score"], errors="coerce").fillna(0.0)
+    pre_event = pd.to_numeric(
+        work["m1_specialist_pre_event_probability"], errors="coerce"
+    ).fillna(0.0)
+    rows: list[dict[str, object]] = []
+    risk_thresholds = [0.70, 0.74, 0.76, 0.78, 0.80, 0.82, 0.85, 0.88, 0.90, 0.92]
+    pre_thresholds = [0.95, 0.97, 0.975, 0.98, 0.985, 0.99, 0.995]
+    for risk_threshold in risk_thresholds:
+        for pre_threshold in pre_thresholds:
+            work["_v4_gate_pred"] = (
+                risk.ge(risk_threshold) | pre_event.ge(pre_threshold)
+            ).astype("int8")
+            work["_v4_gate_score"] = np.maximum(100.0 * risk, 100.0 * pre_event)
+            policy = f"risk_{risk_threshold:.3f}_or_pre_{pre_threshold:.3f}"
+            for split in ["train", "validation", "holdout"]:
+                row = _row_metrics(work, "_v4_gate_pred", "_v4_gate_score", split, policy)
+                event = _fault_event_metrics(work, "_v4_gate_pred", split, policy)
+                row.update(
+                    {
+                        "risk_threshold": risk_threshold,
+                        "pre_event_threshold": pre_threshold,
+                        "fault_events": event["fault_events"],
+                        "detected_fault_events": event["detected_fault_events"],
+                        "fault_event_recall": event["fault_event_recall"],
+                        "selected_official_v4": bool(
+                            np.isclose(risk_threshold, config.M1_RISK_HIGH_THRESHOLD)
+                            and np.isclose(pre_threshold, config.M1_PRE_EVENT_HIGH_THRESHOLD)
+                        ),
+                    }
+                )
+                precision = float(row["precision"])
+                recall = float(row["recall"])
+                row["f1"] = 2.0 * precision * recall / max(1e-12, precision + recall)
+                rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def _agreement(row: pd.Series) -> str:
     current_high = str(row.get("current_best_priority_level", row.get("priority_level", ""))).lower() in {"high", "urgent"}
     specialist_high = str(row.get("m1_specialist_priority_level", "")).lower() in {"high", "urgent"}
@@ -141,6 +290,10 @@ def _reason(row: pd.Series) -> str:
         f"current_best_priority={row.get('current_best_priority_level', row.get('priority_level', ''))}",
         f"m1_specialist_priority={row.get('m1_specialist_priority_level', '')}",
         f"m1_hybrid_priority={row.get('m1_hybrid_priority_level', '')}",
+        f"m1_evidence_priority={row.get('m1_evidence_priority_level', '')}",
+        f"evidence_trigger={row.get('m1_evidence_trigger', '')}",
+        f"risk_pre_event_priority={row.get('m1_risk_pre_event_priority_level', '')}",
+        f"risk_pre_event_trigger={row.get('m1_risk_pre_event_trigger', '')}",
         f"agreement={row.get('m1_priority_agreement', '')}",
         f"fault_gate={float(pd.to_numeric(row.get('m1_specialist_fault_probability'), errors='coerce')):.3f}"
         if pd.notna(pd.to_numeric(row.get("m1_specialist_fault_probability"), errors="coerce"))
@@ -166,15 +319,15 @@ def _action(row: pd.Series) -> str:
 
 
 def _action_v2(row: pd.Series) -> str:
-    agreement = row.get("m1_priority_agreement")
-    hybrid = row.get("m1_hybrid_priority_level")
-    if agreement == "both_high" or hybrid == "urgent":
-        return "urgent review: current best and M1 specialist both support high priority."
-    if agreement == "m1_specialist_only_high":
-        return "specialist review: inspect compact13 and M1 specialist gate evidence before escalation."
-    if agreement == "current_only_high":
-        return "baseline review: current best is high but M1 specialist is not aligned."
-    return "monitor: no high-priority agreement in the current window."
+    level = row.get("m1_risk_pre_event_priority_level")
+    trigger = row.get("m1_risk_pre_event_trigger", "none")
+    if level == "urgent":
+        return f"urgent review: high-confidence evidence gate triggered by {trigger}."
+    if level == "high":
+        return f"priority review: evidence gate triggered by {trigger}; confirm before dispatch."
+    if level == "medium":
+        return "monitor closely: evidence is elevated but remains below the high-priority gate."
+    return "monitor: no high-confidence Risk or pre-event evidence in the current window."
 
 
 def _load_base_frame() -> pd.DataFrame:
@@ -183,7 +336,7 @@ def _load_base_frame() -> pd.DataFrame:
     if not config.M1_SPECIALIST_GATE_SCORES_PATH.exists():
         score_m1_specialist_gates()
     agent = pd.read_csv(config.AGENT_CARD_PATH)
-    previous_prefixes = ("m1_specialist_", "m1_hybrid_")
+    previous_prefixes = ("m1_specialist_", "m1_hybrid_", "m1_evidence_", "m1_risk_pre_event_")
     previous_columns = [column for column in agent.columns if column.startswith(previous_prefixes)]
     agent = agent.drop(columns=previous_columns, errors="ignore")
     for column in ["m1_priority_agreement", "priority_source", "priority_high_label"]:
@@ -227,12 +380,91 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         current_level = frame["current_best_priority_level"].replace("", np.nan)
         frame["current_best_priority_level"] = current_level.fillna(frame["priority_level"]).astype(str)
     frame["m1_specialist_priority_score"] = pd.to_numeric(frame["m1_specialist_priority_score"], errors="coerce").fillna(0.0)
+    frame["legacy_priority_score"] = (
+        config.LEGACY_M1_HYBRID_CURRENT_BEST_WEIGHT * frame["current_best_priority_score"]
+        + config.LEGACY_M1_HYBRID_SPECIALIST_WEIGHT * frame["m1_specialist_priority_score"]
+    )
+    frame["legacy_priority_level"] = _level(
+        frame["legacy_priority_score"],
+        config.LEGACY_M1_HYBRID_HIGH_THRESHOLD,
+        config.LEGACY_M1_HYBRID_URGENT_THRESHOLD,
+    )
+    frame["legacy_priority_high_label"] = frame["legacy_priority_level"].isin(["high", "urgent"]).astype("int8")
     frame["m1_hybrid_priority_score"] = (
-        0.65 * frame["current_best_priority_score"]
-        + 0.35 * frame["m1_specialist_priority_score"]
+        config.M1_HYBRID_CURRENT_BEST_WEIGHT * frame["current_best_priority_score"]
+        + config.M1_HYBRID_SPECIALIST_WEIGHT * frame["m1_specialist_priority_score"]
     )
     frame, specialist_high, specialist_urgent = _add_policy(frame, "m1_specialist_priority_score", "m1_specialist_priority")
-    frame, hybrid_high, hybrid_urgent = _add_policy(frame, "m1_hybrid_priority_score", "m1_hybrid_priority")
+    hybrid_high = config.M1_HYBRID_HIGH_THRESHOLD
+    hybrid_urgent = config.M1_HYBRID_URGENT_THRESHOLD
+    frame = _add_fixed_policy(
+        frame,
+        "m1_hybrid_priority_score",
+        "m1_hybrid_priority",
+        high_threshold=hybrid_high,
+        urgent_threshold=hybrid_urgent,
+    )
+    pre_event_probability = pd.to_numeric(
+        frame["m1_specialist_pre_event_probability"], errors="coerce"
+    ).fillna(0.0).clip(0.0, 1.0)
+    leadtime_urgency = pd.to_numeric(
+        frame["m1_specialist_leadtime_urgency"], errors="coerce"
+    ).fillna(0.0).clip(0.0, 1.0)
+    frame["m1_evidence_pre_event_score"] = 100.0 * pre_event_probability
+    frame["m1_evidence_leadtime_score"] = (
+        100.0 * leadtime_urgency + config.M1_EVIDENCE_LEADTIME_SCORE_OFFSET
+    ).clip(upper=100.0)
+    frame["m1_evidence_priority_score"] = np.maximum(
+        frame["m1_evidence_pre_event_score"],
+        frame["m1_evidence_leadtime_score"],
+    )
+    frame = _add_fixed_policy(
+        frame,
+        "m1_evidence_priority_score",
+        "m1_evidence_priority",
+        medium_threshold=config.M1_EVIDENCE_MEDIUM_THRESHOLD,
+        high_threshold=config.M1_EVIDENCE_HIGH_THRESHOLD,
+        urgent_threshold=config.M1_EVIDENCE_URGENT_THRESHOLD,
+    )
+    pre_trigger = pre_event_probability.ge(config.M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD)
+    lead_trigger = leadtime_urgency.ge(config.M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD)
+    frame["m1_evidence_trigger"] = np.select(
+        [pre_trigger & lead_trigger, pre_trigger, lead_trigger],
+        ["pre_event|leadtime", "pre_event", "leadtime"],
+        default="none",
+    )
+    risk_score = pd.to_numeric(frame["risk_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    risk_band_score = _band_evidence_score(
+        risk_score,
+        config.M1_RISK_MEDIUM_THRESHOLD,
+        config.M1_RISK_HIGH_THRESHOLD,
+        config.M1_RISK_URGENT_THRESHOLD,
+    )
+    pre_event_band_score = _band_evidence_score(
+        pre_event_probability,
+        config.M1_PRE_EVENT_MEDIUM_THRESHOLD,
+        config.M1_PRE_EVENT_HIGH_THRESHOLD,
+        config.M1_PRE_EVENT_URGENT_THRESHOLD,
+    )
+    frame["m1_risk_pre_event_priority_score"] = np.maximum(
+        risk_band_score,
+        pre_event_band_score,
+    )
+    frame = _add_fixed_policy(
+        frame,
+        "m1_risk_pre_event_priority_score",
+        "m1_risk_pre_event_priority",
+        medium_threshold=config.M1_RISK_PRE_EVENT_MEDIUM_THRESHOLD,
+        high_threshold=config.M1_RISK_PRE_EVENT_HIGH_THRESHOLD,
+        urgent_threshold=config.M1_RISK_PRE_EVENT_URGENT_THRESHOLD,
+    )
+    risk_trigger = risk_score.ge(config.M1_RISK_HIGH_THRESHOLD)
+    v4_pre_trigger = pre_event_probability.ge(config.M1_PRE_EVENT_HIGH_THRESHOLD)
+    frame["m1_risk_pre_event_trigger"] = np.select(
+        [risk_trigger & v4_pre_trigger, risk_trigger, v4_pre_trigger],
+        ["risk|pre_event", "risk", "pre_event"],
+        default="none",
+    )
     frame["m1_priority_agreement"] = frame.apply(_agreement, axis=1)
     frame["m1_priority_review_required"] = frame["m1_priority_agreement"].isin(["m1_specialist_only_high", "current_only_high"])
     frame["m1_why_reason"] = frame.apply(_reason, axis=1)
@@ -244,7 +476,10 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
     policies = [
         ("current_best_priority", "current_best_priority_high_label", "current_best_priority_score"),
         ("m1_specialist_priority", "m1_specialist_priority_high_label", "m1_specialist_priority_score"),
+        ("legacy_priority", "legacy_priority_high_label", "legacy_priority_score"),
         ("m1_hybrid_priority", "m1_hybrid_priority_high_label", "m1_hybrid_priority_score"),
+        ("m1_evidence_priority", "m1_evidence_priority_high_label", "m1_evidence_priority_score"),
+        ("m1_risk_pre_event_priority", "m1_risk_pre_event_priority_high_label", "m1_risk_pre_event_priority_score"),
     ]
     for split in ["train", "validation", "holdout"]:
         for policy, pred_column, score_column in policies:
@@ -252,10 +487,17 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
             metrics.append(_fault_event_metrics(frame, pred_column, split, policy))
 
     comparison = pd.DataFrame(metrics)
-    frame["priority_source"] = "m1_hybrid_current_best_0.65_m1_specialist_0.35"
-    frame["priority_score"] = frame["m1_hybrid_priority_score"]
-    frame["priority_level"] = frame["m1_hybrid_priority_level"]
-    frame["priority_high_label"] = frame["m1_hybrid_priority_high_label"]
+    frame["priority_source"] = config.M1_PRIORITY_SOURCE
+    frame["policy_version"] = config.M1_PRIORITY_POLICY_VERSION
+    frame["current_best_weight"] = np.nan
+    frame["m1_specialist_weight"] = np.nan
+    frame["decision_basis"] = (
+        "label-free v4 gate: restored risk_score >= 0.78 OR pre_event_probability >= 0.99; "
+        "urgent when risk >= 0.92 OR pre_event >= 0.998; band score preserves level ordering"
+    )
+    frame["priority_score"] = frame["m1_risk_pre_event_priority_score"]
+    frame["priority_level"] = frame["m1_risk_pre_event_priority_level"]
+    frame["priority_high_label"] = frame["m1_risk_pre_event_priority_high_label"]
     frame["why_reason"] = frame["m1_why_reason"]
     frame["recommended_action"] = frame["m1_recommended_action"]
     base_review = frame.get("review_required", pd.Series(False, index=frame.index)).fillna(False).astype(bool)
@@ -269,6 +511,20 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         "|".join([part for part in [a, b, c] if str(part)])
         for a, b, c in zip(existing_review, gate_review_text, m1_review_text)
     ]
+    _evidence_gate_sweep(frame).to_csv(
+        config.M1_EVIDENCE_GATE_SWEEP_PATH,
+        index=False,
+        encoding="utf-8-sig",
+        float_format=config.CSV_FLOAT_FORMAT,
+        lineterminator=config.CSV_LINE_TERMINATOR,
+    )
+    _risk_pre_event_gate_sweep(frame).to_csv(
+        config.M1_RISK_PRE_EVENT_GATE_SWEEP_PATH,
+        index=False,
+        encoding="utf-8-sig",
+        float_format=config.CSV_FLOAT_FORMAT,
+        lineterminator=config.CSV_LINE_TERMINATOR,
+    )
     frame.to_csv(config.M1_SPECIALIST_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     comparison.to_csv(config.M1_SPECIALIST_COMPARISON_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
     agent_columns = [
@@ -296,6 +552,14 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         "m1_specialist_priority_level",
         "m1_hybrid_priority_score",
         "m1_hybrid_priority_level",
+        "m1_evidence_pre_event_score",
+        "m1_evidence_leadtime_score",
+        "m1_evidence_priority_score",
+        "m1_evidence_priority_level",
+        "m1_evidence_trigger",
+        "m1_risk_pre_event_priority_score",
+        "m1_risk_pre_event_priority_level",
+        "m1_risk_pre_event_trigger",
         "m1_priority_agreement",
         "m1_specialist_gate_review_required",
         "m1_specialist_gate_review_reasons",
@@ -321,8 +585,12 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         "",
         f"- manufacturer filter: `{config.M1_MANUFACTURER}`",
         "- 이 저장소는 M1 row만 대상으로 fit/score/validation을 수행한다.",
-        "- 공식 M1 agent card의 `priority_score`, `priority_level`은 M1 hybrid priority다.",
+        "- 공식 M1 agent card의 `priority_score`, `priority_level`은 label-free Risk/pre-event gate v4다.",
+        f"- 공식 정책 버전: `{config.M1_PRIORITY_POLICY_VERSION}`",
+        "- 공식 조건: restored Risk score >= 0.78 또는 pre-event probability >= 0.99",
         "- 원래 current-best priority는 `current_best_priority_score`, `current_best_priority_level`로 보존한다.",
+        "- 요청 v2 0.72/0.28은 `m1_hybrid_priority_score`, `m1_hybrid_priority_level`로 보존한다.",
+        "- 이전 v1 0.65/0.35는 `legacy_priority_score`, `legacy_priority_level`로 보존한다.",
         "- `m1_specialist_*` 컬럼은 M1 specialist 병렬 근거로 보존한다.",
         "",
         "## Threshold",
@@ -331,6 +599,11 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
         f"- m1_specialist urgent 기준: {specialist_urgent:.3f}",
         f"- m1_hybrid high 기준: {hybrid_high:.3f}",
         f"- m1_hybrid urgent 기준: {hybrid_urgent:.3f}",
+        f"- evidence medium 기준: {config.M1_EVIDENCE_MEDIUM_THRESHOLD:.3f}",
+        f"- evidence high 기준: {config.M1_EVIDENCE_HIGH_THRESHOLD:.3f}",
+        f"- evidence urgent 기준: {config.M1_EVIDENCE_URGENT_THRESHOLD:.3f}",
+        f"- v4 Risk high/urgent 기준: {config.M1_RISK_HIGH_THRESHOLD:.3f} / {config.M1_RISK_URGENT_THRESHOLD:.3f}",
+        f"- v4 pre-event high/urgent 기준: {config.M1_PRE_EVENT_HIGH_THRESHOLD:.3f} / {config.M1_PRE_EVENT_URGENT_THRESHOLD:.3f}",
         "",
         "## Holdout 지표",
         _markdown_table(holdout),
@@ -352,7 +625,45 @@ def build_m1_specialist_outputs() -> pd.DataFrame:
             "high": hybrid_high,
             "urgent": hybrid_urgent,
         },
-        "official_priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+        "policy_version": config.M1_PRIORITY_POLICY_VERSION,
+        "official_priority_source": config.M1_PRIORITY_SOURCE,
+        "official_priority_policy": {
+            "policy_type": "label_free_risk_pre_event_gate",
+            "risk_medium_threshold": config.M1_RISK_MEDIUM_THRESHOLD,
+            "risk_high_threshold": config.M1_RISK_HIGH_THRESHOLD,
+            "risk_urgent_threshold": config.M1_RISK_URGENT_THRESHOLD,
+            "pre_event_medium_threshold": config.M1_PRE_EVENT_MEDIUM_THRESHOLD,
+            "pre_event_high_threshold": config.M1_PRE_EVENT_HIGH_THRESHOLD,
+            "pre_event_urgent_threshold": config.M1_PRE_EVENT_URGENT_THRESHOLD,
+            "medium_threshold": config.M1_RISK_PRE_EVENT_MEDIUM_THRESHOLD,
+            "high_threshold": config.M1_RISK_PRE_EVENT_HIGH_THRESHOLD,
+            "urgent_threshold": config.M1_RISK_PRE_EVENT_URGENT_THRESHOLD,
+            "score_formula": "max(piecewise_band(risk), piecewise_band(pre_event))",
+            "selection_basis": "Risk 0.78 selected on event-regime validation with row FPR <= 0.05; pre-event 0.99 is the preserved high-confidence gate",
+        },
+        "previous_v3_priority_policy": {
+            "pre_event_high_threshold": config.M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD,
+            "leadtime_high_threshold": config.M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD,
+            "preserved_as": ["m1_evidence_priority_score", "m1_evidence_priority_level"],
+        },
+        "v2_hybrid_policy": {
+            "policy_version": config.M1_HYBRID_POLICY_VERSION,
+            "priority_source": config.M1_HYBRID_PRIORITY_SOURCE,
+            "current_best_weight": config.M1_HYBRID_CURRENT_BEST_WEIGHT,
+            "m1_specialist_weight": config.M1_HYBRID_SPECIALIST_WEIGHT,
+            "high_threshold": config.M1_HYBRID_HIGH_THRESHOLD,
+            "urgent_threshold": config.M1_HYBRID_URGENT_THRESHOLD,
+            "preserved_as": ["m1_hybrid_priority_score", "m1_hybrid_priority_level"],
+        },
+        "legacy_priority_policy": {
+            "policy_version": config.LEGACY_M1_HYBRID_POLICY_VERSION,
+            "priority_source": config.LEGACY_M1_HYBRID_PRIORITY_SOURCE,
+            "current_best_weight": config.LEGACY_M1_HYBRID_CURRENT_BEST_WEIGHT,
+            "m1_specialist_weight": config.LEGACY_M1_HYBRID_SPECIALIST_WEIGHT,
+            "high_threshold": config.LEGACY_M1_HYBRID_HIGH_THRESHOLD,
+            "urgent_threshold": config.LEGACY_M1_HYBRID_URGENT_THRESHOLD,
+            "preserved_as": ["legacy_priority_score", "legacy_priority_level"],
+        },
         "current_best_priority_preserved_as": [
             "current_best_priority_score",
             "current_best_priority_level",

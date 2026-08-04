@@ -17,6 +17,11 @@ BACKEND_DIR: Final = (
 SERVER_PATH: Final = BACKEND_DIR / "server.py"
 
 
+@pytest.fixture
+def anyio_backend():
+    return ("asyncio", {"loop_factory": asyncio.SelectorEventLoop})
+
+
 def load_server(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.chdir(BACKEND_DIR)
@@ -58,7 +63,7 @@ async def test_v2_postgres_tools_return_ops_and_external_context(
     module = load_server(monkeypatch)
     card_ids = await module.list_card_ids(module.engine)
     source_input = await module.input_for_card(card_ids[0])
-    external_context = module.external_context_for(card_ids[0], source_input)
+    external_context = await module.external_context_for(card_ids[0], source_input)
     tools = {item.name: item for item in module.tools_for(source_input, external_context)}
 
     evidence = orjson.loads(tools["get_ops_evidence"].invoke({"card_id": card_ids[0]}))

@@ -28,6 +28,14 @@ from .data_io import build_raw_inventory, import_canonical_windows
 
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
+
+def _model_score_mode(env_name: str) -> str:
+    """Use a validated packaged artifact unless retraining is explicitly requested."""
+    mode = os.environ.get(env_name, "artifact").strip().lower()
+    if mode not in {"artifact", "retrain"}:
+        raise ValueError(f"Unknown {env_name}={mode!r}. Use artifact or retrain.")
+    return mode
+
 NEW_ANOMALY_FEATURES = [
     "iforest_anomaly_score",
     "mahalanobis_score",
@@ -531,11 +539,21 @@ def train_score_risk_internal() -> pd.DataFrame:
     features = list(metadata["model_feature_columns"])
     x_all = model_matrix(modeling, features)
     y_all = modeling["label"].eq("pre_fault").astype(int)
-    train_mask = modeling[config.RISK_SPLIT_COLUMN].eq("train")
-    if y_all.loc[train_mask].nunique() < 2:
-        raise ValueError("Risk internal retrain requires both normal and pre_fault rows in train split.")
-    model, model_type = _binary_model()
-    _fit_model(model, x_all.loc[train_mask], y_all.loc[train_mask])
+    model_mode = _model_score_mode("THIRD_MODEL_RISK_MODEL_MODE")
+    if model_mode == "retrain":
+        train_mask = modeling[config.RISK_SPLIT_COLUMN].eq("train")
+        if y_all.loc[train_mask].nunique() < 2:
+            raise ValueError("Risk internal retrain requires both normal and pre_fault rows in train split.")
+        model, model_type = _binary_model()
+        _fit_model(model, x_all.loc[train_mask], y_all.loc[train_mask])
+    else:
+        if not config.RISK_MODEL_PATH.exists():
+            raise FileNotFoundError(
+                f"Validated Risk artifact is missing: {config.RISK_MODEL_PATH}. "
+                "Restore the packaged artifact or set THIRD_MODEL_RISK_MODEL_MODE=retrain."
+            )
+        model = joblib.load(config.RISK_MODEL_PATH)
+        model_type = str(metadata.get("model_type", type(model).__name__))
     class_index = list(getattr(model, "classes_", [0, 1])).index(1)
     scored = modeling.copy()
     scored["risk_probability"] = model.predict_proba(x_all)[:, class_index]
@@ -590,13 +608,16 @@ def train_score_risk_internal() -> pd.DataFrame:
     ]
     output_columns = [column for column in output_columns if column in scored.columns]
     scored[output_columns].to_csv(config.RISK_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
-    joblib.dump(model, config.RISK_MODEL_PATH)
+    if model_mode == "retrain":
+        joblib.dump(model, config.RISK_MODEL_PATH)
     metadata.update(
         {
             "model_type": model_type,
             "feature_count": len(features),
             "model_feature_columns": features,
-            "internal_regeneration": True,
+            "internal_regeneration": model_mode == "retrain",
+            "internal_score_regeneration": True,
+            "model_score_mode": model_mode,
             "internal_regeneration_scope": config.PROJECT_SCOPE,
             "output_scores_path": config.path_label(config.RISK_SCORES_PATH),
             "output_model_path": config.path_label(config.RISK_MODEL_PATH),
@@ -672,11 +693,21 @@ def train_score_leadtime_internal() -> pd.DataFrame:
     features = list(metadata["model_feature_columns"])
     x_all = model_matrix(modeling, features)
     y = modeling.loc[valid_target, "lead_time_target"].astype(int)
-    train_mask = valid_target & modeling[config.RISK_SPLIT_COLUMN].eq("train")
-    if y.loc[modeling.loc[valid_target].index.intersection(modeling.index[train_mask])].nunique() < 2:
-        raise ValueError("Leadtime internal retrain requires at least two classes in train split.")
-    model, model_type = _multiclass_model()
-    _fit_model(model, x_all.loc[train_mask], modeling.loc[train_mask, "lead_time_target"].astype(int))
+    model_mode = _model_score_mode("THIRD_MODEL_LEADTIME_MODEL_MODE")
+    if model_mode == "retrain":
+        train_mask = valid_target & modeling[config.RISK_SPLIT_COLUMN].eq("train")
+        if y.loc[modeling.loc[valid_target].index.intersection(modeling.index[train_mask])].nunique() < 2:
+            raise ValueError("Leadtime internal retrain requires at least two classes in train split.")
+        model, model_type = _multiclass_model()
+        _fit_model(model, x_all.loc[train_mask], modeling.loc[train_mask, "lead_time_target"].astype(int))
+    else:
+        if not config.LEADTIME_MODEL_PATH.exists():
+            raise FileNotFoundError(
+                f"Validated Leadtime artifact is missing: {config.LEADTIME_MODEL_PATH}. "
+                "Restore the packaged artifact or set THIRD_MODEL_LEADTIME_MODEL_MODE=retrain."
+            )
+        model = joblib.load(config.LEADTIME_MODEL_PATH)
+        model_type = str(metadata.get("model_type", type(model).__name__))
     probabilities = model.predict_proba(x_all)
     classes = list(getattr(model, "classes_", range(len(config.LEADTIME_LABELS))))
     full_prob = np.zeros((len(modeling), len(config.LEADTIME_LABELS)), dtype="float64")
@@ -765,7 +796,8 @@ def train_score_leadtime_internal() -> pd.DataFrame:
     ]
     output_columns = [column for column in output_columns if column in scored.columns]
     scored[output_columns].to_csv(config.LEADTIME_SCORES_PATH, index=False, encoding="utf-8-sig", float_format=config.CSV_FLOAT_FORMAT, lineterminator=config.CSV_LINE_TERMINATOR)
-    joblib.dump(model, config.LEADTIME_MODEL_PATH)
+    if model_mode == "retrain":
+        joblib.dump(model, config.LEADTIME_MODEL_PATH)
     metadata.update(
         {
             "model_type": model_type,
@@ -773,7 +805,9 @@ def train_score_leadtime_internal() -> pd.DataFrame:
             "model_feature_columns": features,
             "timeflow_features": timeflow_features,
             "sensor_horizon_features": sensor_horizon_features,
-            "internal_regeneration": True,
+            "internal_regeneration": model_mode == "retrain",
+            "internal_score_regeneration": True,
+            "model_score_mode": model_mode,
             "internal_regeneration_scope": config.PROJECT_SCOPE,
             "output_scores_path": config.path_label(config.LEADTIME_SCORES_PATH),
             "output_model_path": config.path_label(config.LEADTIME_MODEL_PATH),
@@ -1054,6 +1088,8 @@ def score_priority_internal() -> pd.DataFrame:
 
 def regenerate_current_best_source() -> dict[str, object]:
     _ensure_prerequisites()
+    risk_model_mode = _model_score_mode("THIRD_MODEL_RISK_MODEL_MODE")
+    leadtime_model_mode = _model_score_mode("THIRD_MODEL_LEADTIME_MODEL_MODE")
     risk = train_score_risk_internal()
     leadtime = train_score_leadtime_internal()
     priority = score_priority_internal()
@@ -1063,6 +1099,8 @@ def regenerate_current_best_source() -> dict[str, object]:
         "source_best_available": config.SOURCE_BEST_ROOT.exists(),
         "scope": config.PROJECT_SCOPE,
         "manufacturer_filter": config.M1_MANUFACTURER,
+        "risk_model_mode": risk_model_mode,
+        "leadtime_model_mode": leadtime_model_mode,
         "outputs": {
             "risk_scores": config.path_label(config.RISK_SCORES_PATH),
             "leadtime_scores": config.path_label(config.LEADTIME_SCORES_PATH),
@@ -1076,7 +1114,11 @@ def regenerate_current_best_source() -> dict[str, object]:
             "leadtime_scores": int(len(leadtime)),
             "priority_scores": int(len(priority)),
         },
-        "note": "Current-best source body regenerated inside this repository from packaged M1 windows and local anomaly output. It does not call THIRD_MODEL_SOURCE_BEST_ROOT.",
+        "note": (
+            "Current-best scores regenerated inside this repository from packaged M1 windows and local anomaly output. "
+            "Validated packaged Risk/Leadtime artifacts are reused by default; set the corresponding "
+            "THIRD_MODEL_*_MODEL_MODE=retrain only for an explicit model replacement experiment."
+        ),
     }
     write_json(config.SOURCE_RETRAIN_METADATA_PATH, payload)
     return payload

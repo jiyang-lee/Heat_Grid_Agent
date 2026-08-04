@@ -18,6 +18,12 @@ GPT_5_4_MINI_OUTPUT_USD_PER_1M: Final = 4.50
 GPT_5_4_MINI_PRICING_SOURCE: Final = (
     "https://developers.openai.com/api/docs/models/gpt-5.4-mini"
 )
+GPT_5_4_INPUT_USD_PER_1M: Final = 2.50
+GPT_5_4_CACHED_INPUT_USD_PER_1M: Final = 0.25
+GPT_5_4_OUTPUT_USD_PER_1M: Final = 15.00
+GPT_5_4_PRICING_SOURCE: Final = (
+    "https://developers.openai.com/api/docs/models/gpt-5.4"
+)
 
 
 class Settings(BaseSettings):
@@ -28,13 +34,32 @@ class Settings(BaseSettings):
     )
 
     database_url: str = (
-        "postgresql+asyncpg://heatgrid:heatgrid@127.0.0.1:55432/heatgrid_ops"
+        "postgresql+asyncpg://heatgrid_app:heatgrid_app@127.0.0.1:55432/heatgrid_ops"
     )
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8003, ge=1, le=65535)
-    openai_model: str = "gpt-5.4-mini"
     openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
+    natural_chat_model: str = "gpt-5.4-mini"
+    work_order_model: str = "gpt-5.4-nano"
+    report_model: str = "gpt-5.4-nano"
+    integrated_agent_model: str = "gpt-5.4-mini"
+    independent_agent_model: str = "gpt-5.4-mini"
+    rejudge_model: str = "gpt-5.4"
+    rag_quality_enabled: bool = False
+    answer_quality_enabled: bool = False
+    answer_quality_threshold: float = Field(default=75.0, ge=0.0, le=100.0)
+    answer_quality_baseline_version: str = (
+        "answer-quality-policy.v2-100-rag-single-judge-draft"
+    )
+    replay_enabled: bool = False
+    replay_import_enabled: bool = False
+    demo_ai_history_reset_enabled: bool = False
+    replay_storage_root: str = "/var/lib/heatgrid/replay"
     rag_top_k: int = 5
+    rag_expanded_top_k: int = Field(default=10, ge=1, le=20)
+    rag_max_top_k: int = Field(default=20, ge=1, le=20)
+    rag_jsonl_min_top_score: float = Field(default=6.0, ge=0.0)
+    rag_jsonl_min_unique_matches: int = Field(default=2, ge=0)
     agent_max_iterations: int = Field(default=4, ge=1, le=8)
     agent_evidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     model_score_tolerance: float = Field(default=0.12, ge=0.0, le=1.0)

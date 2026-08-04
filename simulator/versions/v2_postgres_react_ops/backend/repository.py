@@ -42,8 +42,8 @@ async def list_cards(
         filters.append(
             "("
             "pc.card_id::text ilike :search "
-            "or w.manufacturer_id ilike :search "
-            "or cast(w.substation_id as text) ilike :search "
+            "or s.manufacturer_id ilike :search "
+            "or cast(s.substation_id as text) ilike :search "
             "or coalesce(pc.operational_label, '') ilike :search "
             "or coalesce(pc.primary_state, '') ilike :search "
             "or coalesce(pc.why_reason, '') ilike :search"
@@ -55,7 +55,7 @@ async def list_cards(
 
     where_sql = f" where {' and '.join(filters)}" if filters else ""
     query = text(
-        "select pc.card_id, w.manufacturer_id, w.substation_id, pc.operational_label,\n"
+        "select pc.card_id, s.manufacturer_id, s.substation_id, pc.operational_label,\n"
         "pc.primary_state, pc.review_required, pc.trust_level,\n"
         "pd.priority_level, pd.priority_score, pd.current_best_weight, pd.m1_specialist_weight,\n"
         "pd.current_best_priority_score, pd.m1_specialist_priority_score,\n"
@@ -64,6 +64,7 @@ async def list_cards(
         "from priority_cards pc\n"
         "join priority_decisions pd on pd.priority_decision_id = pc.priority_decision_id\n"
         "join windows w on w.window_id = pd.window_id\n"
+        "join substations s on s.substation_uid = w.substation_uid\n"
         f"{where_sql}\n"
         "order by pd.priority_score desc nulls last, pc.created_at desc, pc.card_id"
     )

@@ -1,0 +1,237 @@
+                          AI 이상 분석 보고서
+              단일 알림 · 모델 판단 · 현장 검토용
+                               보고서 번호
+{{report_meta.report_id}}                               보고서 유형
+AI 이상 분석                                 대상 건물
+{{site.name}}                                   기계실
+{{site.machine_room}}                             대상 설비/계통
+{{asset.name_or_system}}                                   설비 ID
+{{asset.asset_id}}                                 대상 기간
+{{report_meta.period_start}} ~ {{report_meta.period_end}}                                 생성 일시
+{{report_meta.generated_at}}                                   작성자
+{{approval.author}}                                   검토자
+{{approval.reviewer}}                                 승인 상태
+{{approval.status}}                                 문서 버전
+{{report_meta.version}}본 문서는 운영 의사결정을 지원하는 초안입니다. 현장 조치와 승인 책임은 지정된 담당자에게 있습니다.
+--------------------------------------------------------------------------------
+1. 의사결정 요약
+                                 최종 상태
+                                 우선순위
+                                 위험 점수
+                                 신뢰 수준
+                         {{assessment.primary_state}}
+                              {{priority.level}}
+                              {{priority.score}}
+                          {{assessment.trust_level}}
+                              예상 선행시간
+                                 현장 검토
+                                 모델 일치
+                              데이터 완전성
+                          {{leadtime.expected_hours}}
+                        {{assessment.review_required}}
+                        {{assessment.model_agreement}}
+                        {{evidence.completeness_rate}}
+                               관리자 요약
+{{summary.executive_summary}}
+
+작성 규칙: 3~5문장. 상태, 핵심 근거, 즉시 필요한 결정만 작성. 모델명과 검색 실패 로그는 제외.
+                                 권고 결정
+{{decision.recommended_decision}}
+예: 24시간 모니터링 / 현장 확인 작업지시서 발행 / 정밀점검 승인 요청
+--------------------------------------------------------------------------------
+2. 알림 및 대상 개요
+                                    항목
+                                    내용
+                                    항목
+                                    내용
+                                   알림 ID
+{{alert.alert_id}}
+카드 ID
+{{card.card_id}}
+                                 발생 시각
+{{alert.occurred_at}}
+분석 구간
+{{window.start}} ~ {{window.end}}
+                               건물/기계실
+{{site.name}} / {{site.machine_room}}
+대상 계통
+{{asset.system}}
+                                 운전 상태
+{{operations.mode}}
+고객 영향
+{{impact.customer_impact}}
+--------------------------------------------------------------------------------
+3. 운전 데이터 분석
+[자동 생성 차트] 공급·환수 온도, 유량, 차압의 분석 구간 추세
+                                 측정 항목
+                                   현재값
+                               기준/비교값
+                                    변화
+                               데이터 상태
+                                    판정
+                                 공급 온도
+{{sensor.supply_temp.current}}
+{{sensor.supply_temp.reference}}
+{{sensor.supply_temp.delta}}
+{{sensor.supply_temp.quality}}
+{{sensor.supply_temp.result}}
+                                 환수 온도
+{{sensor.return_temp.current}}
+{{sensor.return_temp.reference}}
+{{sensor.return_temp.delta}}
+{{sensor.return_temp.quality}}
+{{sensor.return_temp.result}}
+                                 온도차 ΔT
+{{sensor.delta_t.current}}
+{{sensor.delta_t.reference}}
+{{sensor.delta_t.delta}}
+{{sensor.delta_t.quality}}
+{{sensor.delta_t.result}}
+                                    유량
+{{sensor.flow.current}}
+{{sensor.flow.reference}}
+{{sensor.flow.delta}}
+{{sensor.flow.quality}}
+{{sensor.flow.result}}
+                                    차압
+{{sensor.dp.current}}
+{{sensor.dp.reference}}
+{{sensor.dp.delta}}
+{{sensor.dp.quality}}
+{{sensor.dp.result}}
+--------------------------------------------------------------------------------
+4. 모델 판단 및 불일치 분석
+                                 판단 계층
+                                   산출값
+                                    판정
+                                 기여 근거
+                                 제한사항
+                                    Anomaly
+{{models.anomaly.score}}
+{{models.anomaly.level}}
+{{models.anomaly.reason}}
+{{models.anomaly.limit}}
+                                     Risk
+{{models.risk.probability}}
+{{models.risk.level}}
+{{models.risk.reason}}
+{{models.risk.limit}}
+                                   Lead time
+{{models.leadtime.bucket}}
+{{models.leadtime.level}}
+{{models.leadtime.reason}}
+{{models.leadtime.limit}}
+                                 M1 Specialist
+{{models.m1.score}}
+{{models.m1.level}}
+{{models.m1.reason}}
+{{models.m1.limit}}
+                                Hybrid Priority
+{{priority.score}}
+{{priority.level}}
+{{priority.reason}}
+{{priority.limit}}
+                            모델 불일치 해석
+{{assessment.disagreement_analysis}}
+작성 규칙: 어떤 모델이 왜 다른 결론을 냈는지 데이터 관점에서 설명. "모델이 불일치했다"만 반복하지 않음.
+--------------------------------------------------------------------------------
+5. 외부 및 문서 근거
+                                 근거 유형
+                                    출처
+                                 관찰 내용
+                                 판단 반영
+                                   신뢰도
+                                    기상
+{{weather.source}}
+{{weather.observation}}
+{{weather.effect_on_decision}}
+{{weather.confidence}}
+                                 설비 정보
+{{site_context.source}}
+{{site_context.observation}}
+{{site_context.effect_on_decision}}
+{{site_context.confidence}}
+                               전문 문서/RAG
+{{rag.source_title}}
+{{rag.supporting_statement}}
+{{rag.effect_on_decision}}
+{{rag.confidence}}
+                                 과거 사례
+{{history.source}}
+{{history.similar_case}}
+{{history.effect_on_decision}}
+{{history.confidence}}
+--------------------------------------------------------------------------------
+6. 판정과 후속 조치
+                                    구분
+                                 판정 기준
+                             현재 충족 여부
+                                 후속 조치
+                               기한/책임자
+                                 모니터링
+현장 이상 없음, 데이터 품질 양호
+{{decision.monitoring.met}}
+{{decision.monitoring.action}}
+{{decision.monitoring.due_owner}}
+                                 현장 확인
+모델 불일치, 신뢰 낮음, 계기 교차확인 필요
+{{decision.field_check.met}}
+{{decision.field_check.action}}
+{{decision.field_check.due_owner}}
+                                 정밀점검
+지속 이상 또는 설비 이상 징후
+{{decision.detailed_check.met}}
+{{decision.detailed_check.action}}
+{{decision.detailed_check.due_owner}}
+                                 긴급 조치
+고객 영향 또는 안전 위험 확인
+{{decision.emergency.met}}
+{{decision.emergency.action}}
+{{decision.emergency.due_owner}}
+                        불확실성 및 제외 조건
+{{uncertainty.summary}}
+누락 데이터, 센서 품질, 문서 근거 부족, 모델 재현성 문제를 5줄 이내로 기록. 작업자에게 개발자 로그를 떠넘기지 않음.
+검토 및 승인
+                                    구분
+                                    성명
+                                    직책
+                                    의견
+                                 서명/일시
+                                    작성
+{{approval.author}}
+{{approval.author_role}}
+{{approval.author_note}}
+{{approval.author_signed_at}}
+                                    검토
+{{approval.reviewer}}
+{{approval.reviewer_role}}
+{{approval.reviewer_note}}
+{{approval.reviewer_signed_at}}
+                                    승인
+{{approval.approver}}
+{{approval.approver_role}}
+{{approval.approver_note}}
+{{approval.approver_signed_at}}
+--------------------------------------------------------------------------------
+부록. 작성 기준 및 출처
+                                    번호
+                                   자료명
+                                 발행기관
+                                  공식 URL
+                                       1
+기계설비 성능점검 결과보고서 [별지 제4호]
+국가법령정보센터
+https://www.law.go.kr/LSW/flDownload.do?bylClsCd=200203&flNm=%5B%EB%B3%84%EC%A7%80+4%5D+%EA%B8%B0%EA%B3%84%EC%84%A4%EB%B9%84+%EC%84%B1%EB%8A%A5%EC%A0%90%EA%B2%80+%EA%B2%B0%EA%B3%BC%EB%B3%B4%EA%B3%A0%EC%84%9C&flSeq=156037709
+                                       2
+열사용시설 점검업무 기술 기준서
+한국지역난방공사
+https://www.kdhc.co.kr/kdhc/cmmn/file/fileDown.do?atchFileId=5724643619bc4d7fb6ba04d0fc1aa175&bbsId=&fileSn=1&menuNo=200194
+                                       3
+안전보건 진단 샘플보고서 양식
+한국산업안전보건공단
+https://oshri.kosha.or.kr/kosha/business/diagnosisData.do?articleNo=448674&attachNo=253613&mode=download
+                                       4
+기계설비 유지관리 및 성능점검 계획
+경기도교육청
+https://www.goe.go.kr/resource/old/BBSMSTR_000000030111/BBS_202402060444126560.pdf
+적용 원칙: 공식 보고서의 현장 개요, 점검결과, 조치필요사항, 현황·문제점·개선방안 구조를 참고하되, AI 모델 내부 로그는 본문이 아닌 근거 부록으로 분리한다.

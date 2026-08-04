@@ -17,9 +17,25 @@ LEADTIME_LABELS = ("0-24h", "1-3d", "3-7d")
 LEADTIME_MIDPOINT_HOURS = np.array([12.0, 48.0, 120.0], dtype="float64")
 DEFAULT_M1_PRIORITY_THRESHOLDS = {
     "specialist": {"high": 75.0, "urgent": 90.0},
-    "hybrid": {"high": 82.5, "urgent": 95.0},
+    "hybrid": {"high": 67.5, "urgent": 82.5},
 }
-INFERENCE_CONTRACT_VERSION = "same-run-priority-inference-v2"
+M1_PRIORITY_POLICY_VERSION = "m1_risk_pre_event_priority_v4"
+M1_PRIORITY_SOURCE = "m1_risk_0.78_or_pre_event_0.99_gate_v4"
+M1_RISK_MEDIUM_THRESHOLD = 0.22
+M1_RISK_HIGH_THRESHOLD = 0.78
+M1_RISK_URGENT_THRESHOLD = 0.92
+M1_PRE_EVENT_MEDIUM_THRESHOLD = 0.50
+M1_PRE_EVENT_HIGH_THRESHOLD = 0.99
+M1_PRE_EVENT_URGENT_THRESHOLD = 0.998
+M1_RISK_PRE_EVENT_THRESHOLDS = {"medium": 90.0, "high": 99.0, "urgent": 99.8}
+M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD = 0.99
+M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD = 0.97
+M1_EVIDENCE_LEADTIME_SCORE_OFFSET = 2.0
+M1_EVIDENCE_THRESHOLDS = {"medium": 90.0, "high": 99.0, "urgent": 99.8}
+V2_HYBRID_CURRENT_BEST_WEIGHT = 0.72
+V2_HYBRID_SPECIALIST_WEIGHT = 0.28
+V2_HYBRID_THRESHOLDS = {"medium": 40.5, "high": 67.5, "urgent": 82.5}
+INFERENCE_CONTRACT_VERSION = "same-run-priority-inference-v4"
 
 
 class PriorityInferenceError(RuntimeError):
@@ -76,6 +92,7 @@ class PriorityInferenceRuntime:
             )
             final = _score_hybrid(
                 current_best,
+                risk[index],
                 m1[index],
                 self.metadata["m1_gate"],
             )
@@ -361,6 +378,7 @@ class PriorityInferenceRuntime:
                     "task_probability": values.get("task_gate"),
                     "activity_probability": values.get("activity_gate"),
                     "pre_event_probability": values.get("fault_pre_event_gate"),
+                    "leadtime_urgency_score": leadtime[index]["urgency_score"],
                     "primary_state": primary_state,
                     "secondary_states": [state for state in active if state != primary_state],
                     "fault_group": "unknown_review",
@@ -429,13 +447,63 @@ def _score_current_best(
     }
 
 
+def _band_evidence_score(
+    value: float,
+    medium_input: float,
+    high_input: float,
+    urgent_input: float,
+) -> float:
+    value = _clamp(value, 0.0, 1.0)
+    if value >= urgent_input:
+        return min(100.0, 99.8 + 0.2 * (value - urgent_input) / max(1e-12, 1.0 - urgent_input))
+    if value >= high_input:
+        return 99.0 + 0.8 * (value - high_input) / max(1e-12, urgent_input - high_input)
+    if value >= medium_input:
+        return 90.0 + 9.0 * (value - medium_input) / max(1e-12, high_input - medium_input)
+    return max(0.0, 90.0 * value / max(1e-12, medium_input))
+
+
 def _score_hybrid(
     current_best: dict[str, Any],
+    risk: dict[str, Any],
     specialist: dict[str, Any],
     metadata: dict[str, Any],
 ) -> dict[str, Any]:
-    score = 0.65 * float(current_best["score"]) + 0.35 * float(specialist["score"])
-    level = _policy_level(score, _m1_thresholds(metadata, "hybrid"))
+    # Official v4 uses restored Risk and label-free pre-event evidence available
+    # in this same run. v2 and v3 remain in the response for audit/comparison.
+    pre_event_probability = _clamp(
+        _number(specialist.get("pre_event_probability"), 0.0), 0.0, 1.0
+    )
+    leadtime_urgency = _clamp(
+        _number(specialist.get("leadtime_urgency_score"), 0.0), 0.0, 1.0
+    )
+    pre_event_score = 100.0 * pre_event_probability
+    leadtime_score = min(
+        100.0,
+        100.0 * leadtime_urgency + M1_EVIDENCE_LEADTIME_SCORE_OFFSET,
+    )
+    v3_score = max(pre_event_score, leadtime_score)
+    v3_level = _policy_level(v3_score, M1_EVIDENCE_THRESHOLDS)
+    risk_score = _clamp(_number(risk.get("score"), 0.0), 0.0, 1.0)
+    v4_risk_score = _band_evidence_score(
+        risk_score,
+        M1_RISK_MEDIUM_THRESHOLD,
+        M1_RISK_HIGH_THRESHOLD,
+        M1_RISK_URGENT_THRESHOLD,
+    )
+    v4_pre_event_score = _band_evidence_score(
+        pre_event_probability,
+        M1_PRE_EVENT_MEDIUM_THRESHOLD,
+        M1_PRE_EVENT_HIGH_THRESHOLD,
+        M1_PRE_EVENT_URGENT_THRESHOLD,
+    )
+    score = max(v4_risk_score, v4_pre_event_score)
+    level = _policy_level(score, M1_RISK_PRE_EVENT_THRESHOLDS)
+    v2_score = (
+        V2_HYBRID_CURRENT_BEST_WEIGHT * float(current_best["score"])
+        + V2_HYBRID_SPECIALIST_WEIGHT * float(specialist["score"])
+    )
+    v2_level = _policy_level(v2_score, V2_HYBRID_THRESHOLDS)
     current_high = current_best["level"] in {"high", "urgent"}
     specialist_high = specialist["level"] in {"high", "urgent"}
     agreement = (
@@ -450,11 +518,47 @@ def _score_hybrid(
     return {
         "priority_score": round(score, 4),
         "priority_level": level,
-        "priority_source": "m1_hybrid_current_best_0.65_m1_specialist_0.35",
+        "priority_source": M1_PRIORITY_SOURCE,
+        "policy_version": M1_PRIORITY_POLICY_VERSION,
+        "current_best_weight": None,
+        "m1_specialist_weight": None,
+        "decision_basis": (
+            "label-free v4 gate: restored risk_score >= 0.78 OR "
+            "pre_event_probability >= 0.99; urgent when risk >= 0.92 OR "
+            "pre_event >= 0.998; band score preserves level ordering"
+        ),
         "current_best_priority_score": current_best["score"],
         "current_best_priority_level": current_best["level"],
         "m1_specialist_priority_score": round(float(specialist["score"]), 4),
         "m1_specialist_priority_level": specialist["level"],
+        "m1_hybrid_priority_score": round(v2_score, 4),
+        "m1_hybrid_priority_level": v2_level,
+        "m1_evidence_pre_event_score": round(pre_event_score, 4),
+        "m1_evidence_leadtime_score": round(leadtime_score, 4),
+        "m1_evidence_priority_score": round(v3_score, 4),
+        "m1_evidence_priority_level": v3_level,
+        "m1_evidence_trigger": (
+            "pre_event|leadtime"
+            if pre_event_probability >= M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD
+            and leadtime_urgency >= M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD
+            else "pre_event"
+            if pre_event_probability >= M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD
+            else "leadtime"
+            if leadtime_urgency >= M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD
+            else "none"
+        ),
+        "m1_risk_pre_event_priority_score": round(score, 4),
+        "m1_risk_pre_event_priority_level": level,
+        "m1_risk_pre_event_trigger": (
+            "risk|pre_event"
+            if risk_score >= M1_RISK_HIGH_THRESHOLD
+            and pre_event_probability >= M1_PRE_EVENT_HIGH_THRESHOLD
+            else "risk"
+            if risk_score >= M1_RISK_HIGH_THRESHOLD
+            else "pre_event"
+            if pre_event_probability >= M1_PRE_EVENT_HIGH_THRESHOLD
+            else "none"
+        ),
         "m1_priority_agreement": agreement,
     }
 

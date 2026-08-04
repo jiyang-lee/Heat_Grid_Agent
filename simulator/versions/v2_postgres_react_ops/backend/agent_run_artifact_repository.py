@@ -58,7 +58,7 @@ async def list_agent_run_artifacts(
     run_id: str,
 ) -> list[AgentRunArtifact]:
     query = text(
-        "SELECT artifact_id, run_id, kind, name, uri "
+        "SELECT artifact_id, run_id, kind, name, uri, created_at "
         "FROM agent_run_artifacts "
         "WHERE run_id = :run_id "
         "ORDER BY created_at, artifact_id"
@@ -180,6 +180,9 @@ async def insert_agent_run_artifact(
     name: str,
     uri: str,
     artifact_id: str | None = None,
+    source_output_hash: str | None = None,
+    source_review_id: str | None = None,
+    contract_version: str | None = None,
 ) -> AgentRunArtifact:
     artifact_id = artifact_id or str(uuid4())
     query = text(
@@ -198,6 +201,14 @@ async def insert_agent_run_artifact(
                 "kind": kind,
                 "name": name,
                 "uri": uri,
+                "source_output_hash": source_output_hash,
+                "source_review_id": source_review_id,
+                "contract_version": contract_version
+                or (
+                    "artifact.legacy-v1"
+                    if source_output_hash is None
+                    else "artifact.output-v2"
+                ),
             },
         )
     return _artifact_from_row(result.mappings().one())
@@ -210,4 +221,5 @@ def _artifact_from_row(row: RowMapping) -> AgentRunArtifact:
         kind=str(row["kind"]),
         name=str(row["name"]),
         uri=str(row["uri"]),
+        created_at=row.get("created_at"),
     )
