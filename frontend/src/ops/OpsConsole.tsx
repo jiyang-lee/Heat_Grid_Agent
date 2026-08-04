@@ -1,4 +1,4 @@
-/** 운영 콘솔 — 알림 큐(피드) + 토큰·비용 지표 + 알림 상세/작업지시서. 전부 /api 계약 소비(mock/real 스위치). */
+/** 운영 콘솔 — 알림 큐(피드) + 토큰·비용 지표 + 알림 상세/작업지시서. 전부 실 /api 계약 소비. */
 
 import { useEffect, useRef, useState } from 'react'
 import type { AgentRunArtifact, AgentRunResponse, AlertStatus, PriorityLevel } from '../api/contracts'
