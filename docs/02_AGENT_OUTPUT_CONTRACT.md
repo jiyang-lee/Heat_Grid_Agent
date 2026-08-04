@@ -1,15 +1,15 @@
 # Agent 출력 계약
 
-최종 agent card는 `output/agent_priority_card.csv`다. 동일한 55개 컬럼이 `output/agent/m1_agent_priority_card.csv`에도 저장된다.
+최종 agent card는 `output/agent_priority_card.csv`다. 동일한 67개 컬럼이 `output/agent/m1_agent_priority_card.csv`에도 저장된다.
 
-M1 specialist 단독 병렬 산출물은 `output/agent/m1_specialist_parallel_agent_card.csv`다. 이 파일은 29개 컬럼이며 최종 hybrid agent contract가 아니라 M1-only evidence 확인용이다.
+M1 specialist 단독 병렬 산출물은 `output/agent/m1_specialist_parallel_agent_card.csv`다. 이 파일은 29개 컬럼이며 최종 evidence gate agent contract가 아니라 M1-only evidence 확인용이다.
 
 ## 컬럼 수 요약
 
 | file | role | rows | columns | note |
 |---|---|---:|---:|---|
-| `output/agent_priority_card.csv` | 최종 agent 전달 card | 1226 | 55 | agent가 우선 읽는 official card |
-| `output/agent/m1_agent_priority_card.csv` | 최종 agent 전달 card 사본 | 1226 | 55 | 위 파일과 같은 컬럼 |
+| `output/agent_priority_card.csv` | 최종 agent 전달 card | 1252 | 67 | agent가 우선 읽는 official card |
+| `output/agent/m1_agent_priority_card.csv` | 최종 agent 전달 card 사본 | 1252 | 67 | 위 파일과 같은 컬럼 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 specialist 단독 병렬 card | 1252 | 29 | 최종 ordering contract가 아니라 M1-only evidence |
 
 상세 분류 파일:
@@ -31,8 +31,8 @@ output/agent/agent_card_value_mapping_ko.md
 | Current-best risk 모델 | 3 | current-best supervised risk score bridge |
 | Current-best leadtime / crossing evidence | 5 | leadtime bucket, urgency, crossing timing |
 | Current-best priority baseline | 2 | 기존 best priority 보존값 |
-| 최종 M1 hybrid priority contract | 7 | agent ordering과 level의 active contract |
-| M1 specialist 단독 evidence / hybrid input | 12 | M1-only branch. 최종 priority에 35% 반영 |
+| 최종 M1 Risk/pre-event gate priority contract | 19 | label-free v4 ordering과 level의 active contract 및 v3/v2 비교 필드 |
+| M1 specialist 단독 evidence / hybrid input | 12 | M1-only branch. v4의 pre-event 입력과 비교용 이전 정책 입력을 제공 |
 | Agent 상태 / 설명 제어 / action | 9 | review, trust, reason, action |
 
 ## Key Columns
@@ -82,6 +82,14 @@ output/agent/agent_card_value_mapping_ko.md
 | `m1_specialist_priority_level` | M1 specialist priority level |
 | `m1_hybrid_priority_score` | current-best와 M1 specialist를 결합한 score |
 | `m1_hybrid_priority_level` | hybrid priority level |
+| `m1_evidence_pre_event_score` | v3 pre-event evidence 점수 |
+| `m1_evidence_leadtime_score` | v3 leadtime evidence 점수 |
+| `m1_risk_pre_event_priority_score` | 공식 v4 restored Risk/pre-event gate score |
+| `m1_risk_pre_event_priority_level` | 공식 v4 restored Risk/pre-event gate level |
+| `m1_risk_pre_event_trigger` | v4 high 조건을 만족한 Risk/pre-event 축 |
+| `m1_evidence_priority_score` | 이전 v3 evidence gate score |
+| `m1_evidence_priority_level` | 이전 v3 evidence gate level |
+| `m1_evidence_trigger` | 이전 v3 high 조건을 만족한 evidence 축 |
 | `priority_score` | 최종 agent priority score |
 | `priority_level` | 최종 agent priority level |
 | `priority_source` | 최종 priority 생성 방식 |

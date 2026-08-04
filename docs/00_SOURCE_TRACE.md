@@ -47,13 +47,13 @@
 | merged model score | `output/merged_model_scores.csv` |
 | final agent card | `output/agent_priority_card.csv` |
 | M1 specialist parallel card | `output/agent/m1_specialist_parallel_agent_card.csv` |
-| M1 hybrid final card | `output/agent/m1_agent_priority_card.csv` |
+| M1 Risk/pre-event v4 final card | `output/agent/m1_agent_priority_card.csv` |
 | validation/report evidence | `output/reports/` |
 | comparison notebooks | `compare/` |
 
-## 재학습 추적
+## 재생성·명시적 재학습 추적
 
-`full_retrain` 실행 후 아래 파일로 실제 source 호출과 결과를 확인한다.
+`full_retrain` 실행 후 아래 파일로 artifact 재사용/명시적 재학습 mode와 결과를 확인한다.
 
 ```text
 output/reports/source_retrain_metadata.json
@@ -62,7 +62,7 @@ output/reports/retrain_logs/retrain_current_best.log
 output/reports/retrain_logs/retrain_m1_specialist.log
 ```
 
-기본 `full_retrain`은 현재 저장소의 내부 재학습 경로를 사용한다. 외부 source 프로젝트는 M1 학습 입력을 처음 bootstrap하거나 external retrain mode를 명시적으로 켰을 때만 필요하다.
+기본 `full_retrain`은 현재 저장소의 검증된 Risk·Leadtime artifact를 재사용하고 점수만 다시 생성한다. 모델 교체는 `THIRD_MODEL_RISK_MODEL_MODE=retrain`, `THIRD_MODEL_LEADTIME_MODEL_MODE=retrain`을 명시한 경우에만 수행한다. 외부 source 프로젝트는 M1 학습 입력을 처음 bootstrap하거나 external retrain mode를 켰을 때만 필요하다.
 # 2026-07-08 Internal Source Trace Update
 
 The default source of the regenerated current-best body is now this repository:

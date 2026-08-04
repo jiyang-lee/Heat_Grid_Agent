@@ -28,13 +28,21 @@ output/agent/m1_specialist_parallel_agent_card.csv
 output/reports/final_validation_report.md
 ```
 
-## 3. 원천 재학습 포함 전체 실행
+## 3. 검증 artifact 보호 전체 실행
 
 ```powershell
 uv run third-model-pipeline --steps full_retrain
 ```
 
-기본 `full_retrain`은 현재 저장소 안에서 돈다. M1 학습 입력은 아래 경로에 보존된다.
+기본 `full_retrain`은 현재 저장소 안에서 돌며, 검증된 Risk·Leadtime joblib을 유지하고 점수와 후속 산출물을 재생성한다. 모델 자체를 교체하는 실험은 아래 환경변수를 명시한 별도 실행으로만 허용한다.
+
+```powershell
+$env:THIRD_MODEL_RISK_MODEL_MODE="retrain"
+$env:THIRD_MODEL_LEADTIME_MODEL_MODE="retrain"
+uv run third-model-pipeline --steps retrain_current_best
+```
+
+M1 학습 입력과 실행 metadata는 아래 경로에 보존된다.
 
 ```text
 artifacts/m1_specialist/training_inputs/

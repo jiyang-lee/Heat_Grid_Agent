@@ -5,7 +5,7 @@
 | 모드 | 명령 | 용도 |
 |---|---|---|
 | 저장소 재현 | `uv run third-model-pipeline --steps all` | GitHub/전달용 기본 실행. 보존 산출물로 최종 card 재생성 |
-| 원천 재학습 포함 | `uv run third-model-pipeline --steps full_retrain` | current-best와 M1 specialist를 package-local 입력으로 다시 학습한 뒤 저장소 결과 갱신 |
+| 보호된 전체 재생성 | `uv run third-model-pipeline --steps full_retrain` | 검증된 Risk·Leadtime artifact를 유지한 채 점수·Priority·M1 specialist·검증 산출물 갱신 |
 
 ## full_retrain 순서
 
@@ -27,7 +27,7 @@ validation
 
 | step | 입력 | 출력 | 설명 |
 |---|---|---|---|
-| `retrain_current_best` | `../HeatGrid_Agent/best` | `models/risk`, `models/leadtime`, `models/priority`, retrain metadata | source current-best에서 anomaly/multi-window/risk/leadtime/priority/report/ops_eval 재실행 |
+| `retrain_current_best` | package-local M1 windows + 검증 artifact | risk/leadtime/priority score, retrain metadata | 기본은 검증된 Risk·Leadtime joblib을 재사용해 점수만 재생성. 모델 교체 실험은 명시적 env 필요 |
 | `raw` | source raw folder | `data/interim/raw_inventory.csv`, `raw_schema_summary.csv` | raw 파일 존재와 schema 확인 |
 | `windows` | source `trainable_windows.csv` | `data/processed/trainable_windows.csv` | canonical window를 M1만 필터링 |
 | `model_artifacts` | source 또는 저장소 보존 model metadata | `models/model_artifacts_metadata.json` | risk/leadtime joblib, priority metadata materialize |
@@ -42,7 +42,7 @@ validation
 
 ## raw to trainable_windows
 
-이 저장소는 current-best source가 만든 canonical `trainable_windows.csv`를 M1 범위로 연결한다. raw CSV에서 canonical window를 다시 만드는 책임은 current-best source pipeline에 있다. 즉 `full_retrain`은 source pipeline을 먼저 실행하고, 그 결과를 현재 저장소 산출물로 갱신한 뒤 downstream agent card를 만든다.
+이 저장소는 current-best source가 만든 canonical `trainable_windows.csv`를 M1 범위로 연결한다. raw CSV에서 canonical window를 다시 만드는 책임은 current-best source pipeline에 있다. 기본 `full_retrain`은 검증된 Risk·Leadtime artifact를 덮어쓰지 않고 점수와 downstream card를 재생성한다. 모델 교체 실험에만 `THIRD_MODEL_RISK_MODEL_MODE=retrain`, `THIRD_MODEL_LEADTIME_MODEL_MODE=retrain`을 명시한다.
 
 ## coverage 해석
 
@@ -65,6 +65,6 @@ raw -> windows -> model_artifacts -> anomaly -> retrain_current_best
 -> m1_specialist_gates -> m1_specialist -> validation
 ```
 
-`retrain_current_best` generates M1 risk, leadtime, and priority outputs inside this repository. The old external current-best wrapper is still available with `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external`.
+`retrain_current_best` generates M1 risk, leadtime, and priority outputs inside this repository while reusing the validated packaged Risk/Leadtime artifacts by default. Set `THIRD_MODEL_RISK_MODEL_MODE=retrain` or `THIRD_MODEL_LEADTIME_MODEL_MODE=retrain` only for an explicit replacement experiment. The old external current-best wrapper remains available with `THIRD_MODEL_CURRENT_BEST_RETRAIN_MODE=external`.
 
 `retrain_m1_specialist` no longer requires `THIRD_MODEL_3RD_PROJECT_ROOT` after the package-local training inputs exist. It trains the fault/task/activity/pre-event gate joblibs from `artifacts/m1_specialist/training_inputs/`. If those inputs are missing, the first internal run can bootstrap them from `THIRD_MODEL_3RD_PROJECT_ROOT`; use `THIRD_MODEL_M1_SPECIALIST_RETRAIN_MODE=external` for the original source-project retrain.

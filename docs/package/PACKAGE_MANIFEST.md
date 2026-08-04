@@ -57,7 +57,7 @@
 | `output/merged_model_scores.csv` | priority와 anomaly key merge |
 | `output/m1_specialist_gate_scores.csv` | M1 specialist gate score |
 | `output/m1_specialist_scores.csv` | M1 specialist priority와 hybrid score |
-| `output/agent_priority_card.csv` | 공식 hybrid agent card, 1226 rows / 55 columns |
+| `output/agent_priority_card.csv` | 공식 Risk/pre-event gate v4 agent card, 1252 rows / 67 columns |
 | `output/agent/m1_agent_priority_card.csv` | 공식 card 복사본 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 단독 병렬 evidence card, 1252 rows / 29 columns |
 

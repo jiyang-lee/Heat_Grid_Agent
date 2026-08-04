@@ -2,7 +2,7 @@
 
 ## Priority
 
-- `priority_score`: 최종 M1 hybrid 우선순위 점수다.
+- `priority_score`: 최종 M1 restored Risk/pre-event gate v4 우선순위 점수다.
 - `priority_level`: `urgent`, `high`, `medium`, `low` 중 하나다.
 - `priority_source`: priority 생성 공식을 나타낸다.
 

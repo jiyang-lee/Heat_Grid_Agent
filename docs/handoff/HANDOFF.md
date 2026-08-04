@@ -9,10 +9,10 @@
 | 검증 scope | `manufacturer 1` |
 | 공식 agent card | `output/agent_priority_card.csv` |
 | 공식 card 복사본 | `output/agent/m1_agent_priority_card.csv` |
-| 공식 card 크기 | 1226 rows / 55 columns |
+| 공식 card 크기 | 1252 rows / 67 columns |
 | M1 병렬 evidence card | `output/agent/m1_specialist_parallel_agent_card.csv` |
 | 병렬 card 크기 | 1252 rows / 29 columns |
-| 최종 priority | `0.65 * current_best + 0.35 * M1 specialist` |
+| 최종 priority | `restored Risk >= 0.78 OR pre-event >= 0.99` gate v4 |
 
 ## 바로 실행
 
@@ -45,7 +45,8 @@ uv run third-model-pipeline --steps full_retrain
 ## 발표 시 주의 문장
 
 - 이 결과는 M1 검증 결과이며 M2 일반 성능으로 말하지 않는다.
-- M1 parallel card 1252 rows는 evidence 확인용이고, 최종 agent card는 1226 rows다.
+- M1 parallel card 1252 rows / 29 columns는 evidence 확인용이고, 최종 agent card는 1252 rows / 67 columns다.
 - 빠진 26개 window는 모두 `pre_fault`이며 coverage 보고서에서 별도로 추적한다.
 - anomaly는 정상 이탈 근거이고, risk/leadtime/priority를 대체하지 않는다.
-- `0.65 / 0.35`는 운영 선택점이며 metric-best라고 단정하지 않는다.
+- 공식 정책 v4는 `restored Risk >= 0.78 OR pre-event >= 0.99`인 label-free gate다.
+- holdout Precision 83.6%, Recall 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이며 이전 v3, 요청 v2, legacy v1은 비교·rollback 값으로 보존한다.
