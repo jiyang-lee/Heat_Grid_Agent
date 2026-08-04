@@ -1,0 +1,41 @@
+{
+  "head_source": "origin/develop2_after_pr04",
+  "api_required_fields": [
+    "run_id",
+    "status",
+    "input_source",
+    "alert_id",
+    "card_id",
+    "agent_mode",
+    "ops_output",
+    "token_usage",
+    "loop_summary",
+    "review_status",
+    "review_task_id",
+    "error"
+  ],
+  "output_required_fields": ["summary", "action_plan", "caution"],
+  "scenarios": {
+    "normal_high": {
+      "decision_order": ["diagnostic_worker", "request_human"],
+      "loop_count": 2,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"],
+      "intentional_changes": ["diagnostic_worker_added"]
+    },
+    "model_mismatch_urgent": {
+      "decision_order": ["rerun_model", "diagnostic_worker", "request_human"],
+      "loop_count": 3,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"],
+      "intentional_changes": ["diagnostic_worker_added", "durable_resume_added"]
+    },
+    "review_required_insufficient_evidence": {
+      "decision_order": ["expand_internal", "diagnostic_worker", "request_human"],
+      "loop_count": 3,
+      "terminal_status": "completed",
+      "artifact_kinds": ["anomaly_report"],
+      "intentional_changes": ["web_search_removed", "diagnostic_worker_added"]
+    }
+  }
+}

@@ -56,7 +56,11 @@ async def insert_agent_loop_iteration(
         ") VALUES ("
         ":run_id, :iteration, :phase, :decision, :confidence, :evidence_score, "
         "CAST(:missing_evidence AS jsonb), CAST(:model_verification AS jsonb)"
-        ") RETURNING iteration_id, run_id, iteration, phase, decision, confidence, "
+        ") ON CONFLICT (run_id, iteration, phase) DO UPDATE SET "
+        "decision = EXCLUDED.decision, confidence = EXCLUDED.confidence, "
+        "evidence_score = EXCLUDED.evidence_score, missing_evidence = EXCLUDED.missing_evidence, "
+        "model_verification = EXCLUDED.model_verification "
+        "RETURNING iteration_id, run_id, iteration, phase, decision, confidence, "
         "evidence_score, CAST(missing_evidence AS text) AS missing_evidence, "
         "CAST(model_verification AS text) AS model_verification, created_at"
     )

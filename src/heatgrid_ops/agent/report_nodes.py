@@ -1,167 +1,75 @@
 from __future__ import annotations
 
-from typing import Protocol
-
-import orjson
-from sqlalchemy.ext.asyncio import AsyncEngine
-
-from agent_run_artifact_repository import insert_agent_run_artifact
-from agent_run_repository import AgentRunEventRecord, record_agent_run_event
-from heatgrid_ops.agent.helpers import to_json
-from heatgrid_ops.agent.services import AgentRuntime
-from heatgrid_ops.agent.state import AgentState
-from heatgrid_ops.agent.tools import ReportToolPayloadError, make_anomaly_report_tool
-from schemas import JsonValue
-
-
-class AgentReportNodeContext(Protocol):
-    engine: AsyncEngine
-    runtime: AgentRuntime
+from heatgrid_ops.agent.contracts import ReportWriteRequest
+from heatgrid_ops.agent.errors import AgentDependencyError
+from heatgrid_ops.agent.node_context import AgentNodeContext
+from heatgrid_ops.agent.nodes_audit import (
+    record_decision,
+    record_tool_completed,
+    record_tool_started,
+)
+from heatgrid_ops.agent.state import AgentState, AgentStateUpdate
 
 
 async def write_anomaly_report(
-    context: AgentReportNodeContext,
+    context: AgentNodeContext,
     state: AgentState,
-) -> AgentState:
+) -> AgentStateUpdate:
     tool_name = "write_anomaly_report"
-    used_tools = [*state.get("used_tools", []), tool_name]
-    await _record_decision(context, state, tool_name)
-    await _record_tool_started(context, state, tool_name)
-    if context.runtime.settings.openai_api_key is None:
-        message = "OPENAI_API_KEY 없음, 이상보고서 생성을 건너뜁니다."
-        await _record_tool_completed(context, state, tool_name, {"status": "failed"})
-        await _record_report_failed(context, state, message)
-        return {"used_tools": used_tools, "report_errors": [message]}
-
+    used_tools = [*state.audit.used_tools, tool_name]
+    await record_decision(context, state, tool_name)
+    await record_tool_started(context, state, tool_name)
+    output = state.output.value
+    if output is None:
+        raise RuntimeError("agent output is missing")
     try:
-        key = context.runtime.settings.openai_api_key
-        tool_result = make_anomaly_report_tool(
-            openai_api_key=key.get_secret_value() if key is not None else None,
-            openai_model=context.runtime.settings.openai_model,
-        ).invoke(
-            {
-                "payload_json": to_json(
-                    {
-                        "run_id": state["run_id"],
-                        "card_id": state["card_id"],
-                        "source_input": state["source_input"],
-                        "external_context": state["external_context"],
-                        "ops_output": state["ops_output"].model_dump(mode="json"),
-                    }
-                )
-            }
+        draft = await context.runtime.write_anomaly(
+            ReportWriteRequest(
+                run_id=state.request.run_id,
+                card_id=state.request.card_id,
+                source_input=state.request.source_input,
+                evidence_context=state.evidence.external_context,
+                ops_output=output,
+            )
         )
-        artifact_payload = _tool_json_object(tool_result)
-        artifact = await insert_agent_run_artifact(
-            context.engine,
-            run_id=state["run_id"],
-            kind=_required_text(artifact_payload, "kind"),
-            name=_required_text(artifact_payload, "name"),
-            uri=_required_text(artifact_payload, "uri"),
+        artifact = await context.artifacts.record(
+            state.request.run_id,
+            draft.kind,
+            draft.name,
+            draft.uri,
         )
-    except (OSError, RuntimeError, ValueError, ReportToolPayloadError) as exc:
+    except (AgentDependencyError, OSError, RuntimeError, ValueError) as exc:
         message = str(exc)
-        await _record_tool_completed(context, state, tool_name, {"status": "failed"})
+        await record_tool_completed(context, state, tool_name, {"status": "failed"})
         await _record_report_failed(context, state, message)
-        return {"used_tools": used_tools, "report_errors": [message]}
+        return {
+            "audit": state.audit.model_copy(update={"used_tools": used_tools}),
+            "output": state.output.model_copy(update={"report_errors": [message]}),
+        }
 
-    await _record_tool_completed(context, state, tool_name, {"status": "completed"})
-    await record_agent_run_event(
-        context.engine,
-        AgentRunEventRecord(
-            run_id=state["run_id"],
-            event_type="report_written",
-            message="anomaly report written",
-            payload={
-                "kind": artifact.kind,
-                "name": artifact.name,
-                "uri": artifact.uri,
-            },
-        ),
+    await record_tool_completed(context, state, tool_name, {"status": "completed"})
+    await context.audit.record_event(
+        state.request.run_id,
+        "report_written",
+        "anomaly report written",
+        {"kind": artifact.kind, "name": artifact.name, "uri": artifact.uri},
     )
     return {
-        "used_tools": used_tools,
-        "report_artifacts": [artifact.model_dump(mode="json")],
+        "audit": state.audit.model_copy(update={"used_tools": used_tools}),
+        "output": state.output.model_copy(
+            update={"report_artifacts": [artifact.model_dump(mode="json")]}
+        ),
     }
 
 
-async def _record_decision(
-    context: AgentReportNodeContext,
-    state: AgentState,
-    next_step: str,
-) -> None:
-    await record_agent_run_event(
-        context.engine,
-        AgentRunEventRecord(
-            run_id=state["run_id"],
-            event_type="graph_transition",
-            message=f"graph entered {next_step}",
-            payload={"next": next_step, "decision_source": "graph"},
-        ),
-    )
-
-
-async def _record_tool_started(
-    context: AgentReportNodeContext,
-    state: AgentState,
-    tool_name: str,
-) -> None:
-    await record_agent_run_event(
-        context.engine,
-        AgentRunEventRecord(
-            run_id=state["run_id"],
-            event_type="tool_started",
-            message=f"{tool_name} started",
-            payload={"tool": tool_name},
-        ),
-    )
-
-
-async def _record_tool_completed(
-    context: AgentReportNodeContext,
-    state: AgentState,
-    tool_name: str,
-    payload: dict[str, str | int],
-) -> None:
-    await record_agent_run_event(
-        context.engine,
-        AgentRunEventRecord(
-            run_id=state["run_id"],
-            event_type="tool_completed",
-            message=f"{tool_name} completed",
-            payload={"tool": tool_name, **payload},
-        ),
-    )
-
-
 async def _record_report_failed(
-    context: AgentReportNodeContext,
+    context: AgentNodeContext,
     state: AgentState,
     message: str,
 ) -> None:
-    await record_agent_run_event(
-        context.engine,
-        AgentRunEventRecord(
-            run_id=state["run_id"],
-            event_type="report_failed",
-            message="anomaly report failed",
-            payload={
-                "kind": "anomaly_report",
-                "error": message[:500],
-            },
-        ),
+    await context.audit.record_event(
+        state.request.run_id,
+        "report_failed",
+        "anomaly report failed",
+        {"kind": "anomaly_report", "error": message[:500]},
     )
-
-
-def _tool_json_object(payload: str) -> dict[str, JsonValue]:
-    value = orjson.loads(payload)
-    if not isinstance(value, dict):
-        raise ReportToolPayloadError("tool result must be a JSON object")
-    return value
-
-
-def _required_text(payload: dict[str, JsonValue], field_name: str) -> str:
-    value = payload.get(field_name)
-    if not isinstance(value, str) or not value:
-        raise ReportToolPayloadError(f"{field_name} must be a non-empty string")
-    return value

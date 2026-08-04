@@ -32,3 +32,10 @@ output/ops_agent/ops_agent_output_*.json
 # Local manufacturer datasets (not tracked in repo)
 data/manufacturer 1/
 data/manufacturer 2/
+
+# Local environment package data
+database_data.dump
+video1201772803_stt.jsonl
+
+# Replay dataset seed (대용량·로컬 전용 — HeatGrid_Local_Environment_*.zip으로 공유받아 배치)
+data/replay/

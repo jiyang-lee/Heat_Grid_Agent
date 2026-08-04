@@ -189,6 +189,21 @@ def call_llm_json(prompt: str, inputs: ReportJson) -> ReportJson:
         or os.getenv("HEATGRID_OPENAI_MODEL", "").strip()
         or "gpt-5.4-mini"
     )
+    return call_llm_json_with_config(
+        prompt,
+        inputs,
+        api_key=api_key,
+        model=model,
+    )
+
+
+def call_llm_json_with_config(
+    prompt: str,
+    inputs: ReportJson,
+    *,
+    api_key: str,
+    model: str,
+) -> ReportJson:
     system = "\n".join(
         [
             "You are a Korean district-heating report generator.",

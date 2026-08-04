@@ -325,9 +325,10 @@ def score_m1_specialist_gates() -> pd.DataFrame:
     scored["m1_specialist_gate_review_reasons"] = review_reasons
     scored["m1_specialist_gate_review_required"] = scored["m1_specialist_gate_review_reasons"].astype(str).ne("")
 
-    groups = scored.get("fault_label", pd.Series(index=scored.index, dtype=object)).map(_fault_group_and_weight)
-    scored["m1_specialist_fault_group"] = [g for g, _ in groups]
-    scored["m1_specialist_group_weight"] = [w for _, w in groups]
+    # fault_label is an evaluation label and is unavailable at live inference.
+    # Keep the operational score aligned with the same-run runtime contract.
+    scored["m1_specialist_fault_group"] = "unknown_review"
+    scored["m1_specialist_group_weight"] = 0.1
     scored["m1_specialist_leadtime_urgency"] = scored.apply(_leadtime_urgency, axis=1)
     scored["m1_specialist_priority_score"] = 100.0 * (
         0.55 * pd.to_numeric(scored["m1_specialist_pre_event_probability"], errors="coerce").fillna(0.0)
@@ -380,7 +381,31 @@ def score_m1_specialist_gates() -> pd.DataFrame:
                 "activity_gate": 0.5,
                 "fault_pre_event_gate": 0.6,
             },
-            "role": "parallel M1 specialist gate/context branch; used by M1 hybrid priority, not a standalone risk/leadtime replacement",
+            "priority_thresholds": {
+                "specialist": {"high": 75.0, "urgent": 90.0},
+                "hybrid_v2": {
+                    "high": config.M1_HYBRID_HIGH_THRESHOLD,
+                    "urgent": config.M1_HYBRID_URGENT_THRESHOLD,
+                },
+                "evidence_v3": {
+                    "medium": config.M1_EVIDENCE_MEDIUM_THRESHOLD,
+                    "high": config.M1_EVIDENCE_HIGH_THRESHOLD,
+                    "urgent": config.M1_EVIDENCE_URGENT_THRESHOLD,
+                },
+            },
+            "priority_policy": {
+                "policy_version": config.M1_PRIORITY_POLICY_VERSION,
+                "priority_source": config.M1_PRIORITY_SOURCE,
+                "policy_type": "label_free_evidence_gate",
+                "pre_event_high_threshold": config.M1_EVIDENCE_PRE_EVENT_HIGH_THRESHOLD,
+                "leadtime_high_threshold": config.M1_EVIDENCE_LEADTIME_HIGH_THRESHOLD,
+                "score_formula": "max(pre_event*100, leadtime*100+2)",
+            },
+            "role": "parallel M1 specialist gate/context branch; label-free runtime evidence for the official priority policy",
+            "group_weight_policy": {
+                "value": 0.1,
+                "reason": "fault_label is not available at live inference",
+            },
             "parallel_agent_card_path": config.path_label(config.M1_SPECIALIST_PARALLEL_AGENT_CARD_PATH),
             "python_executable": config.path_label(config.M1_SPECIALIST_PYTHON_PATH, "THIRD_MODEL_M1_SPECIALIST_PYTHON"),
             "sklearn_version": sklearn.__version__,

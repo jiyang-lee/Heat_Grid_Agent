@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import unittest
 
 import pandas as pd
@@ -32,18 +34,41 @@ class AgentContractTest(unittest.TestCase):
         ]
         self.assertEqual([], rejected)
 
-    def test_agent_priority_is_m1_hybrid(self) -> None:
+    def test_agent_priority_is_m1_risk_pre_event_gate_v4(self) -> None:
         self.assertTrue("priority_source" in self.agent.columns)
         sources = set(self.agent["priority_source"].astype(str).unique())
-        self.assertEqual({"m1_hybrid_current_best_0.65_m1_specialist_0.35"}, sources)
+        self.assertEqual({config.M1_PRIORITY_SOURCE}, sources)
+        self.assertEqual({config.M1_PRIORITY_POLICY_VERSION}, set(self.agent["policy_version"].astype(str)))
+        self.assertTrue(pd.to_numeric(self.agent["current_best_weight"], errors="coerce").isna().all())
+        self.assertTrue(pd.to_numeric(self.agent["m1_specialist_weight"], errors="coerce").isna().all())
         max_delta = (
             pd.to_numeric(self.agent["priority_score"], errors="coerce")
-            - pd.to_numeric(self.agent["m1_hybrid_priority_score"], errors="coerce")
+            - pd.to_numeric(self.agent["m1_risk_pre_event_priority_score"], errors="coerce")
         ).abs().max()
         self.assertLessEqual(float(max_delta), 1e-9)
         self.assertTrue(
-            (self.agent["priority_level"].astype(str) == self.agent["m1_hybrid_priority_level"].astype(str)).all()
+            (self.agent["priority_level"].astype(str) == self.agent["m1_risk_pre_event_priority_level"].astype(str)).all()
         )
+        score = pd.to_numeric(self.agent["priority_score"], errors="coerce")
+        expected_level = pd.Series(
+            pd.Categorical(
+                pd.cut(
+                    score,
+                    bins=[float("-inf"), config.M1_RISK_PRE_EVENT_MEDIUM_THRESHOLD, config.M1_RISK_PRE_EVENT_HIGH_THRESHOLD, config.M1_RISK_PRE_EVENT_URGENT_THRESHOLD, float("inf")],
+                    labels=["low", "medium", "high", "urgent"],
+                    right=False,
+                ),
+                categories=["low", "medium", "high", "urgent"],
+            ),
+            index=self.agent.index,
+        ).astype(str)
+        self.assertTrue((self.agent["priority_level"].astype(str) == expected_level).all())
+        expected_high = (
+            pd.to_numeric(self.agent["risk_score"], errors="coerce").ge(config.M1_RISK_HIGH_THRESHOLD)
+            | pd.to_numeric(self.agent["m1_specialist_pre_event_probability"], errors="coerce").ge(config.M1_PRE_EVENT_HIGH_THRESHOLD)
+        )
+        actual_high = self.agent["priority_level"].astype(str).isin(["high", "urgent"])
+        self.assertTrue((actual_high == expected_high).all())
 
     def test_agent_key_is_unique(self) -> None:
         duplicate_count = int(self.agent.duplicated(config.KEY_COLUMNS).sum())
@@ -90,11 +115,21 @@ class AgentContractTest(unittest.TestCase):
             config.M1_SPECIALIST_GATE_METADATA_PATH,
             config.M1_SPECIALIST_SCORES_PATH,
             config.M1_SPECIALIST_AGENT_CARD_PATH,
+            config.M1_RISK_PRE_EVENT_GATE_SWEEP_PATH,
             config.M1_SPECIALIST_COMPARISON_PATH,
             config.M1_SPECIALIST_REPORT_PATH,
             config.M1_SCOPE_REPORT_PATH,
         ]:
             self.assertTrue(path.exists(), f"missing active package artifact: {path}")
+
+    def test_validated_risk_and_leadtime_artifact_hashes_match_metadata(self) -> None:
+        for model_path, metadata_path in [
+            (config.RISK_MODEL_PATH, config.RISK_METADATA_PATH),
+            (config.LEADTIME_MODEL_PATH, config.LEADTIME_METADATA_PATH),
+        ]:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            actual = hashlib.sha256(model_path.read_bytes()).hexdigest()
+            self.assertEqual(metadata["artifact_sha256"].lower(), actual)
 
 
 if __name__ == "__main__":
