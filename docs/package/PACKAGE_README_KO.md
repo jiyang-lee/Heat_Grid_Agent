@@ -16,13 +16,13 @@ uv run python -m unittest discover -s tests -v
 
 | 파일 | 역할 | rows | columns |
 |---|---|---:|---:|
-| `output/agent_priority_card.csv` | 최종 hybrid agent card | 1252 | 55 |
-| `output/agent/m1_agent_priority_card.csv` | 최종 hybrid card 복사본 | 1252 | 55 |
+| `output/agent_priority_card.csv` | 최종 Risk/pre-event gate v4 agent card | 1252 | 67 |
+| `output/agent/m1_agent_priority_card.csv` | 최종 v4 card 복사본 | 1252 | 67 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 단독 병렬 evidence card | 1252 | 29 |
 
 최종 agent가 우선 읽는 값은 `priority_score`, `priority_level`, `review_required`, `review_reasons`, `trust_level`, `why_reason`, `recommended_action`이다.
 
-## 3. 원천 재학습까지 실행
+## 3. 검증 artifact 보호 전체 실행
 
 ```powershell
 uv run third-model-pipeline --steps full_retrain
@@ -31,14 +31,16 @@ uv run third-model-pipeline --steps full_retrain
 `full_retrain`은 다음 순서로 실행된다.
 
 ```text
-1. current-best source에서 risk/leadtime/priority 계열 재학습
-2. risk_model_best.joblib, leadtime_model_best.joblib, priority metadata 갱신
+1. 검증된 risk/leadtime joblib을 유지하고 package-local M1 window를 다시 채점
+2. risk/leadtime score와 priority metadata 갱신
 3. M1 canonical windows와 current-best score 연결
 4. M1 anomaly, merge, agent card 생성
 5. 현재 저장소의 M1 training inputs에서 fault/task/activity/pre-event gate joblib 재학습
 6. M1 specialist 모델 산출물 갱신
-7. 최종 hybrid priority와 validation 산출
+7. 최종 Risk/pre-event gate v4 priority와 validation 산출
 ```
+
+Risk·Leadtime 모델 자체의 교체 실험은 `THIRD_MODEL_RISK_MODEL_MODE=retrain`, `THIRD_MODEL_LEADTIME_MODEL_MODE=retrain`을 명시한 경우에만 수행한다.
 
 ## 4. Source 경로 지정
 
@@ -76,7 +78,7 @@ $env:THIRD_MODEL_PREDIST_ZIP_PATH="D:\...\predist_dataset.zip"
 - 현재 검증은 M1 전용이다.
 - M1 specialist parallel card는 최종 ordering contract가 아니라 evidence 확인용이다.
 - 내부 `full_retrain` 기준 final card는 canonical 1252개 전체를 보존한다.
-- `0.65 / 0.35` hybrid는 운영 선택점이지 모든 metric의 절대 최적값이 아니다.
+- 공식 priority v4는 `restored Risk >= 0.78 OR pre-event >= 0.99`인 label-free gate다. holdout Precision 83.6%, Recall 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이며 v3/v2/v1은 비교·rollback 값으로 보존한다.
 # 2026-07-08 Internal Full Retrain Update
 
 - `uv run third-model-pipeline --steps full_retrain` is now self-contained by default.

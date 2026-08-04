@@ -21,8 +21,8 @@ artifacts/current_best/ARTIFACT_INDEX.csv
 
 ```text
 priority_score
-= 0.65 * current_best_priority_score
-+ 0.35 * m1_specialist_priority_score
+= 0.72 * current_best_priority_score
++ 0.28 * m1_specialist_priority_score
 ```
 
 해석:
@@ -69,8 +69,8 @@ criticality threshold = 5
 `compare/m1_threshold_weight_rationale_report.ipynb`:
 
 - anomaly/risk/leadtime/priority/hybrid threshold와 weight 설정 근거를 Plotly 차트로 설명한 notebook이다.
-- risk가 priority engine에서 가장 큰 축으로 들어간 이유와 hybrid 0.65/0.35 근거를 별도 sweep으로 확인한다.
-- 0.65/0.35는 절대 metric-best가 아니라 운영 선택점이다. Holdout 기준 metric-best 후보는 `hybrid_weight_selection_summary.csv`에서 확인한다.
+- risk가 priority engine에서 가장 큰 축으로 들어간 이유와 hybrid 가중치 근거를 별도 sweep으로 확인한다.
+- 공식 정책 v4는 `restored Risk >= 0.78 OR pre-event >= 0.99`인 label-free gate다. 재현 holdout은 Precision 83.6%, Recall 72.7%, F1 77.8%, FPR 10.4%, 이벤트 7/8이며 이전 v3, 요청 v2, legacy v1은 비교·rollback 기준으로 보존한다.
 
 `artifacts/current_best/`:
 

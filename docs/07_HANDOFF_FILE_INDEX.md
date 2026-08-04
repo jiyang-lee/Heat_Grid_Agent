@@ -20,8 +20,8 @@
 
 | 파일 | 역할 | rows | columns |
 |---|---|---:|---:|
-| `output/agent_priority_card.csv` | 공식 hybrid agent card | 1226 | 55 |
-| `output/agent/m1_agent_priority_card.csv` | 공식 hybrid agent card 복사본 | 1226 | 55 |
+| `output/agent_priority_card.csv` | 공식 Risk/pre-event gate v4 agent card | 1252 | 67 |
+| `output/agent/m1_agent_priority_card.csv` | 공식 Risk/pre-event gate v4 agent card 복사본 | 1252 | 67 |
 | `output/agent/m1_specialist_parallel_agent_card.csv` | M1 specialist 단독 병렬 evidence card | 1252 | 29 |
 
 컬럼 분류:
@@ -55,9 +55,9 @@ output/m1_specialist_gate_scores.csv
 output/m1_specialist_scores.csv
 ```
 
-## 5. 재학습 추적
+## 5. 재생성·명시적 재학습 추적
 
-`full_retrain`을 실행한 경우 아래 파일이 source 재학습 증거다.
+`full_retrain`을 실행한 경우 아래 파일에 검증 artifact 재사용 또는 명시적 재학습 mode가 기록된다.
 
 ```text
 output/reports/source_retrain_metadata.json
@@ -82,7 +82,7 @@ output/reports/retrain_logs/retrain_m1_specialist.log
 
 ## 7. Coverage 설명
 
-M1 canonical window는 1252개다. current-best priority/card 산출물은 1226개 key를 가진다. 따라서 최종 hybrid card도 1226개가 된다. 빠진 26개는 모두 `pre_fault` window라서, coverage 해석과 성능평가에서는 누락 row의 label 편향을 같이 설명해야 한다.
+M1 canonical window는 1252개다. 보존된 상위 current-best artifact의 manufacturer 1 score는 1226개였지만, 현재 패키지의 risk/leadtime/priority/M1 score와 최종 evidence gate card는 1252개 key를 모두 보존한다. `row_reconciliation.csv`와 `key_coverage_by_artifact.csv`에서 현재 누락이 0개인지 확인한다.
 
 확인 파일:
 
