@@ -7,7 +7,19 @@ export default defineConfig(({ mode }) => {
   const backendTarget = env.VITE_BACKEND_URL || 'http://127.0.0.1:8003'
 
   return {
-    plugins: [react()],
+    plugins: [react(), {
+      name: 'heatgrid-demo-entry',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html) {
+          return env.VITE_DEMO_MODE === 'true'
+            ? html.replace('/src/main.tsx', '/src/demo-main.tsx')
+            : html
+        },
+      },
+    }],
+    base: env.VITE_DEMO_MODE === 'true' ? './' : '/',
+    build: { outDir: env.VITE_DEMO_MODE === 'true' ? 'dist-demo' : 'dist' },
     server: {
       port: Number(process.env.PORT) || 5173,
       // 같은 네트워크(LAN)에서 내 PC IP로 접속 가능하게 0.0.0.0 바인딩.

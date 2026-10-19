@@ -10,7 +10,9 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "build:demo": "tsc -b && vite build --mode demo",
+    "dev:demo": "vite --mode demo"
   },
   "dependencies": {
     "@fontsource/noto-sans-kr": "^5.2.9",

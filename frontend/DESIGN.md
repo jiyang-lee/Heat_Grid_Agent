@@ -107,3 +107,12 @@ Strategy: mixed, but restrained. Surfaces use a 1px border plus `0 1px 2px rgba(
 
 - WCAG 2.2 AA target: 4.5:1 text contrast, keyboard navigation, visible focus, 44px minimum touch target for primary controls, reduced motion support.
 - Accepted debt: geographical map is a deterministic visual mock because no map/coordinates endpoint is exposed by the current API. It is labelled as a simulated overview and does not convey a live safety decision.
+
+## 9. Public sample experience
+
+The demo preserves the console's existing light canvas, blue controls, bordered white surfaces, Korean font and spacing tokens. It mounts an isolated local data provider; production contexts and map engines never mount. Navigation follows equipment → alert → evidence → saved report, with hash links that survive refresh. Normal and fault scenarios are explicit tabs; normal has no active alert. A persistent banner says “샘플 데이터와 저장된 실행 결과를 사용하는 체험 모드”. No live analysis, telemetry or field action is implied. The static network diagram is schematic, not geography. All controls use semantic buttons/links, visible focus and 44px touch targets. At 720px cards stack and navigation wraps; the document can scroll. Motion is unnecessary. Source filenames and original saved report are accessible in the report view. Accepted debt: this compact public walkthrough does not expose editing or production settings.
+
+Demo accessibility tokens: `--ops-primary: #1262bd`, `--ops-critical: #c72219`, `--ops-text-muted: #5e6d82` are scoped to `.demo-app` to ensure text contrast on tinted surfaces. The demo type tokens are `--demo-text: 15px`, `--demo-caption: 12px`, `--demo-small: 13px`, `--demo-subhead: 17px`, `--demo-heading: 24px`, `--demo-title: 32px`, `--demo-title-mobile: 28px`; spacing uses existing `--space-1`–`--space-8` plus `--demo-gutter: 40px`. Radius tokens are 8px / 10px. A labelled aside landmark contains the persistent mode banner.
+Additional demo geometry tokens: --space-7: 28px; --demo-touch: 44px; --demo-step-height: 64px; --demo-step-size: 28px; --demo-radius-sm: 6px; --demo-radius-xs: 4px. These cover touch targets, step markers and compact badge corners.
+Normal demo status uses scoped --ops-success: #137a37 for AA contrast on its muted surface.
+The demo uses installed system Korean sans fonts (system-ui, Segoe UI, Malgun Gothic) to avoid downloading full Korean font files; production font loading is unchanged. A dedicated demo HTML entry statically imports the demo, avoiding a lazy chunk/CSS request chain.
